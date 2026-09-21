@@ -25,9 +25,6 @@ const dedent = (text) => {
 	return lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0)).join('\n')
 }
 
-// Per-instance API shared by setup and onFirstRender.
-const editors = new WeakMap()
-
 // ── A tiny highlighter: one regex per language, one class per capture group.
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const GRAMMARS = {
@@ -110,7 +107,7 @@ pre, textarea, .gutter {
 	font-size: 0.8125rem;
 	line-height: 1.6;
 	white-space: pre;
-	tab-size: var(--_tab, 2);
+	tab-size: inherit;
 	font-variant-ligatures: none;
 }
 pre, textarea { padding: 0.75rem 1rem; border: 0; }
@@ -155,73 +152,36 @@ rocket('sb-code-editor', {
 		],
 	},
 	renderOnPropChange: ({ changes }) => 'label' in changes,
-	setup: ({ adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const child = host.querySelector(':scope > script[type="text/plain"]')
-		let code = host.hasAttribute('value') ? props.value : child ? dedent(child.textContent) : ''
+		let initial = host.hasAttribute('value') ? props.value : child ? dedent(child.textContent) : ''
 		const pre = early(host, 'value')
-		if (pre !== undefined) code = String(pre ?? '')
+		if (pre !== undefined) initial = String(pre ?? '')
 
-		let parts = null // filled in onFirstRender
-		const paint = () => {
-			if (!parts) return
-			parts.code.innerHTML = highlight(code, props.language)
-			const lines = code.split('\n').length
-			parts.gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n')
-			parts.root.classList.toggle('no-gutter', !props.lineNumbers)
-			parts.root.style.setProperty('--_tab', props.tabSize)
-			parts.area.readOnly = props.readonly
-		}
-		const set = (v) => {
-			code = String(v ?? '')
-			if (parts && parts.area.value !== code) parts.area.value = code
-			paint()
-		}
-		overrideProp('value', () => peek(() => code), (v) => peek(() => set(v)))
+		// Local signals the markup renders from.
+		$$.code = initial
+		$$.lang = props.language
+		$$.gutter = props.lineNumbers
+		$$.tab = props.tabSize
+		$$.readonly = props.readonly
+		$$.html = () => highlight($$.code, $$.lang)
+		$$.numbers = () => Array.from({ length: $$.code.split('\n').length }, (_, i) => i + 1).join('\n')
+
+		observeProps(() => {
+			$$.lang = props.language
+			$$.gutter = props.lineNumbers
+			$$.tab = props.tabSize
+			$$.readonly = props.readonly
+		}, 'language', 'lineNumbers', 'tabSize', 'readonly')
+
+		// Typing updates $$code; the textarea's data-effect only writes back
+		// external changes (the values differ), so the caret never jumps.
+		const set = (v) => ($$.code = String(v ?? ''))
+		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => set(v)))
 		observeProps(() => set(props.value), 'value')
-		observeProps(paint, 'language', 'lineNumbers', 'tabSize', 'readonly')
 
-		editors.set(host, {
-			attach(p) {
-				parts = p
-				p.area.value = code
-				paint()
-			},
-			input(v) {
-				code = v
-				paint()
-			},
-			run: () => emit('sb-run', { value: code }),
-			change: () => emit('change'),
-		})
-	},
-	render: ({ html, props: { label } }) => html`
-		${label ? html`<span class="label" part="label">${label}</span>` : null}
-		<div class="scroller" part="editor">
-			<div class="grid">
-				<pre class="gutter" aria-hidden="true"></pre>
-				<div class="code">
-					<pre aria-hidden="true"><code></code></pre>
-					<textarea
-						part="textarea"
-						spellcheck="false"
-						autocapitalize="off"
-						autocomplete="off"
-						autocorrect="off"
-						wrap="off"
-						aria-label="${label || 'Code'}"
-					></textarea>
-				</div>
-			</div>
-		</div>
-	`,
-	onFirstRender: ({ host }) => {
-		const root = host.shadowRoot.querySelector('.scroller')
-		const area = root.querySelector('textarea')
-		const api = editors.get(host)
-		api.attach({ root, area, code: root.querySelector('.code code'), gutter: root.querySelector('.gutter') })
-
-		const insert = (text) => {
+		const insert = (area, text) => {
 			// execCommand keeps the browser's undo stack; setRangeText is the fallback.
 			if (!document.execCommand?.('insertText', false, text)) {
 				area.setRangeText(text, area.selectionStart, area.selectionEnd, 'end')
@@ -229,16 +189,16 @@ rocket('sb-code-editor', {
 			}
 		}
 		let escaped = false
-		area.addEventListener('input', () => api.input(area.value))
-		area.addEventListener('change', () => api.change())
-		area.addEventListener('keydown', (e) => {
+		action('input', ({ el }) => ($$.code = el.value))
+		action('change', () => emit('change'))
+		action('key', ({ el: area, evt: e }) => {
 			if (e.key === 'Escape') {
 				escaped = true // the next Tab moves focus instead of indenting
 				return
 			}
 			if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
 				e.preventDefault()
-				api.run()
+				emit('sb-run', { value: area.value })
 				return
 			}
 			if (area.readOnly) return
@@ -246,12 +206,12 @@ rocket('sb-code-editor', {
 				e.preventDefault()
 				const { selectionStart: s, selectionEnd: t, value: v } = area
 				const lineStart = v.lastIndexOf('\n', s - 1) + 1
-				if (!e.shiftKey && s === t) return insert('\t')
+				if (!e.shiftKey && s === t) return insert(area, '\t')
 				// Block (de)indent of every selected line.
 				const block = v.slice(lineStart, t)
 				const next = e.shiftKey ? block.replace(/^(\t| {1,2})/gm, '') : block.replace(/^/gm, '\t')
 				area.setSelectionRange(lineStart, t)
-				insert(next)
+				insert(area, next)
 				area.setSelectionRange(lineStart, lineStart + next.length)
 				return
 			}
@@ -262,8 +222,33 @@ rocket('sb-code-editor', {
 				const lineStart = v.lastIndexOf('\n', area.selectionStart - 1) + 1
 				const line = v.slice(lineStart, area.selectionStart)
 				const indent = line.match(/^[ \t]*/)[0]
-				insert('\n' + indent + (/[{([]\s*$/.test(line) ? '\t' : ''))
+				insert(area, '\n' + indent + (/[{([]\s*$/.test(line) ? '\t' : ''))
 			}
 		})
 	},
+	render: ({ html, props: { label } }) => html`
+		${label ? html`<span class="label" part="label">${label}</span>` : null}
+		<div class="scroller" part="editor" data-class:no-gutter="!$$gutter" data-style:tab-size="$$tab">
+			<div class="grid">
+				<pre class="gutter" aria-hidden="true" data-text="$$numbers"></pre>
+				<div class="code">
+					<pre aria-hidden="true"><code data-effect="el.innerHTML = $$html"></code></pre>
+					<textarea
+						part="textarea"
+						spellcheck="false"
+						autocapitalize="off"
+						autocomplete="off"
+						autocorrect="off"
+						wrap="off"
+						aria-label="${label || 'Code'}"
+						data-effect="el.value !== $$code && (el.value = $$code)"
+						data-attr:readonly="$$readonly"
+						data-on:input="@input()"
+						data-on:change="@change()"
+						data-on:keydown="@key()"
+					></textarea>
+				</div>
+			</div>
+		</div>
+	`,
 })

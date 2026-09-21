@@ -73,13 +73,17 @@ func (a *assets) cacheHeader(w http.ResponseWriter, versioned bool) {
 	}
 }
 
+// serveStatic serves the hashed static files. They are public, and the
+// playground's sandboxed runner (opaque origin) loads them cross-origin, so
+// they allow any origin.
 func (a *assets) serveStatic() http.Handler {
 	h := http.StripPrefix("/static/", hashfs.FileServer(a.static))
-	if !a.dev {
-		return h
-	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(noStoreWriter{w}, r)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if a.dev {
+			w = noStoreWriter{w}
+		}
+		h.ServeHTTP(w, r)
 	})
 }
 
@@ -99,6 +103,7 @@ func (a *assets) serveArt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
 	w.Write(g.body)
 }
@@ -109,6 +114,7 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 	p := r.PathValue("path")
 	if p == "index.js" {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		a.cacheHeader(w, r.URL.Query().Get("v") == a.components.hash)
 		w.Write(a.components.body)
 		return

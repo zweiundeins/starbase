@@ -1,0 +1,92 @@
+{
+  "tag": "sb-code-playground",
+  "props": [
+    {
+      "name": "runner",
+      "attribute": "runner",
+      "type": "string",
+      "default": "/playground/run",
+      "required": false,
+      "docs": {
+        "description": "URL of the sandbox runner page (see the protocol in the docs)."
+      }
+    },
+    {
+      "name": "deps",
+      "attribute": "deps",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "Other components to load in the preview, as JSON {\"sb-tag\": \"module URL\"}. Tags defined by the edited code are skipped."
+      }
+    },
+    {
+      "name": "autoRun",
+      "attribute": "auto-run",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Re-run shortly after every edit."
+      }
+    },
+    {
+      "name": "theme",
+      "attribute": "theme",
+      "type": "string",
+      "default": "deep-space",
+      "required": false,
+      "docs": {
+        "description": "Initial preview theme (data-sb-theme)."
+      }
+    },
+    {
+      "name": "themes",
+      "attribute": "themes",
+      "type": "array",
+      "default": [
+        "deep-space",
+        "nebula",
+        "terminal",
+        "daylight"
+      ],
+      "required": false,
+      "docs": {
+        "description": "Themes offered in the picker."
+      }
+    },
+    {
+      "name": "delay",
+      "attribute": "delay",
+      "type": "number",
+      "default": 600,
+      "required": false,
+      "docs": {
+        "description": "Auto-run debounce, in ms."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "(files)",
+      "description": "Child <script type=\"text/plain\" data-file=\"component.js|index.html|style.css\"> elements with the initial files."
+    }
+  ],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "After an edit. detail: { files }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-run",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the preview is (re)started. detail: { files }."
+    }
+  ]
+}

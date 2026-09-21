@@ -58,6 +58,7 @@ func TelemetryAt(now time.Time) Telemetry {
 // demoTelemetry streams the demo mission as signal patches ($_tm): a pure
 // query stream, no commands, no database.
 func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
 	sse := datastar.NewSSE(w, r)
 	tick := time.NewTicker(250 * time.Millisecond)
 	defer tick.Stop()

@@ -268,3 +268,27 @@ func TestTelemetryIsAFlight(t *testing.T) {
 		t.Fatalf("not a flight: %+v %+v %+v", pad, climb, orbit)
 	}
 }
+
+func TestPlaygroundRunner(t *testing.T) {
+	ts, c := newServer(t)
+	res, body := get(t, c, ts.URL+"/playground/run")
+	csp := res.Header.Get("Content-Security-Policy")
+	for _, want := range []string{"script-src " + ts.URL + " 'unsafe-inline' 'unsafe-eval' blob:", "frame-ancestors " + ts.URL, "connect-src " + ts.URL} {
+		if !strings.Contains(csp, want) {
+			t.Errorf("runner CSP lacks %q: %s", want, csp)
+		}
+	}
+	if res.Header.Get("X-Frame-Options") != "SAMEORIGIN" {
+		t.Error("runner must be frameable by the site")
+	}
+	if !strings.Contains(body, `<script type="importmap">{"imports":{"datastar":"`+ts.URL+`/static/vendor/datastar-rocket-`) {
+		t.Error("runner lacks the absolute import map")
+	}
+	// Assets must be loadable from the sandbox's opaque origin.
+	for _, p := range []string{"/c/index.js", "/c/button/button.js", "/static/vendor/datastar-rocket.js"} {
+		res, _ := get(t, c, ts.URL+p)
+		if res.Header.Get("Access-Control-Allow-Origin") != "*" {
+			t.Errorf("%s lacks Access-Control-Allow-Origin: *", p)
+		}
+	}
+}

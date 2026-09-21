@@ -90,6 +90,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /static/", s.assets.serveStatic())
 	mux.HandleFunc("GET /art/{name}", s.assets.serveArt)
 	mux.HandleFunc("GET /c/{path...}", s.assets.serveComponents)
+	// Code playground runner (sandboxed iframe page).
+	mux.HandleFunc("GET /playground/run", s.playgroundRun)
+
 	// Demo data: a read-only signal stream for the live examples.
 	mux.HandleFunc("GET /demo/telemetry", s.demoTelemetry)
 
