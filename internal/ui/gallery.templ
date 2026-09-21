@@ -70,6 +70,7 @@ templ Hero(s Shell) {
 
 templ Sidebar(s Shell, v GalleryView) {
 	<aside class="sidebar" aria-label="Browse">
+		<div class="sidebar__inner">
 		<nav class="cat-nav" aria-label="Categories">
 			@categoryLink(v.Browse, "", "All Components", "all", v.Result.Total)
 			for _, c := range catalog.Categories {
@@ -101,6 +102,7 @@ templ Sidebar(s Shell, v GalleryView) {
 			@PixelArt(s, "saturn", "")
 			<span>Good<br/>components<br/>travel far.</span>
 		</div>
+	</div>
 	</aside>
 }
 

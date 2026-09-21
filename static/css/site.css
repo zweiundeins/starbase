@@ -507,27 +507,9 @@
 
 	/* ── Sidebar ─────────────────────────────────────────────────────────── */
 	.sidebar {
-		display: flex;
-		flex-direction: column;
-		gap: var(--sb-space-6);
-		padding-block: var(--sb-space-6);
-		padding-inline-end: var(--sb-space-4);
 		border-inline-end: var(--sb-border-width) solid var(--sb-border-subtle);
 
-		/* Wide layouts: a viewport-tall sticky column, so the categories stay
-		   in reach and the motto sits at the bottom of the screen. */
-		@container page (width >= 56rem) {
-			position: sticky;
-			inset-block-start: 0;
-			align-self: start;
-			block-size: 100dvh;
-			overflow-y: auto;
-			scrollbar-width: thin;
-			border-inline-end: 0; /* the divider is drawn by .collection */
-		}
-
 		@container page (width < 56rem) {
-			padding-inline-end: 0;
 			border-inline-end: 0;
 
 			& .side-links,
@@ -535,6 +517,30 @@
 			& hr {
 				display: none;
 			}
+		}
+	}
+
+	/* The sidebar stretches to the height of the card area; its content
+	   sticks to the top of the screen and is at most one screen tall, so the
+	   motto sits at the bottom of the screen (long lists) or at the bottom of
+	   the area (short lists) without making the page any taller. */
+	.sidebar__inner {
+		display: flex;
+		flex-direction: column;
+		gap: var(--sb-space-6);
+		padding-block: var(--sb-space-6);
+		padding-inline-end: var(--sb-space-4);
+
+		@container page (width >= 56rem) {
+			position: sticky;
+			inset-block-start: 0;
+			block-size: min(100dvh, 100%);
+			overflow-y: auto;
+			scrollbar-width: thin;
+		}
+
+		@container page (width < 56rem) {
+			padding-inline-end: 0;
 		}
 	}
 
@@ -667,11 +673,6 @@
 
 		@container page (width < 56rem) {
 			padding-inline-start: 0;
-		}
-
-		@container page (width >= 56rem) {
-			min-block-size: 100dvh;
-			border-inline-start: var(--sb-border-width) solid var(--sb-border-subtle);
 		}
 	}
 
