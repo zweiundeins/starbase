@@ -6,11 +6,12 @@ const styles = /* css */ `
 	--_border: var(--sb-border-strong, #3A4868);
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_gap: 10px;
+	/* Hug the trigger exactly: the tip is positioned against this box. */
 	position: relative;
-	display: inline-block;
+	display: inline-flex;
 	vertical-align: middle;
 }
-.anchor { display: inline-block; }
+.anchor { display: inline-flex; }
 .tip {
 	position: absolute;
 	z-index: 70;

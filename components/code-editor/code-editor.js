@@ -145,8 +145,10 @@ rocket('sb-code-editor', {
 		$$.gutter = props.lineNumbers
 		$$.tab = props.tabSize
 		$$.readonly = props.readonly
-		$$.html = () => highlight($$.code, $$.lang)
-		$$.numbers = () => Array.from({ length: $$.code.split('\n').length }, (_, i) => i + 1).join('\n')
+		// Rocket clears local signals when the element is removed, and computeds
+		// may run once more: treat missing code as empty.
+		$$.html = () => highlight($$.code ?? '', $$.lang)
+		$$.numbers = () => Array.from({ length: ($$.code ?? '').split('\n').length }, (_, i) => i + 1).join('\n')
 
 		observeProps(() => {
 			$$.lang = props.language
