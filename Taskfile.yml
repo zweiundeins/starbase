@@ -38,6 +38,11 @@ tasks:
       - go vet ./...
       - go test ./...
 
+  manifests:
+    desc: Regenerate every components/*/manifest.json (needs Chrome/Chromium)
+    cmds:
+      - go run -tags dev ./cmd/manifests
+
   new:
     desc: "Scaffold a component: task new -- my-widget --category forms"
     cmds:

@@ -200,7 +200,7 @@ func Sidebar(s Shell, v GalleryView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</nav><hr><ul class=\"side-links\" role=\"list\"><li><a href=\"/contribute\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</nav><hr><ul class=\"side-links\" role=\"list\"><li><a href=\"/submit\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -524,7 +524,7 @@ func Collection(s Shell, v GalleryView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<h3>Nothing out here yet</h3><p>No component matches this search. Try another word, or build it yourself.</p><a class=\"btn btn--outline btn--sm\" href=\"/contribute\">Submit a component</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<h3>Nothing out here yet</h3><p>No component matches this search. Try another word, or build it yourself.</p><a class=\"btn btn--outline btn--sm\" href=\"/submit\">Submit a component</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

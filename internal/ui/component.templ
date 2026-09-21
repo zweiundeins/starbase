@@ -39,6 +39,12 @@ templ ComponentPage(s Shell, v ComponentView) {
 				}
 				<span class="muted">Since { v.Card.Since }</span>
 				@StarButton(s, v.Card, true)
+				if v.Component.Source != "" {
+					<a class="btn btn--ghost btn--sm" href={ safe(v.Component.Source) }>
+						@Icon("github")
+						Source
+					</a>
+				}
 				<a class="btn btn--ghost btn--sm" href={ safe(v.EditURL) }>
 					@Icon("pencil")
 					Edit on GitHub

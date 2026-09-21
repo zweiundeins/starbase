@@ -11,16 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"starbase/components"
-	"starbase/content"
-	"starbase/internal/catalog"
-	"starbase/internal/commands"
+	"starbase/internal/app"
 	"starbase/internal/config"
-	"starbase/internal/cqrs"
-	"starbase/internal/db"
-	"starbase/internal/queries"
-	"starbase/internal/web"
-	"starbase/static"
 )
 
 func main() {
@@ -41,44 +33,15 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	cat, err := catalog.Load(components.FS)
+	a, err := app.New(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
+	defer a.Close()
 
-	database, err := db.Open(ctx, cfg.DBPath)
-	if err != nil {
-		return err
-	}
-	defer database.Close()
-
-	hub := cqrs.NewHub()
-	bus := cqrs.NewBus(database.W, hub, log)
-	// The bus outlives the HTTP server so in-flight commands can finish.
-	busCtx, stopBus := context.WithCancel(context.Background())
-	busDone := make(chan struct{})
-	go func() { bus.Run(busCtx); close(busDone) }()
-	defer func() { stopBus(); <-busDone }()
-
-	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
-		return err
-	}
-	bus.Send(commands.PruneTabs{OlderThan: 30 * 24 * time.Hour})
-	log.Info("catalog synced", "components", len(cat.Components), "hash", cat.Hash)
-
-	srv := web.New(ctx, web.Deps{
-		Config:   cfg,
-		Log:      log,
-		Bus:      bus,
-		Hub:      hub,
-		Queries:  queries.New(database.R),
-		Catalog:  cat,
-		StaticFS: static.FS,
-		Content:  content.FS,
-	})
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           srv.Handler(),
+		Handler:           a.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		// No WriteTimeout: render streams are long-lived.

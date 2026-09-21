@@ -72,6 +72,8 @@ func (s *Server) Handler() http.Handler {
 	s.page(mux, "/about", s.contentPage("about", "about"))
 	s.page(mux, "/showcase", s.contentPage("showcase", "showcase", ui.MissionControl()))
 	mux.Handle("GET /components", http.RedirectHandler("/", http.StatusMovedPermanently))
+	// The easiest way to contribute: a GitHub issue form, turned into a PR by a bot.
+	mux.Handle("GET /submit", http.RedirectHandler(strings.TrimSuffix(s.cfg.RepoURL, "/")+"/issues/new?template=new-component.yml", http.StatusSeeOther))
 
 	// Commands.
 	mux.HandleFunc("POST /cmd/browse", s.cmdBrowse)

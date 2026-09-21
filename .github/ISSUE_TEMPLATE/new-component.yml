@@ -1,0 +1,142 @@
+name: Submit a component
+description: Share a Rocket component. A bot turns this form into a pull request, with no tools or git needed.
+title: "[Component]: "
+labels: [new-component]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for launching something! Paste your component's code, or link the GitHub repository it lives in, and submit. A bot validates your component, generates its API docs and opens a pull request with you as the author. If something is off, it comments here. Edit this issue to fix it, and the bot tries again.
+
+        House rules (details on the [Contribute page](https://github.com/zweiundeins/starbase/blob/main/content/contribute.md)): shadow DOM, style only through `--sb-*` tokens with fallbacks, keep interaction state in `$$` signals, import only from `'datastar'`.
+  - type: input
+    id: name
+    attributes:
+      label: Component name
+      description: Human-friendly name, shown on the card.
+      placeholder: Orbit Picker
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - forms
+        - navigation
+        - feedback
+        - layout
+        - media
+        - data
+        - utilities
+        - experimental
+    validations:
+      required: true
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One line, at most 90 characters.
+      placeholder: Pick a planet from a spinning pixel carousel.
+    validations:
+      required: true
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Comma-separated keywords for search.
+      placeholder: picker, carousel, space
+  - type: input
+    id: source
+    attributes:
+      label: Source repository
+      description: |
+        Already have the component in a public GitHub repo? Paste its URL: the repo, or a folder like `https://github.com/you/repo/tree/main/components/orbit-picker`. The folder must contain exactly one file with `rocket('sb-…')`. A `README.md` next to it becomes the docs (Starbase front matter in it is used too). **With a repository, the code and documentation fields below are ignored**, and editing this issue re-syncs from the repo.
+      placeholder: https://github.com/you/sb-orbit-picker
+  - type: textarea
+    id: code
+    attributes:
+      label: Component code
+      description: |
+        Skip this if you gave a source repository. One `rocket('sb-your-name', { … })` call. The tag must start with `sb-`; the part after it becomes the folder name. Give every prop `.docs({ description })`: it becomes the API table and the Playground.
+      render: javascript
+      value: |
+        import { rocket } from 'datastar'
+
+        const styles = /* css */ `
+        :host {
+        	--_bg: var(--sb-surface-card, #141D32);
+        	--_border: var(--sb-border, #283552);
+        	--_text: var(--sb-text-1, #F3F4FA);
+        	--_brand: var(--sb-brand, #8C6BFF);
+        	display: inline-block;
+        }
+        button {
+        	all: unset;
+        	padding: 0.5rem 1rem;
+        	border: 1px solid var(--_border);
+        	border-radius: 8px;
+        	background: var(--_bg);
+        	color: var(--_text);
+        	cursor: pointer;
+        }
+        button:hover { border-color: var(--_brand); }
+        button:focus-visible { outline: 2px solid var(--_brand); outline-offset: 2px; }
+        `
+
+        rocket('sb-your-name', {
+        	props: ({ string }) => ({
+        		label: string.trim.default('Launch').docs({ description: 'Text on the button.' }),
+        	}),
+        	setup: ({ $$, action, adoptStyles, emit, host }) => {
+        		adoptStyles(host, styles)
+        		$$.presses = 0
+        		action('press', () => emit('sb-press', { presses: ++$$.presses }))
+        	},
+        	render: ({ html, props: { label } }) => html`
+        		<button type="button" part="button" data-on:click="@press()">${label}</button>
+        	`,
+        })
+  - type: textarea
+    id: preview
+    attributes:
+      label: Preview
+      description: The HTML shown live on the gallery card. Keep it small. Optional with a source repository whose README front matter has a `preview`.
+      render: html
+      placeholder: <sb-your-name label="Hello"></sb-your-name>
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation
+      description: |
+        Markdown for the component page. Code fences tagged `html preview` render as live demos with copyable source. Leave empty to use the preview as the only example.
+      value: |
+        What it is for, in a sentence or two.
+
+        ## Examples
+
+        ### Basic
+
+        ```html preview
+        <sb-your-name label="Hello"></sb-your-name>
+        ```
+
+        ## Accessibility
+
+        Keyboard support, roles and labels.
+  - type: textarea
+    id: playground
+    attributes:
+      label: Playground settings
+      description: Optional YAML, the same as the `playground:` front matter (props ranges, values, content, style, attrs, exclude).
+      render: yaml
+      placeholder: |
+        props: { size: {min: 8, max: 64} }
+        values: { label: Hello }
+  - type: checkboxes
+    id: license
+    attributes:
+      label: License
+      options:
+        - label: I wrote this component (or have the right to share it), and I license it under the MIT license.
+          required: true

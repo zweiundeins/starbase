@@ -1,0 +1,141 @@
+# Turns a "Submit a component" issue into a pull request.
+#
+# Security model: submitted code is untrusted. It only ever runs in the
+# `build` job (read-only token, no persisted git credentials), where it is
+# written to disk, loaded in headless Chrome to generate its manifest and
+# validated. The `pull-request` job has write access but never executes
+# submitted code; it only copies the files `build` produced.
+#
+# Note: PRs opened with GITHUB_TOKEN don't trigger other workflows. CI is
+# not needed for them (build already ran the same checks); to run it anyway,
+# use "Run workflow" on CI or give this workflow a GitHub App token.
+name: Component from issue
+
+on:
+  issues:
+    types: [opened, edited, labeled, reopened]
+
+permissions: {}
+
+concurrency:
+  group: component-issue-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: contains(github.event.issue.labels.*.name, 'new-component') && github.event.issue.state == 'open'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      slug: ${{ steps.build.outputs.slug }}
+      tag: ${{ steps.build.outputs.tag }}
+      name: ${{ steps.build.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build component folder from the issue form
+        id: build
+        # The issue is read from $GITHUB_EVENT_PATH, never interpolated here.
+        run: go run ./cmd/fromissue --report report.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # read-only; raises the API limit for source repos
+      - name: Generate manifest in headless Chrome
+        run: go run -tags dev ./cmd/manifests
+      - name: Validate
+        run: go test ./internal/catalog/ ./internal/submission/
+      - name: Keep the result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: submission
+          path: |
+            report.md
+            components/${{ steps.build.outputs.slug || 'none' }}/
+          if-no-files-found: ignore
+          retention-days: 3
+
+  pull-request:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: submission
+          path: .submission
+      - name: Copy the generated folder
+        env:
+          SLUG: ${{ needs.build.outputs.slug }}
+        run: |
+          rm -rf "components/$SLUG"
+          cp -r ".submission/components/$SLUG" "components/$SLUG"
+          rm -rf .submission
+      - name: Open or update the pull request
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: component/${{ needs.build.outputs.slug }}
+          add-paths: components/${{ needs.build.outputs.slug }}
+          commit-message: "Add <${{ needs.build.outputs.tag }}> from #${{ github.event.issue.number }}"
+          author: ${{ github.event.issue.user.login }} <${{ github.event.issue.user.id }}+${{ github.event.issue.user.login }}@users.noreply.github.com>
+          title: "Add <${{ needs.build.outputs.tag }}>: ${{ needs.build.outputs.name }}"
+          labels: new-component
+          body: |
+            Submitted by @${{ github.event.issue.user.login }} in #${{ github.event.issue.number }}. Generated from the issue form: validated, with its manifest generated in headless Chrome.
+
+            Review checklist:
+            - [ ] Renders in the gallery card and on its page (`go tool task live`)
+            - [ ] Looks right on the Themes page (tokens only)
+            - [ ] Docs examples work, Playground makes sense
+            - [ ] No network access, no imports beyond `datastar`
+
+            Closes #${{ github.event.issue.number }}
+      - name: Tell the author
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          URL: ${{ steps.pr.outputs.pull-request-url }}
+          OP: ${{ steps.pr.outputs.pull-request-operation }}
+        run: |
+          case "$OP" in
+            created) msg="🚀 Your component is on the launch pad: $URL. A maintainer will review it. Edit this issue to update the pull request." ;;
+            updated) msg="🔁 Pull request updated with your changes: $URL" ;;
+            *) exit 0 ;;
+          esac
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "$msg"
+
+  report-failure:
+    needs: build
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: submission
+          path: .submission
+      - name: Comment the problems
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -s .submission/report.md ] && ! grep -q '^✅' .submission/report.md; then
+            body="$(cat .submission/report.md)"
+          else
+            body="🛑 The component was built but failed validation or manifest generation (does it load without errors?). Details: $RUN
+
+          Edit this issue to try again."
+          fi
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "$body"

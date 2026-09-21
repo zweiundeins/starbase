@@ -6,6 +6,7 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - `go tool task live`: dev server (air, `-tags dev`, live reload via `/dev/reload`)
 - `go tool task test`: `go vet` + `go test ./...`. Run `go tool templ generate` after editing `.templ` (the `_templ.go` files are committed).
 - `go tool task new -- <slug> --category <cat>`: scaffold a component
+- `go tool task manifests`: regenerate all `manifest.json` in headless Chrome (`cmd/manifests`, runs the app in-process); `--check` in CI
 
 ## Architecture rules (CQRS)
 - State changes are **commands** (`internal/commands`): structs with `Apply(ctx, *sql.Tx)`, optional `Validate()`, and `Scope()` (session id) when only that session's views change. Handlers call `bus.Send` and return 204. Commands never render HTML.
@@ -26,3 +27,8 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - `GET /demo/telemetry` (`internal/web/demo.go`) is a stateless query stream of `$_tm` signal patches for live demos.
 - Canvas components: `renderOnPropChange: false`, repaint on `observeProps`, read theme tokens at paint time (via a 1×1 canvas probe), pause offscreen (IntersectionObserver) and honour `prefers-reduced-motion`.
 - The CSP uses a nonce (import map) plus `'unsafe-eval'` (Datastar). No inline `<script>` without `s.Nonce`.
+
+## Submissions
+- `.github/ISSUE_TEMPLATE/new-component.yml` is the "Submit a component" form (`/submit` redirects to it). Its labels must match `internal/submission` (a test enforces it).
+- `.github/workflows/component-from-issue.yml`: `build` (read-only, runs untrusted code only there: `cmd/fromissue` then `cmd/manifests`) → `pull-request` (write, never executes submitted code) / `report-failure` (comments on the issue).
+- Submissions may link a public GitHub repo; `submission.Fetch` pins the commit, recorded as `source:` front matter (shown as a Source link).

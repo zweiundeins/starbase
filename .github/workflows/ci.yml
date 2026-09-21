@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Generated templ code is committed
+        run: |
+          go tool templ generate
+          git diff --exit-code -- '*_templ.go'
+      - run: go vet ./... && go vet -tags dev ./...
+      - run: go test ./...
+      - name: Manifests are up to date
+        run: go run -tags dev ./cmd/manifests --check

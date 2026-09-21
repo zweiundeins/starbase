@@ -4,14 +4,27 @@ lede: Built something small and useful? Launch it here. A component is one folde
 description: How to add a Rocket component to the Starbase community collection.
 ---
 
-## The short version
+## Submit in two minutes (no tools needed)
 
-1. Fork the repository and run `go tool task new -- my-widget --category forms`.
-2. Build your component in `components/my-widget/my-widget.js` and document it in `README.md`.
-3. Run `go tool task live`, open your component's page, and check its examples. The dev server writes `manifest.json` for you.
-4. Run `go tool task test` and open a pull request.
+**[Open the submission form →](/submit)**
 
-That's it. There is no Go code to touch: the gallery, search, categories and the docs page come from your folder.
+It's a GitHub issue form. Either:
+
+- **Paste your component:** its code, a preview snippet and some docs, or
+- **Link your repository:** paste the URL of the public GitHub repo (or folder) your component lives in. We take the file that calls `rocket('sb-…')` and the `README.md` next to it, and pin the exact commit. Editing the issue later re-syncs from the repo.
+
+A bot validates the component, loads it in a headless browser to generate its API reference, and opens a pull request with you as the author. If something is wrong, it comments on the issue: fix the issue and it tries again. You can update your own component later the same way.
+
+## Or open a pull request
+
+Prefer git? Fork the repository and:
+
+1. `go tool task new -- my-widget --category forms` scaffolds `components/my-widget/`.
+2. Build it in `my-widget.js` and document it in `README.md`. `go tool task live` shows it at `/components/my-widget`.
+3. `go tool task manifests` generates `manifest.json` (it needs Chrome or Chromium), and `go tool task test` validates everything.
+4. Open the pull request. CI runs the same checks.
+
+There is no Go code to touch: the gallery, search, categories, docs page and Playground all come from your folder.
 
 ## Anatomy of a component
 

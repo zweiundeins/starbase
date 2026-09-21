@@ -19,6 +19,10 @@ Without GitHub credentials, dev builds sign you in as a fake user at `/auth/dev?
 
 ## Adding a component
 
+**No tools needed:** use the [submission form](/submit) (a GitHub issue form). Paste the code, or link the GitHub repo the component lives in, and a bot validates it, generates its manifest and opens a pull request. See `.github/workflows/component-from-issue.yml`.
+
+### By hand
+
 ```sh
 go tool task new -- my-widget --category forms --author your-handle
 ```

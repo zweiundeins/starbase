@@ -33,6 +33,7 @@ type Meta struct {
 	Tags     []string `yaml:"tags"`
 	Since    string   `yaml:"since"`
 	Preview  string   `yaml:"preview"`
+	Source   string   `yaml:"source"` // optional: upstream repository (pinned)
 
 	Playground PlaygroundMeta `yaml:"playground"`
 }
@@ -175,6 +176,9 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	}
 	if _, err := time.Parse(time.DateOnly, c.Since); err != nil {
 		problems = append(problems, fmt.Sprintf("front matter: since %q must be YYYY-MM-DD", c.Since))
+	}
+	if c.Source != "" && !strings.HasPrefix(c.Source, "https://github.com/") {
+		problems = append(problems, "front matter: source must be a https://github.com/ URL")
 	}
 	if len(c.Summary) > 90 {
 		problems = append(problems, "front matter: summary must be at most 90 characters")
