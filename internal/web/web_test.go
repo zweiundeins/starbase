@@ -189,9 +189,10 @@ func TestRenderStream(t *testing.T) {
 		return ""
 	}
 
+	cat, _ := catalog.Load(components.FS)
 	first := next()
-	if !strings.Contains(first, "event: datastar-patch-elements") || strings.Count(first, `class="card"`) != 9 {
-		t.Fatalf("first frame should list all 9 cards, got %d", strings.Count(first, `class="card"`))
+	if n := strings.Count(first, `class="card"`); !strings.Contains(first, "event: datastar-patch-elements") || n != len(cat.Components) {
+		t.Fatalf("first frame should list all %d cards, got %d", len(cat.Components), n)
 	}
 	if r := post(t, c, ts.URL+"/cmd/browse", `{"tabid":"tab12345","cat":"feedback","sort":"name"}`, "same-origin"); r.StatusCode != 204 {
 		t.Fatalf("command = %d", r.StatusCode)

@@ -23,4 +23,4 @@ Go, [templ](https://templ.guide), SQLite (pure Go, no cgo), Datastar and Rocket.
 
 ## Credits
 
-Built with inspiration from Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith) and Delaney's [northstar](https://github.com/zangster300/northstar). Pixel Art is generated in Go. Type is set in [Pixelify Sans](https://fonts.google.com/specimen/Pixelify+Sans) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/), both under the SIL Open Font License. Interface icons are from [Lucide](https://lucide.dev) (ISC).
+Built with inspiration from Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith) and zangster300's [northstar](https://github.com/zangster300/northstar). Pixel Art is generated in Go. Type is set in [Pixelify Sans](https://fonts.google.com/specimen/Pixelify+Sans) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/), both under the SIL Open Font License. Interface icons are from [Lucide](https://lucide.dev) (ISC).

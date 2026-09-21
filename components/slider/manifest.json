@@ -1,0 +1,119 @@
+{
+  "tag": "sb-slider",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Initial value. Read the live value from the value property."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Minimum."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "number",
+      "default": 100,
+      "required": false,
+      "docs": {
+        "description": "Maximum."
+      }
+    },
+    {
+      "name": "step",
+      "attribute": "step",
+      "type": "number",
+      "default": 1,
+      "required": false,
+      "docs": {
+        "description": "Step size (0 for continuous)."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label."
+      }
+    },
+    {
+      "name": "unit",
+      "attribute": "unit",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Suffix after the shown value, e.g. \"°\" or \"%\"."
+      }
+    },
+    {
+      "name": "showValue",
+      "attribute": "show-value",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Show the current value next to the label."
+      }
+    },
+    {
+      "name": "ticks",
+      "attribute": "ticks",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show min and max below the track."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable interaction."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "input",
+      "bubbles": true,
+      "composed": true,
+      "description": "While dragging (native, re-targeted to the host)."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the value is committed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the value is committed. detail: { value }."
+    }
+  ]
+}

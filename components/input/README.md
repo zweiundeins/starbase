@@ -35,7 +35,7 @@ Declare the signal first, because `data-bind` only writes to a signal that alrea
 
 ```html preview
 <div data-signals:_dest="''">
-  <sb-input label="Destination" data-bind:_dest__event.input placeholder="Type a planet"></sb-input>
+  <sb-input label="Destination" data-bind:_dest__prop.value__event.input placeholder="Type a planet"></sb-input>
   <p data-text="$_dest ? 'Plotting course to ' + $_dest + '…' : 'Awaiting destination'"></p>
 </div>
 ```

@@ -1,4 +1,15 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// Host getters must not subscribe callers (e.g. data-bind's sync effect) to
+// the internal signal, or that effect writes the stale bound value back.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 // Pixel corners: a polygon that notches every corner by one "pixel".
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -62,7 +73,7 @@ rocket('sb-toggle', {
 		// a server morph may re-send the original markup at any time.
 		$$.on = props.checked
 		observeProps(() => ($$.on = props.checked), 'checked')
-		overrideProp('checked', () => $$.on, (v) => ($$.on = !!v))
+		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
 		action('toggle', () => {
 			if (props.disabled) return
 			$$.on = !$$.on

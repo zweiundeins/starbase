@@ -1,4 +1,15 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// Host getters must not subscribe callers (e.g. data-bind's sync effect) to
+// the internal signal, or that effect writes the stale bound value back.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 const styles = /* css */ `
 :host {
@@ -89,7 +100,7 @@ rocket('sb-input', {
 		$$.invalid = false
 		$$.message = ''
 		observeProps(() => ($$.value = props.value), 'value')
-		overrideProp('value', () => $$.value, (v) => ($$.value = String(v ?? '')))
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = String(v ?? ''))))
 
 		const field = () => host.shadowRoot?.querySelector('input')
 		const validate = () => {

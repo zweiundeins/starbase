@@ -17,5 +17,8 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - CSS: `@layer reset, tokens, theme, base, layout, components, utilities`. Use semantic `--sb-*` tokens (theme.css) in components, not primitives. Prefer container queries over media queries.
 - Rocket components (`components/<slug>/`): shadow DOM (default mode), `adoptStyles(host, css)`, `--_x: var(--sb-x, fallback)` locals, interaction state in `$$` signals (never reflected to attributes, because server morphs reset attributes), `emit()` for events, `.docs()` on every prop.
 - **Known upstream issue:** Datastar's morph is not re-entrant, and Rocket renders synchronously in `connectedCallback`. Never put `id`s on repeated or reordered elements that contain Rocket components (e.g. gallery cards). The morph would park and move them and crash (`Maximum call stack` / `moveBefore` HierarchyRequestError). Minimal repro and a proven fix are in `docs/repro/rocket-morph-reentrancy/`.
-- `data-bind` on a custom element only writes to an existing signal. Declare it with `data-signals` first.
+- `data-bind` on a custom element only writes to an existing signal. Declare it with `data-signals` first, and use `__prop.value` / `__prop.checked`: Datastar binds before Rocket upgrades the element, and otherwise falls back to the attribute, which morphs strip.
+- Component host getters and setters over `$$` (`overrideProp`) must use `startPeeking()`/`stopPeeking()`, or `data-bind`'s effect subscribes to the internal signal and writes stale values back.
+- Hosts whose attributes are driven by signals (`data-attr:x=...`) need `data-preserve-attr="x ..."`: the morph resets every attribute to the server markup.
+- `tab_state` is for server-owned UI state (filters, sort, theme). High-frequency, ephemeral demo state (sliders, playgrounds) stays in local `_`-prefixed signals.
 - The CSP uses a nonce (import map) plus `'unsafe-eval'` (Datastar). No inline `<script>` without `s.Nonce`.
