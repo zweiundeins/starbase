@@ -2,6 +2,14 @@ import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signal, or that effect writes the stale bound value back.
+// data-bind may set a property before the element is upgraded; adopt it.
+const early = (host, name) => {
+	const d = Object.getOwnPropertyDescriptor(host, name)
+	if (!d || !('value' in d)) return undefined
+	delete host[name]
+	return d.value
+}
+
 const peek = (fn) => {
 	startPeeking()
 	try {
@@ -102,6 +110,8 @@ rocket('sb-slider', {
 			$$.value = clamp(props.value)
 		}
 		sync()
+		const pre = early(host, 'value')
+		if (pre !== undefined) $$.value = clamp(Number(pre))
 		observeProps(sync, 'value', 'min', 'max')
 		// Interaction state lives in $$; the value attribute is only the start.
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))

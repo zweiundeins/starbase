@@ -2,6 +2,14 @@ import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signal, or that effect writes the stale bound value back.
+// data-bind may set a property before the element is upgraded; adopt it.
+const early = (host, name) => {
+	const d = Object.getOwnPropertyDescriptor(host, name)
+	if (!d || !('value' in d)) return undefined
+	delete host[name]
+	return d.value
+}
+
 const peek = (fn) => {
 	startPeeking()
 	try {
@@ -96,6 +104,8 @@ rocket('sb-input', {
 	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		$$.value = props.value
+		const pre = early(host, 'value')
+		if (pre !== undefined) $$.value = String(pre ?? '')
 		$$.touched = false
 		$$.invalid = false
 		$$.message = ''

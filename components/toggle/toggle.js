@@ -2,6 +2,14 @@ import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signal, or that effect writes the stale bound value back.
+// data-bind may set a property before the element is upgraded; adopt it.
+const early = (host, name) => {
+	const d = Object.getOwnPropertyDescriptor(host, name)
+	if (!d || !('value' in d)) return undefined
+	delete host[name]
+	return d.value
+}
+
 const peek = (fn) => {
 	startPeeking()
 	try {
@@ -72,6 +80,8 @@ rocket('sb-toggle', {
 		// Interaction state lives in a local signal, never in the attribute:
 		// a server morph may re-send the original markup at any time.
 		$$.on = props.checked
+		const pre = early(host, 'checked')
+		if (pre !== undefined) $$.on = !!pre
 		observeProps(() => ($$.on = props.checked), 'checked')
 		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
 		action('toggle', () => {

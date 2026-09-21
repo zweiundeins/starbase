@@ -1,0 +1,80 @@
+{
+  "tag": "sb-voxel",
+  "props": [
+    {
+      "name": "model",
+      "attribute": "model",
+      "type": "oneOf",
+      "default": "rocket",
+      "required": false,
+      "values": [
+        "rocket",
+        "satellite",
+        "planet"
+      ],
+      "docs": {
+        "description": "Which voxel model to show."
+      }
+    },
+    {
+      "name": "yaw",
+      "attribute": "yaw",
+      "type": "number",
+      "default": 30,
+      "required": false,
+      "docs": {
+        "description": "Rotation around the vertical axis, in degrees."
+      }
+    },
+    {
+      "name": "pitch",
+      "attribute": "pitch",
+      "type": "number",
+      "default": 15,
+      "required": false,
+      "docs": {
+        "description": "Tilt toward the viewer, in degrees."
+      }
+    },
+    {
+      "name": "zoom",
+      "attribute": "zoom",
+      "type": "number",
+      "default": 1,
+      "required": false,
+      "docs": {
+        "description": "Scale factor."
+      }
+    },
+    {
+      "name": "spin",
+      "attribute": "spin",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Auto-rotation speed, in degrees per second."
+      }
+    },
+    {
+      "name": "light",
+      "attribute": "light",
+      "type": "number",
+      "default": 45,
+      "required": false,
+      "docs": {
+        "description": "Light direction around the model, in degrees."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-orbit",
+      "bubbles": true,
+      "composed": true,
+      "description": "After a drag. detail: { yaw, pitch } (effective angles)."
+    }
+  ]
+}

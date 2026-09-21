@@ -1,0 +1,341 @@
+import { rocket } from 'datastar'
+
+// Internal resolution: models are rasterised into RES×RES pixels, then
+// scaled up with image-rendering: pixelated for crisp 8-bit edges.
+const RES = 128
+
+const PALETTE = {
+	white: [243, 244, 250],
+	steel: [142, 151, 196],
+	red: [229, 72, 77],
+	violet: [140, 107, 255],
+	cyan: [101, 191, 255],
+	navy: [43, 76, 154],
+	gold: [255, 199, 77],
+	amber: [255, 159, 67],
+	green: [76, 196, 106],
+	ocean: [47, 123, 224],
+	ice: [226, 240, 255],
+	lilac: [176, 154, 255],
+	flameY: [255, 224, 102],
+	flameO: [255, 130, 58],
+}
+const EMISSIVE = new Set(['flameY', 'flameO'])
+const OUTLINE = [8, 13, 29]
+
+// Deterministic 3D value noise for planet continents.
+const hash = (x, y, z) => {
+	let n = (x * 374761393 + y * 668265263 + z * 1274126177) | 0
+	n = Math.imul(n ^ (n >>> 13), 1274126177)
+	return ((n ^ (n >>> 16)) >>> 0) / 4294967296
+}
+const noise = (x, y, z) => {
+	const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z)
+	const s = (t) => t * t * (3 - 2 * t)
+	const u = s(x - xi), v = s(y - yi), w = s(z - zi)
+	const l = (a, b, t) => a + (b - a) * t
+	const c = (dx, dy, dz) => hash(xi + dx, yi + dy, zi + dz)
+	return l(
+		l(l(c(0, 0, 0), c(1, 0, 0), u), l(c(0, 1, 0), c(1, 1, 0), u), v),
+		l(l(c(0, 0, 1), c(1, 0, 1), u), l(c(0, 1, 1), c(1, 1, 1), u), v),
+		w,
+	)
+}
+
+// Models are functions from a voxel coordinate to a palette key (or null),
+// sampled over a bounding box.
+const MODELS = {
+	rocket: {
+		box: [-6, 6, -4, 19, -6, 6],
+		voxel(x, y, z) {
+			const r = Math.hypot(x, z)
+			if (y < 0) return r <= 1.6 + y * 0.35 ? (y > -2 ? 'flameY' : 'flameO') : null
+			if (y <= 1) return r <= 1.7 ? 'steel' : null
+			if (y === 2) return r <= 2.6 ? 'steel' : null
+			const fin = (Math.abs(x) < 0.5 || Math.abs(z) < 0.5) && y <= 7 && r > 3 && r <= 3 + (7 - y) * 0.45 + 0.6
+			if (fin) return 'red'
+			if (y <= 13) {
+				if (r > 3.2) return null
+				if (y === 5 || y === 12) return 'violet'
+				if (z >= 2.4 && Math.abs(x) <= 1.2 && (y === 9 || y === 10)) return 'cyan'
+				if (z >= 2.4 && Math.abs(x) <= 1.8 && y >= 8 && y <= 11) return 'navy'
+				return 'white'
+			}
+			const nose = [2.8, 2.3, 1.8, 1.2, 0.7][y - 14]
+			if (nose === undefined || r > nose) return null
+			return y >= 16 ? 'red' : 'white'
+		},
+	},
+	satellite: {
+		box: [-12, 12, -3, 7, -3, 3],
+		voxel(x, y, z) {
+			if (Math.abs(x) <= 2 && Math.abs(y) <= 2 && Math.abs(z) <= 2) return (x + y + z) % 2 ? 'gold' : 'amber'
+			if (Math.abs(x) >= 4 && Math.abs(x) <= 12 && y === 0 && Math.abs(z) <= 2) return Math.abs(x) % 3 === 0 ? 'cyan' : 'navy'
+			if (Math.abs(x) === 3 && y === 0 && z === 0) return 'steel'
+			if (y >= 3 && y <= 4 && Math.hypot(x, z) <= 2.2 - (4 - y) * 0.8) return 'white'
+			if (x === 0 && z === 0 && y >= 5 && y <= 7) return y === 7 ? 'red' : 'steel'
+			return null
+		},
+	},
+	planet: {
+		box: [-13, 13, -8, 8, -13, 13],
+		voxel(x, y, z) {
+			const d = Math.hypot(x, y, z)
+			if (d <= 7.6) {
+				if (d < 6.4) return null // hollow: only the shell is ever visible
+				if (Math.abs(y) >= 6.3) return 'ice'
+				return noise(x / 3.2 + 7, y / 3.2, z / 3.2) > 0.55 ? 'green' : 'ocean'
+			}
+			const r = Math.hypot(x, z)
+			if (y === 0 && r >= 9.5 && r <= 12.5) return r > 11 ? 'violet' : 'lilac'
+			return null
+		},
+	},
+}
+
+// Precompute exposed faces for a model: 4 corners, a normal and a colour.
+const FACE_DIRS = [
+	[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1],
+]
+const cache = new Map()
+const facesFor = (name) => {
+	if (cache.has(name)) return cache.get(name)
+	const m = MODELS[name]
+	const [x0, x1, y0, y1, z0, z1] = m.box
+	const grid = new Map()
+	const key = (x, y, z) => `${x},${y},${z}`
+	for (let x = x0; x <= x1; x++)
+		for (let y = y0; y <= y1; y++)
+			for (let z = z0; z <= z1; z++) {
+				const c = m.voxel(x, y, z)
+				if (c) grid.set(key(x, y, z), c)
+			}
+	const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2
+	const faces = []
+	for (const [k, color] of grid) {
+		const [x, y, z] = k.split(',').map(Number)
+		for (const n of FACE_DIRS) {
+			if (grid.has(key(x + n[0], y + n[1], z + n[2]))) continue
+			// Corners of the unit face centred on the voxel's face.
+			const [a, b] = n[0] ? [[0, 1, 0], [0, 0, 1]] : n[1] ? [[1, 0, 0], [0, 0, 1]] : [[1, 0, 0], [0, 1, 0]]
+			const fc = [x - cx + n[0] / 2, y - cy + n[1] / 2, z - cz + n[2] / 2]
+			const corner = (s, t) => [fc[0] + (a[0] * s + b[0] * t) / 2, fc[1] + (a[1] * s + b[1] * t) / 2, fc[2] + (a[2] * s + b[2] * t) / 2]
+			faces.push({ p: [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], n, color })
+		}
+	}
+	const extent = Math.max(x1 - x0, y1 - y0, z1 - z0) + 1
+	const result = { faces, extent }
+	cache.set(name, result)
+	return result
+}
+
+// Draw one frame into an ImageData with a z-buffer.
+const draw = (img, zbuf, model, yaw, pitch, zoom, light) => {
+	const { faces, extent } = facesFor(model)
+	const data = img.data
+	data.fill(0)
+	zbuf.fill(-Infinity)
+	const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch)
+	const rot = ([x, y, z]) => {
+		const x1 = x * cy + z * sy
+		const z1 = -x * sy + z * cy
+		return [x1, y * cp - z1 * sp, y * sp + z1 * cp]
+	}
+	const scale = (RES * 0.78 * zoom) / extent
+	const elev = 0.7
+	const L = [Math.cos(light) * Math.cos(elev), Math.sin(elev), Math.sin(light) * Math.cos(elev)]
+	const steps = [0.42, 0.62, 0.82, 1]
+	const fill = (ax, ay, az, bx, by, bz, cx2, cy2, cz2, rgb) => {
+		const minX = Math.max(0, Math.floor(Math.min(ax, bx, cx2)))
+		const maxX = Math.min(RES - 1, Math.ceil(Math.max(ax, bx, cx2)))
+		const minY = Math.max(0, Math.floor(Math.min(ay, by, cy2)))
+		const maxY = Math.min(RES - 1, Math.ceil(Math.max(ay, by, cy2)))
+		const area = (bx - ax) * (cy2 - ay) - (by - ay) * (cx2 - ax)
+		if (Math.abs(area) < 1e-9) return
+		for (let py = minY; py <= maxY; py++) {
+			for (let px = minX; px <= maxX; px++) {
+				const x = px + 0.5, y = py + 0.5
+				let w0 = ((bx - x) * (cy2 - y) - (by - y) * (cx2 - x)) / area
+				let w1 = ((cx2 - x) * (ay - y) - (cy2 - y) * (ax - x)) / area
+				let w2 = 1 - w0 - w1
+				if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue
+				const z = w0 * az + w1 * bz + w2 * cz2
+				const i = py * RES + px
+				if (z <= zbuf[i]) continue
+				zbuf[i] = z
+				data[i * 4] = rgb[0]
+				data[i * 4 + 1] = rgb[1]
+				data[i * 4 + 2] = rgb[2]
+				data[i * 4 + 3] = 255
+			}
+		}
+	}
+	for (const f of faces) {
+		const n = rot(f.n)
+		if (n[2] <= 0) continue // facing away
+		const base = PALETTE[f.color]
+		let rgb = base
+		if (!EMISSIVE.has(f.color)) {
+			const d = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2])
+			const lvl = steps[Math.min(3, Math.floor((0.3 + 0.7 * d) * 4))]
+			rgb = [base[0] * lvl, base[1] * lvl, base[2] * lvl]
+		}
+		const s = f.p.map((v) => {
+			const r = rot(v)
+			return [RES / 2 + r[0] * scale, RES / 2 - r[1] * scale, r[2]]
+		})
+		fill(...s[0], ...s[1], ...s[2], rgb)
+		fill(...s[0], ...s[2], ...s[3], rgb)
+	}
+	// 1px silhouette outline, the pixel-art way.
+	for (let y = 0; y < RES; y++) {
+		for (let x = 0; x < RES; x++) {
+			const i = y * RES + x
+			if (data[i * 4 + 3]) continue
+			const on = (xx, yy) => xx >= 0 && yy >= 0 && xx < RES && yy < RES && data[(yy * RES + xx) * 4 + 3] === 255
+			if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1)) {
+				data[i * 4] = OUTLINE[0]
+				data[i * 4 + 1] = OUTLINE[1]
+				data[i * 4 + 2] = OUTLINE[2]
+				data[i * 4 + 3] = 254
+			}
+		}
+	}
+}
+
+const styles = /* css */ `
+:host {
+	--_size: var(--sb-voxel-size, 16rem);
+	--_focus: var(--sb-brand-light, #B09AFF);
+	display: inline-block;
+	inline-size: var(--_size);
+	max-inline-size: 100%;
+	aspect-ratio: 1;
+	vertical-align: middle;
+}
+canvas {
+	display: block;
+	inline-size: 100%;
+	block-size: 100%;
+	image-rendering: pixelated;
+	cursor: grab;
+	touch-action: none;
+}
+canvas:active { cursor: grabbing; }
+canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 4px; border-radius: 4px; }
+`
+
+const rad = (d) => (d * Math.PI) / 180
+
+rocket('sb-voxel', {
+	props: ({ number, oneOf }) => ({
+		model: oneOf('rocket', 'satellite', 'planet').default('rocket').docs({ description: 'Which voxel model to show.' }),
+		yaw: number.clamp(-180, 180).default(30).docs({ description: 'Rotation around the vertical axis, in degrees.' }),
+		pitch: number.clamp(-89, 89).default(15).docs({ description: 'Tilt toward the viewer, in degrees.' }),
+		zoom: number.clamp(0.25, 4).default(1).docs({ description: 'Scale factor.' }),
+		spin: number.clamp(-360, 360).docs({ description: 'Auto-rotation speed, in degrees per second.' }),
+		light: number.default(45).docs({ description: 'Light direction around the model, in degrees.' }),
+	}),
+	manifest: {
+		events: [
+			{ name: 'sb-orbit', kind: 'custom-event', bubbles: true, composed: true, description: 'After a drag. detail: { yaw, pitch } (effective angles).' },
+		],
+	},
+	// The canvas is repainted imperatively; props never re-render the DOM.
+	renderOnPropChange: false,
+	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
+	render: ({ html }) => html`<canvas part="canvas" width="${RES}" height="${RES}" tabindex="0" role="img"></canvas>`,
+	onFirstRender: ({ cleanup, emit, host, observeProps, props }) => {
+		const canvas = host.shadowRoot.querySelector('canvas')
+		const ctx = canvas.getContext('2d')
+		const img = ctx.createImageData(RES, RES)
+		const zbuf = new Float32Array(RES * RES)
+		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+
+		// Local orbit state: drag offsets and spin, never written to attributes.
+		let dragYaw = 0, dragPitch = 0, spun = 0
+		let visible = true, raf = 0, last = 0, dirty = true
+
+		const angles = () => {
+			const yaw = props.yaw + dragYaw + spun
+			const pitch = Math.max(-89, Math.min(89, props.pitch + dragPitch))
+			return { yaw: ((yaw + 540) % 360) - 180, pitch }
+		}
+		const paint = () => {
+			const { yaw, pitch } = angles()
+			draw(img, zbuf, props.model, rad(yaw), rad(pitch), props.zoom, rad(props.light))
+			ctx.putImageData(img, 0, 0)
+			canvas.setAttribute('aria-label', `Voxel ${props.model}, yaw ${Math.round(yaw)}°, pitch ${Math.round(pitch)}°`)
+		}
+		const tick = (t) => {
+			raf = 0
+			const dt = last ? (t - last) / 1000 : 0
+			last = t
+			const spinning = props.spin && !reduced.matches
+			if (spinning) {
+				spun = (spun + props.spin * dt) % 360
+				dirty = true
+			}
+			if (dirty) {
+				dirty = false
+				paint()
+			}
+			if (spinning && visible) schedule()
+			else last = 0
+		}
+		const schedule = () => {
+			if (!raf && visible) raf = requestAnimationFrame(tick)
+		}
+		const invalidate = () => {
+			dirty = true
+			schedule()
+		}
+
+		observeProps(invalidate)
+		const io = new IntersectionObserver(([e]) => {
+			visible = e.isIntersecting
+			if (visible) invalidate()
+		})
+		io.observe(host)
+		reduced.addEventListener('change', invalidate)
+
+		// Drag to orbit; arrow keys too.
+		let drag = null
+		canvas.addEventListener('pointerdown', (e) => {
+			drag = { x: e.clientX, y: e.clientY }
+			canvas.setPointerCapture(e.pointerId)
+		})
+		canvas.addEventListener('pointermove', (e) => {
+			if (!drag) return
+			const k = 360 / canvas.clientWidth
+			dragYaw += (e.clientX - drag.x) * k
+			dragPitch += (e.clientY - drag.y) * k * 0.5
+			drag = { x: e.clientX, y: e.clientY }
+			invalidate()
+		})
+		const end = () => {
+			if (!drag) return
+			drag = null
+			emit('sb-orbit', angles())
+		}
+		canvas.addEventListener('pointerup', end)
+		canvas.addEventListener('pointercancel', end)
+		canvas.addEventListener('keydown', (e) => {
+			const step = e.shiftKey ? 15 : 5
+			const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
+			if (!(e.key in moves)) return
+			e.preventDefault()
+			dragYaw += moves[e.key][0]
+			dragPitch += moves[e.key][1]
+			invalidate()
+			emit('sb-orbit', angles())
+		})
+
+		invalidate()
+		cleanup(() => {
+			cancelAnimationFrame(raf)
+			io.disconnect()
+			reduced.removeEventListener('change', invalidate)
+		})
+	},
+})
