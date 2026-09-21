@@ -108,3 +108,14 @@ func TestDuplicateTags(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestExamplesExtracted(t *testing.T) {
+	cat, err := catalog.Load(components.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := cat.Get("button")
+	if len(b.Examples) < 3 || !strings.Contains(b.Examples[0], "<sb-button>Primary</sb-button>") {
+		t.Fatalf("button examples = %q", b.Examples)
+	}
+}

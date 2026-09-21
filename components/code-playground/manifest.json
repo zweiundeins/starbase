@@ -65,6 +65,16 @@
       "docs": {
         "description": "Auto-run debounce, in ms."
       }
+    },
+    {
+      "name": "initial",
+      "attribute": "initial",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "Initial files as JSON {\"component.js\": \"…\"}; handy for server-rendered pages. Child scripts are used when empty."
+      }
     }
   ],
   "slots": [

@@ -67,6 +67,7 @@ func (s *Server) Handler() http.Handler {
 	// URL that opens the tab's render stream.
 	s.page(mux, "/{$}", s.galleryPage)
 	s.page(mux, "/components/{slug}", s.componentPage)
+	s.page(mux, "/playground", s.codePlaygroundPage)
 	s.page(mux, "/themes", s.themesPage)
 	s.page(mux, "/contribute", s.contentPage("contribute", "contribute"))
 	s.page(mux, "/about", s.contentPage("about", "about"))

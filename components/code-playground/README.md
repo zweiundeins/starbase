@@ -9,7 +9,7 @@ since: 2026-09-21
 preview: |
   <sb-code-playground style="--sb-code-playground-height: 8.5rem; inline-size: 100%"><script type="text/plain" data-file="index.html"><sb-button variant="pixel">Hi!</sb-button></script></sb-code-playground>
 playground:
-  exclude: [deps, themes, runner]
+  exclude: [deps, themes, runner, initial]
   content: <script type="text/plain" data-file="index.html"><p>Hello from the sandbox</p></script>
   style: "inline-size: 100%; --sb-code-playground-height: 18rem"
 ---

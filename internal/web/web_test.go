@@ -292,3 +292,20 @@ func TestPlaygroundRunner(t *testing.T) {
 		}
 	}
 }
+
+func TestCodePlaygroundPage(t *testing.T) {
+	ts, c := newServer(t)
+	_, body := get(t, c, ts.URL+"/playground?component=voxel")
+	for _, want := range []string{`<sb-code-playground initial="`, `rocket(&#39;sb-voxel&#39;`, `deps="{`, `data-ignore-morph`, `aria-current="page">Playground`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("playground page lacks %q", want)
+		}
+	}
+	if res, _ := get(t, c, ts.URL+"/playground?component=nope"); res.StatusCode != 404 {
+		t.Errorf("unknown component = %d, want 404", res.StatusCode)
+	}
+	_, body = get(t, c, ts.URL+"/components/button")
+	if !strings.Contains(body, `href="/playground?component=button"`) {
+		t.Error("component page lacks Open in playground")
+	}
+}

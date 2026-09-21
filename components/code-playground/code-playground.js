@@ -75,6 +75,7 @@ rocket('sb-code-playground', {
 		theme: string.trim.default('deep-space').docs({ description: 'Initial preview theme (data-sb-theme).' }),
 		themes: array(string.trim).default(() => ['deep-space', 'nebula', 'terminal', 'daylight']).docs({ description: 'Themes offered in the picker.' }),
 		delay: number.clamp(100, 5000).default(600).docs({ description: 'Auto-run debounce, in ms.' }),
+		initial: json.default(() => ({})).docs({ description: 'Initial files as JSON {"component.js": "…"}; handy for server-rendered pages. Child scripts are used when empty.' }),
 	}),
 	manifest: {
 		slots: [{ name: '(files)', description: 'Child <script type="text/plain" data-file="component.js|index.html|style.css"> elements with the initial files.' }],
@@ -90,6 +91,7 @@ rocket('sb-code-playground', {
 		for (const el of host.querySelectorAll(':scope > script[type="text/plain"][data-file]')) {
 			files.set(el.dataset.file, dedent(el.textContent))
 		}
+		for (const [name, code] of Object.entries(props.initial || {})) files.set(name, String(code))
 		if (!files.size) files.set('component.js', '')
 		const refs = {} // filled from data-ref:* in onFirstRender
 		state.set(host, { files, refs })

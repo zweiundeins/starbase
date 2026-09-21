@@ -140,3 +140,37 @@ templ MissionControl() {
 		</p>
 	</section>
 }
+
+type CodePlaygroundView struct {
+	Initial       string // JSON files
+	Deps          string // JSON {tag: module URL}
+	Component     string // slug, when opened from a component page
+	ComponentName string
+}
+
+templ CodePlaygroundPage(v CodePlaygroundView) {
+	<div class="wrap code-page">
+		<header class="page-head page-head--compact">
+			if v.Component != "" {
+				<nav class="breadcrumbs" aria-label="Breadcrumb">
+					<a href="/">Components</a>
+					<span aria-hidden="true">/</span>
+					<a href={ templ.SafeURL("/components/" + v.Component) }>{ v.ComponentName }</a>
+					<span aria-hidden="true">/</span>
+					<span>Playground</span>
+				</nav>
+			}
+			<h1>Playground</h1>
+			<p class="lede">
+				if v.Component != "" {
+					The real source of { v.ComponentName }, with its examples. Change anything; the preview runs in a sandbox.
+				} else {
+					Write a Rocket component and try it live. The preview runs in a sandbox with every community component available.
+				}
+			</p>
+		</header>
+		<div class="code-page__island" data-ignore-morph>
+			<sb-code-playground initial={ v.Initial } deps={ v.Deps }></sb-code-playground>
+		</div>
+	</div>
+}

@@ -47,6 +47,7 @@ type navItem struct{ Key, Label, Href string }
 
 var navItems = []navItem{
 	{"components", "Components", "/"},
+	{"playground", "Playground", "/playground"},
 	{"themes", "Themes", "/themes"},
 	{"showcase", "Showcase", "/showcase"},
 	{"contribute", "Contribute", "/contribute"},

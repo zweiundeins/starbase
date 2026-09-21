@@ -1340,7 +1340,34 @@
 		}
 	}
 
-	/* ── Mission Control (showcase) ──────────────────────────────────────── */
+	/* ── Code playground page ─────────────────────────────────────────────── */
+	.page-head--compact {
+		padding-block: var(--sb-space-8) var(--sb-space-5);
+	}
+
+	.code-page {
+		padding-block-end: var(--sb-space-12);
+	}
+
+	.code-page__island {
+		padding-block-start: var(--sb-space-6);
+
+		& sb-code-playground {
+			--sb-code-playground-height: max(28rem, calc(100dvh - 18rem));
+		}
+	}
+
+	.code-page__actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sb-space-3);
+		padding-block-start: var(--sb-space-4);
+		color: var(--sb-text-2);
+		font-size: var(--sb-font-size-1);
+	}
+
+		/* ── Mission Control (showcase) ──────────────────────────────────────── */
 	.mission {
 		container: mission / inline-size;
 		display: grid;

@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io/fs"
 	"net/http"
 	"strings"
+
+	"github.com/a-h/templ"
+
+	"starbase/internal/ui"
 )
 
 // playgroundRun serves the code playground's runner: the page inside the
@@ -101,4 +106,90 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 <body></body>
 </html>
 `, css.String(), imports)
+}
+
+// Starter files for an empty playground (the same starter as the
+// submission form).
+const starterJS = `import { rocket } from 'datastar'
+
+const styles = /* css */ ` + "`" + `
+:host {
+	--_bg: var(--sb-surface-card, #141D32);
+	--_border: var(--sb-border, #283552);
+	--_text: var(--sb-text-1, #F3F4FA);
+	--_brand: var(--sb-brand, #8C6BFF);
+	display: inline-block;
+}
+button {
+	all: unset;
+	padding: 0.5rem 1rem;
+	border: 1px solid var(--_border);
+	border-radius: 8px;
+	background: var(--_bg);
+	color: var(--_text);
+	cursor: pointer;
+}
+button:hover { border-color: var(--_brand); }
+` + "`" + `
+
+rocket('sb-your-name', {
+	props: ({ string }) => ({
+		label: string.trim.default('Launch').docs({ description: 'Text on the button.' }),
+	}),
+	setup: ({ $$, action, adoptStyles, emit, host }) => {
+		adoptStyles(host, styles)
+		$$.presses = 0
+		action('press', () => {
+			$$.presses++
+			console.log('pressed', $$.presses)
+			emit('sb-press', { presses: $$.presses })
+		})
+	},
+	render: ({ html, props: { label } }) => html` + "`" + `
+		<button type="button" part="button" data-on:click="@press()">${label}</button>
+	` + "`" + `,
+})
+`
+
+const starterHTML = `<sb-your-name label="Hello, Starbase"></sb-your-name>
+`
+
+// componentDeps maps every catalog tag to its module URL, so previews can
+// use any component. Tags defined by the edited code are skipped client-side.
+func (s *Server) componentDeps() string {
+	m := map[string]string{}
+	for _, c := range s.catalog.Components {
+		m[c.Tag] = s.assets.ComponentScript(c)
+	}
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
+func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
+	files := map[string]string{"component.js": starterJS, "index.html": starterHTML}
+	v := ui.CodePlaygroundView{Deps: s.componentDeps()}
+	if slug := rc.req.URL.Query().Get("component"); slug != "" {
+		comp, ok := s.catalog.Get(slug)
+		if !ok {
+			return view{}, errNotFound
+		}
+		src, err := fs.ReadFile(s.catalog.FS, comp.Script)
+		if err != nil {
+			return view{}, err
+		}
+		files = map[string]string{"component.js": string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
+		v.Component, v.ComponentName = comp.Slug, comp.Name
+	}
+	initial, _ := json.Marshal(files)
+	v.Initial = string(initial)
+	title := "Playground · Starbase"
+	if v.ComponentName != "" {
+		title = v.ComponentName + " in the playground · Starbase"
+	}
+	return view{
+		Title:       title,
+		Description: "Edit Rocket components live: code, HTML and a sandboxed preview.",
+		Nav:         "playground",
+		Body:        func(ui.Shell) templ.Component { return ui.CodePlaygroundPage(v) },
+	}, nil
 }

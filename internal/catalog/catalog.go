@@ -46,6 +46,7 @@ type Component struct {
 	Manifest *Manifest
 	Hash     string // content hash over every file in the folder
 	Headings []Heading
+	Examples []string // bodies of the README's ```html preview blocks
 }
 
 // Manifest mirrors one entry of Rocket's generated manifest document.
@@ -149,6 +150,9 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 		return nil, fmt.Errorf("README.md: %w", err)
 	}
 	c.Headings = headings(c.DocHTML)
+	for _, m := range previewRe.FindAllStringSubmatch(string(readme), -1) {
+		c.Examples = append(c.Examples, strings.TrimRight(m[1], "\n"))
+	}
 	js, err := fs.ReadFile(fsys, c.Script)
 	if err != nil {
 		return nil, fmt.Errorf("missing %s.js", slug)
@@ -213,6 +217,8 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 
 // Heading is an h2 in a component's docs, for the "On this page" nav.
 type Heading struct{ ID, Text string }
+
+var previewRe = regexp.MustCompile("(?s)```html preview\n(.*?)```")
 
 var h2Re = regexp.MustCompile(`<h2 id="([^"]+)">(.*?)</h2>`)
 var tagStrip = regexp.MustCompile(`<[^>]+>`)
