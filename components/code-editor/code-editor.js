@@ -159,9 +159,13 @@ rocket('sb-code-editor', {
 
 		// Typing updates $$code; the textarea's data-effect only writes back
 		// external changes (the values differ), so the caret never jumps.
-		const set = (v) => ($$.code = String(v ?? ''))
-		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => set(v)))
-		observeProps(() => set(props.value), 'value')
+		// Like a native <input>: the attribute is only the default. Once the
+		// value is "dirty" (edited, or set as a property, e.g. by data-bind),
+		// attribute changes, including a server morph removing a reflected
+		// attribute, no longer touch it.
+		$$.dirty = pre !== undefined
+		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => (($$.dirty = true), ($$.code = String(v ?? '')))))
+		observeProps(() => peek(() => !$$.dirty && ($$.code = String(props.value ?? ''))), 'value')
 
 		const insert = (area, text) => {
 			// execCommand keeps the browser's undo stack; setRangeText is the fallback.
@@ -225,7 +229,7 @@ rocket('sb-code-editor', {
 						aria-label="${label || 'Code'}"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"
-						data-on:input="$$code = el.value"
+						data-on:input="$$code = el.value; $$dirty = true"
 						data-on:change="@change()"
 						data-on:keydown="@key()"
 					></textarea>

@@ -106,15 +106,16 @@ rocket('sb-slider', {
 		adoptStyles(host, styles)
 		const clamp = (v) => Math.min(props.max, Math.max(props.min, Number.isFinite(v) ? v : props.min))
 		const decimals = () => (String(props.step).split('.')[1] || '').length
-		const sync = () => {
-			$$.value = clamp(props.value)
-		}
-		sync()
+		$$.value = clamp(props.value)
 		const pre = early(host, 'value')
-		if (pre !== undefined) $$.value = clamp(Number(pre))
-		observeProps(sync, 'value', 'min', 'max')
-		// Interaction state lives in $$; the value attribute is only the start.
-		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
+		$$.dirty = pre !== undefined
+		if ($$.dirty) $$.value = clamp(Number(pre))
+		// Like a native <input>: the attribute is only the default. Once the
+		// value is "dirty" (edited, or set as a property, e.g. by data-bind),
+		// attribute changes, including a server morph removing a reflected
+		// attribute, no longer touch it.
+		observeProps(() => peek(() => ($$.value = clamp($$.dirty ? $$.value : props.value))), 'value', 'min', 'max')
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.dirty = true), ($$.value = clamp(Number(v))))))
 		$$.pct = () => ((($$.value - props.min) / (props.max - props.min || 1)) * 100).toFixed(2) + '%'
 		$$.shown = () => Number($$.value).toFixed(decimals()) + props.unit
 		action('commit', () => {
@@ -145,7 +146,7 @@ rocket('sb-slider', {
 					aria-label="${label ? null : 'Value'}"
 					disabled="${disabled}"
 					data-effect="el.value != $$value && (el.value = $$value)"
-					data-on:input="$$value = +el.value"
+					data-on:input="$$value = +el.value; $$dirty = true"
 					data-on:change="@commit()"
 				/>
 			</span>

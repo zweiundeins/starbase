@@ -81,11 +81,17 @@ rocket('sb-toggle', {
 		// a server morph may re-send the original markup at any time.
 		$$.on = props.checked
 		const pre = early(host, 'checked')
-		if (pre !== undefined) $$.on = !!pre
-		observeProps(() => ($$.on = props.checked), 'checked')
-		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
+		$$.dirty = pre !== undefined
+		if ($$.dirty) $$.on = !!pre
+		// Like a native <input>: the attribute is only the default. Once the
+		// checked state is "dirty" (edited, or set as a property, e.g. by data-bind),
+		// attribute changes, including a server morph removing a reflected
+		// attribute, no longer touch it.
+		observeProps(() => peek(() => !$$.dirty && ($$.on = props.checked)), 'checked')
+		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => (($$.dirty = true), ($$.on = !!v))))
 		action('toggle', () => {
 			if (props.disabled) return
+			$$.dirty = true
 			$$.on = !$$.on
 			emit('change')
 			emit('sb-change', { checked: $$.on })

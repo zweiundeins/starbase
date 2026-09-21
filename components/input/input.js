@@ -105,12 +105,17 @@ rocket('sb-input', {
 		adoptStyles(host, styles)
 		$$.value = props.value
 		const pre = early(host, 'value')
-		if (pre !== undefined) $$.value = String(pre ?? '')
+		$$.dirty = pre !== undefined
+		if ($$.dirty) $$.value = String(pre ?? '')
 		$$.touched = false
 		$$.invalid = false
 		$$.message = ''
-		observeProps(() => ($$.value = props.value), 'value')
-		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = String(v ?? ''))))
+		// Like a native <input>: the attribute is only the default. Once the
+		// value is "dirty" (edited, or set as a property, e.g. by data-bind),
+		// attribute changes, including a server morph removing a reflected
+		// attribute, no longer touch it.
+		observeProps(() => peek(() => !$$.dirty && ($$.value = props.value)), 'value')
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.dirty = true), ($$.value = String(v ?? '')))))
 
 		const field = () => host.shadowRoot?.querySelector('input')
 		const validate = () => {
@@ -127,6 +132,7 @@ rocket('sb-input', {
 		}
 		action('input', ({ el }) => {
 			$$.value = el.value
+			$$.dirty = true
 			if ($$.touched) validate()
 		})
 		action('commit', () => {

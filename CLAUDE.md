@@ -22,6 +22,7 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - `data-bind` on a custom element only writes to an existing signal. Declare it with `data-signals` first, and use `__prop.value` / `__prop.checked`: Datastar binds before Rocket upgrades the element, and otherwise falls back to the attribute, which morphs strip.
 - Component host getters and setters over `$$` (`overrideProp`) must use `startPeeking()`/`stopPeeking()`, or `data-bind`'s effect subscribes to the internal signal and writes stale values back.
 - Bindable components must adopt a property set before upgrade (`data-bind` writes `host.value` early): read and delete the own data property in `setup` (see `early()` in `components/slider/slider.js`).
+- Form-like components (value/checked) follow native dirty semantics: the attribute is only the default; after an edit or a property write (`$$dirty`), attribute changes are ignored. Otherwise a morph that removes a reflected `value` attribute wipes the live value.
 - Hosts whose attributes are driven by signals (`data-attr:x=...`) need `data-preserve-attr="x ..."`: the morph resets every attribute to the server markup.
 - `tab_state` is for server-owned UI state (filters, sort, theme). High-frequency, ephemeral demo state (sliders, playgrounds) stays in local `_`-prefixed signals.
 - Component pages render an auto Playground from the manifest (`internal/catalog/playground.go`, `ui.Playground`). It is a `data-ignore-morph` island driven by local `$_pg` signals, tuned by `playground:` front matter.
