@@ -41,6 +41,14 @@ A row of pixel blocks lit up to `value`. The whole bar changes colour at the `wa
 </div>
 ```
 
+### Live from the server
+
+```html preview
+<div data-signals="{_tm: {fuel: 100}}" data-init="@get('/demo/telemetry')" style="inline-size: min(100%, 22rem)">
+  <sb-meter label="Fuel" unit="%" warn="30" danger="15" segments="20" data-attr:value="Math.round($_tm.fuel)" data-preserve-attr="value"></sb-meter>
+</div>
+```
+
 ## Accessibility
 
 The bar is a `role="meter"` with min, max, value and a readable value text. The colour change is backed by the number, so tone never carries the meaning alone.

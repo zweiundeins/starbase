@@ -13,6 +13,7 @@ import (
 	"starbase/internal/config"
 	"starbase/internal/cqrs"
 	"starbase/internal/queries"
+	"starbase/internal/ui"
 )
 
 type Server struct {
@@ -69,7 +70,7 @@ func (s *Server) Handler() http.Handler {
 	s.page(mux, "/themes", s.themesPage)
 	s.page(mux, "/contribute", s.contentPage("contribute", "contribute"))
 	s.page(mux, "/about", s.contentPage("about", "about"))
-	s.page(mux, "/showcase", s.contentPage("showcase", "showcase"))
+	s.page(mux, "/showcase", s.contentPage("showcase", "showcase", ui.MissionControl()))
 	mux.Handle("GET /components", http.RedirectHandler("/", http.StatusMovedPermanently))
 
 	// Commands.
@@ -87,6 +88,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /static/", s.assets.serveStatic())
 	mux.HandleFunc("GET /art/{name}", s.assets.serveArt)
 	mux.HandleFunc("GET /c/{path...}", s.assets.serveComponents)
+	// Demo data: a read-only signal stream for the live examples.
+	mux.HandleFunc("GET /demo/telemetry", s.demoTelemetry)
+
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 
 	if s.cfg.Dev {

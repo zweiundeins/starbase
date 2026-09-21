@@ -37,6 +37,17 @@ A half-dial drawn in pixels. The needle eases toward `value` on a slightly bounc
 <sb-gauge label="Hull temp" unit="°" value="940" min="0" max="1200" warn="800" danger="1000"></sb-gauge>
 ```
 
+### Live from the server
+
+This site's demo endpoint streams telemetry as signal patches. The gauge follows `$_tm.vel` without any client code.
+
+```html preview
+<div data-signals="{_tm: {vel: 0, temp: 18}}" data-init="@get('/demo/telemetry')" style="display: flex; gap: 32px; flex-wrap: wrap">
+  <sb-gauge label="Velocity" unit=" km/s" max="8" warn="9" danger="10" decimals="2" data-attr:value="$_tm.vel" data-preserve-attr="value"></sb-gauge>
+  <sb-gauge label="Hull" unit="°C" max="1200" warn="800" danger="1000" data-attr:value="$_tm.temp" data-preserve-attr="value"></sb-gauge>
+</div>
+```
+
 ## Accessibility
 
 The readout is a `role="meter"` with min, max and current value. The dial canvas is decorative. Under `prefers-reduced-motion` the needle jumps straight to the value.

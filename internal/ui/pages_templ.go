@@ -213,7 +213,7 @@ func ThemesPage(v ThemesView) templ.Component {
 	})
 }
 
-func ContentPage(title, lede, html string) templ.Component {
+func ContentPage(title, lede, html string, extra templ.Component) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -270,7 +270,25 @@ func ContentPage(title, lede, html string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</header><article class=\"prose\" style=\"padding-block: var(--sb-space-10) var(--sb-space-16)\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</header>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if extra != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div style=\"padding-block-start: var(--sb-space-10)\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = extra.Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<article class=\"prose\" style=\"padding-block: var(--sb-space-10) var(--sb-space-16)\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -278,7 +296,7 @@ func ContentPage(title, lede, html string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</article></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</article></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -307,7 +325,52 @@ func NotFound() templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"wrap\"><div class=\"empty-state\" style=\"margin-block: var(--sb-space-16)\"><h3>Lost in space</h3><p>This page drifted out of orbit. Head back to base.</p><a class=\"btn btn--primary btn--sm\" href=\"/\">Back to components</a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"wrap\"><div class=\"empty-state\" style=\"margin-block: var(--sb-space-16)\"><h3>Lost in space</h3><p>This page drifted out of orbit. Head back to base.</p><a class=\"btn btn--primary btn--sm\" href=\"/\">Back to components</a></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// MissionControl is a live dashboard built only from community components.
+// The server streams $_tm (telemetry) as signal patches; everything else is
+// data-attr wiring. It is a client island: server frames leave it alone.
+func MissionControl() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var14 == nil {
+			templ_7745c5c3_Var14 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<section class=\"mission\" aria-labelledby=\"mission-title\" data-ignore-morph data-signals=\"{_tm: {t: -8, stage: 'PAD', alt: 0, vel: 0, fuel: 100, temp: 18, pitch: 90}}\" data-init=\"@get('/demo/telemetry')\"><header class=\"mission__head\"><h2 id=\"mission-title\" class=\"section-title\">Mission Control</h2><span class=\"mission__stage\" data-text=\"$_tm.stage\" data-attr:data-stage=\"$_tm.stage\">PAD</span> <span class=\"mission__clock\" data-text=\"($_tm.t < 0 ? 'T−' : 'T+') + Math.abs($_tm.t).toFixed(1) + ' s'\">T−8.0 s</span></header><div class=\"mission__grid\"><div class=\"mission__view\"><sb-starfield tint=\"violet\" density=\"420\" data-attr:speed=\"Math.round(3 + $_tm.vel * 11)\" data-attr:warp=\"$_tm.vel > 5\"></sb-starfield> <sb-voxel model=\"rocket\" spin=\"24\" zoom=\"0.9\" data-attr:pitch=\"Math.round(($_tm.pitch - 90) / 4)\"></sb-voxel></div><div class=\"mission__panel\"><div class=\"mission__gauges\"><sb-gauge label=\"Velocity\" unit=\" km/s\" min=\"0\" max=\"8\" warn=\"9\" danger=\"10\" decimals=\"2\" data-attr:value=\"$_tm.vel\"></sb-gauge> <sb-gauge label=\"Hull\" unit=\"°C\" min=\"0\" max=\"1200\" warn=\"800\" danger=\"1000\" data-attr:value=\"$_tm.temp\"></sb-gauge></div><div class=\"mission__row\"><span class=\"mission__caption\">Altitude</span> <sb-sparkline data-attr:value=\"$_tm.alt\" length=\"80\" show-value unit=\" km\" tone=\"accent\"></sb-sparkline></div><sb-meter label=\"Fuel\" unit=\"%\" warn=\"30\" danger=\"15\" segments=\"20\" data-attr:value=\"Math.round($_tm.fuel)\"></sb-meter></div></div><p class=\"mission__note\">Every number arrives as a signal patch, four times a second, from <code>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var15 string
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs("@get('/demo/telemetry')")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 139, Col: 102}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</code>. The components just watch their attributes.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -40,6 +40,16 @@ A small inline chart drawn as a stepped pixel line with a soft area underneath. 
 <sb-sparkline values="[40,60,40,60,40,60,40,60]" scale="fixed" min="0" max="100" tone="brand"></sb-sparkline>
 ```
 
+### Live from the server
+
+The server pushes `$_tm.alt` four times a second. Push mode turns every update into a new point.
+
+```html preview
+<div data-signals="{_tm: {alt: 0}}" data-init="@get('/demo/telemetry')">
+  <sb-sparkline data-attr:value="$_tm.alt" data-preserve-attr="value" length="80" show-value unit=" km" tone="accent" style="--sb-sparkline-width: 22rem"></sb-sparkline>
+</div>
+```
+
 ### From JavaScript
 
 `el.push(n)` appends a point, and `el.data` returns a copy of the buffer.

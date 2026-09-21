@@ -73,7 +73,7 @@ templ ThemesPage(v ThemesView) {
 	</div>
 }
 
-templ ContentPage(title, lede, html string) {
+templ ContentPage(title, lede, html string, extra templ.Component) {
 	<div class="wrap">
 		<header class="page-head">
 			<h1>{ title }</h1>
@@ -81,6 +81,11 @@ templ ContentPage(title, lede, html string) {
 				<p class="lede">{ lede }</p>
 			}
 		</header>
+		if extra != nil {
+			<div style="padding-block-start: var(--sb-space-10)">
+				@extra
+			</div>
+		}
 		<article class="prose" style="padding-block: var(--sb-space-10) var(--sb-space-16)">
 			@templ.Raw(html)
 		</article>
@@ -95,4 +100,43 @@ templ NotFound() {
 			<a class="btn btn--primary btn--sm" href="/">Back to components</a>
 		</div>
 	</div>
+}
+
+// MissionControl is a live dashboard built only from community components.
+// The server streams $_tm (telemetry) as signal patches; everything else is
+// data-attr wiring. It is a client island: server frames leave it alone.
+templ MissionControl() {
+	<section
+		class="mission"
+		aria-labelledby="mission-title"
+		data-ignore-morph
+		data-signals="{_tm: {t: -8, stage: 'PAD', alt: 0, vel: 0, fuel: 100, temp: 18, pitch: 90}}"
+		data-init="@get('/demo/telemetry')"
+	>
+		<header class="mission__head">
+			<h2 id="mission-title" class="section-title">Mission Control</h2>
+			<span class="mission__stage" data-text="$_tm.stage" data-attr:data-stage="$_tm.stage">PAD</span>
+			<span class="mission__clock" data-text="($_tm.t < 0 ? 'T−' : 'T+') + Math.abs($_tm.t).toFixed(1) + ' s'">T−8.0 s</span>
+		</header>
+		<div class="mission__grid">
+			<div class="mission__view">
+				<sb-starfield tint="violet" density="420" data-attr:speed="Math.round(3 + $_tm.vel * 11)" data-attr:warp="$_tm.vel > 5"></sb-starfield>
+				<sb-voxel model="rocket" spin="24" zoom="0.9" data-attr:pitch="Math.round(($_tm.pitch - 90) / 4)"></sb-voxel>
+			</div>
+			<div class="mission__panel">
+				<div class="mission__gauges">
+					<sb-gauge label="Velocity" unit=" km/s" min="0" max="8" warn="9" danger="10" decimals="2" data-attr:value="$_tm.vel"></sb-gauge>
+					<sb-gauge label="Hull" unit="°C" min="0" max="1200" warn="800" danger="1000" data-attr:value="$_tm.temp"></sb-gauge>
+				</div>
+				<div class="mission__row">
+					<span class="mission__caption">Altitude</span>
+					<sb-sparkline data-attr:value="$_tm.alt" length="80" show-value unit=" km" tone="accent"></sb-sparkline>
+				</div>
+				<sb-meter label="Fuel" unit="%" warn="30" danger="15" segments="20" data-attr:value="Math.round($_tm.fuel)"></sb-meter>
+			</div>
+		</div>
+		<p class="mission__note">
+			Every number arrives as a signal patch, four times a second, from <code>{ "@get('/demo/telemetry')" }</code>. The components just watch their attributes.
+		</p>
+	</section>
 }

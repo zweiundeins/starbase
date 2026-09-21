@@ -107,8 +107,8 @@ func (s *Server) themesPage(rc *renderCtx) (view, error) {
 	}, nil
 }
 
-// contentPage renders content/<name>.md.
-func (s *Server) contentPage(name, nav string) pageFunc {
+// contentPage renders content/<name>.md, optionally after an extra block.
+func (s *Server) contentPage(name, nav string, extra ...templ.Component) pageFunc {
 	return func(rc *renderCtx) (view, error) {
 		src, err := fs.ReadFile(s.content, name+".md")
 		if err != nil {
@@ -128,7 +128,11 @@ func (s *Server) contentPage(name, nav string) pageFunc {
 			Description: meta.Description,
 			Nav:         nav,
 			Body: func(ui.Shell) templ.Component {
-				return ui.ContentPage(meta.Title, meta.Lede, html)
+				var x templ.Component
+				if len(extra) > 0 {
+					x = extra[0]
+				}
+				return ui.ContentPage(meta.Title, meta.Lede, html, x)
 			},
 		}, nil
 	}

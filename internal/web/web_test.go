@@ -228,3 +228,43 @@ func TestPlaygroundRendered(t *testing.T) {
 		}
 	}
 }
+
+func TestTelemetryStream(t *testing.T) {
+	ts, c := newServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/demo/telemetry", nil)
+	req.Header.Set("Accept-Encoding", "identity")
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	sc := bufio.NewScanner(res.Body)
+	events := 0
+	for sc.Scan() && events < 2 {
+		line := sc.Text()
+		if line == "event: datastar-patch-signals" {
+			events++
+		}
+		if strings.HasPrefix(line, "data: signals") && !strings.Contains(line, `"_tm":{"t":`) {
+			t.Fatalf("unexpected signals line %q", line)
+		}
+	}
+	if events < 2 {
+		t.Fatalf("got %d telemetry events in 2s", events)
+	}
+}
+
+func TestTelemetryIsAFlight(t *testing.T) {
+	base := time.UnixMilli(0)
+	pad := web.TelemetryAt(base.Add(2 * time.Second))
+	climb := web.TelemetryAt(base.Add(40 * time.Second))
+	orbit := web.TelemetryAt(base.Add(80 * time.Second))
+	if pad.Stage != "PAD" || climb.Stage != "ASCENT" || orbit.Stage != "ORBIT" {
+		t.Fatalf("stages: %s %s %s", pad.Stage, climb.Stage, orbit.Stage)
+	}
+	if !(pad.Alt == 0 && climb.Alt > 0 && orbit.Alt > climb.Alt && climb.Fuel < pad.Fuel) {
+		t.Fatalf("not a flight: %+v %+v %+v", pad, climb, orbit)
+	}
+}

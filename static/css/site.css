@@ -1340,6 +1340,130 @@
 		}
 	}
 
+	/* ── Mission Control (showcase) ──────────────────────────────────────── */
+	.mission {
+		container: mission / inline-size;
+		display: grid;
+		gap: var(--sb-space-5);
+		padding: var(--sb-space-6);
+		border: var(--sb-border-width) solid var(--sb-border);
+		border-radius: var(--sb-radius-lg);
+		background: var(--sb-surface-card);
+	}
+
+	.mission__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sb-space-4);
+
+		& h2 {
+			margin-inline-end: auto;
+		}
+	}
+
+	.mission__stage {
+		--_c: var(--sb-text-2);
+		padding: var(--sb-space-1) var(--sb-space-3);
+		border: var(--sb-border-width) solid color-mix(in oklch, var(--_c) 50%, transparent);
+		border-radius: var(--sb-radius-xs);
+		color: var(--_c);
+		font-family: var(--sb-font-display);
+		letter-spacing: var(--sb-letter-spacing-caps);
+
+		&[data-stage="ASCENT"] {
+			--_c: var(--sb-warn);
+		}
+
+		&[data-stage="MECO"] {
+			--_c: var(--sb-danger);
+		}
+
+		&[data-stage="ORBIT"] {
+			--_c: var(--sb-ok);
+		}
+	}
+
+	.mission__clock {
+		color: var(--sb-text-1);
+		font-family: var(--sb-font-display);
+		font-size: var(--sb-font-size-5);
+		font-variant-numeric: tabular-nums;
+		min-inline-size: 7ch;
+		text-align: end;
+	}
+
+	.mission__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+		gap: var(--sb-space-6);
+
+		@container mission (width < 44rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.mission__view {
+		position: relative;
+		display: grid;
+		place-items: center;
+		min-block-size: 20rem;
+		border-radius: var(--sb-radius-md);
+		overflow: hidden;
+
+		& sb-starfield {
+			position: absolute;
+			inset: 0;
+			--sb-starfield-height: 100%;
+		}
+
+		& sb-voxel {
+			position: relative;
+			--sb-voxel-size: 15rem;
+		}
+	}
+
+	.mission__panel {
+		display: grid;
+		align-content: center;
+		gap: var(--sb-space-6);
+	}
+
+	.mission__gauges {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--sb-space-4);
+		justify-items: center;
+
+		& sb-gauge {
+			--sb-gauge-size: 100%;
+		}
+	}
+
+	.mission__row {
+		display: grid;
+		gap: var(--sb-space-2);
+
+		& sb-sparkline {
+			--sb-sparkline-width: 100%;
+		}
+	}
+
+	.mission__panel sb-meter {
+		--sb-meter-width: 100%;
+	}
+
+	.mission__caption {
+		color: var(--sb-text-2);
+		font-size: var(--sb-font-size-1);
+		font-weight: var(--sb-font-weight-semibold);
+	}
+
+	.mission__note {
+		color: var(--sb-text-muted);
+		font-size: var(--sb-font-size-1);
+	}
+
 	/* Cross-document view transitions between gallery and detail page. */
 	@view-transition {
 		navigation: auto;
