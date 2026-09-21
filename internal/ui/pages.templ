@@ -138,12 +138,21 @@ templ MissionControl() {
 		<details class="howto">
 			<summary>How it works</summary>
 			<div class="howto__body">
-				<p>Built only from community components: <code>sb-starfield</code>, <code>sb-voxel</code>, <code>sb-gauge</code>, <code>sb-sparkline</code> and <code>sb-meter</code>. No custom JavaScript.</p>
-				<ol>
-					<li><code>{ "data-init=\"@get('/demo/telemetry')\"" }</code> opens a stream. Four times a second the server patches one signal, <code>$_tm</code>, with simulated telemetry. It's a pure function of the clock, so every viewer watches the same flight.</li>
-					<li>Each component's attributes follow that signal through <code>data-attr</code>: <code>{ "data-attr:value=\"$_tm.vel\"" }</code>.</li>
-					<li>The components only react to their attributes: the gauge springs its needle, the sparkline appends a point, the starfield speeds up.</li>
-				</ol>
+				<p>The dashboard is built only from community components: <code>sb-starfield</code>, <code>sb-voxel</code>, <code>sb-gauge</code>, <code>sb-sparkline</code> and <code>sb-meter</code>. It contains no custom JavaScript. The server pushes data, signals carry it, and each component watches its attributes.</p>
+				<h3>1. The server streams signals</h3>
+				<p>The section opens one long-lived request with <code>{ "@get('/demo/telemetry')" }</code>. Four times a second the server sends a <code>datastar-patch-signals</code> event that merges fresh numbers into a single signal, <code>$_tm</code>. The data is a pure function of the clock over a 90-second mission, so the server keeps no state and every viewer watches the same flight. In CQRS terms this is a query stream: nothing is written, and hidden tabs close it and reopen it when they come back.</p>
+				@templ.Raw(telemetryGo)
+				<h3>2. Signals drive attributes</h3>
+				<p>Each component is wired with <code>data-attr</code>. When <code>$_tm</code> changes, Datastar updates exactly the attributes that depend on it. Expressions can reshape the data on the way: the starfield's speed is derived from velocity, and warp switches on above 5 km/s.</p>
+				@templ.Raw(telemetryHTML)
+				<p>The section is a <code>data-ignore-morph</code> island. The page's own render stream may re-render everything around it, but it never touches these attributes, because signals own them.</p>
+				<h3>3. Components react to their attributes</h3>
+				<ul>
+					<li><strong>Gauge:</strong> the new <code>value</code> becomes a spring target, and the needle eases toward it with a small overshoot, like hardware.</li>
+					<li><strong>Sparkline:</strong> in push mode every change of <code>value</code> appends a point. The line fills its width, then scrolls.</li>
+					<li><strong>Starfield and voxel:</strong> canvases that repaint only while something changes, pause offscreen, and respect <code>prefers-reduced-motion</code>.</li>
+					<li><strong>Meter:</strong> re-renders its segments and turns warn or danger at its thresholds (fuel counts down, so low is bad).</li>
+				</ul>
 			</div>
 		</details>
 	</section>
@@ -251,12 +260,19 @@ templ PixelBoard(v BoardView) {
 		<details class="howto" data-preserve-attr="open">
 			<summary>How it works</summary>
 			<div class="howto__body">
-				<p>The whole board is one attribute: <code>cells</code>, a string with one hex digit per pixel, rendered by the server into every frame of this page's stream.</p>
-				<ol>
-					<li>Your stroke emits <code>sb-paint</code>, which becomes a command: <code>{ "@post('/cmd/paint')" }</code>, answered with <code>204</code>.</li>
-					<li>One writer applies everyone's pixels in a single SQLite transaction.</li>
-					<li>Every open tab's stream re-renders the page, and the board's <code>cells</code> morphs in. Brotli compresses each frame against the ones before, so resending the whole board costs almost nothing. It's the trick behind Anders Murphy's hyperlith demos.</li>
-				</ol>
+				<p>This is the "one billion checkboxes" idea from Anders Murphy's hyperlith, done the way this whole site works: CQRS over one SQLite database, and the server re-rendering the entire page for every change.</p>
+				<h3>1. The board is one attribute</h3>
+				<p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded.</p>
+				@templ.Raw(boardHTML)
+				<h3>2. Painting is a command</h3>
+				<p>A stroke emits <code>sb-paint</code> every 80 ms, with the cells it crossed; fast drags are interpolated so there are no gaps. Each batch is a short <code>POST</code> that answers <code>204 No Content</code> and returns no HTML. <code>requestCancellation: 'disabled'</code> matters here: by default Datastar cancels an in-flight request when a new one goes to the same URL, which would drop pixels mid-stroke. A per-session token bucket (20 pixels per second, bursts up to 60) keeps any one painter from flooding the board.</p>
+				@templ.Raw(boardGo)
+				<p>A single writer goroutine drains the command queue. Everyone's strokes that arrive together are applied in one SQLite transaction, each in its own savepoint, and committed once.</p>
+				<h3>3. Every tab re-renders the whole page</h3>
+				<p>After the commit, the hub wakes every open render stream. Each re-renders its page from a fresh read snapshot and sends the entire page again. The encoded board is cached per version, so a thousand viewers cost one query. Pages whose output didn't change send nothing.</p>
+				<p>Sending the whole page sounds wasteful until you look at the wire. The stream is compressed with Brotli, and the compressor keeps its window across frames. A full frame of this page is <strong>about 9.7 KB</strong>; the first one compresses to about 3.4 KB, and after a paint each complete re-render costs <strong>about 17 bytes</strong>. There is no diffing code anywhere: Datastar morphs the DOM, and compression takes care of the network.</p>
+				<h3>4. Presence</h3>
+				<p>"Watching" counts the open render streams on this page. The hub wakes the other viewers when someone joins or leaves, so the number is live too.</p>
 			</div>
 		</details>
 	</section>
