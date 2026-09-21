@@ -198,8 +198,14 @@ func TestRenderStream(t *testing.T) {
 		t.Fatalf("command = %d", r.StatusCode)
 	}
 	second := next()
-	if n := strings.Count(second, `class="card"`); n != 3 {
-		t.Fatalf("filtered frame has %d cards, want 3", n)
+	feedback := 0
+	for _, c := range cat.Components {
+		if c.Category == "feedback" {
+			feedback++
+		}
+	}
+	if n := strings.Count(second, `class="card"`); n != feedback {
+		t.Fatalf("filtered frame has %d cards, want %d", n, feedback)
 	}
 	if !regexp.MustCompile(`replaceState\(null, &#39;&#39;, &#34;/\?cat=feedback\\u0026sort=name&#34;\)`).MatchString(second) {
 		i := strings.Index(second, "replaceState")

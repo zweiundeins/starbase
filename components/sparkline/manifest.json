@@ -1,0 +1,118 @@
+{
+  "tag": "sb-sparkline",
+  "props": [
+    {
+      "name": "values",
+      "attribute": "values",
+      "type": "array",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Initial data points, as a JSON array."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Push mode: every change appends a point."
+      }
+    },
+    {
+      "name": "length",
+      "attribute": "length",
+      "type": "number",
+      "default": 40,
+      "required": false,
+      "docs": {
+        "description": "Points kept (older ones scroll off)."
+      }
+    },
+    {
+      "name": "scale",
+      "attribute": "scale",
+      "type": "oneOf",
+      "default": "auto",
+      "required": false,
+      "values": [
+        "auto",
+        "fixed"
+      ],
+      "docs": {
+        "description": "auto fits the data; fixed uses min and max."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Bottom of the fixed scale."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "number",
+      "default": 100,
+      "required": false,
+      "docs": {
+        "description": "Top of the fixed scale."
+      }
+    },
+    {
+      "name": "tone",
+      "attribute": "tone",
+      "type": "oneOf",
+      "default": "brand",
+      "required": false,
+      "values": [
+        "brand",
+        "ok",
+        "warn",
+        "danger",
+        "accent"
+      ],
+      "docs": {
+        "description": "Line colour (theme token)."
+      }
+    },
+    {
+      "name": "showValue",
+      "attribute": "show-value",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show the latest value next to the line."
+      }
+    },
+    {
+      "name": "unit",
+      "attribute": "unit",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Unit after the shown value."
+      }
+    },
+    {
+      "name": "decimals",
+      "attribute": "decimals",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Decimals of the shown value."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}

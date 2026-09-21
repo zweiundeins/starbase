@@ -1,0 +1,107 @@
+{
+  "tag": "sb-meter",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Current value."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Minimum."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "number",
+      "default": 100,
+      "required": false,
+      "docs": {
+        "description": "Maximum."
+      }
+    },
+    {
+      "name": "segments",
+      "attribute": "segments",
+      "type": "number",
+      "default": 12,
+      "required": false,
+      "docs": {
+        "description": "Number of blocks."
+      }
+    },
+    {
+      "name": "warn",
+      "attribute": "warn",
+      "type": "number",
+      "default": 70,
+      "required": false,
+      "docs": {
+        "description": "Warning threshold. Below danger means low values are bad (like fuel)."
+      }
+    },
+    {
+      "name": "danger",
+      "attribute": "danger",
+      "type": "number",
+      "default": 90,
+      "required": false,
+      "docs": {
+        "description": "Danger threshold."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Caption."
+      }
+    },
+    {
+      "name": "unit",
+      "attribute": "unit",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Unit after the value."
+      }
+    },
+    {
+      "name": "showValue",
+      "attribute": "show-value",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Show the value."
+      }
+    },
+    {
+      "name": "decimals",
+      "attribute": "decimals",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Decimals shown."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
