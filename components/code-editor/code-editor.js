@@ -51,7 +51,7 @@ const styles = /* css */ `
 .label { display: block; margin-block-end: 0.4rem; color: var(--sb-text-2, #AEBBDD); font-size: 0.8125rem; font-weight: 600; }
 .scroller {
 	overflow: auto;
-	min-block-size: var(--sb-code-editor-min-height, 6rem);
+	min-block-size: var(--sb-code-editor-min-height, 0);
 	max-block-size: var(--sb-code-editor-height, 28rem);
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
@@ -221,6 +221,7 @@ rocket('sb-code-editor', {
 						autocomplete="off"
 						autocorrect="off"
 						wrap="off"
+						rows="1"
 						aria-label="${label || 'Code'}"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"

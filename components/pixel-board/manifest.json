@@ -1,0 +1,102 @@
+{
+  "tag": "sb-pixel-board",
+  "props": [
+    {
+      "name": "size",
+      "attribute": "size",
+      "type": "number",
+      "default": 48,
+      "required": false,
+      "docs": {
+        "description": "Cells per side."
+      }
+    },
+    {
+      "name": "cells",
+      "attribute": "cells",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Board state: one hex digit (palette index) per cell, row by row. Usually server-owned."
+      }
+    },
+    {
+      "name": "palette",
+      "attribute": "palette",
+      "type": "array",
+      "default": [
+        "#080D1D",
+        "#1B1F3B",
+        "#283552",
+        "#7785A8",
+        "#AEBBDD",
+        "#F3F4FA",
+        "#8C6BFF",
+        "#B09AFF",
+        "#5B4FD6",
+        "#65BFFF",
+        "#2F7BE0",
+        "#6EF59A",
+        "#4CC46A",
+        "#FFD84D",
+        "#FF9F43",
+        "#E5484D"
+      ],
+      "required": false,
+      "docs": {
+        "description": "16 colours as a JSON array of #rrggbb."
+      }
+    },
+    {
+      "name": "color",
+      "attribute": "color",
+      "type": "number",
+      "default": 7,
+      "required": false,
+      "docs": {
+        "description": "Initially selected palette index."
+      }
+    },
+    {
+      "name": "local",
+      "attribute": "local",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells echoes them."
+      }
+    },
+    {
+      "name": "readonly",
+      "attribute": "readonly",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Watch only: no painting, no palette."
+      }
+    },
+    {
+      "name": "grid",
+      "attribute": "grid",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show faint cell lines."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-paint",
+      "bubbles": true,
+      "composed": true,
+      "description": "Painted cells, batched every ~80 ms during a stroke. detail: { color, cells: [index…] }."
+    }
+  ]
+}

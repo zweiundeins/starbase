@@ -7,7 +7,7 @@ author: zweiundeins
 tags: [code, editor, textarea, syntax, highlight]
 since: 2026-09-21
 preview: |
-  <sb-code-editor language="js" line-numbers style="--sb-code-editor-height: 7.5rem; --sb-code-editor-min-height: 0"><script type="text/plain">
+  <sb-code-editor language="js" line-numbers style="--sb-code-editor-height: 7.5rem"><script type="text/plain">
   rocket('sb-hello', {
     render: ({ html }) => html`<b>hi</b>`,
   })
@@ -42,7 +42,7 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 
 ```html preview
 <div data-signals:_css="'.planet { color: #8C6BFF; }'" style="display: grid; gap: 12px; inline-size: 100%">
-  <sb-code-editor language="css" data-bind:_css__prop.value style="--sb-code-editor-min-height: 0"></sb-code-editor>
+  <sb-code-editor language="css" data-bind:_css__prop.value></sb-code-editor>
   <p data-text="$_css.length + ' characters'"></p>
 </div>
 ```
@@ -51,7 +51,7 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 
 ```html preview
 <div data-signals:_runs="0" style="display: grid; gap: 12px; inline-size: 100%">
-  <sb-code-editor language="js" data-on:sb-run="$_runs++" style="--sb-code-editor-min-height: 0"><script type="text/plain">console.log('press Ctrl+Enter')</script></sb-code-editor>
+  <sb-code-editor language="js" data-on:sb-run="$_runs++"><script type="text/plain">console.log('press Ctrl+Enter')</script></sb-code-editor>
   <p data-text="'Runs: ' + $_runs"></p>
 </div>
 ```
