@@ -33,3 +33,9 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - `.github/ISSUE_TEMPLATE/new-component.yml` is the "Submit a component" form (`/submit` redirects to it). Its labels must match `internal/submission` (a test enforces it).
 - `.github/workflows/component-from-issue.yml`: `build` (read-only, runs untrusted code only there: `cmd/fromissue` then `cmd/manifests`) → `pull-request` (write, never executes submitted code) / `report-failure` (comments on the issue).
 - Submissions may link a public GitHub repo; `submission.Fetch` pins the commit, recorded as `source:` front matter (shown as a Source link).
+
+## Code playground
+- `/playground` page (`internal/web/playground.go`, `ui.CodePlaygroundPage`): sources `?s=<snippet>`, `?component=<slug>` (JS + `Component.Examples`), or a starter. The editor area is a `data-ignore-morph` island; the share strip around it is stream-rendered from `tab_state.PlaygroundShare`.
+- `/playground/run` is the sandbox runner (own CSP, opaque origin via `sandbox="allow-scripts"`). The protocol is documented in `components/code-playground/README.md`. Public assets send `Access-Control-Allow-Origin: *` for it.
+- Rocket gotcha: before Datastar is ready, a later `rocket()` call for the same tag replaces the queued one, so the runner imports the edited code first and the parent drops deps whose tags the code defines.
+- Snippets: `SaveSnippet` (≤ 64 KB, immutable, `snippets` table). `GET /playground/snippet/{id}` is public JSON. The submission bot imports playground links only from `STARBASE_URL`.

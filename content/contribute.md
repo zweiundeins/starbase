@@ -8,6 +8,8 @@ description: How to add a Rocket component to the Starbase community collection.
 
 **[Open the submission form →](/submit)**
 
+Tip: build it in the **[Playground](/playground)** first. Hit *Save & share*, then *Submit as component*, and the form arrives prefilled with your playground link.
+
 It's a GitHub issue form. Either:
 
 - **Paste your component:** its code, a preview snippet and some docs, or

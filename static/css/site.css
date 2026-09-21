@@ -112,7 +112,7 @@
 	.site-header__inner {
 		display: flex;
 		align-items: center;
-		gap: var(--sb-space-8);
+		gap: var(--sb-space-6);
 		min-block-size: 6rem;
 		padding-block: var(--sb-space-4);
 
@@ -156,8 +156,8 @@
 
 	.primary-nav {
 		display: flex;
-		gap: var(--sb-space-1);
-		margin-inline-start: var(--sb-space-6);
+		gap: 0;
+		margin-inline-start: var(--sb-space-4);
 
 		@container header (width < 68rem) {
 			order: 3;
@@ -201,8 +201,11 @@
 
 	.header-tools {
 		display: flex;
+		flex: 1 1 auto;
+		justify-content: flex-end;
 		align-items: center;
 		gap: var(--sb-space-4);
+		min-inline-size: 0;
 		margin-inline-start: auto;
 
 		@container header (width < 44rem) {
@@ -220,7 +223,8 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-		inline-size: clamp(14rem, 26vw, 21rem);
+		flex: 0 1 21rem;
+		min-inline-size: 10rem;
 
 		& > svg {
 			position: absolute;
