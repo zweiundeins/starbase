@@ -193,3 +193,32 @@ func (r *Reader) Stats(ctx context.Context) (Stats, error) {
 		Scan(&s.Components, &s.Authors, &s.Stars)
 	return s, err
 }
+
+type Snippet struct {
+	ID        string
+	Files     map[string]string
+	Component string
+	Author    string // GitHub login, if saved while signed in
+}
+
+// Snippet returns a saved playground snippet, or nil.
+func (r *Reader) Snippet(ctx context.Context, id string) (*Snippet, error) {
+	var sn Snippet
+	var files string
+	var comp, author sql.NullString
+	err := r.tx.QueryRowContext(ctx, `
+		SELECT s.id, s.files, s.component, u.login
+		FROM snippets s LEFT JOIN users u ON u.id = s.user_id WHERE s.id = ?`, id).
+		Scan(&sn.ID, &files, &comp, &author)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(files), &sn.Files); err != nil {
+		return nil, err
+	}
+	sn.Component, sn.Author = comp.String, author.String
+	return &sn, nil
+}

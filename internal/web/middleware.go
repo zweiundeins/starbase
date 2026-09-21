@@ -90,8 +90,11 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 				return
 			}
 			limit := int64(64 << 10)
-			if strings.HasPrefix(r.URL.Path, "/dev/") {
+			switch {
+			case strings.HasPrefix(r.URL.Path, "/dev/"):
 				limit = 4 << 20
+			case r.URL.Path == "/cmd/snippet":
+				limit = 512 << 10 // 64 KB of code, JSON-escaped
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}

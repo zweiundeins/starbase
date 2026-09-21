@@ -146,6 +146,15 @@ type CodePlaygroundView struct {
 	Deps          string // JSON {tag: module URL}
 	Component     string // slug, when opened from a component page
 	ComponentName string
+	Loaded        string // snippet id from ?s=
+	Author        string // snippet author (GitHub login), if any
+	Share         string // snippet id to offer as a link
+	ShareURL      string
+}
+
+func shareExpr(component string) string {
+	return "el.classList.add('is-pending'); @post('/cmd/snippet', {payload: {tabid: $tabid, component: " + jsString(component) +
+		", files: document.querySelector('sb-code-playground').files}})"
 }
 
 templ CodePlaygroundPage(v CodePlaygroundView) {
@@ -171,6 +180,28 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 		</header>
 		<div class="code-page__island" data-ignore-morph>
 			<sb-code-playground initial={ v.Initial } deps={ v.Deps }></sb-code-playground>
+		</div>
+		<div class="code-page__actions">
+			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) }>
+				@Icon("rocket")
+				Save &amp; share
+			</button>
+			if v.Share != "" {
+				<span>
+					if v.Author != "" && v.Share == v.Loaded {
+						By { v.Author } ·
+					}
+					Link:
+				</span>
+				<a href={ templ.SafeURL(v.ShareURL) }>{ v.ShareURL }</a>
+				<sb-copy-button value={ v.ShareURL } label="Copy link"></sb-copy-button>
+				<a class="btn btn--outline btn--sm" href={ templ.SafeURL("/submit?s=" + v.Share) }>
+					@Icon("github")
+					Submit as component
+				</a>
+			} else {
+				<span class="muted">Saving creates a permanent link anyone can open. Then you can submit it as a component.</span>
+			}
 		</div>
 	</div>
 }

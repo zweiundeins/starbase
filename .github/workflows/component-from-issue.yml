@@ -44,6 +44,7 @@ jobs:
         run: go run ./cmd/fromissue --report report.md
         env:
           GITHUB_TOKEN: ${{ github.token }} # read-only; raises the API limit for source repos
+          STARBASE_URL: ${{ vars.STARBASE_URL }} # playground links are only imported from here
       - name: Generate manifest in headless Chrome
         run: go run -tags dev ./cmd/manifests
       - name: Validate

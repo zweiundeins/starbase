@@ -71,6 +71,12 @@
 		--btn-border: transparent;
 	}
 
+	/* Set by click handlers; the next server frame clears it. */
+	.btn.is-pending {
+		opacity: 0.6;
+		pointer-events: none;
+	}
+
 	.btn--sm {
 		block-size: var(--sb-control-height-sm);
 		padding-inline: var(--sb-space-3);

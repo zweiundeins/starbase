@@ -217,3 +217,31 @@ func TestFTSQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestSnippetSaveAndLoad(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	u := e.signIn(t, "sid-snip", "coder", 9)
+	cmd := commands.SaveSnippet{SID: "sid-snip", TabID: "tab12345", ID: "AbCd2345", Files: map[string]string{"component.js": "rocket('sb-x', {})"}, Component: "alpha", UserID: u.ID}
+	if err := e.bus.Exec(ctx, cmd); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.bus.Exec(ctx, cmd); err == nil {
+		t.Fatal("ids are unique; saving twice must fail")
+	}
+	var sn *queries.Snippet
+	var st model.TabState
+	e.q.View(ctx, func(r *queries.Reader) (err error) {
+		if sn, err = r.Snippet(ctx, "AbCd2345"); err != nil {
+			return err
+		}
+		st, _, err = r.Tab(ctx, "sid-snip", "tab12345")
+		return err
+	})
+	if sn == nil || sn.Files["component.js"] != "rocket('sb-x', {})" || sn.Component != "alpha" || sn.Author != "coder" {
+		t.Fatalf("snippet = %+v", sn)
+	}
+	if st.PlaygroundShare != "AbCd2345" {
+		t.Fatalf("tab share = %q", st.PlaygroundShare)
+	}
+}

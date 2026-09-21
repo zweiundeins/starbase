@@ -74,13 +74,14 @@ func (s *Server) Handler() http.Handler {
 	s.page(mux, "/showcase", s.contentPage("showcase", "showcase", ui.MissionControl()))
 	mux.Handle("GET /components", http.RedirectHandler("/", http.StatusMovedPermanently))
 	// The easiest way to contribute: a GitHub issue form, turned into a PR by a bot.
-	mux.Handle("GET /submit", http.RedirectHandler(strings.TrimSuffix(s.cfg.RepoURL, "/")+"/issues/new?template=new-component.yml", http.StatusSeeOther))
+	mux.HandleFunc("GET /submit", s.submit)
 
 	// Commands.
 	mux.HandleFunc("POST /cmd/browse", s.cmdBrowse)
 	mux.HandleFunc("POST /cmd/star/{slug}", s.cmdStar(true))
 	mux.HandleFunc("POST /cmd/unstar/{slug}", s.cmdStar(false))
 	mux.HandleFunc("POST /cmd/theme/{theme}", s.cmdTheme)
+	mux.HandleFunc("POST /cmd/snippet", s.cmdSnippet)
 
 	// Auth.
 	mux.HandleFunc("GET /auth/login", s.login)
@@ -93,6 +94,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /c/{path...}", s.assets.serveComponents)
 	// Code playground runner (sandboxed iframe page).
 	mux.HandleFunc("GET /playground/run", s.playgroundRun)
+	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)
 
 	// Demo data: a read-only signal stream for the live examples.
 	mux.HandleFunc("GET /demo/telemetry", s.demoTelemetry)

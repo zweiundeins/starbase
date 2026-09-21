@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -307,5 +308,76 @@ func TestCodePlaygroundPage(t *testing.T) {
 	_, body = get(t, c, ts.URL+"/components/button")
 	if !strings.Contains(body, `href="/playground?component=button"`) {
 		t.Error("component page lacks Open in playground")
+	}
+}
+
+// TestShareFlow: saving a snippet is a command; the tab's stream then shows
+// the share link and moves the address bar to it.
+func TestShareFlow(t *testing.T) {
+	ts, c := newServer(t)
+	get(t, c, ts.URL+"/playground")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, ts.URL+"/playground", strings.NewReader(`{"tabid":"tab12345"}`))
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	req.Header.Set("Accept-Encoding", "identity")
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	frames := make(chan string, 4)
+	go func() {
+		sc := bufio.NewScanner(res.Body)
+		sc.Buffer(make([]byte, 1<<20), 8<<20)
+		var f strings.Builder
+		for sc.Scan() {
+			if sc.Text() == "" && f.Len() > 0 {
+				frames <- f.String()
+				f.Reset()
+				continue
+			}
+			f.WriteString(sc.Text() + "\n")
+		}
+	}()
+	<-frames // initial frame
+	save := post(t, c, ts.URL+"/cmd/snippet", `{"tabid":"tab12345","component":"button","files":{"component.js":"rocket('sb-shared', {})","index.html":"<sb-shared></sb-shared>"}}`, "same-origin")
+	if save.StatusCode != http.StatusNoContent {
+		t.Fatalf("save = %d", save.StatusCode)
+	}
+	var frame string
+	select {
+	case frame = <-frames:
+	case <-ctx.Done():
+		t.Fatal("no frame after saving")
+	}
+	m := regexp.MustCompile(`/playground\?s=([A-Za-z0-9]{8})`).FindStringSubmatch(frame)
+	if m == nil {
+		t.Fatalf("frame lacks a share link")
+	}
+	id := m[1]
+	if !strings.Contains(frame, `href="/submit?s=`+id+`"`) {
+		t.Error("frame lacks Submit as component")
+	}
+	// The link opens the saved code; the JSON is public; /submit prefills.
+	_, body := get(t, c, ts.URL+"/playground?s="+id)
+	if !strings.Contains(body, "sb-shared") {
+		t.Error("shared link does not load the code")
+	}
+	r2, js := get(t, c, ts.URL+"/playground/snippet/"+id)
+	if r2.Header.Get("Access-Control-Allow-Origin") != "*" || !strings.Contains(js, `"component":"button"`) {
+		t.Errorf("snippet JSON = %s", js)
+	}
+	noRedirect := &http.Client{Jar: c.Jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	r3, err := noRedirect.Get(ts.URL + "/submit?s=" + id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loc := r3.Header.Get("Location")
+	if !strings.Contains(loc, "template=new-component.yml") || !strings.Contains(loc, "source="+url.QueryEscape(ts.URL+"/playground?s="+id)) || !strings.Contains(loc, "name=Shared") {
+		t.Errorf("submit redirect = %s", loc)
+	}
+	if r, _ := get(t, c, ts.URL+"/playground?s=Zzzzzzzz"); r.StatusCode != 404 {
+		t.Errorf("unknown snippet = %d", r.StatusCode)
 	}
 }

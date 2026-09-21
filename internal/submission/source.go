@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,10 +16,52 @@ import (
 
 // Source is a component fetched from the contributor's own repository.
 type Source struct {
-	URL      string // pinned: https://github.com/<owner>/<repo>/tree/<sha>/<dir>
+	URL      string // pinned: https://github.com/<owner>/<repo>/tree/<sha>/<dir>, or a playground link
 	CodeFile string // path of the component file inside the repo
 	Code     string
 	Readme   string // README.md next to the component file, if any
+	Examples string // playground index.html, if any
+}
+
+var playgroundURLRe = regexp.MustCompile(`^(https?://[^/?#]+)/playground\?s=([A-Za-z0-9]{8})$`)
+
+// IsPlaygroundLink reports whether u is a Starbase playground snippet link.
+func IsPlaygroundLink(u string) bool { return playgroundURLRe.MatchString(strings.TrimSpace(u)) }
+
+// FetchSnippet imports a playground snippet. site is the only origin
+// accepted (the bot's configured Starbase URL), so issue text can't make
+// the bot fetch arbitrary hosts.
+func FetchSnippet(ctx context.Context, client *http.Client, site, link string) (Source, error) {
+	m := playgroundURLRe.FindStringSubmatch(strings.TrimSpace(link))
+	if m == nil {
+		return Source{}, fmt.Errorf("%q is not a playground link", link)
+	}
+	if site == "" || !strings.EqualFold(m[1], strings.TrimSuffix(site, "/")) {
+		return Source{}, fmt.Errorf("playground links must point to %s", site)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m[1]+"/playground/snippet/"+m[2], nil)
+	if err != nil {
+		return Source{}, err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return Source{}, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return Source{}, fmt.Errorf("could not load the playground snippet (%s)", res.Status)
+	}
+	var sn struct {
+		Files map[string]string `json:"files"`
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, maxTarball)).Decode(&sn); err != nil {
+		return Source{}, err
+	}
+	code := sn.Files["component.js"]
+	if n := len(tagInCodeRe.FindAllString(code, -1)); n != 1 {
+		return Source{}, fmt.Errorf("the snippet's component.js must define exactly one component with `rocket('sb-…')` (found %d)", n)
+	}
+	return Source{URL: m[0], CodeFile: "component.js", Code: code, Examples: sn.Files["index.html"]}, nil
 }
 
 var repoURLRe = regexp.MustCompile(`^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:/tree/([^/]+)(?:/(.*?))?)?/?$`)
@@ -156,6 +199,24 @@ func (s *Submission) Apply(src Source) {
 	if strings.TrimSpace(s.Preview) == "" {
 		s.Preview = meta.Preview
 	}
+	// Playground examples: the first block previews the card, all of them
+	// become live examples when there are no docs.
+	if ex := strings.TrimSpace(src.Examples); ex != "" {
+		blocks := strings.Split(ex, "\n\n")
+		if strings.TrimSpace(s.Preview) == "" {
+			s.Preview = blocks[0]
+		}
+		if strings.TrimSpace(s.Docs) == "" || s.Docs == DocsTemplate {
+			var b strings.Builder
+			b.WriteString("## Examples\n")
+			for _, blk := range blocks {
+				if blk = strings.TrimSpace(blk); blk != "" {
+					b.WriteString("\n```html preview\n" + blk + "\n```\n")
+				}
+			}
+			s.Docs = b.String()
+		}
+	}
 	if strings.TrimSpace(s.Playground) == "" && meta.Playground != nil {
 		s.Playground = yamlMarshal(meta.Playground)
 	}
@@ -170,3 +231,7 @@ func splitFrontMatter(md string) (fm, body string) {
 	}
 	return "", md
 }
+
+// DocsTemplate is the Documentation field's pre-filled text in the issue
+// form; submissions that leave it untouched get generated docs instead.
+const DocsTemplate = "What it is for, in a sentence or two.\n\n## Examples\n\n### Basic\n\n```html preview\n<sb-your-name label=\"Hello\"></sb-your-name>\n```\n\n## Accessibility\n\nKeyboard support, roles and labels."

@@ -41,9 +41,10 @@ func main() {
 	dir := flag.String("dir", "components", "components directory")
 	report := flag.String("report", "report.md", "where to write the markdown report")
 	api := flag.String("api", "https://api.github.com", "GitHub API base URL")
+	site := flag.String("site", os.Getenv("STARBASE_URL"), "public Starbase URL; playground links must point here")
 	flag.Parse()
 
-	res, name, err := run(*eventPath, *dir, *api)
+	res, name, err := run(*eventPath, *dir, *api, *site)
 	if err != nil {
 		msg := "🛑 **This submission can't be turned into a pull request yet.**\n\n" + err.Error() +
 			"\n\nEdit the issue to fix it, and I'll try again automatically."
@@ -63,7 +64,7 @@ func main() {
 	fmt.Printf("wrote %s/%s\n", *dir, res.Slug)
 }
 
-func run(eventPath, dir, api string) (submission.Result, string, error) {
+func run(eventPath, dir, api, site string) (submission.Result, string, error) {
 	raw, err := os.ReadFile(eventPath)
 	if err != nil {
 		return submission.Result{}, "", err
@@ -78,7 +79,13 @@ func run(eventPath, dir, api string) (submission.Result, string, error) {
 	if sub.Source != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		src, err := submission.Fetch(ctx, http.DefaultClient, api, os.Getenv("GITHUB_TOKEN"), sub.Source)
+		var src submission.Source
+		var err error
+		if submission.IsPlaygroundLink(sub.Source) {
+			src, err = submission.FetchSnippet(ctx, http.DefaultClient, site, sub.Source)
+		} else {
+			src, err = submission.Fetch(ctx, http.DefaultClient, api, os.Getenv("GITHUB_TOKEN"), sub.Source)
+		}
 		if err != nil {
 			return submission.Result{}, "", fmt.Errorf("- %v", err)
 		}

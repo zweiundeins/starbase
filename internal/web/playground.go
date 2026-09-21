@@ -1,15 +1,21 @@
 package web
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"html"
 	"io/fs"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/a-h/templ"
+	"github.com/starfederation/datastar-go/datastar"
 
+	"starbase/internal/commands"
+	"starbase/internal/queries"
 	"starbase/internal/ui"
 )
 
@@ -167,8 +173,22 @@ func (s *Server) componentDeps() string {
 
 func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	files := map[string]string{"component.js": starterJS, "index.html": starterHTML}
-	v := ui.CodePlaygroundView{Deps: s.componentDeps()}
-	if slug := rc.req.URL.Query().Get("component"); slug != "" {
+	v := ui.CodePlaygroundView{Deps: s.componentDeps(), Share: rc.tab.PlaygroundShare}
+	q := rc.req.URL.Query()
+	if id := q.Get("s"); id != "" {
+		sn, err := rc.r.Snippet(rc.ctx, id)
+		if err != nil {
+			return view{}, err
+		}
+		if sn == nil {
+			return view{}, errNotFound
+		}
+		files = sn.Files
+		v.Loaded, v.Author = sn.ID, sn.Author
+		if c, ok := s.catalog.Get(sn.Component); ok {
+			v.Component, v.ComponentName = c.Slug, c.Name
+		}
+	} else if slug := q.Get("component"); slug != "" {
 		comp, ok := s.catalog.Get(slug)
 		if !ok {
 			return view{}, errNotFound
@@ -186,10 +206,107 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	if v.ComponentName != "" {
 		title = v.ComponentName + " in the playground · Starbase"
 	}
+	if v.Share == "" {
+		v.Share = v.Loaded
+	}
+	if v.Share != "" {
+		v.ShareURL = strings.TrimSuffix(s.cfg.BaseURL, "/") + "/playground?s=" + v.Share
+	}
+	u := ""
+	if rc.tab.PlaygroundShare != "" {
+		u = "/playground?s=" + rc.tab.PlaygroundShare // the address bar follows the last save
+	}
 	return view{
+		URL:         u,
 		Title:       title,
 		Description: "Edit Rocket components live: code, HTML and a sandboxed preview.",
 		Nav:         "playground",
 		Body:        func(ui.Shell) templ.Component { return ui.CodePlaygroundPage(v) },
 	}, nil
+}
+
+const idAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+
+func snippetID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	for i := range b {
+		b[i] = idAlphabet[int(b[i])%len(idAlphabet)]
+	}
+	return string(b)
+}
+
+// cmdSnippet saves the playground's files. The payload is sent with
+// Datastar's payload option, so the files never ride along as signals.
+func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
+	var p struct {
+		TabID     string            `json:"tabid"`
+		Files     map[string]string `json:"files"`
+		Component string            `json:"component"`
+	}
+	if err := datastar.ReadSignals(r, &p); err != nil {
+		http.Error(w, "bad payload", http.StatusBadRequest)
+		return
+	}
+	var uid int64
+	s.q.View(r.Context(), func(rd *queries.Reader) error {
+		if u, _ := rd.SessionUser(r.Context(), sessionID(r)); u != nil {
+			uid = u.ID
+		}
+		return nil
+	})
+	if _, ok := s.catalog.Get(p.Component); !ok {
+		p.Component = ""
+	}
+	s.send(w, r, commands.SaveSnippet{SID: sessionID(r), TabID: p.TabID, ID: snippetID(), Files: p.Files, Component: p.Component, UserID: uid})
+}
+
+// snippetJSON is the public, read-only form of a snippet (used by the
+// submission bot to import playground links).
+func (s *Server) snippetJSON(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var sn *queries.Snippet
+	err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
+		sn, err = rd.Snippet(r.Context(), id)
+		return
+	})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if sn == nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable") // snippets never change
+	json.NewEncoder(w).Encode(map[string]any{"id": sn.ID, "files": sn.Files, "component": sn.Component, "author": sn.Author})
+}
+
+var tagRe = regexp.MustCompile(`rocket\(\s*['"](sb-[a-z0-9-]+)['"]`)
+
+// submit sends people to the "Submit a component" issue form. With ?s=<id>
+// it prefills the form with the playground link, which the bot imports, so
+// no code has to travel in the URL.
+func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
+	form := strings.TrimSuffix(s.cfg.RepoURL, "/") + "/issues/new"
+	q := url.Values{"template": {"new-component.yml"}}
+	if id := r.URL.Query().Get("s"); commands.SnippetIDRe.MatchString(id) {
+		var sn *queries.Snippet
+		s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
+			sn, err = rd.Snippet(r.Context(), id)
+			return
+		})
+		if sn != nil {
+			q.Set("source", strings.TrimSuffix(s.cfg.BaseURL, "/")+"/playground?s="+id)
+			if m := tagRe.FindStringSubmatch(sn.Files["component.js"]); m != nil {
+				name := strings.ReplaceAll(strings.TrimPrefix(m[1], "sb-"), "-", " ")
+				name = strings.ToUpper(name[:1]) + name[1:]
+				q.Set("name", name)
+				q.Set("title", "[Component]: "+name)
+			}
+		}
+	}
+	http.Redirect(w, r, form+"?"+q.Encode(), http.StatusSeeOther)
 }
