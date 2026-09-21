@@ -19,7 +19,7 @@ playground:
   style: "--sb-sparkline-width: 18rem"
 ---
 
-A small inline chart drawn as a stepped pixel line with a soft area underneath. Give it a JSON `values` array, or use push mode: the starting `value` is the first point, and every time the `value` attribute changes, a point is appended. The line fills the width until it holds `length` points, then scrolls. Point `value` at a signal, and the line follows it as the signal ticks, from the client or from the server.
+A small inline chart drawn as a stepped pixel line with a soft area underneath. Give it a JSON `values` array, or use push mode: the starting `value` is the first point, and every time the `value` attribute changes, a point is appended. The chart is always sized for `length` points, so its height is fixed from the start: fewer points spread across the width, and once it's full the line scrolls. Point `value` at a signal, and the line follows it as the signal ticks, from the client or from the server.
 
 ## Examples
 

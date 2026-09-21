@@ -101,11 +101,14 @@ rocket('sb-sparkline', {
 		const paint = () => {
 			raf = 0
 			const { data } = buffers.get(host)
-			// The line fills the width until it holds `length` points, then scrolls.
-			const slots = Math.max(2, Math.min(props.length, data.length))
-			const w = (slots - 1) * STEP + 3
-			if (canvas.width !== w) canvas.width = w
-			canvas.style.aspectRatio = `${w} / ${H}`
+			// The canvas is always sized for `length` points, so the height is
+			// fixed from the first frame. Fewer points spread across the width;
+			// once full, the line scrolls with the newest point at the right.
+			const w = (props.length - 1) * STEP + 3
+			if (canvas.width !== w) {
+				canvas.width = w
+				canvas.style.aspectRatio = `${w} / ${H}`
+			}
 			const img = ctx.createImageData(w, H)
 			const d = img.data
 			const [token, fallback] = TONES[props.tone]
@@ -123,20 +126,23 @@ rocket('sb-sparkline', {
 				if (d[i + 3] >= a) return
 				d[i] = c[0], d[i + 1] = c[1], d[i + 2] = c[2], d[i + 3] = a
 			}
-			// Right-aligned: the newest point sits at the right edge.
-			const x0 = w - 2 - (data.length - 1) * STEP
-			let prev = null
+			const span = w - 3 // from the first to the last pixel column used
+			const xOf = (i) => (data.length < props.length ? 1 + Math.round((i * span) / Math.max(1, data.length - 1)) : w - 2 - (data.length - 1 - i) * STEP)
+			let prev = null, prevX = 0
 			data.forEach((v, i) => {
-				const x = x0 + i * STEP, y = yOf(v)
-				for (let yy = y + 1; yy < H; yy++) for (let xx = x - STEP + 1; xx <= x; xx++) set(xx, yy, 46) // area
+				const x = xOf(i), y = yOf(v)
+				for (let yy = y + 1; yy < H; yy++) for (let xx = prevX + 1; xx <= x; xx++) set(xx, yy, 46) // area
 				if (prev !== null) {
-					for (let xx = x - STEP + 1; xx <= x; xx++) set(xx, prev, 255) // step: flat…
+					for (let xx = prevX + 1; xx <= x; xx++) set(xx, prev, 255) // step: flat…
 					for (let yy = Math.min(prev, y); yy <= Math.max(prev, y); yy++) set(x, yy, 255) // …then vertical
+				} else {
+					for (let yy = y + 1; yy < H; yy++) set(x, yy, 46)
 				}
 				prev = y
+				prevX = x
 			})
 			if (data.length) {
-				const x = x0 + (data.length - 1) * STEP, y = yOf(data.at(-1))
+				const x = xOf(data.length - 1), y = yOf(data.at(-1))
 				for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) set(x + xx, y + yy, 255)
 			}
 			ctx.putImageData(img, 0, 0)
