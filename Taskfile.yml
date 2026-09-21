@@ -48,6 +48,11 @@ tasks:
     cmds:
       - go run ./cmd/newcomponent {{.CLI_ARGS}}
 
+  vendor-prism:
+    desc: Rebuild the vendored Prism ES module used by sb-code-editor
+    cmds:
+      - sh scripts/vendor-prism.sh
+
   vendor:
     desc: Re-download the pinned Datastar + Rocket bundle
     vars:

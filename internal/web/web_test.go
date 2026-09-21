@@ -87,19 +87,21 @@ func post(t *testing.T, c *http.Client, url, body, site string) *http.Response {
 func TestPages(t *testing.T) {
 	ts, c := newServer(t)
 	for path, want := range map[string]int{
-		"/":                   200,
-		"/?cat=forms&q=but":   200,
-		"/components/button":  200,
-		"/components/missing": 404,
-		"/themes":             200,
-		"/contribute":         200,
-		"/about":              200,
-		"/showcase":           200,
-		"/does/not/exist":     404,
-		"/c/index.js":         200,
-		"/c/button/button.js": 200,
-		"/c/button/README.md": 404, // only the component module is public
-		"/art/hero.svg":       200,
+		"/":                              200,
+		"/?cat=forms&q=but":              200,
+		"/components/button":             200,
+		"/components/missing":            404,
+		"/themes":                        200,
+		"/contribute":                    200,
+		"/about":                         200,
+		"/showcase":                      200,
+		"/does/not/exist":                404,
+		"/c/index.js":                    200,
+		"/c/button/button.js":            200,
+		"/c/button/README.md":            404, // only a component's .js files are public
+		"/c/code-editor/vendor/prism.js": 200,
+		"/c/code-editor/manifest.json":   404,
+		"/art/hero.svg":                  200,
 	} {
 		res, _ := get(t, c, ts.URL+path)
 		if res.StatusCode != want {

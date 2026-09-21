@@ -36,6 +36,7 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 
 ## Code playground
 - `/playground` page (`internal/web/playground.go`, `ui.CodePlaygroundPage`): sources `?s=<snippet>`, `?component=<slug>` (JS + `Component.Examples`), or a starter. The editor area is a `data-ignore-morph` island; the share strip around it is stream-rendered from `tab_state.PlaygroundShare`.
+- `sb-code-editor` highlights with Prism, vendored as an ES module in `components/code-editor/vendor/prism.js` (js-templates plugin, plus `/* css */` templates and `data-*` values as JS). Rebuild it with `go tool task vendor-prism`. Components may import `'datastar'` or files in their own folder; `/c/<slug>/**.js` is served.
 - `/playground/run` is the sandbox runner (own CSP, opaque origin via `sandbox="allow-scripts"`). The protocol is documented in `components/code-playground/README.md`. Public assets send `Access-Control-Allow-Origin: *` for it.
 - Rocket gotcha: before Datastar is ready, a later `rocket()` call for the same tag replaces the queued one, so the runner imports the edited code first and the parent drops deps whose tags the code defines.
 - Snippets: `SaveSnippet` (≤ 64 KB, immutable, `snippets` table). `GET /playground/snippet/{id}` is public JSON. The submission bot imports playground links only from `STARBASE_URL`.

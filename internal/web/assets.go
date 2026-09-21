@@ -119,19 +119,21 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 		w.Write(a.components.body)
 		return
 	}
+	// A component's own .js files are public (its module, plus anything it
+	// imports relatively, like vendored libraries); nothing else is.
 	slug, file, ok := strings.Cut(p, "/")
 	c, found := a.catalog.Get(slug)
-	if !ok || !found || slug+"/"+file != c.Script {
+	if !ok || !found || !strings.HasSuffix(file, ".js") || !fs.ValidPath(p) {
 		http.NotFound(w, r)
 		return
 	}
-	b, err := fs.ReadFile(a.catalog.FS, c.Script)
+	b, err := fs.ReadFile(a.catalog.FS, p)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // installable from other sites
+	w.Header().Set("Access-Control-Allow-Origin", "*") // installable from other sites and the sandbox
 	a.cacheHeader(w, r.URL.Query().Get("v") == c.Hash)
 	w.Write(b)
 }

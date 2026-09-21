@@ -1,4 +1,5 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
+import Prism from './vendor/prism.js'
 
 // data-bind may set a property before the element is upgraded; adopt it.
 const early = (host, name) => {
@@ -25,38 +26,13 @@ const dedent = (text) => {
 	return lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0)).join('\n')
 }
 
-// ── A tiny highlighter: one regex per language, one class per capture group.
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const GRAMMARS = {
-	js: {
-		re: /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`)|\b(\d+(?:\.\d+)?)\b|\b(import|from|export|const|let|var|function|return|if|else|for|while|of|in|new|class|extends|async|await|try|catch|finally|throw|typeof|instanceof|null|undefined|true|false|this|switch|case|break|continue|default)\b|([A-Za-z_$][\w$]*)(?=\s*\()/g,
-		classes: ['c', 's', 'm', 'k', 'f'],
-	},
-	html: {
-		re: /(<!--[\s\S]*?-->)|(<\/?[A-Za-z][\w-]*|\/?>)|("[^"]*"|'[^']*')|([\w:.@$-]+)(?==)/g,
-		classes: ['c', 't', 's', 'a'],
-	},
-	css: {
-		re: /(\/\*[\s\S]*?\*\/)|("[^"]*"|'[^']*')|(--[\w-]+|[\w-]+(?=\s*:(?!:)))|(#[0-9a-fA-F]{3,8}\b|-?\b\d+(?:\.\d+)?(?:px|rem|em|%|s|ms|deg|vh|vw|fr|ch)?\b)|(@[\w-]+)/g,
-		classes: ['c', 's', 'a', 'm', 'k'],
-	},
-}
+// Highlighting by Prism (vendored with the js-templates plugin), so the
+// HTML and CSS inside Rocket's html`…` and /* css */ `…` templates light up.
+const GRAMMARS = { js: 'javascript', html: 'markup', css: 'css' }
 const highlight = (src, lang) => {
-	const g = GRAMMARS[lang] || GRAMMARS.js
-	let out = '', last = 0
-	g.re.lastIndex = 0
-	for (let m; (m = g.re.exec(src)); ) {
-		if (!m[0]) {
-			g.re.lastIndex++
-			continue
-		}
-		out += esc(src.slice(last, m.index))
-		const i = m.slice(1).findIndex((x) => x !== undefined)
-		out += `<span class="${g.classes[i]}">${esc(m[0])}</span>`
-		last = m.index + m[0].length
-	}
+	const name = GRAMMARS[lang] || 'javascript'
 	// A trailing newline keeps the last (empty) line's height in the <pre>.
-	return out + esc(src.slice(last)) + '\n'
+	return Prism.highlight(src, Prism.languages[name], name) + '\n'
 }
 
 const styles = /* css */ `
@@ -126,13 +102,17 @@ textarea {
 }
 textarea::selection { background: var(--_sel); -webkit-text-fill-color: transparent; }
 :host([readonly]) textarea { caret-color: transparent; }
-.c { color: var(--_muted); font-style: italic; }
-.s { color: var(--sb-green-3, var(--sb-datastar, #6EF59A)); }
-.m { color: var(--sb-amber-3, var(--sb-warn, #F5C451)); }
-.k { color: var(--sb-violet-3, var(--sb-brand-light, #B09AFF)); }
-.f { color: var(--sb-violet-2, #CBBEFF); }
-.t { color: var(--sb-cyan-3, var(--sb-accent, #65BFFF)); }
-.a { color: var(--sb-violet-2, #CBBEFF); }
+/* Prism tokens, coloured from theme tokens. */
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--_muted); font-style: italic; }
+.token.string, .token.char, .token.attr-value, .token.template-punctuation, .token.url { color: var(--sb-green-3, var(--sb-datastar, #6EF59A)); }
+.token.number, .token.boolean, .token.constant, .token.unit, .token.hexcode { color: var(--sb-amber-3, var(--sb-warn, #F5C451)); }
+.token.keyword, .token.atrule, .token.important, .token.rule { color: var(--sb-violet-3, var(--sb-brand-light, #B09AFF)); }
+.token.function, .token.class-name, .token.attr-name, .token.property { color: var(--sb-violet-2, #CBBEFF); }
+.token.tag, .token.selector, .token.builtin { color: var(--sb-cyan-3, var(--sb-accent, #65BFFF)); }
+.token.punctuation, .token.operator, .token.interpolation-punctuation { color: var(--_muted); }
+/* Code inside attributes and templates keeps the base text colour. */
+.token.attr-value .token.punctuation.attr-equals, .token.attr-value > .token.punctuation:first-child { color: var(--_muted); }
+.token.embedded-code, .token.script, .token.style, .token.interpolation, .token.value.javascript { color: var(--_text); }
 `
 
 rocket('sb-code-editor', {
