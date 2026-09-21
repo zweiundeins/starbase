@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	Addr    string // listen address, e.g. ":8080"
+	Addr    string // listen address, e.g. ":7331"
 	BaseURL string // public origin, used for OAuth redirects
 	DBPath  string
 
@@ -27,8 +27,8 @@ type Config struct {
 func Load() Config {
 	loadDotEnv(".env")
 	return Config{
-		Addr:               cmp.Or(os.Getenv("ADDR"), ":8080"),
-		BaseURL:            cmp.Or(os.Getenv("BASE_URL"), "http://localhost:8080"),
+		Addr:               cmp.Or(os.Getenv("ADDR"), ":7331"),
+		BaseURL:            cmp.Or(os.Getenv("BASE_URL"), "http://localhost:7331"),
 		DBPath:             cmp.Or(os.Getenv("DB_PATH"), "data/starbase.db"),
 		GitHubClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 		GitHubClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),

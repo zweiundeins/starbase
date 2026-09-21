@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket × morph re-entrancy</title>
+<script type="module">
+  import { rocket } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+
+  // The smallest possible Rocket component.
+  rocket('x-item', { render: ({ html }) => html`<b>x</b>` })
+
+  // Control: a plain custom element in the same position never fails.
+  customElements.define('plain-item', class extends HTMLElement {})
+</script>
+
+<p>Open the devtools console, then click "swap (Rocket)". The morph reorders two keyed siblings that each contain a Rocket element, and the console shows <code>RangeError: Maximum call stack size exceeded</code>. The plain button does the same with a plain custom element and stays clean.</p>
+<button data-on:click="@get('swap.html')">swap (Rocket)</button>
+<button data-on:click="@get('swap-plain.html')">swap (plain custom element)</button>
+
+<div id="list">
+  <p id="a"><x-item></x-item></p>
+  <p id="b"><x-item></x-item></p>
+</div>
+
+<div id="plain">
+  <p id="pa"><plain-item>a</plain-item></p>
+  <p id="pb"><plain-item>b</plain-item></p>
+</div>

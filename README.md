@@ -10,7 +10,7 @@ Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node,
 
 ```sh
 cp .env.example .env         # optional: add GitHub OAuth credentials
-go tool task live            # dev server with live reload on http://localhost:8080
+go tool task live            # dev server with live reload on http://localhost:7331
 go tool task test            # vet + tests (including component validation)
 go tool task build           # production binary in bin/starbase
 ```
@@ -49,8 +49,8 @@ POST /cmd/...        commands: validate → enqueue → 204. Never HTML.
 
 | Variable | Default | |
 |---|---|---|
-| `ADDR` | `:8080` | listen address |
-| `BASE_URL` | `http://localhost:8080` | public origin (OAuth callback, CSRF origin, `__Host-` cookies on https) |
+| `ADDR` | `:7331` | listen address |
+| `BASE_URL` | `http://localhost:7331` | public origin (OAuth callback, CSRF origin, `__Host-` cookies on https) |
 | `DB_PATH` | `data/starbase.db` | SQLite file |
 | `REPO_URL` | `https://github.com/zweiundeins/starbase` | "Edit on GitHub" links |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | | GitHub OAuth app; callback `$BASE_URL/auth/github/callback` |
