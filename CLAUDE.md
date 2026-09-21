@@ -1,6 +1,6 @@
 # Starbase: notes for Claude
 
-Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (modernc, pure Go), Datastar v1.0.4 + Rocket (vendored in `static/vendor/datastar-rocket.js`).
+Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (modernc, pure Go), Datastar v1.0.4 + Rocket (vendored in `static/vendor/datastar-rocket.js`).
 
 ## Commands
 - `go tool task live`: dev server (air, `-tags dev`, live reload via `/dev/reload`)

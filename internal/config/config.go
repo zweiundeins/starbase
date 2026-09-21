@@ -20,6 +20,8 @@ type Config struct {
 	RepoURL string
 
 	Dev bool
+
+	Version string // set by main from build flags
 }
 
 // Load reads configuration from the environment, after filling unset

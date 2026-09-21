@@ -145,7 +145,8 @@ templ Footer(s Shell) {
 			</span>
 			<span>
 				Components are MIT licensed by their authors ·
-				<a href={ safe(s.RepoURL) }>Source</a>
+				<a href={ safe(s.RepoURL) }>Source</a> ·
+				<a href={ safe(s.RepoURL + "/blob/main/CHANGELOG.md") }>{ s.Version }</a>
 			</span>
 		</div>
 	</footer>

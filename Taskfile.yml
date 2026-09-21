@@ -22,8 +22,11 @@ tasks:
   build:
     desc: Build the production binary
     deps: [generate]
+    vars:
+      VERSION:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo dev
     cmds:
-      - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o {{.BIN}} ./cmd/starbase
+      - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BIN}} ./cmd/starbase
 
   run:
     desc: Build and run the production binary
@@ -37,6 +40,11 @@ tasks:
     cmds:
       - go vet ./...
       - go test ./...
+
+  vulncheck:
+    desc: Scan for known vulnerabilities (govulncheck)
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   manifests:
     desc: Regenerate every components/*/manifest.json (needs Chrome/Chromium)

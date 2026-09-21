@@ -1,6 +1,6 @@
 module starbase
 
-go 1.26.5
+go 1.27.1
 
 require (
 	github.com/a-h/templ v0.3.1020

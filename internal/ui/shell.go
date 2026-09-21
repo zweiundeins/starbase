@@ -41,6 +41,7 @@ type Shell struct {
 	// ManifestTags lists every component tag; in dev the page publishes
 	// their Rocket manifests to the server once they are defined.
 	ManifestTags []string
+	Version      string
 }
 
 type navItem struct{ Key, Label, Href string }

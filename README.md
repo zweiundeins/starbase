@@ -1,12 +1,37 @@
 # Starbase
 
-A community gallery of [Rocket](https://data-star.dev/reference/rocket) web components for [Datastar](https://data-star.dev), in the spirit of shoelace.style.
+[![CI](https://github.com/zweiundeins/starbase/actions/workflows/ci.yml/badge.svg)](https://github.com/zweiundeins/starbase/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/zweiundeins/starbase)](https://github.com/zweiundeins/starbase/releases)
+[![Go](https://img.shields.io/github/go-mod/go-version/zweiundeins/starbase)](go.mod)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+**Community Components for Rocket.** A community gallery of [Rocket](https://data-star.dev/reference/rocket) web components for [Datastar](https://data-star.dev), in the spirit of shoelace.style.
 
 Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node, no bundler.
 
 ![mockup](docs/design/mockup.png)
 
-## Quick start
+## Features
+
+- **18 components** (forms, feedback, layout, data display, 3D/pixel experiments), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
+- **Code playground:** edit a component's JS and HTML in a sandboxed live preview, save and share immutable links, submit the result as a component.
+- **Submissions without tools:** a GitHub issue form (paste code, link a repo or a playground link); a bot validates it and opens a pull request.
+- **Autoloader:** one `<script>` loads each `<sb-*>` component on first use, on any site.
+- **Showcase:** a live Mission Control dashboard and a multiplayer pixel board, both server-driven.
+- **Realtime everything:** every tab keeps one Brotli-compressed SSE render stream; state changes are CQRS commands.
+- Themes, pixel-art design system, zero Node, single static binary with embedded assets and SQLite.
+
+## Run a release
+
+Binaries for Linux, macOS and Windows are on the [releases page](https://github.com/zweiundeins/starbase/releases), and a multi-arch image on GHCR:
+
+```sh
+docker run -p 7331:7331 -v starbase-data:/data ghcr.io/zweiundeins/starbase:latest
+```
+
+The binary is self-contained (assets, components and migrations are embedded; SQLite is pure Go). `starbase --version` prints the version, `/healthz` answers `ok <version>`.
+
+## Develop
 
 ```sh
 cp .env.example .env         # optional: add GitHub OAuth credentials
@@ -93,6 +118,14 @@ Every open tab keeps one long-lived SSE connection (its render stream). Over HTT
 | `REPO_URL` | `https://github.com/zweiundeins/starbase` | "Edit on GitHub" links |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | | GitHub OAuth app; callback `$BASE_URL/auth/github/callback` |
 
+## Project
+
+- [CHANGELOG.md](CHANGELOG.md): release notes
+- [CONTRIBUTING.md](CONTRIBUTING.md): submitting components and working on the site
+- [SECURITY.md](SECURITY.md): reporting vulnerabilities
+
+CI runs vet, tests, the templ and manifest checks, govulncheck, cross-platform builds and a container build on every push. Pushing a `v*` tag publishes a GitHub release (binaries, checksums, notes from the changelog) and the image.
+
 ## Licences
 
-Code MIT. Fonts: Pixelify Sans and JetBrains Mono (SIL OFL, see `static/fonts`). Icons: Lucide (ISC), GitHub mark (MIT, Octicons). Datastar + Rocket bundle: MIT, vendored in `static/vendor`.
+Code: [MIT](LICENSE), © zwei und eins gmbh and starbase contributors. Fonts: Pixelify Sans and JetBrains Mono (SIL OFL, see `static/fonts`). Icons: Lucide (ISC), GitHub mark (MIT, Octicons). Datastar + Rocket bundle: MIT, vendored in `static/vendor`.

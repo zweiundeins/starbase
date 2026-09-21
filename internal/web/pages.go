@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"hash/fnv"
@@ -97,6 +98,7 @@ func (s *Server) shell(req *http.Request, user *model.User, v view) ui.Shell {
 		Boot:         s.boot,
 		Dev:          s.cfg.Dev,
 		ManifestTags: s.manifestTags(),
+		Version:      cmp.Or(s.cfg.Version, "dev"),
 	}
 }
 
