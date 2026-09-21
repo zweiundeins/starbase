@@ -10,6 +10,7 @@ const styles = /* css */ `
 	display: inline-block;
 	vertical-align: middle;
 }
+.anchor { display: inline-block; }
 .tip {
 	position: absolute;
 	z-index: 70;
@@ -59,20 +60,21 @@ rocket('sb-tooltip', {
 	manifest: {
 		slots: [{ name: 'default', description: 'The trigger element.' }],
 	},
-	setup: ({ $$, adoptStyles, cleanup, host, observeProps, props }) => {
+	setup: ({ $$, adoptStyles, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		$$.forced = props.open
 		$$.hover = false
 		observeProps(() => ($$.forced = props.open), 'open')
-		const on = () => ($$.hover = true)
-		const off = () => ($$.hover = false)
-		const esc = (e) => e.key === 'Escape' && off()
-		const events = [['pointerenter', on], ['pointerleave', off], ['focusin', on], ['focusout', off], ['keydown', esc]]
-		for (const [type, fn] of events) host.addEventListener(type, fn)
-		cleanup(() => events.forEach(([type, fn]) => host.removeEventListener(type, fn)))
 	},
+	// Events from the slotted trigger bubble through the anchor.
 	render: ({ html, props: { content, placement } }) => html`
-		<slot></slot>
+		<span class="anchor"
+			data-on:pointerenter="$$hover = true"
+			data-on:pointerleave="$$hover = false"
+			data-on:focusin="$$hover = true"
+			data-on:focusout="$$hover = false"
+			data-on:keydown="evt.key === 'Escape' && ($$hover = false)"
+		><slot></slot></span>
 		<span class="tip ${placement}" part="tip" role="tooltip" data-class:show="$$forced || $$hover">${content}</span>
 	`,
 })

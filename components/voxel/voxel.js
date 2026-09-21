@@ -227,6 +227,9 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 4px; bo
 
 const rad = (d) => (d * Math.PI) / 180
 
+// setup hands onFirstRender a function that attaches the rendered canvas.
+const buffers = new WeakMap()
+
 rocket('sb-voxel', {
 	props: ({ number, oneOf }) => ({
 		model: oneOf('rocket', 'satellite', 'planet').default('rocket').docs({ description: 'Which voxel model to show.' }),
@@ -243,17 +246,14 @@ rocket('sb-voxel', {
 	},
 	// The canvas is repainted imperatively; props never re-render the DOM.
 	renderOnPropChange: false,
-	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
-	render: ({ html }) => html`<canvas part="canvas" width="${RES}" height="${RES}" tabindex="0" role="img"></canvas>`,
-	onFirstRender: ({ cleanup, emit, host, observeProps, props }) => {
-		const canvas = host.shadowRoot.querySelector('canvas')
-		const ctx = canvas.getContext('2d')
-		const img = ctx.createImageData(RES, RES)
-		const zbuf = new Float32Array(RES * RES)
+	setup: ({ action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
+		adoptStyles(host, styles)
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+		const zbuf = new Float32Array(RES * RES)
+		let canvas = null, ctx = null, img = null // attached in onFirstRender
 
 		// Local orbit state: drag offsets and spin, never written to attributes.
-		let dragYaw = 0, dragPitch = 0, spun = 0
+		let dragYaw = 0, dragPitch = 0, spun = 0, drag = null
 		let visible = true, raf = 0, last = 0, dirty = true
 
 		const angles = () => {
@@ -276,7 +276,7 @@ rocket('sb-voxel', {
 				spun = (spun + props.spin * dt) % 360
 				dirty = true
 			}
-			if (dirty) {
+			if (dirty && canvas) {
 				dirty = false
 				paint()
 			}
@@ -290,52 +290,64 @@ rocket('sb-voxel', {
 			dirty = true
 			schedule()
 		}
-
 		observeProps(invalidate)
+		// No declarative hook exists for these two: keep them imperative.
+		reduced.addEventListener('change', invalidate)
 		const io = new IntersectionObserver(([e]) => {
 			visible = e.isIntersecting
 			if (visible) invalidate()
 		})
 		io.observe(host)
-		reduced.addEventListener('change', invalidate)
 
-		// Drag to orbit; arrow keys too.
-		let drag = null
-		canvas.addEventListener('pointerdown', (e) => {
-			drag = { x: e.clientX, y: e.clientY }
-			canvas.setPointerCapture(e.pointerId)
+		// Drag or use the arrow keys to orbit.
+		action('grab', ({ el, evt }) => {
+			drag = { x: evt.clientX, y: evt.clientY }
+			el.setPointerCapture(evt.pointerId)
 		})
-		canvas.addEventListener('pointermove', (e) => {
+		action('drag', ({ el, evt }) => {
 			if (!drag) return
-			const k = 360 / canvas.clientWidth
-			dragYaw += (e.clientX - drag.x) * k
-			dragPitch += (e.clientY - drag.y) * k * 0.5
-			drag = { x: e.clientX, y: e.clientY }
+			const k = 360 / el.clientWidth
+			dragYaw += (evt.clientX - drag.x) * k
+			dragPitch += (evt.clientY - drag.y) * k * 0.5
+			drag = { x: evt.clientX, y: evt.clientY }
 			invalidate()
 		})
-		const end = () => {
+		action('release', () => {
 			if (!drag) return
 			drag = null
 			emit('sb-orbit', angles())
-		}
-		canvas.addEventListener('pointerup', end)
-		canvas.addEventListener('pointercancel', end)
-		canvas.addEventListener('keydown', (e) => {
-			const step = e.shiftKey ? 15 : 5
+		})
+		action('key', ({ evt }) => {
+			const step = evt.shiftKey ? 15 : 5
 			const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
-			if (!(e.key in moves)) return
-			e.preventDefault()
-			dragYaw += moves[e.key][0]
-			dragPitch += moves[e.key][1]
+			if (!(evt.key in moves)) return
+			evt.preventDefault()
+			dragYaw += moves[evt.key][0]
+			dragPitch += moves[evt.key][1]
 			invalidate()
 			emit('sb-orbit', angles())
 		})
 
-		invalidate()
+		buffers.set(host, (el) => {
+			canvas = el
+			ctx = el.getContext('2d')
+			img = ctx.createImageData(RES, RES)
+			invalidate()
+		})
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			io.disconnect()
 			reduced.removeEventListener('change', invalidate)
 		})
 	},
+	render: ({ html }) => html`
+		<canvas part="canvas" width="${RES}" height="${RES}" tabindex="0" role="img"
+			data-ref:canvas
+			data-on:pointerdown="@grab()"
+			data-on:pointermove="@drag()"
+			data-on:pointerup="@release()"
+			data-on:pointercancel="@release()"
+			data-on:keydown="@key()"></canvas>
+	`,
+	onFirstRender: ({ host, refs }) => buffers.get(host)(refs.canvas),
 })

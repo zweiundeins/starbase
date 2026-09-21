@@ -28,7 +28,6 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 h2 { margin: 0; color: var(--_text); font-size: 1rem; font-weight: 700; }
 .body { padding: 0.5rem 1.25rem 1.25rem; font-size: 0.875rem; }
 footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.875rem 1.25rem; border-block-start: 1px solid var(--_border); }
-footer[hidden] { display: none; }
 .close {
 	all: unset;
 	display: grid;
@@ -63,9 +62,10 @@ rocket('sb-modal', {
 			{ name: 'sb-close', kind: 'custom-event', bubbles: true, composed: true, description: 'After closing. detail: { reason, value }.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		$$.open = props.open
+		$$.footer = false
 		observeProps(() => ($$.open = props.open), 'open')
 		const show = () => {
 			if ($$.open) return
@@ -80,37 +80,22 @@ rocket('sb-modal', {
 		defineHostProp('show', { value: show })
 		defineHostProp('close', { value: close })
 		defineHostProp('isOpen', { get: () => $$.open })
-		action('close', () => close('button'))
 
-		// Footer buttons marked data-sb-close close the dialog and report
-		// their value, like <form method="dialog">.
-		const onClick = (e) => {
-			const btn = e.target.closest?.('[data-sb-close]')
+		action('close', () => close('button'))
+		action('cancel', ({ evt }) => {
+			evt.preventDefault() // keep the dialog in sync with $$open
+			close('escape')
+		})
+		// Elements marked data-sb-close close the dialog and report their
+		// value, like <form method="dialog">; a click on the backdrop (the
+		// dialog element itself) closes it too.
+		action('click', ({ el, evt }) => {
+			if (evt.target === el && el.localName === 'dialog') return close('backdrop')
+			const btn = evt.target.closest?.('[data-sb-close]')
 			if (btn && host.contains(btn)) close('action', btn.getAttribute('data-sb-close') || btn.textContent.trim())
-		}
-		host.addEventListener('click', onClick)
-		cleanup(() => host.removeEventListener('click', onClick))
-	},
-	onFirstRender: ({ $$, effect, host, props }) => {
-		// Rendered DOM exists now: hide an empty footer and wire the
-		// native dialog to the open signal.
-		const footer = host.shadowRoot.querySelector('footer')
-		const slot = footer.querySelector('slot')
-		const sync = () => (footer.hidden = slot.assignedNodes().length === 0)
-		slot.addEventListener('slotchange', sync)
-		sync()
-		if (props.inline) return
-		const dialog = host.shadowRoot.querySelector('dialog')
-		effect(() => {
-			if ($$.open && !dialog.open) dialog.showModal()
-			else if (!$$.open && dialog.open) dialog.close()
 		})
-		dialog.addEventListener('cancel', (e) => {
-			e.preventDefault()
-			host.close('escape')
-		})
-		dialog.addEventListener('click', (e) => {
-			if (e.target === dialog) host.close('backdrop')
+		action('slots', () => {
+			$$.footer = host.shadowRoot.querySelector('slot[name="footer"]')?.assignedNodes().length > 0
 		})
 	},
 	render: ({ html, props: { heading, inline, closable } }) => {
@@ -120,10 +105,13 @@ rocket('sb-modal', {
 				${closable ? html`<button class="close" type="button" aria-label="Close" data-on:click="@close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
 			</header>
 			<div class="body" part="body"><slot></slot></div>
-			<footer part="footer"><slot name="footer"></slot></footer>
+			<footer part="footer" data-show="$$footer" data-init="@slots()" data-on:slotchange="@slots()"><slot name="footer"></slot></footer>
 		`
 		return inline
-			? html`<section class="panel inline" part="panel" role="group" aria-labelledby="title">${inner}</section>`
-			: html`<dialog class="panel" part="panel" aria-labelledby="title">${inner}</dialog>`
+			? html`<section class="panel inline" part="panel" role="group" aria-labelledby="title" data-on:click="@click()">${inner}</section>`
+			: html`<dialog class="panel" part="panel" aria-labelledby="title"
+				data-effect="$$open ? (el.open || el.showModal()) : (el.open && el.close())"
+				data-on:cancel="@cancel()"
+				data-on:click="@click()">${inner}</dialog>`
 	},
 })
