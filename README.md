@@ -17,6 +17,19 @@ go tool task build           # production binary in bin/starbase
 
 Without GitHub credentials, dev builds sign you in as a fake user at `/auth/dev?login=you`.
 
+## Using the components on your site
+
+```html
+<script type="importmap">
+  { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" } }
+</script>
+<script type="module" src="https://<starbase>/c/autoloader.js"></script>
+
+<sb-button variant="pixel" caret>Blast off</sb-button>
+```
+
+The autoloader (generated from the catalog) imports each `<sb-*>` component the first time its tag appears. It also watches for tags added later, and loads the components a component renders itself. For shadow roots of your own components, call `discover(shadowRoot)`, which it exports.
+
 ## Adding a component
 
 **No tools needed:** use the [submission form](/submit) (a GitHub issue form). Paste the code, or link the GitHub repo the component lives in, and a bot validates it, generates its manifest and opens a pull request. See `.github/workflows/component-from-issue.yml`.

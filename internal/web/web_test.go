@@ -383,3 +383,20 @@ func TestShareFlow(t *testing.T) {
 		t.Errorf("unknown snippet = %d", r.StatusCode)
 	}
 }
+
+func TestAutoloader(t *testing.T) {
+	ts, c := newServer(t)
+	res, js := get(t, c, ts.URL+"/c/autoloader.js")
+	if res.Header.Get("Access-Control-Allow-Origin") != "*" || !strings.Contains(res.Header.Get("Content-Type"), "javascript") {
+		t.Fatalf("headers: %v", res.Header)
+	}
+	for _, want := range []string{`"sb-button":"button/button.js?v=`, `"sb-code-playground":["sb-code-editor"]`, "export const discover", "new MutationObserver"} {
+		if !strings.Contains(js, want) {
+			t.Errorf("autoloader lacks %q", want)
+		}
+	}
+	_, page := get(t, c, ts.URL+"/")
+	if !strings.Contains(page, `src="/c/autoloader.js?v=`) {
+		t.Error("pages don't use the autoloader")
+	}
+}

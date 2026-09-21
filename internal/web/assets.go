@@ -3,9 +3,11 @@ package web
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/benbjohnson/hashfs"
@@ -21,6 +23,7 @@ type assets struct {
 	art        map[string]generated
 	catalog    *catalog.Catalog
 	components generated // /c/index.js: imports every component module
+	autoloader generated // /c/autoloader.js: loads <sb-*> modules on first use
 	dev        bool
 }
 
@@ -45,12 +48,74 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 		fmt.Fprintf(&js, "import %q\n", a.ComponentScript(c))
 	}
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
+	auto := autoloaderJS(cat)
+	a.autoloader = generated{body: []byte(auto), hash: hashOf([]byte(auto))}
 	return a
+}
+
+var usesTagRe = regexp.MustCompile(`<(sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
+
+// autoloaderJS generates the autoloader: a map from every tag to its module
+// (relative to the autoloader, so it works from other sites too) and the
+// components each one renders (found as <sb-… in its source).
+func autoloaderJS(cat *catalog.Catalog) string {
+	modules := map[string]string{}
+	requires := map[string][]string{}
+	for _, c := range cat.Components {
+		modules[c.Tag] = c.Script + "?v=" + c.Hash
+	}
+	for _, c := range cat.Components {
+		src, _ := fs.ReadFile(cat.FS, c.Script)
+		seen := map[string]bool{c.Tag: true}
+		for _, m := range usesTagRe.FindAllStringSubmatch(string(src), -1) {
+			if _, ok := modules[m[1]]; ok && !seen[m[1]] {
+				seen[m[1]] = true
+				requires[c.Tag] = append(requires[c.Tag], m[1])
+			}
+		}
+	}
+	mj, _ := json.Marshal(modules)
+	rj, _ := json.Marshal(requires)
+	return `// Starbase autoloader (generated). Loads each <sb-*> component the first
+// time its tag appears, including tags added later (e.g. by a Datastar
+// morph). Components import 'datastar': the page needs an import map for it.
+//
+//   <script type="importmap">{"imports": {"datastar": "…/datastar-rocket.js"}}</script>
+//   <script type="module" src="…/c/autoloader.js"></script>
+const modules = ` + string(mj) + `
+const requires = ` + string(rj) + `
+const started = new Set()
+
+const load = (tag) => {
+	if (started.has(tag) || !modules[tag] || customElements.get(tag)) return
+	started.add(tag)
+	for (const dep of requires[tag] || []) load(dep) // tags it renders itself
+	import(new URL(modules[tag], import.meta.url).href).catch((err) => {
+		started.delete(tag)
+		console.error('[starbase] could not load <' + tag + '>', err)
+	})
+}
+
+/** Load the components used in root (an element, document or shadow root). */
+export const discover = (root) => {
+	if (root.localName?.startsWith('sb-')) load(root.localName)
+	for (const el of root.querySelectorAll?.(':not(:defined)') ?? []) load(el.localName)
+}
+
+discover(document.documentElement)
+new MutationObserver((records) => {
+	for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) discover(n)
+}).observe(document.documentElement, { subtree: true, childList: true })
+`
 }
 
 func (a *assets) Static(name string) string { return "/static/" + a.static.HashName(name) }
 func (a *assets) Datastar() string          { return a.Static("vendor/datastar-rocket.js") }
-func (a *assets) Components() string        { return "/c/index.js?v=" + a.components.hash }
+func (a *assets) Components() string        { return "/c/autoloader.js?v=" + a.autoloader.hash }
+
+// AllComponents is the module that imports every component (the gallery
+// and the dev manifest publisher need them all at once).
+func (a *assets) AllComponents() string { return "/c/index.js?v=" + a.components.hash }
 
 func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
@@ -112,11 +177,11 @@ func (a *assets) serveArt(w http.ResponseWriter, r *http.Request) {
 // catalog; nothing else in the component folders is public.
 func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 	p := r.PathValue("path")
-	if p == "index.js" {
+	if g, ok := map[string]generated{"index.js": a.components, "autoloader.js": a.autoloader}[p]; ok {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		a.cacheHeader(w, r.URL.Query().Get("v") == a.components.hash)
-		w.Write(a.components.body)
+		w.Header().Set("Access-Control-Allow-Origin", "*") // usable from any site
+		a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
+		w.Write(g.body)
 		return
 	}
 	// A component's own .js files are public (its module, plus anything it

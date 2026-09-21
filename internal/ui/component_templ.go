@@ -299,7 +299,7 @@ func ComponentPage(s Shell, v ComponentView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<h2 id=\"installation\">Installation</h2><p>Load Datastar with Rocket once per page, then import the component module. Rocket is free and ships in the <code>datastar-rocket.js</code> bundle.</p><div class=\"code-block\"><sb-copy-button class=\"code-copy\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<h2 id=\"installation\">Installation</h2><p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag. The autoloader imports each component the first time its tag appears, including tags added later by a Datastar morph.</p><div class=\"code-block\"><sb-copy-button class=\"code-copy\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

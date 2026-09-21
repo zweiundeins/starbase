@@ -63,7 +63,7 @@ templ ComponentPage(s Shell, v ComponentView) {
 				}
 				@templ.Raw(v.Component.DocHTML)
 				<h2 id="installation">Installation</h2>
-				<p>Load Datastar with Rocket once per page, then import the component module. Rocket is free and ships in the <code>datastar-rocket.js</code> bundle.</p>
+				<p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag. The autoloader imports each component the first time its tag appears, including tags added later by a Datastar morph.</p>
 				<div class="code-block">
 					<sb-copy-button class="code-copy" value={ v.InstallRaw }></sb-copy-button>
 					@templ.Raw(v.Install)

@@ -85,12 +85,17 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 
 func (s *Server) installSnippet(c *catalog.Component) string {
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
-	return fmt.Sprintf(`<script type="importmap">
+	return fmt.Sprintf(`<!-- Once per page: Datastar with Rocket, and the Starbase autoloader.
+     It loads every <sb-…> component the first time its tag appears. -->
+<script type="importmap">
   { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" } }
 </script>
-<script type="module" src="%s/c/%s"></script>
+<script type="module" src="%[1]s/c/autoloader.js"></script>
 
-%s`, base, c.Script, strings.TrimSpace(c.Preview))
+%[2]s
+
+<!-- Or skip the autoloader and load just this component: -->
+<!-- <script type="module" src="%[1]s/c/%[3]s"></script> -->`, base, strings.TrimSpace(c.Preview), c.Script)
 }
 
 func (s *Server) themesPage(rc *renderCtx) (view, error) {
