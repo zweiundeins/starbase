@@ -1,0 +1,94 @@
+{
+  "tag": "sb-code-editor",
+  "props": [
+    {
+      "name": "language",
+      "attribute": "language",
+      "type": "oneOf",
+      "default": "js",
+      "required": false,
+      "values": [
+        "js",
+        "html",
+        "css"
+      ],
+      "docs": {
+        "description": "Syntax to highlight."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Initial code (or a child <script type=\"text/plain\">). Read the live code from the value property."
+      }
+    },
+    {
+      "name": "lineNumbers",
+      "attribute": "line-numbers",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Show a line-number gutter."
+      }
+    },
+    {
+      "name": "tabSize",
+      "attribute": "tab-size",
+      "type": "number",
+      "default": 2,
+      "required": false,
+      "docs": {
+        "description": "Visual width of a tab."
+      }
+    },
+    {
+      "name": "readonly",
+      "attribute": "readonly",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Make the code read-only."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label; also the accessible name."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "input",
+      "bubbles": true,
+      "composed": true,
+      "description": "On every edit (native, re-targeted to the host)."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the field loses focus after edits."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-run",
+      "bubbles": true,
+      "composed": true,
+      "description": "Ctrl/Cmd+Enter. detail: { value }."
+    }
+  ]
+}
