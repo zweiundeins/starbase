@@ -41,6 +41,7 @@ func TestPlaygroundControls(t *testing.T) {
   props: {yaw: {min: -180, max: 180}, zoom: {min: 0.5, max: 3, step: 0.1}}
   values: {yaw: 30, model: planet}
   content: Hello
+  attrs: {items: "[1,2]"}
   exclude: [href]
 `)
 	pg := c.Playground()
@@ -74,15 +75,23 @@ func TestPlaygroundControls(t *testing.T) {
 
 	el := pg.Element()
 	for _, want := range []string{
-		`<sb-widget yaw="30" data-attr:yaw="$_pg.yaw"`,
+		` yaw="30" data-attr:yaw="$_pg.yaw"`,
 		`data-attr:spin="$_pg.spin"`,
 		`data-attr:show-value="$_pg.showValue ? null : 'false'"`,
 		`data-attr:label="$_pg.label || null"`,
 		`>Hello</sb-widget>`,
+		`<sb-widget items="[1,2]"`,
 	} {
 		if !strings.Contains(el, want) {
 			t.Errorf("element lacks %q:\n%s", want, el)
 		}
+	}
+}
+
+func TestPlaygroundMarkupKeepsStaticAttrs(t *testing.T) {
+	pg := pgComponent(t, "playground:\n  attrs: {items: \"[1,2]\"}\n").Playground()
+	if !strings.Contains(pg.Markup(), `sb-widget items='[1,2]'`) {
+		t.Errorf("markup = %s", pg.Markup())
 	}
 }
 

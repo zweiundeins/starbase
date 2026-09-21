@@ -13,12 +13,13 @@ playground:
     value: {min: 0, max: 100}
     length: {min: 4, max: 80}
     decimals: {min: 0, max: 3}
-  values: {showValue: true, tone: accent}
+  values: {showValue: true, tone: accent, value: 58}
+  attrs: {values: "[12,18,15,22,30,26,34,41,38,47,52,49]"}
   exclude: [min, max]
   style: "--sb-sparkline-width: 18rem"
 ---
 
-A small inline chart drawn as a stepped pixel line with a soft area underneath. Give it a JSON `values` array, or use push mode: every time the `value` attribute changes, a point is appended. Point `value` at a signal, and the line follows it as the signal ticks, from the client or from the server.
+A small inline chart drawn as a stepped pixel line with a soft area underneath. Give it a JSON `values` array, or use push mode: the starting `value` is the first point, and every time the `value` attribute changes, a point is appended. The line fills the width until it holds `length` points, then scrolls. Point `value` at a signal, and the line follows it as the signal ticks, from the client or from the server.
 
 ## Examples
 

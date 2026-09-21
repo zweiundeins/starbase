@@ -46,7 +46,7 @@ A fenced block tagged `html preview` renders twice: live on the page and as copy
 ```
 ````
 
-Your page automatically gets a **Playground** built from the manifest. Add a `playground:` block to the front matter to set slider ranges (`props`), starting `values`, slotted `content`, a `style` for the live element, or to `exclude` props.
+Your page automatically gets a **Playground** built from the manifest. Add a `playground:` block to the front matter to set slider ranges (`props`), starting `values`, slotted `content`, a `style` or static `attrs` for the live element (useful for arrays and JSON props, which get no control), or to `exclude` props.
 
 ## House rules
 

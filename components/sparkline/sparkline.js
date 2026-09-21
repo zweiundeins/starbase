@@ -59,6 +59,8 @@ rocket('sb-sparkline', {
 		adoptStyles(host, styles)
 		// The data buffer is instance state, not an attribute.
 		let data = [...props.values].slice(-props.length)
+		// In push mode the starting value is the first point.
+		if (!data.length && host.hasAttribute('value')) data = [props.value]
 		$$.latest = ''
 		const label = () => {
 			const last = data.at(-1)
@@ -66,13 +68,11 @@ rocket('sb-sparkline', {
 		}
 		label()
 		const buf = {
-			pushed: false,
 			get data() {
 				return data
 			},
 			push(v) {
 				if (!Number.isFinite(v)) return
-				buf.pushed = true
 				data.push(v)
 				if (data.length > props.length) data = data.slice(-props.length)
 				label()
@@ -100,9 +100,9 @@ rocket('sb-sparkline', {
 		let raf = 0
 		const paint = () => {
 			raf = 0
-			const { data, pushed } = buffers.get(host)
-			// Static data fills the width; pushed data scrolls in from the right.
-			const slots = pushed ? props.length : Math.max(2, Math.min(props.length, data.length))
+			const { data } = buffers.get(host)
+			// The line fills the width until it holds `length` points, then scrolls.
+			const slots = Math.max(2, Math.min(props.length, data.length))
 			const w = (slots - 1) * STEP + 3
 			if (canvas.width !== w) canvas.width = w
 			canvas.style.aspectRatio = `${w} / ${H}`

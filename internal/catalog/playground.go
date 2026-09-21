@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"maps"
 	"math"
+	"slices"
 	"strings"
 )
 
@@ -15,12 +17,14 @@ import (
 //	  values: { yaw: 30 }        # initial values (default: the prop defaults)
 //	  content: Blast off         # slotted content of the live element
 //	  style: "inline-size: 18rem" # inline style of the live element
+//	  attrs: {values: "[1,2,3]"}   # static attributes (e.g. props the controls skip)
 //	  exclude: [href]
 type PlaygroundMeta struct {
 	Props   map[string]PlaygroundRange `yaml:"props"`
 	Values  map[string]any             `yaml:"values"`
 	Content string                     `yaml:"content"`
 	Style   string                     `yaml:"style"`
+	Attrs   map[string]string          `yaml:"attrs"`
 	Exclude []string                   `yaml:"exclude"`
 }
 
@@ -58,6 +62,7 @@ type Playground struct {
 	Controls []Control
 	Content  string
 	Style    string
+	Attrs    map[string]string
 }
 
 // Playground derives controls from the manifest; nil if nothing is tweakable.
@@ -65,7 +70,7 @@ func (c *Component) Playground() *Playground {
 	if c.Manifest == nil {
 		return nil
 	}
-	pg := &Playground{Tag: c.Tag, Content: c.Meta.Playground.Content, Style: c.Meta.Playground.Style}
+	pg := &Playground{Tag: c.Tag, Content: c.Meta.Playground.Content, Style: c.Meta.Playground.Style, Attrs: c.Meta.Playground.Attrs}
 	excluded := map[string]bool{}
 	for _, e := range c.Meta.Playground.Exclude {
 		excluded[e] = true
@@ -169,6 +174,9 @@ func (pg *Playground) Element() string {
 	if pg.Style != "" {
 		fmt.Fprintf(&b, ` style="%s"`, html.EscapeString(pg.Style))
 	}
+	for _, k := range slices.Sorted(maps.Keys(pg.Attrs)) {
+		fmt.Fprintf(&b, ` %s="%s"`, k, html.EscapeString(pg.Attrs[k]))
+	}
 	for _, c := range pg.Controls {
 		switch c.Kind {
 		case ControlBool:
@@ -202,7 +210,11 @@ func (pg *Playground) Element() string {
 // Markup is a Datastar expression that evaluates to the element's HTML for
 // the current signals, omitting attributes that equal the defaults.
 func (pg *Playground) Markup() string {
-	parts := []string{js("<" + pg.Tag)}
+	open := "<" + pg.Tag
+	for _, k := range slices.Sorted(maps.Keys(pg.Attrs)) {
+		open += fmt.Sprintf(` %s='%s'`, k, pg.Attrs[k])
+	}
+	parts := []string{js(open)}
 	for _, c := range pg.Controls {
 		sig := "$_pg." + c.Prop
 		switch c.Kind {

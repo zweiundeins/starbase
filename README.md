@@ -33,6 +33,7 @@ playground:
   values: { spin: 30 }        # initial values
   content: Blast off          # slotted content of the live element
   style: "inline-size: 18rem"
+  attrs: { values: "[1,2,3]" } # static attributes, e.g. for props without a control
   exclude: [href]
 ```
 
