@@ -41,3 +41,10 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - `/playground/run` is the sandbox runner (own CSP, opaque origin via `sandbox="allow-scripts"`). The protocol is documented in `components/code-playground/README.md`. Public assets send `Access-Control-Allow-Origin: *` for it.
 - Rocket gotcha: before Datastar is ready, a later `rocket()` call for the same tag replaces the queued one, so the runner imports the edited code first and the parent drops deps whose tags the code defines.
 - Snippets: `SaveSnippet` (≤ 64 KB, immutable, `snippets` table). `GET /playground/snippet/{id}` is public JSON. The submission bot imports playground links only from `STARBASE_URL`.
+
+## Pixel board
+- `sb-pixel-board` takes `cells` from the server (not preserved: every morph brings the latest). The board section on `/showcase` is **not** an ignore-morph island; Mission Control is.
+- `PaintPixels` / `SeedBoard` in `internal/commands/board.go`; the encoded board is cached per version in `web.boardState`; `/cmd/paint` has an in-memory token bucket (20 px/s, burst 60).
+- Paint posts use `requestCancellation: 'disabled'`: Datastar cancels in-flight requests to the same URL by default, which would drop pixels mid-stroke.
+- `cqrs.Hub` knows each stream's path: `Count(path)` for presence; joins and leaves wake that path's streams.
+- `<details>` inside morphed regions need `data-preserve-attr="open"`.

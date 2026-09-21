@@ -14,7 +14,6 @@ import (
 	"starbase/internal/config"
 	"starbase/internal/cqrs"
 	"starbase/internal/queries"
-	"starbase/internal/ui"
 )
 
 type Server struct {
@@ -77,7 +76,7 @@ func (s *Server) Handler() http.Handler {
 	s.page(mux, "/themes", s.themesPage)
 	s.page(mux, "/contribute", s.contentPage("contribute", "contribute"))
 	s.page(mux, "/about", s.contentPage("about", "about"))
-	s.page(mux, "/showcase", s.contentPage("showcase", "showcase", ui.MissionControl()))
+	s.page(mux, "/showcase", s.showcasePage)
 	mux.Handle("GET /components", http.RedirectHandler("/", http.StatusMovedPermanently))
 	// The easiest way to contribute: a GitHub issue form, turned into a PR by a bot.
 	mux.HandleFunc("GET /submit", s.submit)

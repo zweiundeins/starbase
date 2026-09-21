@@ -151,7 +151,7 @@ func (s *Server) stream(fn pageFunc) http.HandlerFunc {
 				datastar.WithSelector("body"), datastar.WithModeAppend())
 			return
 		}
-		sub := s.hub.Subscribe(sessionID(r), sig.TabID)
+		sub := s.hub.Subscribe(sessionID(r), sig.TabID, r.URL.Path)
 		defer s.hub.Unsubscribe(sub)
 
 		sse := datastar.NewSSE(w, r, datastar.WithCompression(

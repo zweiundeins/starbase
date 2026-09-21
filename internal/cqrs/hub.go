@@ -15,6 +15,7 @@ type Hub struct {
 type Sub struct {
 	SID   string
 	TabID string
+	Path  string // page the stream renders, for presence counts
 	C     chan struct{}
 }
 
@@ -22,10 +23,13 @@ func NewHub() *Hub {
 	return &Hub{subs: map[*Sub]struct{}{}}
 }
 
-func (h *Hub) Subscribe(sid, tabID string) *Sub {
-	s := &Sub{SID: sid, TabID: tabID, C: make(chan struct{}, 1)}
+// Subscribe registers a stream. Other streams on the same path are woken,
+// so presence counts ("N watching") stay live.
+func (h *Hub) Subscribe(sid, tabID, path string) *Sub {
+	s := &Sub{SID: sid, TabID: tabID, Path: path, C: make(chan struct{}, 1)}
 	h.mu.Lock()
 	h.subs[s] = struct{}{}
+	h.wakePath(path, s)
 	h.mu.Unlock()
 	return s
 }
@@ -33,7 +37,33 @@ func (h *Hub) Subscribe(sid, tabID string) *Sub {
 func (h *Hub) Unsubscribe(s *Sub) {
 	h.mu.Lock()
 	delete(h.subs, s)
+	h.wakePath(s.Path, nil)
 	h.mu.Unlock()
+}
+
+// wakePath wakes the streams on path except skip. Callers hold h.mu.
+func (h *Hub) wakePath(path string, skip *Sub) {
+	for o := range h.subs {
+		if o != skip && o.Path == path {
+			select {
+			case o.C <- struct{}{}:
+			default:
+			}
+		}
+	}
+}
+
+// Count returns the number of open streams rendering path.
+func (h *Hub) Count(path string) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	n := 0
+	for s := range h.subs {
+		if s.Path == path {
+			n++
+		}
+	}
+	return n
 }
 
 // Notify wakes the streams of the given sessions; with all set, every stream.

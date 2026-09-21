@@ -27,7 +27,7 @@ const styles = /* css */ `
 	max-inline-size: 100%;
 	vertical-align: middle;
 }
-.board { display: grid; gap: 0.75rem; }
+.board { display: grid; gap: 0.75rem; container-type: inline-size; }
 .frame { position: relative; aspect-ratio: 1; border: 1px solid var(--_border); background: var(--_surface); }
 canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none; }
 :host([readonly]) canvas { cursor: default; }
@@ -42,6 +42,7 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; }
 	background-size: calc(100% / var(--_n)) calc(100% / var(--_n));
 }
 .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+@container (width > 22rem) { .palette { grid-template-columns: repeat(16, 1fr); } }
 .palette button {
 	all: unset;
 	aspect-ratio: 1;

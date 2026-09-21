@@ -76,8 +76,8 @@ func TestValidation(t *testing.T) {
 
 func TestScopedNotify(t *testing.T) {
 	_, hub, bus := setup(t)
-	mine := hub.Subscribe("s1", "t1")
-	other := hub.Subscribe("s2", "t1")
+	mine := hub.Subscribe("s1", "t1", "/")
+	other := hub.Subscribe("s2", "t1", "/other")
 	if err := bus.Exec(context.Background(), scopedNoop{"s1"}); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestScopedNotify(t *testing.T) {
 
 func TestNotifyCoalesces(t *testing.T) {
 	hub := cqrs.NewHub()
-	s := hub.Subscribe("s", "t")
+	s := hub.Subscribe("s", "t", "/")
 	for range 10 {
 		hub.NotifyAll()
 	}
@@ -113,5 +113,28 @@ func TestNotifyCoalesces(t *testing.T) {
 	case <-s.C:
 		t.Fatal("expected a single pending wake-up")
 	default:
+	}
+}
+
+func TestPresence(t *testing.T) {
+	hub := cqrs.NewHub()
+	a := hub.Subscribe("s1", "t1", "/showcase")
+	if hub.Count("/showcase") != 1 || hub.Count("/") != 0 {
+		t.Fatal("counts")
+	}
+	b := hub.Subscribe("s2", "t2", "/showcase")
+	select {
+	case <-a.C: // woken: someone joined
+	default:
+		t.Fatal("existing viewer not woken on join")
+	}
+	hub.Unsubscribe(b)
+	select {
+	case <-a.C:
+	default:
+		t.Fatal("existing viewer not woken on leave")
+	}
+	if hub.Count("/showcase") != 1 {
+		t.Fatal("count after leave")
 	}
 }

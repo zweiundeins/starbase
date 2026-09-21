@@ -135,9 +135,17 @@ templ MissionControl() {
 				<sb-meter label="Fuel" unit="%" warn="30" danger="15" segments="20" data-attr:value="Math.round($_tm.fuel)"></sb-meter>
 			</div>
 		</div>
-		<p class="mission__note">
-			Every number arrives as a signal patch, four times a second, from <code>{ "@get('/demo/telemetry')" }</code>. The components just watch their attributes.
-		</p>
+		<details class="howto">
+			<summary>How it works</summary>
+			<div class="howto__body">
+				<p>Built only from community components: <code>sb-starfield</code>, <code>sb-voxel</code>, <code>sb-gauge</code>, <code>sb-sparkline</code> and <code>sb-meter</code>. No custom JavaScript.</p>
+				<ol>
+					<li><code>{ "data-init=\"@get('/demo/telemetry')\"" }</code> opens a stream. Four times a second the server patches one signal, <code>$_tm</code>, with simulated telemetry. It's a pure function of the clock, so every viewer watches the same flight.</li>
+					<li>Each component's attributes follow that signal through <code>data-attr</code>: <code>{ "data-attr:value=\"$_tm.vel\"" }</code>.</li>
+					<li>The components only react to their attributes: the gauge springs its needle, the sparkline appends a point, the starfield speeds up.</li>
+				</ol>
+			</div>
+		</details>
 	</section>
 }
 
@@ -204,4 +212,52 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 			}
 		</div>
 	</div>
+}
+
+type BoardView struct {
+	Cells   string
+	Size    int
+	Pixels  int64
+	Viewers int
+}
+
+// Paint batches must not cancel each other (Datastar cancels in-flight
+// requests to the same URL by default), or fast strokes would lose pixels.
+const paintExpr = "@post('/cmd/paint', {payload: {color: evt.detail.color, cells: evt.detail.cells}, requestCancellation: 'disabled'})"
+
+templ Showcase(board BoardView) {
+	@MissionControl()
+	@PixelBoard(board)
+}
+
+// PixelBoard is server-owned: every frame of the page's render stream brings
+// the latest cells; painting is a command.
+templ PixelBoard(v BoardView) {
+	<section class="board-section" aria-labelledby="board-title">
+		<header class="mission__head">
+			<h2 id="board-title" class="section-title">Pixel Board</h2>
+			<span class="board-stats" aria-live="polite">
+				<span class="board-stats__dot" aria-hidden="true"></span>
+				{ itoa(v.Viewers) } watching · { itoa(int(v.Pixels)) } pixels painted
+			</span>
+		</header>
+		<div class="board-section__grid">
+			<sb-pixel-board id="board" size={ itoa(v.Size) } cells={ v.Cells } data-on:sb-paint={ paintExpr }></sb-pixel-board>
+			<div class="board-section__about">
+				<p><strong>Paint together.</strong> Everyone on this page shares one 48×48 board. Pick a colour and drag.</p>
+				<p class="muted">Faded pixels are still in flight. About 20 pixels per second each, so everybody gets a turn.</p>
+			</div>
+		</div>
+		<details class="howto" data-preserve-attr="open">
+			<summary>How it works</summary>
+			<div class="howto__body">
+				<p>The whole board is one attribute: <code>cells</code>, a string with one hex digit per pixel, rendered by the server into every frame of this page's stream.</p>
+				<ol>
+					<li>Your stroke emits <code>sb-paint</code>, which becomes a command: <code>{ "@post('/cmd/paint')" }</code>, answered with <code>204</code>.</li>
+					<li>One writer applies everyone's pixels in a single SQLite transaction.</li>
+					<li>Every open tab's stream re-renders the page, and the board's <code>cells</code> morphs in. Brotli compresses each frame against the ones before, so resending the whole board costs almost nothing. It's the trick behind Anders Murphy's hyperlith demos.</li>
+				</ol>
+			</div>
+		</details>
+	</section>
 }

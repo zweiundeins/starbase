@@ -58,9 +58,11 @@ label.auto input { accent-color: var(--_brand); }
 @container (width < 48rem) { .editors { border-inline-end: 0; border-block-end: 1px solid var(--_border); } }
 .editors sb-code-editor { block-size: 100%; --sb-code-editor-height: 100%; --sb-code-editor-min-height: 100%; }
 .editors sb-code-editor::part(editor) { border: 0; border-radius: 0; block-size: 100%; }
-.preview { display: grid; grid-template-rows: 1fr auto; min-block-size: 0; }
+/* The console owns a fixed share of the pane and scrolls inside it, so the
+   preview never moves as output arrives. */
+.preview { display: grid; grid-template-rows: minmax(0, 1fr) minmax(4.5rem, 30%); min-block-size: 0; }
 iframe { inline-size: 100%; block-size: 100%; border: 0; background: var(--sb-bg, #080D1D); }
-.console { max-block-size: 30%; min-block-size: 2.25rem; overflow: auto; margin: 0; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
+.console { min-block-size: 0; overflow: auto; margin: 0; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
 .console:not(:has(div))::before { content: "Console"; color: var(--_muted); }
 .console .error { color: var(--_danger); }
 .console .warn { color: var(--_warn); }
@@ -187,7 +189,7 @@ rocket('sb-code-playground', {
 					<div class="preview">
 						<iframe part="preview" title="Preview" sandbox="allow-scripts allow-modals" data-ref:frame data-attr:src="$$src"></iframe>
 						<div class="console" part="console" role="log" aria-label="Console"
-							data-effect="$$lines.length, el.scrollTop = el.scrollHeight">
+							data-effect="$$lines.length, requestAnimationFrame(() => (el.scrollTop = el.scrollHeight))">
 							<template data-for="line in $$lines">
 								<div data-attr:class="line.level" data-text="line.text"></div>
 							</template>

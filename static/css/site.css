@@ -1501,7 +1501,135 @@
 		font-size: var(--sb-font-size-1);
 	}
 
-	/* Cross-document view transitions between gallery and detail page. */
+	/* ── "How it works" disclosures (showcase sections) ─────────────────── */
+	.howto {
+		border-block-start: var(--sb-border-width) solid var(--sb-border-subtle);
+		padding-block-start: var(--sb-space-3);
+		color: var(--sb-text-2);
+		font-size: var(--sb-font-size-1);
+
+		& summary {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--sb-space-2);
+			color: var(--sb-text-2);
+			font-weight: var(--sb-font-weight-semibold);
+			cursor: pointer;
+			list-style: none;
+
+			&::-webkit-details-marker {
+				display: none;
+			}
+
+			/* A pixel chevron that turns when open. */
+			&::before {
+				content: "";
+				inline-size: 6px;
+				block-size: 10px;
+				background: currentColor;
+				clip-path: polygon(0 0, 2px 0, 2px 2px, 4px 2px, 4px 4px, 6px 4px, 6px 6px, 4px 6px, 4px 8px, 2px 8px, 2px 10px, 0 10px);
+				transition: rotate var(--sb-duration-fast) var(--sb-ease-standard);
+			}
+
+			&:hover {
+				color: var(--sb-text-1);
+			}
+		}
+
+		&[open] summary::before {
+			rotate: 90deg;
+		}
+
+		&::details-content {
+			block-size: 0;
+			overflow: clip;
+			transition: block-size var(--sb-duration-base) var(--sb-ease-standard), content-visibility var(--sb-duration-base) allow-discrete;
+		}
+
+		&[open]::details-content {
+			block-size: auto;
+		}
+	}
+
+	.howto__body {
+		display: grid;
+		gap: var(--sb-space-3);
+		padding-block-start: var(--sb-space-3);
+
+		& ol {
+			display: grid;
+			gap: var(--sb-space-2);
+			padding-inline-start: var(--sb-space-5);
+		}
+	}
+
+	/* ── Pixel board (showcase) ──────────────────────────────────────────── */
+	.board-section {
+		container: board / inline-size;
+		display: grid;
+		gap: var(--sb-space-5);
+		margin-block-start: var(--sb-space-8);
+		padding: var(--sb-space-6);
+		border: var(--sb-border-width) solid var(--sb-border);
+		border-radius: var(--sb-radius-lg);
+		background: var(--sb-surface-card);
+	}
+
+	.board-stats {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sb-space-2);
+		color: var(--sb-text-2);
+		font-size: var(--sb-font-size-1);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.board-stats__dot {
+		inline-size: 8px;
+		block-size: 8px;
+		background: var(--sb-ok);
+		box-shadow: 0 0 8px var(--sb-ok);
+		animation: pulse 2s steps(2, jump-none) infinite;
+	}
+
+	@keyframes pulse {
+		50% {
+			opacity: 0.35;
+		}
+	}
+
+	.board-section__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
+		gap: var(--sb-space-8);
+		align-items: start;
+
+		@container board (width < 44rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		& sb-pixel-board {
+			--sb-pixel-board-size: 100%;
+		}
+	}
+
+	.board-section__about {
+		display: grid;
+		gap: var(--sb-space-3);
+		color: var(--sb-text-2);
+
+		& ol {
+			display: grid;
+			gap: var(--sb-space-2);
+			padding-inline-start: var(--sb-space-5);
+		}
+
+		& strong {
+			color: var(--sb-text-1);
+		}
+	}
+
+		/* Cross-document view transitions between gallery and detail page. */
 	@view-transition {
 		navigation: auto;
 	}

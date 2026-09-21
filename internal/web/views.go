@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"starbase/internal/catalog"
+	"starbase/internal/commands"
 	"starbase/internal/model"
 	"starbase/internal/ui"
 )
@@ -136,4 +137,31 @@ func (s *Server) contentPage(name, nav string, extra ...templ.Component) pageFun
 			},
 		}, nil
 	}
+}
+
+// showcasePage: Mission Control (a client island fed by /demo/telemetry)
+// and the multiplayer pixel board (server-owned, re-rendered every frame).
+func (s *Server) showcasePage(rc *renderCtx) (view, error) {
+	v, err := s.contentPage("showcase", "showcase")(rc)
+	if err != nil {
+		return view{}, err
+	}
+	cells, pixels, err := s.boardState(rc.ctx, rc.r)
+	if err != nil {
+		return view{}, err
+	}
+	src, _ := fs.ReadFile(s.content, "showcase.md")
+	var meta struct {
+		Title string `yaml:"title"`
+		Lede  string `yaml:"lede"`
+	}
+	html, err := catalog.RenderMarkdown(src, &meta)
+	if err != nil {
+		return view{}, err
+	}
+	board := ui.BoardView{Cells: cells, Size: commands.BoardSize, Pixels: pixels, Viewers: max(1, s.hub.Count("/showcase"))}
+	v.Body = func(ui.Shell) templ.Component {
+		return ui.ContentPage(meta.Title, meta.Lede, html, ui.Showcase(board))
+	}
+	return v, nil
 }
