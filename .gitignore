@@ -1,0 +1,16 @@
+# Build output
+/bin/
+/tmp/
+
+# Local database
+/data/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.DS_Store
+.idea/
+*.swp

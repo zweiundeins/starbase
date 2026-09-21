@@ -1,0 +1,173 @@
+/*
+ * Starbase design tokens: primitives.
+ *
+ * An Open-Props-like vocabulary, prefixed --sb-. Primitives are raw values
+ * (ramps, scales, curves). Components never use them directly: they read the
+ * semantic tokens in theme.css, which is what makes components themeable.
+ *
+ * The first stylesheet on the page declares the cascade layer order.
+ */
+@layer reset, tokens, theme, base, layout, components, utilities;
+
+@font-face {
+	font-family: "Pixelify Sans";
+	src: url("../fonts/pixelify-sans.woff2") format("woff2");
+	font-weight: 400 700;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "JetBrains Mono";
+	src: url("../fonts/jetbrains-mono.woff2") format("woff2");
+	font-weight: 100 800;
+	font-display: swap;
+}
+
+@layer tokens {
+	:root {
+		/* ── Ink: the night-sky neutrals (hue ~266) ─────────────────────── */
+		--sb-ink-0: oklch(97% 0.008 279);   /* #F3F4FA-ish */
+		--sb-ink-1: oklch(88% 0.028 270);
+		--sb-ink-2: oklch(79.3% 0.05 268.7); /* #AEBBDD */
+		--sb-ink-3: oklch(70% 0.055 268);
+		--sb-ink-4: oklch(61.8% 0.056 267.8); /* #7785A8 */
+		--sb-ink-5: oklch(50% 0.058 266);
+		--sb-ink-6: oklch(40% 0.057 265.5);
+		--sb-ink-7: oklch(33.2% 0.055 265.2); /* #283552 */
+		--sb-ink-8: oklch(27.5% 0.048 265.5);
+		--sb-ink-9: oklch(23.4% 0.043 265.6); /* #141D32 */
+		--sb-ink-10: oklch(21.2% 0.04 265.8); /* #10182B */
+		--sb-ink-11: oklch(18.6% 0.038 266.6); /* #0B1224 */
+		--sb-ink-12: oklch(16.4% 0.035 268.9); /* #080D1D */
+
+		/* ── Violet: primary signal (hue ~290) ──────────────────────────── */
+		--sb-violet-0: oklch(96% 0.03 292);
+		--sb-violet-1: oklch(90% 0.06 292);
+		--sb-violet-2: oklch(82% 0.1 292);
+		--sb-violet-3: oklch(74.6% 0.144 292.6); /* #B09AFF */
+		--sb-violet-4: oklch(68.5% 0.18 291);
+		--sb-violet-5: oklch(63.5% 0.21 289.3); /* #8C6BFF */
+		--sb-violet-6: oklch(56% 0.215 288);
+		--sb-violet-7: oklch(48% 0.2 287);
+		--sb-violet-8: oklch(40% 0.17 286);
+		--sb-violet-9: oklch(32% 0.13 285);
+		--sb-violet-10: oklch(25% 0.09 284);
+
+		/* ── Green: Datastar / success (hue ~152) ───────────────────────── */
+		--sb-green-1: oklch(95% 0.07 152);
+		--sb-green-3: oklch(87.2% 0.174 151.8); /* #6EF59A */
+		--sb-green-5: oklch(74% 0.17 152);
+		--sb-green-7: oklch(55% 0.13 153);
+		--sb-green-9: oklch(32% 0.07 154);
+
+		/* ── Cyan: secondary accent (hue ~242) ──────────────────────────── */
+		--sb-cyan-1: oklch(93% 0.05 240);
+		--sb-cyan-3: oklch(77.5% 0.126 241.8); /* #65BFFF */
+		--sb-cyan-5: oklch(66% 0.14 243);
+		--sb-cyan-7: oklch(50% 0.12 245);
+		--sb-cyan-9: oklch(30% 0.07 248);
+
+		/* ── Status ─────────────────────────────────────────────────────── */
+		--sb-amber-3: oklch(84% 0.15 80);
+		--sb-amber-7: oklch(55% 0.12 70);
+		--sb-red-3: oklch(72% 0.17 22);
+		--sb-red-5: oklch(64% 0.2 25);
+		--sb-red-7: oklch(50% 0.17 25);
+
+		/* ── Space: 4/8 rhythm ──────────────────────────────────────────── */
+		--sb-space-px: 1px;
+		--sb-space-1: 0.25rem; /*  4 */
+		--sb-space-2: 0.5rem; /*  8 */
+		--sb-space-3: 0.75rem; /* 12 */
+		--sb-space-4: 1rem; /* 16 */
+		--sb-space-5: 1.25rem; /* 20 */
+		--sb-space-6: 1.5rem; /* 24 */
+		--sb-space-8: 2rem; /* 32 */
+		--sb-space-10: 2.5rem; /* 40 */
+		--sb-space-12: 3rem; /* 48 */
+		--sb-space-16: 4rem; /* 64 */
+
+		/* ── Radius: crisp, never bubbly ────────────────────────────────── */
+		--sb-radius-xs: 4px;
+		--sb-radius-sm: 6px;
+		--sb-radius-md: 8px;
+		--sb-radius-lg: 10px;
+		--sb-radius-pill: 999px;
+
+		/* ── Type ───────────────────────────────────────────────────────── */
+		--sb-font-display: "Pixelify Sans", "Silkscreen", ui-monospace, monospace;
+		--sb-font-ui: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+		--sb-font-size-00: 0.6875rem; /* 11 */
+		--sb-font-size-0: 0.75rem; /* 12 */
+		--sb-font-size-1: 0.8125rem; /* 13 */
+		--sb-font-size-2: 0.875rem; /* 14 */
+		--sb-font-size-3: 1rem; /* 16 */
+		--sb-font-size-4: 1.125rem; /* 18 */
+		--sb-font-size-5: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+		--sb-font-size-6: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+		--sb-font-size-7: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+		--sb-font-size-8: clamp(2.5rem, 1.6rem + 3.4vw, 4.5rem);
+
+		--sb-font-weight-regular: 400;
+		--sb-font-weight-medium: 500;
+		--sb-font-weight-semibold: 600;
+		--sb-font-weight-bold: 700;
+
+		--sb-line-height-tight: 1.05;
+		--sb-line-height-snug: 1.3;
+		--sb-line-height-normal: 1.55;
+		--sb-letter-spacing-display: 0.02em;
+		--sb-letter-spacing-caps: 0.08em;
+
+		/* ── Borders & elevation ────────────────────────────────────────── */
+		--sb-border-width: 1px;
+		--sb-border-width-thick: 2px;
+		--sb-shadow-1: 0 1px 0 oklch(100% 0 0 / 0.04) inset, 0 1px 2px oklch(0% 0 0 / 0.35);
+		--sb-shadow-2: 0 1px 0 oklch(100% 0 0 / 0.05) inset, 0 8px 24px -12px oklch(0% 0 0 / 0.6);
+		--sb-shadow-3: 0 24px 48px -16px oklch(0% 0 0 / 0.7);
+
+		/* ── Pixel frame ────────────────────────────────────────────────────
+		 * A notched 8-bit frame drawn with stepped box-shadows (see
+		 * .sb-pixel-frame in utilities.css). The colour comes from the
+		 * semantic --sb-frame-color. To tone the whole site down to a plain
+		 * hairline, set --sb-frame-step: 1px.
+		 */
+		--sb-frame-step: 3px;
+
+		/* ── Motion ─────────────────────────────────────────────────────── */
+		--sb-duration-instant: 80ms;
+		--sb-duration-fast: 120ms;
+		--sb-duration-base: 180ms;
+		--sb-duration-slow: 320ms;
+		--sb-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+		--sb-ease-out: cubic-bezier(0, 0, 0.2, 1);
+		--sb-ease-in: cubic-bezier(0.4, 0, 1, 1);
+		--sb-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+		--sb-ease-steps: steps(4, end); /* pixel-y motion for illustrations */
+
+		/* ── Layers ─────────────────────────────────────────────────────── */
+		--sb-z-base: 0;
+		--sb-z-raised: 1;
+		--sb-z-sticky: 10;
+		--sb-z-dropdown: 20;
+		--sb-z-overlay: 40;
+		--sb-z-modal: 50;
+		--sb-z-toast: 60;
+		--sb-z-tooltip: 70;
+
+		/* ── Sizes ──────────────────────────────────────────────────────── */
+		--sb-control-height-sm: 2rem;
+		--sb-control-height-md: 2.5rem;
+		--sb-control-height-lg: 3rem;
+		--sb-content-max: 90rem;
+		--sb-sidebar-width: 17rem;
+	}
+}
+
+/* Typed custom properties so they can be transitioned/animated. */
+@property --sb-glow-strength {
+	syntax: "<percentage>";
+	inherits: true;
+	initial-value: 0%;
+}

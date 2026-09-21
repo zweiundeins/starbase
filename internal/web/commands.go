@@ -1,0 +1,87 @@
+package web
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/starfederation/datastar-go/datastar"
+
+	"starbase/internal/commands"
+	"starbase/internal/cqrs"
+	"starbase/internal/model"
+	"starbase/internal/queries"
+)
+
+// send enqueues a command and answers 204. The tab's render stream shows
+// the outcome; commands never return HTML.
+func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd cqrs.Command) {
+	err := s.bus.Send(cmd)
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, cqrs.ErrInvalid):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	default:
+		s.log.Warn("command rejected", "err", err)
+		http.Error(w, "busy, try again", http.StatusServiceUnavailable)
+	}
+}
+
+func (s *Server) cmdBrowse(w http.ResponseWriter, r *http.Request) {
+	var sig struct {
+		TabID string `json:"tabid"`
+		Q     string `json:"q"`
+		Cat   string `json:"cat"`
+		Sort  string `json:"sort"`
+	}
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		http.Error(w, "bad signals", http.StatusBadRequest)
+		return
+	}
+	s.send(w, r, commands.SetBrowseFilter{
+		SID:    sessionID(r),
+		TabID:  sig.TabID,
+		Browse: model.Browse{Q: sig.Q, Category: sig.Cat, Sort: model.Sort(sig.Sort)},
+	})
+}
+
+func (s *Server) cmdStar(star bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var user *model.User
+		err := s.q.View(r.Context(), func(rd *queries.Reader) error {
+			var err error
+			user, err = rd.SessionUser(r.Context(), sessionID(r))
+			return err
+		})
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		if user == nil {
+			// Not signed in: send the browser to GitHub and back.
+			if u := s.loginURL(localPath(r.Referer())); u != "" {
+				datastar.NewSSE(w, r).Redirect(u)
+				return
+			}
+			http.Error(w, "sign-in is not available", http.StatusForbidden)
+			return
+		}
+		slug := r.PathValue("slug")
+		if star {
+			s.send(w, r, commands.Star{UserID: user.ID, Slug: slug})
+		} else {
+			s.send(w, r, commands.Unstar{UserID: user.ID, Slug: slug})
+		}
+	}
+}
+
+func (s *Server) cmdTheme(w http.ResponseWriter, r *http.Request) {
+	var sig struct {
+		TabID string `json:"tabid"`
+	}
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		http.Error(w, "bad signals", http.StatusBadRequest)
+		return
+	}
+	s.send(w, r, commands.SetPreviewTheme{SID: sessionID(r), TabID: sig.TabID, Theme: r.PathValue("theme")})
+}

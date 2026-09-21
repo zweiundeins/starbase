@@ -1,0 +1,60 @@
+/*
+ * Semantic tokens. This is the contract every component styles against.
+ * Themes are nothing but a different mapping of these names; they inherit
+ * through shadow DOM, so Rocket components pick them up automatically.
+ */
+@layer theme {
+	:root,
+	[data-sb-theme="deep-space"] {
+		color-scheme: dark;
+
+		--sb-bg: var(--sb-ink-12);
+		--sb-bg-glow: oklch(30% 0.12 285 / 0.35);
+		--sb-surface-raised: var(--sb-ink-10);
+		--sb-surface-card: var(--sb-ink-9);
+		--sb-surface-inset: var(--sb-ink-11);
+		--sb-surface-hover: oklch(from var(--sb-ink-9) calc(l + 0.03) c h);
+		--sb-surface-overlay: oklch(12% 0.03 268 / 0.72);
+
+		--sb-border: var(--sb-ink-7);
+		--sb-border-subtle: oklch(from var(--sb-ink-7) l c h / 0.6);
+		--sb-border-strong: var(--sb-ink-6);
+
+		--sb-text-1: var(--sb-ink-0);
+		--sb-text-2: var(--sb-ink-2);
+		--sb-text-muted: var(--sb-ink-4);
+		--sb-text-on-brand: var(--sb-ink-0);
+
+		--sb-brand: var(--sb-violet-5);
+		--sb-brand-hover: var(--sb-violet-4);
+		--sb-brand-light: var(--sb-violet-3);
+		--sb-brand-subtle: oklch(from var(--sb-violet-5) l c h / 0.14);
+		--sb-accent: var(--sb-cyan-3);
+		--sb-datastar: var(--sb-green-3);
+
+		--sb-ok: var(--sb-green-3);
+		--sb-ok-subtle: oklch(from var(--sb-green-3) l c h / 0.12);
+		--sb-warn: var(--sb-amber-3);
+		--sb-warn-subtle: oklch(from var(--sb-amber-3) l c h / 0.12);
+		--sb-danger: var(--sb-red-3);
+		--sb-danger-subtle: oklch(from var(--sb-red-3) l c h / 0.12);
+		--sb-info: var(--sb-cyan-3);
+		--sb-info-subtle: oklch(from var(--sb-cyan-3) l c h / 0.12);
+
+		--sb-control-bg: var(--sb-ink-11);
+		--sb-control-border: var(--sb-ink-7);
+		--sb-control-border-hover: var(--sb-ink-6);
+		--sb-control-text: var(--sb-ink-0);
+		--sb-control-placeholder: var(--sb-ink-4);
+		--sb-control-radius: var(--sb-radius-sm);
+
+		--sb-radius: var(--sb-radius-md);
+		--sb-frame-color: var(--sb-violet-3);
+		--sb-glow-brand: 0 0 0 1px oklch(from var(--sb-violet-5) l c h / 0.35), 0 8px 32px -8px oklch(from var(--sb-violet-5) l c h / 0.45);
+		--sb-focus-ring: 0 0 0 2px var(--sb-bg), 0 0 0 4px var(--sb-brand-light);
+		--sb-selection: oklch(from var(--sb-violet-5) l c h / 0.4);
+
+		--sb-font-body: var(--sb-font-ui);
+		--sb-font-heading: var(--sb-font-ui);
+	}
+}

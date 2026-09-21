@@ -1,0 +1,82 @@
+{
+  "tag": "sb-button",
+  "props": [
+    {
+      "name": "variant",
+      "attribute": "variant",
+      "type": "oneOf",
+      "default": "primary",
+      "required": false,
+      "values": [
+        "primary",
+        "outline",
+        "ghost",
+        "pixel",
+        "danger"
+      ],
+      "docs": {
+        "description": "Visual style."
+      }
+    },
+    {
+      "name": "size",
+      "attribute": "size",
+      "type": "oneOf",
+      "default": "md",
+      "required": false,
+      "values": [
+        "sm",
+        "md",
+        "lg"
+      ],
+      "docs": {
+        "description": "Height and padding."
+      }
+    },
+    {
+      "name": "href",
+      "attribute": "href",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Render as a link to this URL."
+      }
+    },
+    {
+      "name": "caret",
+      "attribute": "caret",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show a trailing chevron."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable interaction."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "default",
+      "description": "The label."
+    },
+    {
+      "name": "prefix",
+      "description": "An icon before the label."
+    },
+    {
+      "name": "suffix",
+      "description": "An icon after the label."
+    }
+  ],
+  "events": []
+}

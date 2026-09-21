@@ -1,0 +1,147 @@
+{
+  "tag": "sb-input",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Initial value. Read the live value from the value property."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label."
+      }
+    },
+    {
+      "name": "placeholder",
+      "attribute": "placeholder",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Placeholder text."
+      }
+    },
+    {
+      "name": "type",
+      "attribute": "type",
+      "type": "oneOf",
+      "default": "text",
+      "required": false,
+      "values": [
+        "text",
+        "email",
+        "search",
+        "url",
+        "tel",
+        "password"
+      ],
+      "docs": {
+        "description": "Input type."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in the sb-submit event."
+      }
+    },
+    {
+      "name": "required",
+      "attribute": "required",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Value must not be empty."
+      }
+    },
+    {
+      "name": "minlength",
+      "attribute": "minlength",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Minimum length."
+      }
+    },
+    {
+      "name": "pattern",
+      "attribute": "pattern",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Regular expression the value must match."
+      }
+    },
+    {
+      "name": "hint",
+      "attribute": "hint",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Help text below the field."
+      }
+    },
+    {
+      "name": "error",
+      "attribute": "error",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Message shown when invalid (defaults to the browser message)."
+      }
+    },
+    {
+      "name": "action",
+      "attribute": "action",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show a submit arrow button."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "input",
+      "bubbles": true,
+      "composed": true,
+      "description": "On every keystroke (native, re-targeted to the host)."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the value is committed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-submit",
+      "bubbles": true,
+      "composed": true,
+      "description": "Enter or arrow button with a valid value. detail: { name, value }."
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "tag": "sb-copy-button",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "The text copied to the clipboard."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Copy to clipboard",
+      "required": false,
+      "docs": {
+        "description": "Accessible label of the button."
+      }
+    },
+    {
+      "name": "copiedLabel",
+      "attribute": "copied-label",
+      "type": "string",
+      "default": "Copied!",
+      "required": false,
+      "docs": {
+        "description": "Label shown after copying."
+      }
+    },
+    {
+      "name": "resetMs",
+      "attribute": "reset-ms",
+      "type": "number",
+      "default": 1600,
+      "required": false,
+      "docs": {
+        "description": "How long the copied state lasts, in ms."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-copy",
+      "bubbles": true,
+      "composed": true,
+      "description": "After copying. detail: { value }."
+    }
+  ]
+}

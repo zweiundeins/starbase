@@ -1,0 +1,98 @@
+package ui
+
+import "starbase/internal/model"
+
+type ThemePreview struct {
+	Name string
+	HTML string
+}
+
+type ThemesView struct {
+	Theme    string
+	CSS      string
+	CSSHTML  string
+	Previews []ThemePreview
+}
+
+func themeClick(slug string) string {
+	return "el.classList.add('is-pending'); @post('/cmd/theme/" + slug + "')"
+}
+
+// swatch colours are illustrative only; the real tokens live in CSS.
+var swatches = map[string][]string{
+	"deep-space": {"#080D1D", "#141D32", "#8C6BFF", "#6EF59A", "#65BFFF"},
+	"nebula":     {"#2A0F24", "#3B1733", "#E85A9C", "#FFB38A", "#F7C98B"},
+	"terminal":   {"#050A06", "#0D1A10", "#39E07A", "#E5D25A", "#8FD9A8"},
+	"daylight":   {"#FBFBFE", "#FFFFFF", "#6246EA", "#1E9E5A", "#2E7DD1"},
+}
+
+templ ThemesPage(v ThemesView) {
+	<div class="wrap">
+		<header class="page-head">
+			<h1>Themes</h1>
+			<p class="lede">Every component reads semantic design tokens, never raw colours. Swap the token set and everything restyles, even inside shadow DOM.</p>
+		</header>
+		<div class="stack" style="--gap: var(--sb-space-8); padding-block: var(--sb-space-10) var(--sb-space-16)">
+			<div class="theme-picker" role="group" aria-label="Preview theme">
+				for _, t := range model.PreviewThemes {
+					<button
+						type="button"
+						class="theme-option"
+						aria-pressed={ boolString(v.Theme == t.Slug) }
+						data-on:click={ themeClick(t.Slug) }
+					>
+						<span class="swatches" aria-hidden="true">
+							for _, c := range swatches[t.Slug] {
+								<span style={ templ.SafeCSS("background:" + c) }></span>
+							}
+						</span>
+						<strong>{ t.Label }</strong>
+						<span>{ t.Blurb }</span>
+					</button>
+				}
+			</div>
+			<section class="theme-stage" data-sb-theme={ v.Theme } aria-label="Live preview">
+				for _, p := range v.Previews {
+					<div class="theme-stage__cell">
+						<h3>{ p.Name }</h3>
+						<div>
+							@templ.Raw(p.HTML)
+						</div>
+					</div>
+				}
+			</section>
+			<section class="prose">
+				<h2>Use it</h2>
+				<p>Scope a theme to any element with <code>data-sb-theme</code>, or copy the overrides into your own stylesheet. Components only ever read <code>--sb-*</code> semantic tokens.</p>
+				<div class="code-block">
+					<sb-copy-button class="code-copy" value={ v.CSS }></sb-copy-button>
+					@templ.Raw(v.CSSHTML)
+				</div>
+			</section>
+		</div>
+	</div>
+}
+
+templ ContentPage(title, lede, html string) {
+	<div class="wrap">
+		<header class="page-head">
+			<h1>{ title }</h1>
+			if lede != "" {
+				<p class="lede">{ lede }</p>
+			}
+		</header>
+		<article class="prose" style="padding-block: var(--sb-space-10) var(--sb-space-16)">
+			@templ.Raw(html)
+		</article>
+	</div>
+}
+
+templ NotFound() {
+	<div class="wrap">
+		<div class="empty-state" style="margin-block: var(--sb-space-16)">
+			<h3>Lost in space</h3>
+			<p>This page drifted out of orbit. Head back to base.</p>
+			<a class="btn btn--primary btn--sm" href="/">Back to components</a>
+		</div>
+	</div>
+}

@@ -1,0 +1,153 @@
+package ui
+
+// Document is the full HTML page for the initial GET.
+templ Document(s Shell, body templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en" data-sb-theme="deep-space">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ s.Title }</title>
+			<meta name="description" content={ s.Description }/>
+			<meta name="color-scheme" content="dark"/>
+			<meta name="theme-color" content="#080D1D"/>
+			<link rel="icon" type="image/svg+xml" href={ s.Assets.Art("logo") }/>
+			<link rel="preload" href="/static/fonts/pixelify-sans.woff2" as="font" type="font/woff2" crossorigin/>
+			<link rel="preload" href="/static/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin/>
+			for _, css := range stylesheets {
+				<link rel="stylesheet" href={ s.Assets.Static(css) }/>
+			}
+			@templ.Raw(`<script type="importmap" nonce="` + s.Nonce + `">` + importMap(s.Assets) + `</script>`)
+			<script type="module" src={ s.Assets.Datastar() }></script>
+			<script type="module" src={ s.Assets.Components() }></script>
+			if s.Dev && len(s.ManifestTags) > 0 {
+				@templ.Raw(manifestScript(s))
+			}
+		</head>
+		<body data-signals={ s.Signals } data-init={ streamInit }>
+			if s.Dev {
+				<div hidden data-init={ devReload(s.Boot) }></div>
+			}
+			@App(s, body)
+		</body>
+	</html>
+}
+
+// App is the part of the page the render stream morphs on every frame.
+templ App(s Shell, body templ.Component) {
+	<div id="app" class="app">
+		@Header(s)
+		<main id="main" class="main">
+			@body
+		</main>
+		@Footer(s)
+		if s.URL != "" {
+			<div hidden id="url-sync" data-init={ "window.history.replaceState(null, '', " + jsString(s.URL) + ")" }></div>
+		}
+	</div>
+}
+
+templ Header(s Shell) {
+	<header class="site-header">
+		<div class="wrap site-header__inner">
+			<a class="brand" href="/" aria-label="Rocket community components: home">
+				<img class="pixel-sprite" src={ s.Assets.Art("logo") } alt="" width="56" height="96"/>
+				<span>
+					<span class="brand__word">ROCKET</span>
+					<span class="brand__tag">Community Components<br/>{ "for Datastar" }</span>
+				</span>
+			</a>
+			<nav class="primary-nav" aria-label="Primary">
+				for _, item := range navItems {
+					<a
+						href={ safe(item.Href) }
+						if s.Nav == item.Key {
+							aria-current="page"
+						}
+					>{ item.Label }</a>
+				}
+			</nav>
+			<div class="header-tools">
+				@SearchBox(s)
+				<a class="icon-btn" href={ safe(s.RepoURL) } aria-label="Starbase on GitHub">
+					@Icon("github")
+				</a>
+				@UserMenu(s)
+			</div>
+		</div>
+	</header>
+}
+
+// SearchBox is a plain GET form to the gallery, upgraded to live filtering
+// when the gallery is the current page. The input is never morphed, so
+// typing is never interrupted by a server frame.
+templ SearchBox(s Shell) {
+	<form
+		class="search"
+		role="search"
+		action="/"
+		method="get"
+		if s.SearchLive {
+			data-on:submit__prevent="@post('/cmd/browse')"
+		}
+	>
+		@Icon("search")
+		<input
+			id="search"
+			type="search"
+			name="q"
+			value={ s.Search }
+			placeholder="Search components..."
+			aria-label="Search components"
+			autocomplete="off"
+			spellcheck="false"
+			data-ignore-morph
+			data-on:keydown__window="(evt.ctrlKey || evt.metaKey) && evt.key === 'k' && (evt.preventDefault(), el.focus(), el.select())"
+			if s.SearchLive {
+				data-bind:q
+				data-on:input__debounce.250ms="@post('/cmd/browse')"
+			}
+		/>
+		<kbd>Ctrl K</kbd>
+	</form>
+}
+
+templ UserMenu(s Shell) {
+	if s.User != nil {
+		<details class="user-menu" data-preserve-attr="open">
+			<summary aria-label="Account menu">
+				<img class="avatar" src={ s.User.AvatarURL } alt="" width="36" height="36"/>
+			</summary>
+			<div class="user-menu__panel">
+				<p>Signed in as <strong>{ s.User.Login }</strong></p>
+				<form method="post" action="/auth/logout">
+					<button class="btn btn--ghost btn--sm" type="submit">
+						@Icon("log-out")
+						Sign out
+					</button>
+				</form>
+			</div>
+		</details>
+	} else if s.LoginURL != "" {
+		<a class="btn btn--sm btn--outline" href={ safe(s.LoginURL) }>Sign in</a>
+	}
+}
+
+templ Footer(s Shell) {
+	<footer class="site-footer">
+		<div class="wrap">
+			<span class="made-with">
+				Built with Go, templ, SQLite and
+				<a href="https://data-star.dev">Datastar</a>.
+			</span>
+			<span>
+				Components are MIT licensed by their authors ·
+				<a href={ safe(s.RepoURL) }>Source</a>
+			</span>
+		</div>
+	</footer>
+}
+
+templ PixelArt(s Shell, name string, class string) {
+	<img class={ "pixel-sprite", class } src={ s.Assets.Art(name) } alt=""/>
+}

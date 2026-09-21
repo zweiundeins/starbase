@@ -1,0 +1,52 @@
+version: "3"
+
+vars:
+  BIN: bin/starbase
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  live:
+    desc: Run the dev server with live reload (templ + air)
+    cmds:
+      - go tool air
+
+  generate:
+    desc: Generate templ code
+    cmds:
+      - go tool templ generate
+
+  build:
+    desc: Build the production binary
+    deps: [generate]
+    cmds:
+      - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o {{.BIN}} ./cmd/starbase
+
+  run:
+    desc: Build and run the production binary
+    deps: [build]
+    cmds:
+      - ./{{.BIN}}
+
+  test:
+    desc: Run all tests (includes validation of every component folder)
+    deps: [generate]
+    cmds:
+      - go vet ./...
+      - go test ./...
+
+  new:
+    desc: "Scaffold a component: task new -- my-widget --category forms"
+    cmds:
+      - go run ./cmd/newcomponent {{.CLI_ARGS}}
+
+  vendor:
+    desc: Re-download the pinned Datastar + Rocket bundle
+    vars:
+      DATASTAR_VERSION: v1.0.4
+    cmds:
+      - curl -sSfL -o static/vendor/datastar-rocket.js https://cdn.jsdelivr.net/gh/starfederation/datastar@{{.DATASTAR_VERSION}}/bundles/datastar-rocket.js
+      - curl -sSfL -o static/vendor/datastar-rocket.js.map https://cdn.jsdelivr.net/gh/starfederation/datastar@{{.DATASTAR_VERSION}}/bundles/datastar-rocket.js.map

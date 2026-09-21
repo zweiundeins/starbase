@@ -1,0 +1,29 @@
+/* Syntax highlighting for chroma's class output, using theme tokens. */
+@layer components {
+	.chroma {
+		margin: 0;
+		padding: var(--sb-space-4) var(--sb-space-5);
+		overflow-x: auto;
+		background: var(--sb-surface-inset);
+		color: var(--sb-text-2);
+		font-size: var(--sb-font-size-1);
+		line-height: 1.7;
+		tab-size: 2;
+
+		/* keywords */
+		& :is(.k, .kc, .kd, .kn, .kp, .kr, .kt) { color: var(--sb-violet-3, var(--sb-brand-light)); }
+		/* tags & builtins */
+		& :is(.nt, .nb, .bp) { color: var(--sb-cyan-3, var(--sb-accent)); }
+		/* attributes, functions */
+		& :is(.na, .nf, .fm) { color: var(--sb-violet-2, var(--sb-brand-light)); }
+		/* strings */
+		& :is(.s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr, .ss, .dl) { color: var(--sb-green-3, var(--sb-datastar)); }
+		/* numbers */
+		& :is(.m, .mb, .mf, .mh, .mi, .il, .mo) { color: var(--sb-amber-3, var(--sb-warn)); }
+		/* comments */
+		& :is(.c, .ch, .cm, .c1, .cs, .cp, .cpf) { color: var(--sb-text-muted); font-style: italic; }
+		/* operators & punctuation */
+		& :is(.o, .ow, .p) { color: var(--sb-text-muted); }
+		& :is(.nv, .vc, .vg, .vi, .nx) { color: var(--sb-text-1); }
+	}
+}

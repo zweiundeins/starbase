@@ -1,0 +1,109 @@
+/*
+ * Alternative token sets for the Themes page. Each theme only remaps
+ * semantic tokens; scope one to any container with data-sb-theme="…".
+ * The site chrome always uses deep-space.
+ */
+@layer theme {
+	[data-sb-theme="nebula"] {
+		color-scheme: dark;
+		--sb-bg: oklch(17% 0.05 330);
+		--sb-bg-glow: oklch(40% 0.16 350 / 0.35);
+		--sb-surface-raised: oklch(21% 0.055 330);
+		--sb-surface-card: oklch(24% 0.06 330);
+		--sb-surface-inset: oklch(15% 0.045 330);
+		--sb-surface-hover: oklch(27% 0.065 330);
+		--sb-border: oklch(36% 0.07 335);
+		--sb-border-subtle: oklch(36% 0.07 335 / 0.6);
+		--sb-border-strong: oklch(44% 0.08 335);
+		--sb-text-1: oklch(97% 0.015 340);
+		--sb-text-2: oklch(82% 0.05 340);
+		--sb-text-muted: oklch(65% 0.06 340);
+		--sb-brand: oklch(68% 0.2 350);
+		--sb-brand-hover: oklch(73% 0.18 350);
+		--sb-brand-light: oklch(80% 0.13 20);
+		--sb-brand-subtle: oklch(68% 0.2 350 / 0.15);
+		--sb-accent: oklch(82% 0.12 50);
+		--sb-datastar: oklch(85% 0.14 60);
+		--sb-control-bg: oklch(15% 0.045 330);
+		--sb-control-border: oklch(36% 0.07 335);
+		--sb-control-border-hover: oklch(44% 0.08 335);
+		--sb-control-text: oklch(97% 0.015 340);
+		--sb-control-placeholder: oklch(65% 0.06 340);
+		--sb-frame-color: oklch(80% 0.13 20);
+		--sb-focus-ring: 0 0 0 2px var(--sb-bg), 0 0 0 4px oklch(80% 0.13 20);
+		--sb-glow-brand: 0 0 0 1px oklch(68% 0.2 350 / 0.35), 0 8px 32px -8px oklch(68% 0.2 350 / 0.45);
+		--sb-radius: var(--sb-radius-lg);
+		--sb-control-radius: var(--sb-radius-md);
+	}
+
+	[data-sb-theme="terminal"] {
+		color-scheme: dark;
+		--sb-bg: oklch(12% 0.01 150);
+		--sb-bg-glow: oklch(40% 0.12 150 / 0.2);
+		--sb-surface-raised: oklch(15% 0.015 150);
+		--sb-surface-card: oklch(17% 0.02 150);
+		--sb-surface-inset: oklch(10% 0.01 150);
+		--sb-surface-hover: oklch(20% 0.025 150);
+		--sb-border: oklch(35% 0.07 150);
+		--sb-border-subtle: oklch(35% 0.07 150 / 0.6);
+		--sb-border-strong: oklch(48% 0.1 150);
+		--sb-text-1: oklch(90% 0.16 150);
+		--sb-text-2: oklch(76% 0.13 150);
+		--sb-text-muted: oklch(58% 0.09 150);
+		--sb-text-on-brand: oklch(12% 0.01 150);
+		--sb-brand: oklch(82% 0.2 148);
+		--sb-brand-hover: oklch(88% 0.18 148);
+		--sb-brand-light: oklch(90% 0.16 148);
+		--sb-brand-subtle: oklch(82% 0.2 148 / 0.12);
+		--sb-accent: oklch(85% 0.15 95);
+		--sb-datastar: oklch(85% 0.15 95);
+		--sb-ok: oklch(82% 0.2 148);
+		--sb-control-bg: oklch(10% 0.01 150);
+		--sb-control-border: oklch(35% 0.07 150);
+		--sb-control-border-hover: oklch(48% 0.1 150);
+		--sb-control-text: oklch(90% 0.16 150);
+		--sb-control-placeholder: oklch(58% 0.09 150);
+		--sb-frame-color: oklch(82% 0.2 148);
+		--sb-focus-ring: 0 0 0 2px var(--sb-bg), 0 0 0 4px oklch(82% 0.2 148);
+		--sb-glow-brand: 0 0 0 1px oklch(82% 0.2 148 / 0.4), 0 0 24px -4px oklch(82% 0.2 148 / 0.5);
+		--sb-radius: 0px;
+		--sb-control-radius: 0px;
+		--sb-font-body: var(--sb-font-ui);
+	}
+
+	[data-sb-theme="daylight"] {
+		color-scheme: light;
+		--sb-bg: oklch(98.5% 0.005 270);
+		--sb-bg-glow: oklch(90% 0.05 290 / 0.5);
+		--sb-surface-raised: oklch(100% 0 0);
+		--sb-surface-card: oklch(100% 0 0);
+		--sb-surface-inset: oklch(96% 0.01 270);
+		--sb-surface-hover: oklch(97% 0.012 280);
+		--sb-surface-overlay: oklch(30% 0.03 270 / 0.4);
+		--sb-border: oklch(88% 0.015 270);
+		--sb-border-subtle: oklch(92% 0.01 270);
+		--sb-border-strong: oklch(78% 0.02 270);
+		--sb-text-1: oklch(22% 0.03 270);
+		--sb-text-2: oklch(40% 0.03 270);
+		--sb-text-muted: oklch(55% 0.03 270);
+		--sb-brand: oklch(55% 0.22 288);
+		--sb-brand-hover: oklch(50% 0.22 288);
+		--sb-brand-light: oklch(55% 0.22 288);
+		--sb-brand-subtle: oklch(55% 0.22 288 / 0.1);
+		--sb-accent: oklch(55% 0.15 243);
+		--sb-datastar: oklch(55% 0.15 152);
+		--sb-ok: oklch(55% 0.15 152);
+		--sb-ok-subtle: oklch(55% 0.15 152 / 0.1);
+		--sb-warn: oklch(62% 0.14 70);
+		--sb-danger: oklch(55% 0.2 25);
+		--sb-info: oklch(55% 0.15 243);
+		--sb-control-bg: oklch(100% 0 0);
+		--sb-control-border: oklch(85% 0.015 270);
+		--sb-control-border-hover: oklch(75% 0.02 270);
+		--sb-control-text: oklch(22% 0.03 270);
+		--sb-control-placeholder: oklch(60% 0.02 270);
+		--sb-frame-color: oklch(55% 0.22 288);
+		--sb-focus-ring: 0 0 0 2px var(--sb-bg), 0 0 0 4px oklch(55% 0.22 288);
+		--sb-glow-brand: 0 0 0 1px oklch(55% 0.22 288 / 0.2), 0 8px 24px -10px oklch(55% 0.22 288 / 0.35);
+	}
+}

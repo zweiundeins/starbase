@@ -1,0 +1,42 @@
+@layer utilities {
+	/* Notched 8-bit frame. Colour: --sb-frame-color; size: --sb-frame-step. */
+	.sb-pixel-frame {
+		--_s: var(--sb-frame-step);
+		--_c: var(--sb-frame-color);
+		border: 0;
+		border-radius: 0;
+		box-shadow:
+			0 calc(-1 * var(--_s)) 0 0 var(--_c),
+			0 var(--_s) 0 0 var(--_c),
+			calc(-1 * var(--_s)) 0 0 0 var(--_c),
+			var(--_s) 0 0 0 var(--_c);
+		margin: var(--_s);
+	}
+
+	.sb-pixel-frame--drop {
+		box-shadow:
+			0 calc(-1 * var(--_s)) 0 0 var(--_c),
+			0 var(--_s) 0 0 var(--_c),
+			calc(-1 * var(--_s)) 0 0 0 var(--_c),
+			var(--_s) 0 0 0 var(--_c),
+			calc(var(--_s) * 2) calc(var(--_s) * 2) 0 0 oklch(0% 0 0 / 0.45);
+	}
+
+	.visually-hidden {
+		position: absolute !important;
+		inline-size: 1px;
+		block-size: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.pixel-font {
+		font-family: var(--sb-font-display);
+		letter-spacing: 0.03em;
+	}
+
+	.muted {
+		color: var(--sb-text-muted);
+	}
+}

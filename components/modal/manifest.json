@@ -1,0 +1,71 @@
+{
+  "tag": "sb-modal",
+  "props": [
+    {
+      "name": "heading",
+      "attribute": "heading",
+      "type": "string",
+      "default": "Dialog",
+      "required": false,
+      "docs": {
+        "description": "Title of the dialog."
+      }
+    },
+    {
+      "name": "open",
+      "attribute": "open",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Open on first render. Use show() and close() afterwards."
+      }
+    },
+    {
+      "name": "inline",
+      "attribute": "inline",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Render in place, without an overlay (previews, docs)."
+      }
+    },
+    {
+      "name": "closable",
+      "attribute": "closable",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Show the close button."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "default",
+      "description": "Dialog body."
+    },
+    {
+      "name": "footer",
+      "description": "Action buttons. Elements with data-sb-close close the dialog."
+    }
+  ],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-open",
+      "bubbles": true,
+      "composed": true,
+      "description": "After opening."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-close",
+      "bubbles": true,
+      "composed": true,
+      "description": "After closing. detail: { reason, value }."
+    }
+  ]
+}

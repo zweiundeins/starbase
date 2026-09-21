@@ -1,0 +1,25 @@
+# Live reload for development: `go tool task live`.
+# Rebuilds on Go, templ, CSS, JS and Markdown changes; the browser reloads
+# itself when the new server comes up (see /dev/reload).
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  pre_cmd = ["go tool templ generate"]
+  cmd = "go build -tags dev -o ./tmp/starbase ./cmd/starbase"
+  entrypoint = ["./tmp/starbase"]
+  include_ext = ["go", "templ", "css", "js", "md", "sql"]
+  exclude_dir = ["tmp", "bin", "data", "docs", ".git"]
+  exclude_regex = ["_templ\\.go$", "_test\\.go$"]
+  # manifest.json is written by the dev server itself; don't loop on it.
+  exclude_file = []
+  delay = 200
+  kill_delay = "1s"
+  send_interrupt = true
+  stop_on_error = true
+
+[log]
+  main_only = true
+
+[misc]
+  clean_on_exit = true

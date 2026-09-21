@@ -1,0 +1,124 @@
+package ui
+
+import (
+	"starbase/internal/catalog"
+	"starbase/internal/queries"
+)
+
+type ComponentView struct {
+	Card      queries.Card
+	Component *catalog.Component
+	Install   string // highlighted install snippet (HTML)
+	InstallRaw string
+	ScriptURL string
+	EditURL   string
+}
+
+templ ComponentPage(s Shell, v ComponentView) {
+	<div class="wrap">
+		<header class="page-head" style={ templ.SafeCSS("view-transition-name: card-" + v.Card.Slug) }>
+			<nav class="breadcrumbs" aria-label="Breadcrumb">
+				<a href="/">Components</a>
+				<span aria-hidden="true">/</span>
+				<a href={ browseHref(modelBrowseCategory(v.Card.Category)) }>{ categoryLabel(v.Card.Category) }</a>
+			</nav>
+			<h1>{ v.Card.Name }</h1>
+			<p class="lede">{ v.Card.Summary }</p>
+			<div class="meta-row cluster">
+				<span class="author">
+					<img class="avatar" src={ avatar(v.Card.Author) } alt="" width="24" height="24"/>
+					<a href={ safe("https://github.com/" + v.Card.Author) }>{ v.Card.Author }</a>
+				</span>
+				<code>{ "<" + v.Card.Tag + ">" }</code>
+				for _, t := range v.Card.Tags {
+					<span class="tag-chip">{ t }</span>
+				}
+				<span class="muted">Since { v.Card.Since }</span>
+				@StarButton(s, v.Card, true)
+				<a class="btn btn--ghost btn--sm" href={ safe(v.EditURL) }>
+					@Icon("pencil")
+					Edit on GitHub
+				</a>
+			</div>
+		</header>
+		<div class="docs">
+			<article class="prose">
+				@templ.Raw(v.Component.DocHTML)
+				<h2 id="installation">Installation</h2>
+				<p>Load Datastar with Rocket once per page, then import the component module. Rocket is free and ships in the <code>datastar-rocket.js</code> bundle.</p>
+				<div class="code-block">
+					<sb-copy-button class="code-copy" value={ v.InstallRaw }></sb-copy-button>
+					@templ.Raw(v.Install)
+				</div>
+				@APIReference(v.Component)
+			</article>
+			<aside>
+				<nav class="toc" aria-label="On this page">
+					<h2>On this page</h2>
+					for _, h := range v.Component.Headings {
+						<a href={ safe("#" + h.ID) }>{ h.Text }</a>
+					}
+					<a href="#installation">Installation</a>
+					<a href="#api">API reference</a>
+				</nav>
+			</aside>
+		</div>
+	</div>
+}
+
+templ APIReference(c *catalog.Component) {
+	<h2 id="api">API reference</h2>
+	if c.Manifest == nil {
+		<p class="notice">
+			@Icon("info")
+			<span>No manifest yet. Run the dev server and open this page: Rocket publishes the component's props, slots and events, and the dev server writes <code>manifest.json</code>.</span>
+		</p>
+	} else {
+		<h3 id="props">Props</h3>
+		if len(c.Manifest.Props) == 0 {
+			<p>This component takes no props.</p>
+		} else {
+			<div class="table-scroll">
+				<table class="api-table">
+					<thead><tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+					<tbody>
+						for _, p := range c.Manifest.Props {
+							<tr>
+								<td><code>{ p.Attribute }</code></td>
+								<td>{ propType(p) }</td>
+								<td><code>{ propDefault(p) }</code></td>
+								<td>{ propDoc(p) }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+		if len(c.Manifest.Slots) > 0 {
+			<h3 id="slots">Slots</h3>
+			<div class="table-scroll">
+				<table class="api-table">
+					<thead><tr><th>Name</th><th>Description</th></tr></thead>
+					<tbody>
+						for _, sl := range c.Manifest.Slots {
+							<tr><td><code>{ sl.Name }</code></td><td>{ sl.Description }</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+		if len(c.Manifest.Events) > 0 {
+			<h3 id="events">Events</h3>
+			<div class="table-scroll">
+				<table class="api-table">
+					<thead><tr><th>Name</th><th>Description</th></tr></thead>
+					<tbody>
+						for _, e := range c.Manifest.Events {
+							<tr><td><code>{ e.Name }</code></td><td>{ e.Description }</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	}
+}

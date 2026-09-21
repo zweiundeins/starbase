@@ -1,0 +1,55 @@
+{
+  "tag": "sb-card",
+  "props": [
+    {
+      "name": "heading",
+      "attribute": "heading",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Card title."
+      }
+    },
+    {
+      "name": "href",
+      "attribute": "href",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Makes the whole card a link."
+      }
+    },
+    {
+      "name": "variant",
+      "attribute": "variant",
+      "type": "oneOf",
+      "default": "default",
+      "required": false,
+      "values": [
+        "default",
+        "inset",
+        "glow"
+      ],
+      "docs": {
+        "description": "Surface style."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "media",
+      "description": "Image or illustration on top, edge to edge."
+    },
+    {
+      "name": "default",
+      "description": "Body content."
+    },
+    {
+      "name": "footer",
+      "description": "Actions or metadata at the bottom."
+    }
+  ],
+  "events": []
+}

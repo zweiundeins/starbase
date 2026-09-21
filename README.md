@@ -1,0 +1,60 @@
+# Starbase
+
+A community gallery of [Rocket](https://data-star.dev/reference/rocket) web components for [Datastar](https://data-star.dev), in the spirit of shoelace.style.
+
+Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node, no bundler.
+
+![mockup](docs/design/mockup.png)
+
+## Quick start
+
+```sh
+cp .env.example .env         # optional: add GitHub OAuth credentials
+go tool task live            # dev server with live reload on http://localhost:8080
+go tool task test            # vet + tests (including component validation)
+go tool task build           # production binary in bin/starbase
+```
+
+Without GitHub credentials, dev builds sign you in as a fake user at `/auth/dev?login=you`.
+
+## Adding a component
+
+```sh
+go tool task new -- my-widget --category forms --author your-handle
+```
+
+This creates `components/my-widget/README.md` (front matter + docs, where ```` ```html preview ```` blocks become live demos) and `my-widget.js` (the `rocket('sb-my-widget', …)` definition). Open `/components/my-widget` in the dev server. The page publishes Rocket's manifest and the server writes `manifest.json`, which drives the API tables. No Go changes are needed. See [/contribute](content/contribute.md) for the house rules.
+
+## Architecture
+
+CQRS in the style of [hyperlith](https://github.com/andersmurphy/hyperlith):
+
+```
+GET  /page           full server render (SEO), then data-init opens ↓
+POST /page           the tab's render stream (SSE, Brotli): render → wait for hub → render …
+POST /cmd/...        commands: validate → enqueue → 204. Never HTML.
+                     single writer: drain queue → one transaction (savepoint per command)
+                     → commit → wake affected streams (per session, or all)
+```
+
+- **Write side:** `internal/cqrs` (Bus and Hub) and `internal/commands` (one struct per state change).
+- **Read side:** `internal/queries` runs every render inside one read transaction.
+- **Views:** `internal/ui` holds templ components, pure functions of the read model. The same function serves the GET and every stream frame. Datastar morphs `#app`.
+- **Per-tab UI state** (filters, sort, preview theme) is stored in SQLite, in `tab_state`. The stream keeps the URL in sync.
+- **Catalog:** `components/` is embedded. At startup `SyncCatalog` mirrors it into SQLite (FTS5 for search).
+- **Design system:** `static/css`. Primitive `--sb-*` tokens feed semantic tokens, which feed components. Layers, container queries, nesting and OKLCH. Themes remap the semantic tokens only.
+- **Pixel art** is generated in Go (`internal/pixelart`) and served as cached SVG.
+
+## Configuration
+
+| Variable | Default | |
+|---|---|---|
+| `ADDR` | `:8080` | listen address |
+| `BASE_URL` | `http://localhost:8080` | public origin (OAuth callback, CSRF origin, `__Host-` cookies on https) |
+| `DB_PATH` | `data/starbase.db` | SQLite file |
+| `REPO_URL` | `https://github.com/zweiundeins/starbase` | "Edit on GitHub" links |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | | GitHub OAuth app; callback `$BASE_URL/auth/github/callback` |
+
+## Licences
+
+Code MIT. Fonts: Pixelify Sans and JetBrains Mono (SIL OFL, see `static/fonts`). Icons: Lucide (ISC), GitHub mark (MIT, Octicons). Datastar + Rocket bundle: MIT, vendored in `static/vendor`.

@@ -1,0 +1,233 @@
+package ui
+
+import (
+	"starbase/internal/catalog"
+	"starbase/internal/model"
+	"starbase/internal/queries"
+)
+
+type GalleryView struct {
+	Browse   model.Browse
+	Result   queries.BrowseResult
+	Previews map[string]string // slug → preview snippet
+}
+
+func browseHref(b model.Browse) templ.SafeURL {
+	q := b.Query().Encode()
+	if q == "" {
+		return "/#components"
+	}
+	return templ.SafeURL("/?" + q + "#components")
+}
+
+func categoryClick(slug string) string {
+	return "$cat = " + jsString(slug) + "; @post('/cmd/browse')"
+}
+
+func categoryLabel(slug string) string {
+	if c, ok := catalog.CategoryBySlug(slug); ok {
+		return c.Label
+	}
+	return "All Components"
+}
+
+templ Gallery(s Shell, v GalleryView) {
+	@Hero(s)
+	<div class="browse-shell" id="components">
+		<div class="wrap browse">
+			@Sidebar(s, v)
+			@Collection(s, v)
+		</div>
+	</div>
+}
+
+templ Hero(s Shell) {
+	<section class="wrap hero" aria-labelledby="hero-title">
+		<div class="hero__copy">
+			<h1 class="hero__title" id="hero-title">Small components<br/> { "for" } <em>big ideas.</em></h1>
+			<p class="hero__lede">Community-built Rocket components for the Datastar ecosystem. Copy, use, remix, and launch something great.</p>
+			<div class="hero__actions cluster">
+				<a class="btn btn--primary" href="#components">
+					@Icon("rocket")
+					Browse Components
+				</a>
+				<a class="btn btn--outline" href="/contribute">
+					@Icon("github")
+					Contribute
+				</a>
+			</div>
+		</div>
+		<div class="hero__art">
+			<img class="scene pixel-sprite" src={ s.Assets.Art("hero") } alt="" width="720" height="336"/>
+			<p class="hero__motto" aria-hidden="true">Build<br/>Share<br/>Launch<br/>Together</p>
+			<a class="badge-datastar sb-pixel-frame" href="https://data-star.dev">
+				<span>Powered by <b>Datastar</b></span>
+				@Icon("chevron-right")
+			</a>
+		</div>
+	</section>
+}
+
+templ Sidebar(s Shell, v GalleryView) {
+	<aside class="sidebar" aria-label="Browse">
+		<nav class="cat-nav" aria-label="Categories">
+			@categoryLink(v.Browse, "", "All Components", "all", v.Result.Total)
+			for _, c := range catalog.Categories {
+				@categoryLink(v.Browse, c.Slug, c.Label, c.Icon, v.Result.Counts[c.Slug])
+			}
+		</nav>
+		<hr/>
+		<ul class="side-links" role="list">
+			<li>
+				<a href="/contribute">
+					@Icon("submit")
+					Submit a component
+				</a>
+			</li>
+			<li>
+				<a href="https://data-star.dev">
+					@Icon("community")
+					Join the community
+				</a>
+			</li>
+			<li>
+				<a href={ safe(s.RepoURL) }>
+					@Icon("github")
+					Browse on GitHub
+				</a>
+			</li>
+		</ul>
+		<div class="sidebar__motto">
+			@PixelArt(s, "saturn", "")
+			<span>Good<br/>components<br/>travel far.</span>
+		</div>
+	</aside>
+}
+
+templ categoryLink(b model.Browse, slug, label, icon string, count int) {
+	<a
+		class={ "cat-nav__item", templ.KV("is-empty", count == 0) }
+		href={ browseHref(model.Browse{Q: b.Q, Category: slug, Sort: b.Sort}) }
+		if b.Category == slug {
+			aria-current="true"
+		}
+		data-on:click__prevent={ categoryClick(slug) }
+	>
+		@Icon(icon)
+		<span>{ label }</span>
+		<span class="count">{ itoa(count) }</span>
+	</a>
+}
+
+templ Collection(s Shell, v GalleryView) {
+	<section class="collection" aria-labelledby="collection-title">
+		<header class="collection__head">
+			<div>
+				<h2 class="section-title" id="collection-title">
+					@PixelArt(s, "sparkle", "")
+					if v.Browse.Category == "" {
+						Community Components
+					} else {
+						{ categoryLabel(v.Browse.Category) }
+					}
+				</h2>
+				<p>
+					if v.Browse.Q != "" {
+						{ itoa(len(v.Result.Cards)) } results { "for" } “{ v.Browse.Q }”
+					} else {
+						A collection of reusable components built by the Datastar community.
+					}
+				</p>
+			</div>
+			<label class="select-field">
+				Sort by
+				<select name="sort" data-bind:sort data-on:change="@post('/cmd/browse')">
+					for _, o := range model.Sorts {
+						<option value={ string(o.Value) } selected?={ v.Browse.Sort == o.Value }>{ o.Label }</option>
+					}
+				</select>
+			</label>
+		</header>
+		if len(v.Result.Cards) == 0 {
+			<div class="empty-state">
+				@PixelArt(s, "moon", "")
+				<h3>Nothing out here yet</h3>
+				<p>No component matches this search. Try another word, or build it yourself.</p>
+				<a class="btn btn--outline btn--sm" href="/contribute">Submit a component</a>
+			</div>
+		} else {
+			<ul class="card-grid" role="list">
+				for _, c := range v.Result.Cards {
+					@Card(s, c, v.Previews[c.Slug])
+				}
+			</ul>
+		}
+	</section>
+}
+
+// Card deliberately has no id: Datastar's morph parks id-matched nodes while
+// reordering, and parked Rocket elements re-render re-entrantly inside the
+// morph (upstream bug). Positional morphing avoids the parking entirely.
+templ Card(s Shell, c queries.Card, preview string) {
+	<li class="card" data-slug={ c.Slug } style={ templ.SafeCSS("view-transition-name: card-" + c.Slug) }>
+		<div class="card__preview">
+			@templ.Raw(preview)
+		</div>
+		<div class="card__body">
+			<h3 class="card__name"><a href={ safe("/components/" + c.Slug) }>{ c.Name }</a></h3>
+			<p class="card__summary">{ c.Summary }</p>
+			<div class="card__meta">
+				<span class="author">
+					<img class="avatar" src={ avatar(c.Author) } alt="" width="24" height="24" loading="lazy"/>
+					<span>{ c.Author }</span>
+				</span>
+				@StarButton(s, c, false)
+			</div>
+		</div>
+	</li>
+}
+
+func starAction(c queries.Card) string {
+	cmd := "star"
+	if c.Starred {
+		cmd = "unstar"
+	}
+	return "el.classList.add('is-pending'); @post('/cmd/" + cmd + "/" + c.Slug + "')"
+}
+
+func starLabel(c queries.Card) string {
+	if c.Starred {
+		return "Unstar " + c.Name + " (" + itoa(c.Stars) + " stars)"
+	}
+	return "Star " + c.Name + " (" + itoa(c.Stars) + " stars)"
+}
+
+templ StarButton(s Shell, c queries.Card, large bool) {
+	if s.User == nil && s.LoginURL == "" {
+		<span class={ "star", templ.KV("star--lg", large) } aria-label={ itoa(c.Stars) + " stars" }>
+			@Icon("star")
+			<span>{ itoa(c.Stars) }</span>
+		</span>
+	} else if s.User == nil {
+		<a
+			class={ "star", templ.KV("star--lg", large) }
+			href={ safe(s.LoginURL) }
+			title="Sign in with GitHub to star"
+			aria-label={ starLabel(c) }
+		>
+			@Icon("star")
+			<span>{ itoa(c.Stars) }</span>
+		</a>
+	} else {
+		<button
+			type="button"
+			class={ "star", templ.KV("star--lg", large) }
+			aria-pressed={ boolString(c.Starred) }
+			aria-label={ starLabel(c) }
+			data-on:click={ starAction(c) }
+		>
+			@Icon("star")
+			<span>{ itoa(c.Stars) }</span>
+		</button>
+	}
+}

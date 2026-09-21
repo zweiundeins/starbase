@@ -1,0 +1,68 @@
+@layer layout {
+	.app {
+		display: grid;
+		grid-template-rows: auto 1fr auto;
+		min-block-size: 100dvh;
+	}
+
+	.wrap {
+		inline-size: min(100% - 2 * var(--gutter, var(--sb-space-6)), var(--sb-content-max));
+		margin-inline: auto;
+
+		@media (width < 40rem) {
+			--gutter: var(--sb-space-4);
+		}
+	}
+
+	/* <main> is the page container: layouts respond to the width they
+	   actually get, not to the viewport. */
+	.main {
+		container: page / inline-size;
+	}
+
+	/* The gallery: category sidebar | collection. */
+	.browse-shell {
+		border-block-start: var(--sb-border-width) solid var(--sb-border-subtle);
+	}
+
+	.browse {
+		display: grid;
+		grid-template-columns: var(--sb-sidebar-width) minmax(0, 1fr);
+
+		@container page (width < 56rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.stack {
+		display: flex;
+		flex-direction: column;
+		gap: var(--gap, var(--sb-space-4));
+	}
+
+	.cluster {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--gap, var(--sb-space-3));
+	}
+
+	/* Docs pages: content with a sticky aside. */
+	.docs {
+		container: docs / inline-size;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 16rem;
+		gap: var(--sb-space-12);
+		padding-block: var(--sb-space-10) var(--sb-space-16);
+
+		@container page (width < 64rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		& > aside {
+			position: sticky;
+			inset-block-start: var(--sb-space-6);
+			align-self: start;
+		}
+	}
+}

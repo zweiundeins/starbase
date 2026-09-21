@@ -1,0 +1,56 @@
+{
+  "tag": "sb-alert",
+  "props": [
+    {
+      "name": "variant",
+      "attribute": "variant",
+      "type": "oneOf",
+      "default": "info",
+      "required": false,
+      "values": [
+        "info",
+        "success",
+        "warning",
+        "danger"
+      ],
+      "docs": {
+        "description": "Tone of the message."
+      }
+    },
+    {
+      "name": "heading",
+      "attribute": "heading",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Bold first line."
+      }
+    },
+    {
+      "name": "closable",
+      "attribute": "closable",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show a dismiss button."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "default",
+      "description": "The message."
+    }
+  ],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-close",
+      "bubbles": true,
+      "composed": true,
+      "description": "After the alert was dismissed."
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "tag": "sb-tooltip",
+  "props": [
+    {
+      "name": "content",
+      "attribute": "content",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Tooltip text."
+      }
+    },
+    {
+      "name": "placement",
+      "attribute": "placement",
+      "type": "oneOf",
+      "default": "top",
+      "required": false,
+      "values": [
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
+      "docs": {
+        "description": "Side of the trigger."
+      }
+    },
+    {
+      "name": "open",
+      "attribute": "open",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Keep the tooltip visible."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "default",
+      "description": "The trigger element."
+    }
+  ],
+  "events": []
+}
