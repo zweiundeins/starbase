@@ -85,7 +85,6 @@ const streamInit = `@post(location.pathname + location.search, {retry: 'always',
 // searchFromAnywhere sends typing on non-gallery pages to the gallery.
 const searchFromAnywhere = `el.value.trim() && (window.location.href = '/?q=' + encodeURIComponent(el.value.trim()))`
 
-
 func avatar(handle string) string {
 	return "https://github.com/" + url.PathEscape(handle) + ".png?size=64"
 }

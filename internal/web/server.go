@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"starbase/internal/catalog"
 	"starbase/internal/config"
@@ -29,6 +30,9 @@ type Server struct {
 	oauth   *oauthConfig
 	boot    string
 	secure  bool
+
+	board      atomic.Pointer[boardCache]
+	paintLimit *limiter
 }
 
 type Deps struct {
@@ -55,6 +59,8 @@ func New(ctx context.Context, d Deps) *Server {
 		assets:  newAssets(d.StaticFS, d.Catalog, d.Config.Dev),
 		boot:    strings.ToLower(randomToken(6)),
 		secure:  strings.HasPrefix(d.Config.BaseURL, "https://"),
+
+		paintLimit: newLimiter(20, 60), // pixels per second, burst
 	}
 	s.oauth = newOAuth(d.Config)
 	return s
@@ -82,6 +88,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /cmd/unstar/{slug}", s.cmdStar(false))
 	mux.HandleFunc("POST /cmd/theme/{theme}", s.cmdTheme)
 	mux.HandleFunc("POST /cmd/snippet", s.cmdSnippet)
+	mux.HandleFunc("POST /cmd/paint", s.cmdPaint)
 
 	// Auth.
 	mux.HandleFunc("GET /auth/login", s.login)

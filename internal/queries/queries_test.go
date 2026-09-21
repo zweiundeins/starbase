@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -243,5 +244,50 @@ func TestSnippetSaveAndLoad(t *testing.T) {
 	}
 	if st.PlaygroundShare != "AbCd2345" {
 		t.Fatalf("tab share = %q", st.PlaygroundShare)
+	}
+}
+
+func TestBoard(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if err := e.bus.Exec(ctx, commands.SeedBoard{}); err != nil {
+		t.Fatal(err)
+	}
+	read := func() (cells string, version, pixels int64) {
+		e.q.View(ctx, func(r *queries.Reader) (err error) {
+			if version, pixels, err = r.BoardMeta(ctx, commands.BoardName); err != nil {
+				return err
+			}
+			cells, err = r.BoardCells(ctx, commands.BoardName, commands.BoardSize)
+			return err
+		})
+		return
+	}
+	seeded, v1, _ := read()
+	if len(seeded) != commands.BoardSize*commands.BoardSize || strings.Count(seeded, "0") == len(seeded) {
+		t.Fatalf("seeded board has %d cells, all empty: %v", len(seeded), strings.Count(seeded, "0") == len(seeded))
+	}
+	// Seeding twice is a no-op.
+	e.bus.Exec(ctx, commands.SeedBoard{})
+	if again, v, _ := read(); again != seeded || v != v1 {
+		t.Fatal("second seed changed the board")
+	}
+	if err := e.bus.Exec(ctx, commands.PaintPixels{Board: "main", Color: 13, Cells: []int{0, 1, 47}}); err != nil {
+		t.Fatal(err)
+	}
+	cells, v2, pixels := read()
+	if cells[0] != 'd' || cells[1] != 'd' || cells[47] != 'd' || v2 != v1+1 || pixels != 3 {
+		t.Fatalf("after paint: cells[0..1]=%q cells[47]=%q v=%d pixels=%d", cells[:2], cells[47], v2, pixels)
+	}
+	for name, bad := range map[string]commands.PaintPixels{
+		"colour":   {Board: "main", Color: 16, Cells: []int{0}},
+		"range":    {Board: "main", Color: 1, Cells: []int{48 * 48}},
+		"too many": {Board: "main", Color: 1, Cells: make([]int, 65)},
+		"board":    {Board: "other", Color: 1, Cells: []int{0}},
+		"empty":    {Board: "main", Color: 1},
+	} {
+		if bad.Validate() == nil {
+			t.Errorf("%s: expected a validation error", name)
+		}
 	}
 }

@@ -222,3 +222,34 @@ func (r *Reader) Snippet(ctx context.Context, id string) (*Snippet, error) {
 	sn.Component, sn.Author = comp.String, author.String
 	return &sn, nil
 }
+
+// BoardMeta returns a board's version and total painted pixels.
+func (r *Reader) BoardMeta(ctx context.Context, board string) (version, pixels int64, err error) {
+	err = r.tx.QueryRowContext(ctx, `SELECT version, pixels FROM boards WHERE board = ?`, board).Scan(&version, &pixels)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, 0, nil
+	}
+	return
+}
+
+// BoardCells encodes a board as one hex digit (palette index) per cell,
+// row by row: the value of sb-pixel-board's cells attribute.
+func (r *Reader) BoardCells(ctx context.Context, board string, size int) (string, error) {
+	cells := []byte(strings.Repeat("0", size*size))
+	rows, err := r.tx.QueryContext(ctx, `SELECT idx, color FROM board_cells WHERE board = ?`, board)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	const digits = "0123456789abcdef"
+	for rows.Next() {
+		var idx, color int
+		if err := rows.Scan(&idx, &color); err != nil {
+			return "", err
+		}
+		if idx >= 0 && idx < len(cells) && color >= 0 && color < 16 {
+			cells[idx] = digits[color]
+		}
+	}
+	return string(cells), rows.Err()
+}

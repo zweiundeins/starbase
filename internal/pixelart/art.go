@@ -65,6 +65,12 @@ var flameRows = []string{
 	".......F......",
 }
 
+// RocketRows returns the upright rocket sprite plus its flame, one string
+// per row, using single-letter colour keys (see rocketPalette).
+func RocketRows() []string {
+	return append(append([]string{}, rocketRows...), flameRows...)
+}
+
 // rocketParts returns the rocket and its flame on identical canvases, so
 // both can be rotated and placed at the same offset but animated separately.
 func rocketParts() (body, flame Grid) {
