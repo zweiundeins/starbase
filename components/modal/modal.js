@@ -81,11 +81,7 @@ rocket('sb-modal', {
 		defineHostProp('close', { value: close })
 		defineHostProp('isOpen', { get: () => $$.open })
 
-		action('close', () => close('button'))
-		action('cancel', ({ evt }) => {
-			evt.preventDefault() // keep the dialog in sync with $$open
-			close('escape')
-		})
+		action('close', (_, reason = 'button') => close(reason))
 		// Elements marked data-sb-close close the dialog and report their
 		// value, like <form method="dialog">; a click on the backdrop (the
 		// dialog element itself) closes it too.
@@ -111,7 +107,7 @@ rocket('sb-modal', {
 			? html`<section class="panel inline" part="panel" role="group" aria-labelledby="title" data-on:click="@click()">${inner}</section>`
 			: html`<dialog class="panel" part="panel" aria-labelledby="title"
 				data-effect="$$open ? (el.open || el.showModal()) : (el.open && el.close())"
-				data-on:cancel="@cancel()"
+				data-on:cancel="evt.preventDefault(); @close('escape')"
 				data-on:click="@click()">${inner}</dialog>`
 	},
 })

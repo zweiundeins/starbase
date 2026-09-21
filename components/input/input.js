@@ -134,12 +134,6 @@ rocket('sb-input', {
 			validate()
 			emit('change')
 		})
-		action('key', ({ evt }) => {
-			if (evt.key === 'Enter') {
-				evt.preventDefault()
-				submit()
-			}
-		})
 		action('submit', submit)
 	},
 	render: ({ html, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
@@ -158,7 +152,7 @@ rocket('sb-input', {
 					data-effect="el.value !== $$value && (el.value = $$value)"
 					data-on:input="@input()"
 					data-on:change="@commit()"
-					data-on:keydown="@key()"
+					data-on:keydown="evt.key === 'Enter' && (evt.preventDefault(), @submit())"
 				/>
 				${action ? html`<button class="go" type="button" part="button" aria-label="Submit" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
 			</span>

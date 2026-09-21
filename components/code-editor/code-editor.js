@@ -169,7 +169,6 @@ rocket('sb-code-editor', {
 			}
 		}
 		let escaped = false
-		action('input', ({ el }) => ($$.code = el.value))
 		action('change', () => emit('change'))
 		action('key', ({ el: area, evt: e }) => {
 			if (e.key === 'Escape') {
@@ -223,7 +222,7 @@ rocket('sb-code-editor', {
 						aria-label="${label || 'Code'}"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"
-						data-on:input="@input()"
+						data-on:input="$$code = el.value"
 						data-on:change="@change()"
 						data-on:keydown="@key()"
 					></textarea>

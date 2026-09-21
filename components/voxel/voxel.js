@@ -299,23 +299,23 @@ rocket('sb-voxel', {
 		})
 		io.observe(host)
 
-		// Drag or use the arrow keys to orbit.
-		action('grab', ({ el, evt }) => {
-			drag = { x: evt.clientX, y: evt.clientY }
-			el.setPointerCapture(evt.pointerId)
-		})
-		action('drag', ({ el, evt }) => {
-			if (!drag) return
-			const k = 360 / el.clientWidth
-			dragYaw += (evt.clientX - drag.x) * k
-			dragPitch += (evt.clientY - drag.y) * k * 0.5
-			drag = { x: evt.clientX, y: evt.clientY }
-			invalidate()
-		})
-		action('release', () => {
-			if (!drag) return
-			drag = null
-			emit('sb-orbit', angles())
+		// Drag (one gesture: down, move, up/cancel) or use the arrow keys to orbit.
+		action('orbit', ({ el, evt }) => {
+			if (evt.type === 'pointerdown') {
+				drag = { x: evt.clientX, y: evt.clientY }
+				el.setPointerCapture(evt.pointerId)
+			} else if (!drag) {
+				return
+			} else if (evt.type === 'pointermove') {
+				const k = 360 / el.clientWidth
+				dragYaw += (evt.clientX - drag.x) * k
+				dragPitch += (evt.clientY - drag.y) * k * 0.5
+				drag = { x: evt.clientX, y: evt.clientY }
+				invalidate()
+			} else {
+				drag = null
+				emit('sb-orbit', angles())
+			}
 		})
 		action('key', ({ evt }) => {
 			const step = evt.shiftKey ? 15 : 5
@@ -343,10 +343,10 @@ rocket('sb-voxel', {
 	render: ({ html }) => html`
 		<canvas part="canvas" width="${RES}" height="${RES}" tabindex="0" role="img"
 			data-ref:canvas
-			data-on:pointerdown="@grab()"
-			data-on:pointermove="@drag()"
-			data-on:pointerup="@release()"
-			data-on:pointercancel="@release()"
+			data-on:pointerdown="@orbit()"
+			data-on:pointermove="@orbit()"
+			data-on:pointerup="@orbit()"
+			data-on:pointercancel="@orbit()"
 			data-on:keydown="@key()"></canvas>
 	`,
 	onFirstRender: ({ host, refs }) => buffers.get(host)(refs.canvas),

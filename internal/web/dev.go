@@ -10,31 +10,13 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/starfederation/datastar-go/datastar"
-
 	"starbase/internal/model"
 )
 
 // devRoutes exist only in -tags=dev builds.
 func (s *Server) devRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dev/reload", s.devReload)
 	mux.HandleFunc("GET /auth/dev", s.devLogin)
 	mux.HandleFunc("POST /dev/manifests", s.devManifests)
-}
-
-// devReload holds an SSE connection open. When the server restarts (air),
-// the browser reconnects with the old boot id and is told to reload.
-func (s *Server) devReload(w http.ResponseWriter, r *http.Request) {
-	sse := datastar.NewSSE(w, r)
-	if r.URL.Query().Get("boot") != s.boot {
-		sse.PatchElements(`<div hidden data-init="window.location.reload()"></div>`,
-			datastar.WithSelector("body"), datastar.WithModeAppend())
-		return
-	}
-	select {
-	case <-r.Context().Done():
-	case <-s.ctx.Done():
-	}
 }
 
 var devLoginRe = regexp.MustCompile(`^[a-z0-9-]{1,39}$`)

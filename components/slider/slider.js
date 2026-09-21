@@ -117,7 +117,6 @@ rocket('sb-slider', {
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
 		$$.pct = () => ((($$.value - props.min) / (props.max - props.min || 1)) * 100).toFixed(2) + '%'
 		$$.shown = () => Number($$.value).toFixed(decimals()) + props.unit
-		action('input', ({ el }) => ($$.value = Number(el.value)))
 		action('commit', () => {
 			emit('change')
 			emit('sb-change', { value: $$.value })
@@ -146,7 +145,7 @@ rocket('sb-slider', {
 					aria-label="${label ? null : 'Value'}"
 					disabled="${disabled}"
 					data-effect="el.value != $$value && (el.value = $$value)"
-					data-on:input="@input()"
+					data-on:input="$$value = +el.value"
 					data-on:change="@commit()"
 				/>
 			</span>

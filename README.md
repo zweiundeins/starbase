@@ -63,6 +63,10 @@ POST /cmd/...        commands: validate → enqueue → 204. Never HTML.
 - **Code playground:** `/playground` (and "Open in playground" on every component) edits a component's JS and HTML with `sb-code-editor` and `sb-code-playground`. Previews run in a `sandbox="allow-scripts"` iframe served by `/playground/run`, with its own CSP and an opaque origin. "Save & share" is the `SaveSnippet` command (immutable `/playground?s=<id>` links). "Submit as component" prefills the issue form with that link, and the bot imports it (set the repository variable `STARBASE_URL`).
 - **Live demo data:** `GET /demo/telemetry` streams a simulated mission as signal patches (`$_tm`). It is a pure function of time, with no state. The Showcase page's Mission Control and the gauge, sparkline and meter docs use it.
 
+## Deployment note: serve over HTTP/2
+
+Every open tab keeps one long-lived SSE connection (its render stream). Over HTTP/1.1, browsers allow only 6 connections per host *across all tabs*, so a few open tabs can starve new requests. They sit "Stalled" in DevTools. Put the server behind a TLS proxy that speaks HTTP/2 (Caddy, nginx, a CDN), where all streams share one multiplexed connection. Browsers only use HTTP/2 over TLS, so this matters most in production, and when testing with many tabs.
+
 ## Configuration
 
 | Variable | Default | |

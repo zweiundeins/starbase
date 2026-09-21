@@ -88,7 +88,7 @@ func (s *Server) shell(req *http.Request, user *model.User, v view) ui.Shell {
 		Search:       v.Search,
 		SearchLive:   v.SearchLive,
 		URL:          v.URL,
-		Signals:      ui.PageSignals(v.Signals),
+		Signals:      ui.PageSignals(s.pageSignals(v.Signals)),
 		LoginURL:     s.loginURL(next),
 		RepoURL:      s.cfg.RepoURL,
 		BaseURL:      s.cfg.BaseURL,
@@ -138,9 +138,17 @@ func (s *Server) stream(fn pageFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var sig struct {
 			TabID string `json:"tabid"`
+			Boot  string `json:"boot"` // dev builds only
 		}
 		if err := datastar.ReadSignals(r, &sig); err != nil || !tabIDRe.MatchString(sig.TabID) {
 			http.Error(w, "bad stream request", http.StatusBadRequest)
+			return
+		}
+		// Dev live reload rides on the render stream (one connection per tab):
+		// after a restart the stream reconnects with the old boot id.
+		if s.cfg.Dev && sig.Boot != "" && sig.Boot != s.boot {
+			datastar.NewSSE(w, r).PatchElements(`<div hidden data-init="window.location.reload()"></div>`,
+				datastar.WithSelector("body"), datastar.WithModeAppend())
 			return
 		}
 		sub := s.hub.Subscribe(sessionID(r), sig.TabID)
@@ -202,4 +210,16 @@ func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
 			Status: http.StatusNotFound,
 		}, nil
 	})(w, r)
+}
+
+// pageSignals adds the dev boot id (used for live reload) to a page's signals.
+func (s *Server) pageSignals(extra map[string]any) map[string]any {
+	if !s.cfg.Dev {
+		return extra
+	}
+	out := map[string]any{"boot": s.boot}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
 }

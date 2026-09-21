@@ -25,9 +25,6 @@ templ Document(s Shell, body templ.Component) {
 			}
 		</head>
 		<body data-signals={ s.Signals } data-init={ streamInit }>
-			if s.Dev {
-				<div hidden data-init={ devReload(s.Boot) }></div>
-			}
 			@App(s, body)
 		</body>
 	</html>
