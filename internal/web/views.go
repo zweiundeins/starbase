@@ -91,6 +91,8 @@ func (s *Server) installSnippet(c *catalog.Component) string {
   { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" } }
 </script>
 <script type="module" src="%[1]s/c/autoloader.js"></script>
+<!-- Optional, no flash of undefined elements: class="sb-cloak" on <html>, and -->
+<style>.sb-cloak :not(:defined) { visibility: hidden }</style>
 
 %[2]s
 

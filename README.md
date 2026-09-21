@@ -28,6 +28,8 @@ Without GitHub credentials, dev builds sign you in as a fake user at `/auth/dev?
 <sb-button variant="pixel" caret>Blast off</sb-button>
 ```
 
+To avoid a flash of undefined elements, add `class="sb-cloak"` to `<html>` and `.sb-cloak :not(:defined) { visibility: hidden }` to your CSS. The autoloader removes the class once the components present at startup are defined, or after 3 seconds at most. It also exports `ready`, a promise for the same moment.
+
 The autoloader (generated from the catalog) imports each `<sb-*>` component the first time its tag appears. It also watches for tags added later, and loads the components a component renders itself. For shadow roots of your own components, call `discover(shadowRoot)`, which it exports.
 
 ## Adding a component

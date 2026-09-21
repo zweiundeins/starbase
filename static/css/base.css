@@ -85,6 +85,12 @@
 		height: auto;
 	}
 
+	/* Until the autoloader has defined the first components: no flash of
+	   undefined <sb-*> elements (the page itself stays visible). */
+	.sb-cloak :not(:defined) {
+		visibility: hidden;
+	}
+
 	[hidden] {
 		display: none !important;
 	}

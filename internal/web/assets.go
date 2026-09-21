@@ -82,18 +82,48 @@ func autoloaderJS(cat *catalog.Catalog) string {
 //
 //   <script type="importmap">{"imports": {"datastar": "…/datastar-rocket.js"}}</script>
 //   <script type="module" src="…/c/autoloader.js"></script>
+//
+// Optional, against the flash of undefined elements: put class="sb-cloak" on
+// <html> and add  .sb-cloak :not(:defined) { visibility: hidden }
+// The class is removed once the first components are defined (or after 3 s).
 const modules = ` + string(mj) + `
 const requires = ` + string(rj) + `
 const started = new Set()
+let pending = 0
+let settled = false
+let markReady
+/** Resolves when the components present at startup are defined. */
+export const ready = new Promise((resolve) => (markReady = resolve))
+
+const report = (err) => (typeof reportError === 'function' ? reportError(err) : console.error(err))
+
+const uncloak = () => {
+	if (settled) return
+	settled = true
+	document.documentElement.classList.remove('sb-cloak')
+	markReady()
+}
+// Wait a microtask and a frame, so tags added right after a load count too.
+const settle = () =>
+	queueMicrotask(() => pending === 0 && requestAnimationFrame(() => pending === 0 && uncloak()))
+setTimeout(uncloak, 3000) // never leave a page cloaked
 
 const load = (tag) => {
 	if (started.has(tag) || !modules[tag] || customElements.get(tag)) return
 	started.add(tag)
 	for (const dep of requires[tag] || []) load(dep) // tags it renders itself
-	import(new URL(modules[tag], import.meta.url).href).catch((err) => {
-		started.delete(tag)
-		console.error('[starbase] could not load <' + tag + '>', err)
-	})
+	pending++
+	import(new URL(modules[tag], import.meta.url).href)
+		// Rocket defines elements once Datastar is ready: wait for that too.
+		.then(() => customElements.whenDefined(tag))
+		.catch((err) => {
+			started.delete(tag)
+			report(new Error('[starbase] could not load <' + tag + '>', { cause: err }))
+		})
+		.finally(() => {
+			pending--
+			settle()
+		})
 }
 
 /** Load the components used in root (an element, document or shadow root). */
@@ -103,6 +133,7 @@ export const discover = (root) => {
 }
 
 discover(document.documentElement)
+settle() // nothing to load: uncloak right away
 new MutationObserver((records) => {
 	for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) discover(n)
 }).observe(document.documentElement, { subtree: true, childList: true })

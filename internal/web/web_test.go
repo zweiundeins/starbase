@@ -400,3 +400,17 @@ func TestAutoloader(t *testing.T) {
 		t.Error("pages don't use the autoloader")
 	}
 }
+
+func TestAutoloaderCloak(t *testing.T) {
+	ts, c := newServer(t)
+	_, js := get(t, c, ts.URL+"/c/autoloader.js")
+	for _, want := range []string{"export const ready", "classList.remove('sb-cloak')", "setTimeout(uncloak, 3000)", "customElements.whenDefined(tag)", "reportError"} {
+		if !strings.Contains(js, want) {
+			t.Errorf("autoloader lacks %q", want)
+		}
+	}
+	_, page := get(t, c, ts.URL+"/about")
+	if !strings.Contains(page, `class="sb-cloak"`) {
+		t.Error("site pages should start cloaked")
+	}
+}
