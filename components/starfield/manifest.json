@@ -1,0 +1,53 @@
+{
+  "tag": "sb-starfield",
+  "props": [
+    {
+      "name": "speed",
+      "attribute": "speed",
+      "type": "number",
+      "default": 20,
+      "required": false,
+      "docs": {
+        "description": "Flight speed."
+      }
+    },
+    {
+      "name": "density",
+      "attribute": "density",
+      "type": "number",
+      "default": 300,
+      "required": false,
+      "docs": {
+        "description": "Number of stars."
+      }
+    },
+    {
+      "name": "tint",
+      "attribute": "tint",
+      "type": "oneOf",
+      "default": "white",
+      "required": false,
+      "values": [
+        "white",
+        "violet",
+        "cyan",
+        "green"
+      ],
+      "docs": {
+        "description": "Star colour (from theme tokens)."
+      }
+    },
+    {
+      "name": "warp",
+      "attribute": "warp",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Draw streaks instead of dots."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}

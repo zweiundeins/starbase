@@ -1,0 +1,87 @@
+{
+  "tag": "sb-gauge",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Current value; the needle eases toward it."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Minimum."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "number",
+      "default": 100,
+      "required": false,
+      "docs": {
+        "description": "Maximum."
+      }
+    },
+    {
+      "name": "warn",
+      "attribute": "warn",
+      "type": "number",
+      "default": 70,
+      "required": false,
+      "docs": {
+        "description": "Warning threshold. Below danger means low values are bad (like fuel)."
+      }
+    },
+    {
+      "name": "danger",
+      "attribute": "danger",
+      "type": "number",
+      "default": 90,
+      "required": false,
+      "docs": {
+        "description": "Danger threshold."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Caption below the value."
+      }
+    },
+    {
+      "name": "unit",
+      "attribute": "unit",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Unit after the value, e.g. \"%\" or \" km/s\"."
+      }
+    },
+    {
+      "name": "decimals",
+      "attribute": "decimals",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Decimals shown in the readout."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
