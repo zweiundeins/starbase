@@ -8,6 +8,8 @@ tags: [switch, checkbox, boolean]
 since: 2026-09-21
 preview: |
   <sb-toggle checked size="lg"></sb-toggle>
+playground:
+  values: {label: Warp drive, checked: true}
 ---
 
 An on/off switch with chunky pixel corners and stepped motion. It exposes a `checked` property and fires `change`, so Datastar can bind to it like a native checkbox.

@@ -33,6 +33,8 @@ type Meta struct {
 	Tags     []string `yaml:"tags"`
 	Since    string   `yaml:"since"`
 	Preview  string   `yaml:"preview"`
+
+	Playground PlaygroundMeta `yaml:"playground"`
 }
 
 type Component struct {

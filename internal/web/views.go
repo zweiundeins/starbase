@@ -73,6 +73,7 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 			return ui.ComponentPage(sh, ui.ComponentView{
 				Card:       *card,
 				Component:  comp,
+				Playground: comp.Playground(),
 				Install:    catalog.Highlight(install, "html"),
 				InstallRaw: install,
 				EditURL:    strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug,

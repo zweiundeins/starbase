@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"fmt"
+	"strconv"
+
 	"starbase/internal/catalog"
 	"starbase/internal/queries"
 )
@@ -8,6 +11,7 @@ import (
 type ComponentView struct {
 	Card      queries.Card
 	Component *catalog.Component
+	Playground *catalog.Playground
 	Install   string // highlighted install snippet (HTML)
 	InstallRaw string
 	ScriptURL string
@@ -43,6 +47,10 @@ templ ComponentPage(s Shell, v ComponentView) {
 		</header>
 		<div class="docs">
 			<article class="prose">
+				if v.Playground != nil {
+					<h2 id="playground">Playground</h2>
+					@Playground(v.Playground)
+				}
 				@templ.Raw(v.Component.DocHTML)
 				<h2 id="installation">Installation</h2>
 				<p>Load Datastar with Rocket once per page, then import the component module. Rocket is free and ships in the <code>datastar-rocket.js</code> bundle.</p>
@@ -55,6 +63,9 @@ templ ComponentPage(s Shell, v ComponentView) {
 			<aside>
 				<nav class="toc" aria-label="On this page">
 					<h2>On this page</h2>
+					if v.Playground != nil {
+						<a href="#playground">Playground</a>
+					}
 					for _, h := range v.Component.Headings {
 						<a href={ safe("#" + h.ID) }>{ h.Text }</a>
 					}
@@ -121,4 +132,79 @@ templ APIReference(c *catalog.Component) {
 			</div>
 		}
 	}
+}
+
+func bindAttr(c catalog.Control, mods string) templ.Attributes {
+	return templ.Attributes{"data-bind:_pg." + c.Attr + mods: true}
+}
+
+func fmtNum(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+func initialString(c catalog.Control) string {
+	switch v := c.Initial.(type) {
+	case float64:
+		return fmtNum(v)
+	case nil:
+		return ""
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+// Playground is a client-side island: sliders and toggles steer the live
+// element through local signals (never sent to the server), and server
+// frames leave the whole section alone (data-ignore-morph).
+templ Playground(pg *catalog.Playground) {
+	<div class="playground" data-ignore-morph data-signals:_pg={ pg.Signals() }>
+		<div class="playground__stage demo-stage">
+			@templ.Raw(pg.Element())
+		</div>
+		<div class="playground__controls">
+			for _, c := range pg.Controls {
+				switch c.Kind {
+					case catalog.ControlNumber:
+						<sb-slider
+							label={ c.Attr }
+							title={ c.Description }
+							min={ fmtNum(c.Min) }
+							max={ fmtNum(c.Max) }
+							step={ fmtNum(c.Step) }
+							value={ initialString(c) }
+							{ bindAttr(c, "__prop.value")... }
+						></sb-slider>
+					case catalog.ControlBool:
+						<sb-toggle
+							label={ c.Attr }
+							title={ c.Description }
+							size="sm"
+							if c.Initial == true {
+								checked
+							}
+							{ bindAttr(c, "__prop.checked__event.change")... }
+						></sb-toggle>
+					case catalog.ControlSelect:
+						<label class="playground__select select-field" title={ c.Description }>
+							<span>{ c.Attr }</span>
+							<select { bindAttr(c, "")... }>
+								for _, o := range c.Options {
+									<option value={ o } selected?={ initialString(c) == o }>{ o }</option>
+								}
+							</select>
+						</label>
+					case catalog.ControlText:
+						<sb-input
+							label={ c.Attr }
+							title={ c.Description }
+							value={ initialString(c) }
+							placeholder={ c.Description }
+							{ bindAttr(c, "__prop.value__event.input")... }
+						></sb-input>
+				}
+			}
+		</div>
+		<div class="code-block playground__code">
+			<sb-copy-button class="code-copy" data-attr:value={ pg.Markup() }></sb-copy-button>
+			<pre class="chroma"><code data-text={ pg.Markup() }></code></pre>
+		</div>
+	</div>
 }

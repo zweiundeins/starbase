@@ -8,6 +8,9 @@ tags: [hint, popover, help]
 since: 2026-09-21
 preview: |
   <sb-tooltip content="More info" open><img src="/art/info.svg" alt="Info" width="32" height="32" style="image-rendering: pixelated; margin-block-start: 24px"></sb-tooltip>
+playground:
+  content: <sb-button variant="outline" size="sm">Hover me</sb-button>
+  values: {content: More info, open: true}
 ---
 
 A short hint that appears on hover and keyboard focus, with a small pixel arrow. Wrap any trigger element.

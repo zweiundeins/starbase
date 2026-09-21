@@ -206,3 +206,19 @@ func TestRenderStream(t *testing.T) {
 		t.Errorf("frame does not sync the URL: %s", second[i:min(len(second), i+80)])
 	}
 }
+
+func TestPlaygroundRendered(t *testing.T) {
+	ts, c := newServer(t)
+	_, body := get(t, c, ts.URL+"/components/slider")
+	for _, want := range []string{
+		`class="playground" data-ignore-morph data-signals:_pg=`,
+		`data-bind:_pg.value__prop.value`,
+		`data-attr:value="$_pg.value"`,
+		`data-attr:show-value="$_pg.showValue ? null : 'false'"`,
+		`<code data-text="`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("slider page lacks %q", want)
+		}
+	}
+}

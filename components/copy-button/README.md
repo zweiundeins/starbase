@@ -8,6 +8,8 @@ tags: [clipboard, copy, code]
 since: 2026-09-21
 preview: |
   <div style="display: flex; align-items: center; gap: 8px"><code>go run .</code><sb-copy-button value="go run ."></sb-copy-button></div>
+playground:
+  values: {value: go run .}
 ---
 
 A small icon button that copies its `value` to the clipboard and confirms with a check mark. Every code block on this site uses it.

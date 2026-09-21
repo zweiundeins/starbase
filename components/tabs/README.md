@@ -8,6 +8,8 @@ tags: [tablist, segmented, switcher]
 since: 2026-09-21
 preview: |
   <sb-tabs labels='["Home","Docs","API"]'></sb-tabs>
+playground:
+  props: {selected: {min: 0, max: 2}}
 ---
 
 A segmented tab bar with keyboard support. Labels come from a JSON attribute. Each panel is a slotted element whose `slot` is the label in kebab-case.

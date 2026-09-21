@@ -1144,6 +1144,51 @@
 		z-index: var(--sb-z-raised);
 	}
 
+	/* ── Playground ───────────────────────────────────────────────────────── */
+	.playground {
+		container: playground / inline-size;
+		display: grid;
+		overflow: hidden;
+		border: var(--sb-border-width) solid var(--sb-border);
+		border-radius: var(--sb-radius-lg);
+		background: var(--sb-surface-card);
+	}
+
+	.playground__stage {
+		min-block-size: 12rem;
+	}
+
+	.playground__controls {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+		align-items: end;
+		gap: var(--sb-space-5) var(--sb-space-6);
+		padding: var(--sb-space-5) var(--sb-space-6);
+		border-block-start: var(--sb-border-width) solid var(--sb-border);
+		font-size: var(--sb-font-size-1);
+	}
+
+	.playground__select {
+		display: grid;
+		gap: var(--sb-space-2);
+		font-weight: var(--sb-font-weight-semibold);
+
+		& select {
+			block-size: var(--sb-control-height-md);
+			min-inline-size: 0;
+		}
+	}
+
+	.playground__code {
+		border: 0;
+		border-block-start: var(--sb-border-width) solid var(--sb-border);
+		border-radius: 0;
+
+		& code:empty::before {
+			content: "…";
+		}
+	}
+
 	/* ── Data tables (props, slots, events) ──────────────────────────────── */
 	.api-table {
 		inline-size: 100%;

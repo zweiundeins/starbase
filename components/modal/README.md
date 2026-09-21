@@ -8,6 +8,9 @@ tags: [dialog, overlay, popup, confirm]
 since: 2026-09-21
 preview: |
   <sb-modal inline heading="Mission Control" style="--sb-radius-lg: 8px"><span>Are you ready to launch?</span><sb-button slot="footer" size="sm" variant="outline" data-sb-close>Cancel</sb-button><sb-button slot="footer" size="sm" data-sb-close>Launch</sb-button></sb-modal>
+playground:
+  content: Are you ready to launch?<sb-button slot="footer" size="sm" variant="outline" data-sb-close>Cancel</sb-button><sb-button slot="footer" size="sm" data-sb-close>Launch</sb-button>
+  values: {heading: Mission Control, inline: true}
 ---
 
 A modal built on the native `<dialog>`. The browser traps focus, closes on Escape and handles the top layer. Open it with `show()` and close it with `close()`, or mark footer buttons with `data-sb-close`.

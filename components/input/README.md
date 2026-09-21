@@ -8,6 +8,9 @@ tags: [text, field, form, validation]
 since: 2026-09-21
 preview: |
   <sb-input placeholder="Your message..." action></sb-input>
+playground:
+  values: {placeholder: "Your message...", action: true}
+  props: {minlength: {min: 0, max: 20}}
 ---
 
 A text field with a label, help text, native constraint validation and an optional submit arrow. It exposes a live `value` property, so `data-bind` works as it does on a native `<input>`.

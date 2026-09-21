@@ -8,6 +8,10 @@ tags: [container, panel, tile]
 since: 2026-09-21
 preview: |
   <sb-card variant="inset" style="inline-size: 13rem"><img slot="media" src="/art/landscape.svg" alt="A violet planet rising over pixel hills" width="256" height="144"></sb-card>
+playground:
+  content: <img slot="media" src="/art/landscape.svg" alt="" width="256" height="144">A cold, quiet world with excellent stargazing.
+  values: {heading: Planet X-9}
+  style: "inline-size: min(100%, 18rem)"
 ---
 
 A surface with optional media, heading, body and footer. Slots that get no content collapse, and `href` turns the whole card into one link.

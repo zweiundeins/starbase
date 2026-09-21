@@ -8,6 +8,9 @@ tags: [notice, callout, status, message]
 since: 2026-09-21
 preview: |
   <sb-alert variant="success" heading="Launch successful!" closable style="inline-size: 100%">Your component is live.</sb-alert>
+playground:
+  content: Your component is live.
+  values: {variant: success, heading: "Launch successful!", closable: true}
 ---
 
 Alerts tell people what just happened. A pixel status light, a tinted surface and an optional dismiss button, in four tones.

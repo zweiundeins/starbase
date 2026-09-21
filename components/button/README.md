@@ -8,6 +8,9 @@ tags: [button, action, link, cta]
 since: 2026-09-21
 preview: |
   <sb-button variant="pixel" size="lg" caret>Blast off</sb-button>
+playground:
+  content: Blast off
+  values: {variant: pixel, caret: true}
 ---
 
 Buttons start things. `sb-button` comes in five variants, three sizes, and renders a real `<a>` when given an `href`. Clicks bubble out of the shadow root, so any Datastar `data-on:click` just works.
