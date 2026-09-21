@@ -197,7 +197,7 @@ func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
 	}
 	s.document(func(rc *renderCtx) (view, error) {
 		return view{
-			Title:  "Lost in space · Rocket",
+			Title:  "Lost in space · Starbase",
 			Body:   func(ui.Shell) templ.Component { return ui.NotFound() },
 			Status: http.StatusNotFound,
 		}, nil

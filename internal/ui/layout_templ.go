@@ -287,7 +287,7 @@ func Header(s Shell) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<header class=\"site-header\"><div class=\"wrap site-header__inner\"><a class=\"brand\" href=\"/\" aria-label=\"Rocket community components: home\"><img class=\"pixel-sprite\" src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<header class=\"site-header\"><div class=\"wrap site-header__inner\"><a class=\"brand\" href=\"/\" aria-label=\"Starbase, community components for Rocket: home\"><img class=\"pixel-sprite\" src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -300,14 +300,14 @@ func Header(s Shell) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" alt=\"\" width=\"56\" height=\"96\"> <span><span class=\"brand__word\">ROCKET</span> <span class=\"brand__tag\">Community Components<br>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" alt=\"\" width=\"56\" height=\"96\"> <span><span class=\"brand__word\">STARBASE</span> <span class=\"brand__tag\">Community Components<br>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs("for Datastar")
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs("for Rocket")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/layout.templ`, Line: 57, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/layout.templ`, Line: 57, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {

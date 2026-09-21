@@ -34,7 +34,7 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 		u += "?" + q
 	}
 	return view{
-		Title:       "Rocket · Community components for Datastar",
+		Title:       "Starbase · Community components for Rocket",
 		Description: "Community-built Rocket web components for the Datastar ecosystem. Copy, use, remix, and launch something great.",
 		Nav:         "components",
 		Body: func(sh ui.Shell) templ.Component {
@@ -66,7 +66,7 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	}
 	install := s.installSnippet(comp)
 	return view{
-		Title:       card.Name + " · Rocket components",
+		Title:       card.Name + " · Starbase",
 		Description: card.Summary,
 		Nav:         "components",
 		Body: func(sh ui.Shell) templ.Component {
@@ -97,7 +97,7 @@ func (s *Server) themesPage(rc *renderCtx) (view, error) {
 		theme = "deep-space"
 	}
 	return view{
-		Title:       "Themes · Rocket components",
+		Title:       "Themes · Starbase",
 		Description: "Every component is styled with semantic design tokens. Swap the token set, restyle everything.",
 		Nav:         "themes",
 		Body: func(ui.Shell) templ.Component {
@@ -123,7 +123,7 @@ func (s *Server) contentPage(name, nav string) pageFunc {
 			return view{}, err
 		}
 		return view{
-			Title:       meta.Title + " · Rocket components",
+			Title:       meta.Title + " · Starbase",
 			Description: meta.Description,
 			Nav:         nav,
 			Body: func(ui.Shell) templ.Component {
