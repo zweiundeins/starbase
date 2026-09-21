@@ -23,6 +23,7 @@ const styles = /* css */ `
 	background: var(--_bg);
 	max-inline-size: 100%;
 	overflow-x: auto;
+	scrollbar-width: none;
 }
 [role="tab"] {
 	all: unset;

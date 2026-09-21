@@ -17,7 +17,7 @@ const styles = /* css */ `
 	inline-size: 100%;
 	max-inline-size: 26rem;
 }
-.field { display: grid; gap: 0.4rem; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 .control { display: flex; gap: 0.5rem; }
 input {

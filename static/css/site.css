@@ -514,6 +514,18 @@
 		padding-inline-end: var(--sb-space-4);
 		border-inline-end: var(--sb-border-width) solid var(--sb-border-subtle);
 
+		/* Wide layouts: a viewport-tall sticky column, so the categories stay
+		   in reach and the motto sits at the bottom of the screen. */
+		@container page (width >= 56rem) {
+			position: sticky;
+			inset-block-start: 0;
+			align-self: start;
+			block-size: 100dvh;
+			overflow-y: auto;
+			scrollbar-width: thin;
+			border-inline-end: 0; /* the divider is drawn by .collection */
+		}
+
 		@container page (width < 56rem) {
 			padding-inline-end: 0;
 			border-inline-end: 0;
@@ -655,6 +667,11 @@
 
 		@container page (width < 56rem) {
 			padding-inline-start: 0;
+		}
+
+		@container page (width >= 56rem) {
+			min-block-size: 100dvh;
+			border-inline-start: var(--sb-border-width) solid var(--sb-border-subtle);
 		}
 	}
 
