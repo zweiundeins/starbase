@@ -25,6 +25,17 @@ go tool task new -- my-widget --category forms --author your-handle
 
 This creates `components/my-widget/README.md` (front matter + docs, where ```` ```html preview ```` blocks become live demos) and `my-widget.js` (the `rocket('sb-my-widget', …)` definition). Open `/components/my-widget` in the dev server. The page publishes Rocket's manifest and the server writes `manifest.json`, which drives the API tables. No Go changes are needed. See [/contribute](content/contribute.md) for the house rules.
 
+Every component page also gets a **Playground**, generated from the manifest: number props become sliders, booleans toggles, `oneOf` selects and strings inputs. Each control is bound to a local signal that drives the live element through `data-attr`. Tune it in the README front matter:
+
+```yaml
+playground:
+  props: { yaw: {min: -180, max: 180}, zoom: {min: 0.5, max: 3, step: 0.1} }
+  values: { spin: 30 }        # initial values
+  content: Blast off          # slotted content of the live element
+  style: "inline-size: 18rem"
+  exclude: [href]
+```
+
 ## Architecture
 
 CQRS in the style of [hyperlith](https://github.com/andersmurphy/hyperlith):
@@ -44,6 +55,7 @@ POST /cmd/...        commands: validate → enqueue → 204. Never HTML.
 - **Catalog:** `components/` is embedded. At startup `SyncCatalog` mirrors it into SQLite (FTS5 for search).
 - **Design system:** `static/css`. Primitive `--sb-*` tokens feed semantic tokens, which feed components. Layers, container queries, nesting and OKLCH. Themes remap the semantic tokens only.
 - **Pixel art** is generated in Go (`internal/pixelart`) and served as cached SVG.
+- **Live demo data:** `GET /demo/telemetry` streams a simulated mission as signal patches (`$_tm`). It is a pure function of time, with no state. The Showcase page's Mission Control and the gauge, sparkline and meter docs use it.
 
 ## Configuration
 

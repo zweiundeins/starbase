@@ -46,6 +46,8 @@ A fenced block tagged `html preview` renders twice: live on the page and as copy
 ```
 ````
 
+Your page automatically gets a **Playground** built from the manifest. Add a `playground:` block to the front matter to set slider ranges (`props`), starting `values`, slotted `content`, a `style` for the live element, or to `exclude` props.
+
 ## House rules
 
 - **Shadow DOM and tokens.** Use Rocket's default `open` mode. Style only through `--sb-*` semantic tokens, each with a fallback: `--_bg: var(--sb-surface-card, #141D32)`. That makes the [Themes](/themes) page work, and the component still works outside Starbase.

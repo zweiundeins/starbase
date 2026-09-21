@@ -22,4 +22,7 @@ Community gallery for Datastar Rocket web components. Go 1.26, templ, SQLite (mo
 - Bindable components must adopt a property set before upgrade (`data-bind` writes `host.value` early): read and delete the own data property in `setup` (see `early()` in `components/slider/slider.js`).
 - Hosts whose attributes are driven by signals (`data-attr:x=...`) need `data-preserve-attr="x ..."`: the morph resets every attribute to the server markup.
 - `tab_state` is for server-owned UI state (filters, sort, theme). High-frequency, ephemeral demo state (sliders, playgrounds) stays in local `_`-prefixed signals.
+- Component pages render an auto Playground from the manifest (`internal/catalog/playground.go`, `ui.Playground`). It is a `data-ignore-morph` island driven by local `$_pg` signals, tuned by `playground:` front matter.
+- `GET /demo/telemetry` (`internal/web/demo.go`) is a stateless query stream of `$_tm` signal patches for live demos.
+- Canvas components: `renderOnPropChange: false`, repaint on `observeProps`, read theme tokens at paint time (via a 1×1 canvas probe), pause offscreen (IntersectionObserver) and honour `prefers-reduced-motion`.
 - The CSP uses a nonce (import map) plus `'unsafe-eval'` (Datastar). No inline `<script>` without `s.Nonce`.
