@@ -80,6 +80,9 @@ func importMap(a Assets) string {
 // and re-open (with a fresh render) when visible again.
 const streamInit = `@post(location.pathname + location.search, {retryMaxCount: Infinity, retryInterval: 400, retryMaxWait: 4000, openWhenHidden: false})`
 
+// searchFromAnywhere sends typing on non-gallery pages to the gallery.
+const searchFromAnywhere = `el.value.trim() && (window.location.href = '/?q=' + encodeURIComponent(el.value.trim()))`
+
 func devReload(boot string) string {
 	return `@get('/dev/reload?boot=` + boot + `', {retryMaxCount: Infinity, retryInterval: 150, retryMaxWait: 600, openWhenHidden: true})`
 }

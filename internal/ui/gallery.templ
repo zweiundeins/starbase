@@ -32,7 +32,10 @@ func categoryLabel(slug string) string {
 }
 
 templ Gallery(s Shell, v GalleryView) {
-	@Hero(s)
+	// While searching, results come first: no hero pushing them off screen.
+	if v.Browse.Q == "" {
+		@Hero(s)
+	}
 	<div class="browse-shell" id="components">
 		<div class="wrap browse">
 			@Sidebar(s, v)

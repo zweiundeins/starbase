@@ -79,8 +79,9 @@ templ Header(s Shell) {
 }
 
 // SearchBox is a plain GET form to the gallery, upgraded to live filtering
-// when the gallery is the current page. The input is never morphed, so
-// typing is never interrupted by a server frame.
+// when the gallery is the current page. Elsewhere, typing jumps to the
+// gallery with the query, where the box keeps focus. The input is never
+// morphed, so typing is never interrupted by a server frame.
 templ SearchBox(s Shell) {
 	<form
 		class="search"
@@ -105,7 +106,12 @@ templ SearchBox(s Shell) {
 			data-on:keydown__window="(evt.ctrlKey || evt.metaKey) && evt.key === 'k' && (evt.preventDefault(), el.focus(), el.select())"
 			if s.SearchLive {
 				data-bind:q
-				data-on:input__debounce.250ms="@post('/cmd/browse')"
+				data-on:input__debounce.80ms="@post('/cmd/browse')"
+				if s.Search != "" {
+					data-init="el.focus({preventScroll: true}); el.setSelectionRange(el.value.length, el.value.length)"
+				}
+			} else {
+				data-on:input__debounce.300ms={ searchFromAnywhere }
 			}
 		/>
 		<kbd>Ctrl K</kbd>

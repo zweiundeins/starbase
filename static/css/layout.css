@@ -18,14 +18,22 @@
 	   actually get, not to the viewport. */
 	.main {
 		container: page / inline-size;
+		display: flex;
+		flex-direction: column;
 	}
 
 	/* The gallery: category sidebar | collection. */
+	/* The gallery takes whatever height is left in <main>, so the sidebar
+	   reaches the footer even when only a few cards are shown. */
 	.browse-shell {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
 		border-block-start: var(--sb-border-width) solid var(--sb-border-subtle);
 	}
 
 	.browse {
+		flex: 1;
 		display: grid;
 		grid-template-columns: var(--sb-sidebar-width) minmax(0, 1fr);
 
