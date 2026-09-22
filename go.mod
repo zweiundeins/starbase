@@ -6,14 +6,14 @@ require (
 	github.com/CAFxX/httpcompression v0.0.9
 	github.com/a-h/templ v0.3.1020
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/andybalholm/brotli v1.2.0
+	github.com/andybalholm/brotli v1.2.4
 	github.com/benbjohnson/hashfs v0.2.2
 	github.com/starfederation/datastar-go v1.2.2
 	github.com/tdewolff/minify/v2 v2.24.17
 	github.com/yuin/goldmark v1.8.6
 	go.abhg.dev/goldmark/frontmatter v0.3.0
 	golang.org/x/oauth2 v0.37.0
-	golang.org/x/text v0.41.0
+	golang.org/x/text v0.42.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.59.0
 )
@@ -148,13 +148,13 @@ require (
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	google.golang.org/api v0.293.0 // indirect
 	google.golang.org/genproto v0.0.0-20260724162435-b2f20204f0df // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260724162435-b2f20204f0df // indirect
