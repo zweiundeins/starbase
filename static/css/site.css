@@ -346,7 +346,7 @@
 	.hero__copy {
 		position: relative;
 		z-index: var(--sb-z-raised);
-		padding-block: var(--sb-space-6) var(--sb-space-10);
+		padding-block: var(--sb-space-6);
 	}
 
 	.hero__title {
@@ -384,8 +384,14 @@
 
 	.hero__art {
 		position: relative;
-		align-self: stretch;
-		min-block-size: 18rem;
+		/* The scene's own shape (180 × 84 pixels), standing on the section's
+		 * bottom edge, reaching a little under the copy. */
+		align-self: end;
+		aspect-ratio: 180 / 84;
+		margin-inline-start: -6%;
+		/* The motto and the badge scale with the scene (cqi), so they keep
+		 * their places on it at any width. */
+		container-type: inline-size;
 
 		@container page (width < 60rem) {
 			display: none;
@@ -393,19 +399,20 @@
 
 		& .scene {
 			position: absolute;
-			inset: 0 0 0 -6%;
-			inline-size: 106%;
+			inset: 0;
+			inline-size: 100%;
 			block-size: 100%;
 		}
 	}
 
 	.hero__motto {
 		position: absolute;
-		inset-block-start: 20%;
-		inset-inline-end: 22%;
+		inset-block-start: 21%;
+		inset-inline-end: 17%;
+		margin: 0;
 		font-family: var(--sb-font-display);
 		font-weight: var(--sb-font-weight-bold);
-		font-size: var(--sb-font-size-5);
+		font-size: min(var(--sb-font-size-5), 3.4cqi);
 		line-height: 1.15;
 		letter-spacing: var(--sb-letter-spacing-caps);
 		color: var(--sb-brand-light);
@@ -415,8 +422,8 @@
 			content: "";
 			display: block;
 			inline-size: 0.6em;
-			block-size: 3px;
-			margin-block-start: var(--sb-space-3);
+			block-size: max(2px, 0.125em);
+			margin-block-start: 0.5em;
 			background: currentColor;
 		}
 	}
@@ -428,12 +435,12 @@
 		inset-inline-end: 1.5%;
 		display: inline-flex;
 		align-items: center;
-		gap: var(--sb-space-3);
-		padding: var(--sb-space-3) var(--sb-space-4);
+		gap: 0.85em;
+		padding: 0.85em 1.15em;
 		background: oklch(from var(--sb-bg) l c h / 0.85);
 		color: var(--sb-datastar);
 		font-family: var(--sb-font-display);
-		font-size: var(--sb-font-size-2);
+		font-size: min(var(--sb-font-size-2), 1.95cqi);
 		line-height: 1.1;
 		letter-spacing: var(--sb-letter-spacing-caps);
 		text-decoration: none;
@@ -442,12 +449,12 @@
 
 		& b {
 			display: block;
-			font-size: var(--sb-font-size-4);
+			font-size: 1.3em;
 		}
 
 		& svg {
-			inline-size: 1.1rem;
-			block-size: 1.1rem;
+			inline-size: 1.25em;
+			block-size: 1.25em;
 		}
 
 		&:hover {

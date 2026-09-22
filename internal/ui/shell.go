@@ -153,11 +153,11 @@ func siteThemes() string {
 	return string(b)
 }
 
-// Art inlines a pixel art illustration: decorative, with the given classes,
-// stretched to its box like an <img> (preserveAspectRatio="none").
+// Art inlines a pixel art illustration: decorative, with the given classes.
+// It keeps its proportions, standing on the bottom of its box.
 func Art(a Assets, name, class string) templ.Component {
 	svg := a.ArtSVG(name)
 	svg = strings.Replace(svg, `<svg xmlns="http://www.w3.org/2000/svg" class="px-art"`,
-		`<svg xmlns="http://www.w3.org/2000/svg" class="px-art `+class+`" aria-hidden="true" focusable="false" preserveAspectRatio="none"`, 1)
+		`<svg xmlns="http://www.w3.org/2000/svg" class="px-art `+class+`" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMax meet"`, 1)
 	return templ.Raw(svg)
 }
