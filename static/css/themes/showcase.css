@@ -90,7 +90,14 @@
 		--sb-border-strong: oklch(78% 0.02 270);
 		--sb-text-1: oklch(22% 0.03 270);
 		--sb-text-2: oklch(40% 0.03 270);
-		--sb-text-muted: oklch(55% 0.03 270);
+		--sb-text-muted: oklch(50% 0.03 270);
+		/* Readable on light surfaces (WCAG AA, 4.5:1). */
+		--sb-code-keyword: oklch(47% 0.2 288);
+		--sb-code-function: oklch(45% 0.17 310);
+		--sb-code-tag: oklch(46% 0.13 245);
+		--sb-code-string: oklch(45% 0.12 155);
+		--sb-code-number: oklch(48% 0.12 60);
+		--sb-text-on-danger: #fff;
 		--sb-brand: oklch(55% 0.22 288);
 		--sb-brand-hover: oklch(50% 0.22 288);
 		--sb-brand-light: oklch(55% 0.22 288);

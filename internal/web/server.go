@@ -110,6 +110,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /c/{path...}", s.serveC)
 	mux.HandleFunc("GET /theme/auto.css", s.assets.serveAutoTheme)
 	mux.HandleFunc("GET /bundle/{name}", s.assets.serveBundle)
+	mux.HandleFunc("GET /robots.txt", s.robots)
+	mux.HandleFunc("GET /sitemap.xml", s.sitemap)
+	mux.HandleFunc("GET /og.png", servePNG(socialPNG))
+	mux.HandleFunc("GET /apple-touch-icon.png", servePNG(iconPNG))
+	mux.HandleFunc("GET /favicon.ico", servePNG(faviconPNG)) // browsers and crawlers ask; PNG content is fine
 	// Code playground runner (sandboxed iframe page).
 	mux.HandleFunc("GET /playground/run", s.playgroundRun)
 	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)

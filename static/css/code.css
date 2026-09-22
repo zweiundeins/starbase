@@ -11,15 +11,15 @@
 		tab-size: 2;
 
 		/* keywords */
-		& :is(.k, .kc, .kd, .kn, .kp, .kr, .kt) { color: var(--sb-violet-3, var(--sb-brand-light)); }
+		& :is(.k, .kc, .kd, .kn, .kp, .kr, .kt) { color: var(--sb-code-keyword); }
 		/* tags & builtins */
-		& :is(.nt, .nb, .bp) { color: var(--sb-cyan-3, var(--sb-accent)); }
+		& :is(.nt, .nb, .bp) { color: var(--sb-code-tag); }
 		/* attributes, functions */
-		& :is(.na, .nf, .fm) { color: var(--sb-violet-2, var(--sb-brand-light)); }
+		& :is(.na, .nf, .fm) { color: var(--sb-code-function); }
 		/* strings */
-		& :is(.s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr, .ss, .dl) { color: var(--sb-green-3, var(--sb-datastar)); }
+		& :is(.s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr, .ss, .dl) { color: var(--sb-code-string); }
 		/* numbers */
-		& :is(.m, .mb, .mf, .mh, .mi, .il, .mo) { color: var(--sb-amber-3, var(--sb-warn)); }
+		& :is(.m, .mb, .mf, .mh, .mi, .il, .mo) { color: var(--sb-code-number); }
 		/* comments */
 		& :is(.c, .ch, .cm, .c1, .cs, .cp, .cpf) { color: var(--sb-text-muted); font-style: italic; }
 		/* operators & punctuation */

@@ -52,7 +52,7 @@ const styles = /* css */ `
 .outline { border-color: var(--_brand-light); }
 .outline:hover { background: var(--_brand-subtle); }
 .ghost:hover { background: var(--_hover); }
-.danger { background: var(--sb-danger, #F2777A); border-color: var(--sb-danger, #F2777A); color: #1B0A0C; }
+.danger { background: var(--sb-danger, #F2777A); border-color: var(--sb-danger, #F2777A); color: var(--sb-text-on-danger, #1B0A0C); }
 
 /* 8-bit: light plate, notched frame, hard drop shadow. */
 .pixel {

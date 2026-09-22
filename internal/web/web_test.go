@@ -559,3 +559,31 @@ func TestCompression(t *testing.T) {
 		}
 	}
 }
+
+func TestSEO(t *testing.T) {
+	ts, c := newServer(t)
+	res, robots := get(t, c, ts.URL+"/robots.txt")
+	if res.StatusCode != 200 || !strings.Contains(robots, "Sitemap: "+ts.URL+"/sitemap.xml") || !strings.Contains(robots, "Disallow: /cmd/") {
+		t.Errorf("robots.txt:\n%s", robots)
+	}
+	_, sm := get(t, c, ts.URL+"/sitemap.xml")
+	if !strings.Contains(sm, "<loc>"+ts.URL+"/components/button</loc>") || !strings.Contains(sm, "<lastmod>") {
+		t.Errorf("sitemap lacks components:\n%.400s", sm)
+	}
+	for _, p := range []string{"/og.png", "/apple-touch-icon.png", "/favicon.ico"} {
+		if r, body := get(t, c, ts.URL+p); r.StatusCode != 200 || r.Header.Get("Content-Type") != "image/png" || !strings.HasPrefix(body, "\x89PNG") {
+			t.Errorf("%s: %d %s", p, r.StatusCode, r.Header.Get("Content-Type"))
+		}
+	}
+	_, page := get(t, c, ts.URL+"/components/button?x=1")
+	for _, want := range []string{
+		`<link rel="canonical" href="` + ts.URL + `/components/button">`,
+		`<meta property="og:image" content="` + ts.URL + `/og.png">`,
+		`<meta name="twitter:card" content="summary_large_image">`,
+		`"@type":"SoftwareSourceCode"`, `"@type":"WebSite"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("component page lacks %s", want)
+		}
+	}
+}

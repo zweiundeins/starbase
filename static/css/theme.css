@@ -56,6 +56,14 @@
 
 		--sb-font-body: var(--sb-font-ui);
 		--sb-font-heading: var(--sb-font-ui);
+
+		/* Syntax highlighting (code blocks and sb-code-editor). */
+		--sb-code-keyword: var(--sb-violet-3);
+		--sb-code-function: var(--sb-violet-2);
+		--sb-code-tag: var(--sb-cyan-3);
+		--sb-code-string: var(--sb-green-3);
+		--sb-code-number: var(--sb-amber-3);
+		--sb-text-on-danger: #1B0A0C;
 	}
 
 	/* Opt out of the 8-bit details: smooth corners, hairline frames and the

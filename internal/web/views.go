@@ -1,6 +1,7 @@
 package web
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/a-h/templ"
@@ -70,7 +71,24 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 		return view{}, err
 	}
 	install := s.installSnippet(comp, snapshotSRI)
+	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
+	repo := strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug
+	schema := map[string]any{
+		"@type":               "SoftwareSourceCode",
+		"name":                card.Name,
+		"description":         card.Summary,
+		"url":                 base + "/components/" + slug,
+		"codeRepository":      cmp.Or(comp.Source, repo),
+		"programmingLanguage": "JavaScript",
+		"runtimePlatform":     "Web browser (Datastar Rocket)",
+		"license":             "https://opensource.org/licenses/MIT",
+		"keywords":            strings.Join(comp.Tags, ", "),
+		"dateCreated":         comp.Since,
+		"author":              map[string]any{"@type": "Person", "name": comp.Author, "url": "https://github.com/" + comp.Author},
+		"isPartOf":            map[string]any{"@id": base + "/#website"},
+	}
 	return view{
+		Schema:      []any{schema},
 		Title:       card.Name + " · Starbase",
 		Description: card.Summary,
 		Nav:         "components",

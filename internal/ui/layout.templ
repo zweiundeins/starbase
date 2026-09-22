@@ -25,7 +25,20 @@ templ Document(s Shell, body templ.Component) {
 			} else {
 				<meta name="theme-color" content="#080D1D"/>
 			}
+			<link rel="canonical" href={ s.Canonical }/>
 			<link rel="icon" type="image/svg+xml" href={ s.Assets.Art("logo") }/>
+			<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+			<meta property="og:type" content="website"/>
+			<meta property="og:site_name" content="Starbase"/>
+			<meta property="og:title" content={ s.Title }/>
+			<meta property="og:description" content={ s.Description }/>
+			<meta property="og:url" content={ s.Canonical }/>
+			<meta property="og:image" content={ s.SocialImage }/>
+			<meta property="og:image:width" content="1200"/>
+			<meta property="og:image:height" content="630"/>
+			<meta property="og:image:alt" content="A pixel-art rocket lifting off a violet planet"/>
+			<meta name="twitter:card" content="summary_large_image"/>
+			@templ.Raw(`<script type="application/ld+json" nonce="` + s.Nonce + `">` + s.JSONLD + `</script>`)
 			<link rel="preload" href={ s.Assets.Static("fonts/pixelify-sans.woff2") } as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href={ s.Assets.Static("fonts/jetbrains-mono.woff2") } as="font" type="font/woff2" crossorigin/>
 			<link rel="stylesheet" href={ s.Assets.SiteCSS() }/>

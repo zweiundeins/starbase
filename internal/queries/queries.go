@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 	"unicode"
 
 	"starbase/internal/model"
@@ -302,6 +303,32 @@ func (r *Reader) SnapshotFiles(ctx context.Context, hash string) ([]VersionedFil
 			return nil, err
 		}
 		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// SitemapEntry is an active component and when it last changed.
+type SitemapEntry struct {
+	Slug    string
+	Updated time.Time
+}
+
+// SitemapComponents lists the active components, for the sitemap.
+func (r *Reader) SitemapComponents(ctx context.Context) ([]SitemapEntry, error) {
+	rows, err := r.tx.QueryContext(ctx, `SELECT slug, updated_at FROM components WHERE active = 1 ORDER BY slug`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SitemapEntry
+	for rows.Next() {
+		var e SitemapEntry
+		var ts int64
+		if err := rows.Scan(&e.Slug, &ts); err != nil {
+			return nil, err
+		}
+		e.Updated = time.Unix(ts, 0).UTC()
+		out = append(out, e)
 	}
 	return out, rows.Err()
 }

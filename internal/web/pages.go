@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"hash/fnv"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
@@ -29,6 +31,7 @@ type view struct {
 	Search      string         // header search value
 	Signals     map[string]any // initial page signals (full document only)
 	Status      int            // 0 = 200
+	Schema      []any          // extra JSON-LD objects (schema.org), after the site's
 }
 
 // renderCtx is the input of a page render: one read snapshot plus who is
@@ -100,7 +103,31 @@ func (s *Server) shell(req *http.Request, user *model.User, v view) ui.Shell {
 		ManifestTags: s.manifestTags(),
 		Version:      cmp.Or(s.cfg.Version, "dev"),
 		Theme:        siteTheme(req),
+		Canonical:    strings.TrimSuffix(s.cfg.BaseURL, "/") + req.URL.Path,
+		SocialImage:  strings.TrimSuffix(s.cfg.BaseURL, "/") + "/og.png",
+		JSONLD:       s.jsonLD(v),
 	}
+}
+
+// jsonLD describes the site (with its search, for search engines) and
+// whatever the page adds (a component is SoftwareSourceCode).
+func (s *Server) jsonLD(v view) string {
+	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
+	graph := []any{map[string]any{
+		"@type":       "WebSite",
+		"@id":         base + "/#website",
+		"name":        "Starbase",
+		"description": "Community Components for Rocket: a gallery of Datastar Rocket web components.",
+		"url":         base + "/",
+		"potentialAction": map[string]any{
+			"@type":       "SearchAction",
+			"target":      base + "/?q={search_term_string}",
+			"query-input": "required name=search_term_string",
+		},
+	}}
+	graph = append(graph, v.Schema...)
+	b, _ := json.Marshal(map[string]any{"@context": "https://schema.org", "@graph": graph}) // escapes <, > and &
+	return string(b)
 }
 
 // siteTheme is the theme the sb-theme-switch in the header stored in its

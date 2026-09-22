@@ -180,7 +180,15 @@ const sceneCSS = `
 // Hero is the launch scene: starfield, moon, earth, a rocket lifting off a
 // violet planet in a cloud of exhaust.
 func Hero() string {
-	const W, H = 180, 84
+	w, h, layers := heroLayers()
+	return SVG(w, h, sceneCSS, layers...)
+}
+
+// HeroSize is the hero scene's size in pixels.
+const HeroW, HeroH = 180, 84
+
+func heroLayers() (int, int, []Layer) {
+	const W, H = HeroW, HeroH
 	var layers []Layer
 
 	// Starfield: deterministic scatter, three twinkle phases.
@@ -238,16 +246,18 @@ func Hero() string {
 		Layer{Grid: rf, X: 70, Y: 2, Class: "float flame"},
 		Layer{Grid: rb, X: 70, Y: 2, Class: "float"},
 	)
-	return SVG(W, H, sceneCSS, layers...)
+	return W, H, layers
 }
 
 // Logo is the upright rocket with its flame, for the header.
 func Logo() string {
+	w, h, layers := logoLayers()
+	return SVG(w, h, sceneCSS, layers...)
+}
+
+func logoLayers() (int, int, []Layer) {
 	body, flame := rocketParts()
-	return SVG(body.W, body.H, sceneCSS,
-		Layer{Grid: flame, Class: "flame"},
-		Layer{Grid: body},
-	)
+	return body.W, body.H, []Layer{{Grid: flame, Class: "flame"}, {Grid: body}}
 }
 
 // Saturn is a small ringed planet (sidebar, empty states).

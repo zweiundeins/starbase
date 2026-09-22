@@ -50,6 +50,10 @@ type Shell struct {
 	// Theme is the site theme from the sb-theme cookie: "auto" or a theme
 	// slug. The server renders it, so there is no flash of another theme.
 	Theme string
+	// For search engines and link previews.
+	Canonical   string // absolute URL of the page, without query
+	SocialImage string // absolute URL of the Open Graph image
+	JSONLD      string // schema.org JSON-LD
 }
 
 type navItem struct{ Key, Label, Href string }
