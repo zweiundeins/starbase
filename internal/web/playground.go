@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
@@ -34,6 +35,7 @@ import (
 //
 // base (optional) is the URL relative imports in component.js resolve
 // against: the folder the component's other files are served from.
+//
 //	runner → parent  {type: "console", level, args: [string]} | {type: "error", message, line} | {type: "done"}
 func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 	scheme := "http"
@@ -267,13 +269,25 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
+	now := time.Now()
+	if !s.saveLimit.allow(sessionID(r), 1, now) || !s.saveLimitIP.allow(clientIP(r), 1, now) {
+		http.Error(w, "saving too often, try again in a minute", http.StatusTooManyRequests)
+		return
+	}
 	var uid int64
+	var stored int64
 	s.q.View(r.Context(), func(rd *queries.Reader) error {
 		if u, _ := rd.SessionUser(r.Context(), sessionID(r)); u != nil {
 			uid = u.ID
 		}
+		stored, _ = rd.SnippetBytes(r.Context())
 		return nil
 	})
+	if stored+commands.MaxSnippetBytes > commands.MaxSnippetStore {
+		s.log.Warn("snippet storage is full", "bytes", stored)
+		http.Error(w, commands.ErrSnippetStoreFull.Error(), http.StatusInsufficientStorage)
+		return
+	}
 	if _, ok := s.catalog.Get(p.Component); !ok {
 		p.Component = ""
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -31,6 +32,29 @@ var sidRe = regexp.MustCompile(`^[A-Za-z0-9_-]{27}$`)
 func sessionID(r *http.Request) string {
 	sid, _ := r.Context().Value(sidKey).(string)
 	return sid
+}
+
+// clientIP is the visitor's address, for rate limits. X-Real-IP is only
+// believed from the local reverse proxy (a loopback or Unix socket peer),
+// which overwrites it with the real peer address.
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr // Unix socket: "@" or empty
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || ip.IsLoopback() {
+		if real := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); real != nil {
+			return real.String()
+		}
+	}
+	if ip == nil {
+		return "local"
+	}
+	if ip.To4() == nil { // one limit per IPv6 /64
+		return ip.Mask(net.CIDRMask(64, 128)).String()
+	}
+	return ip.String()
 }
 
 func nonce(r *http.Request) string {

@@ -21,6 +21,13 @@ var (
 	snippetFileRe = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,40}\.(js|html|css)$`)
 )
 
+// MaxSnippetStore caps all snippets together: anyone may save, and the
+// disk may be shared with other services. (A variable for tests.)
+var MaxSnippetStore int64 = 256 << 20
+
+// ErrSnippetStoreFull means the snippets reached MaxSnippetStore.
+var ErrSnippetStoreFull = errors.New("snippet storage is full")
+
 // SaveSnippet stores playground code under a new, immutable id and shows
 // the share link in the saving tab.
 type SaveSnippet struct {
@@ -67,6 +74,14 @@ func (c SaveSnippet) Apply(ctx context.Context, tx *sql.Tx) error {
 	}
 	if c.UserID != 0 {
 		user = c.UserID
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE snippet_stats SET bytes = bytes + ? WHERE id = 1 AND bytes + ? <= ?`,
+		len(files), len(files), MaxSnippetStore)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrSnippetStoreFull
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO snippets (id, files, component, user_id, created_at) VALUES (?, ?, ?, ?, ?)`,
 		c.ID, string(files), comp, user, time.Now().Unix()); err != nil {

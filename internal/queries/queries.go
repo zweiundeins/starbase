@@ -223,6 +223,12 @@ func (r *Reader) Snippet(ctx context.Context, id string) (*Snippet, error) {
 	return &sn, nil
 }
 
+// SnippetBytes is the total size of all saved snippets.
+func (r *Reader) SnippetBytes(ctx context.Context) (n int64, err error) {
+	err = r.tx.QueryRowContext(ctx, `SELECT bytes FROM snippet_stats WHERE id = 1`).Scan(&n)
+	return n, err
+}
+
 // BoardMeta returns a board's version and total painted pixels.
 func (r *Reader) BoardMeta(ctx context.Context, board string) (version, pixels int64, err error) {
 	err = r.tx.QueryRowContext(ctx, `SELECT version, pixels FROM boards WHERE board = ?`, board).Scan(&version, &pixels)

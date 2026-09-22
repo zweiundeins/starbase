@@ -25,4 +25,3 @@ func Imports(code string) []string {
 	}
 	return out
 }
-

@@ -2,6 +2,7 @@ package queries_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -290,5 +291,34 @@ func TestBoard(t *testing.T) {
 		if bad.Validate() == nil {
 			t.Errorf("%s: expected a validation error", name)
 		}
+	}
+}
+
+func TestSnippetStoreCap(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	save := func(id string, size int) error {
+		return e.bus.Exec(ctx, commands.SaveSnippet{SID: "s", TabID: "tab12345", ID: id, Files: map[string]string{"component.js": strings.Repeat("x", size)}})
+	}
+	if err := save("AAAAAAAA", 100); err != nil {
+		t.Fatal(err)
+	}
+	var n int64
+	e.q.View(ctx, func(r *queries.Reader) (err error) { n, err = r.SnippetBytes(ctx); return })
+	if n < 100 || n > 200 {
+		t.Fatalf("stored bytes = %d, want the JSON size of one ~100 byte snippet", n)
+	}
+	defer func(old int64) { commands.MaxSnippetStore = old }(commands.MaxSnippetStore)
+	commands.MaxSnippetStore = 2*n + 10 // room for exactly one more of the same size
+	if err := save("BBBBBBBB", 100); err != nil { // fits
+		t.Fatal(err)
+	}
+	if err := save("CCCCCCCC", 100); !errors.Is(err, commands.ErrSnippetStoreFull) {
+		t.Fatalf("err = %v, want ErrSnippetStoreFull", err)
+	}
+	var sn *queries.Snippet
+	e.q.View(ctx, func(r *queries.Reader) (err error) { sn, err = r.Snippet(ctx, "CCCCCCCC"); return })
+	if sn != nil {
+		t.Fatal("the refused snippet must not be stored")
 	}
 }

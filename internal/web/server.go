@@ -31,9 +31,12 @@ type Server struct {
 	boot    string
 	secure  bool
 
-	previews   *previewCache
-	board      atomic.Pointer[boardCache]
-	paintLimit *limiter
+	previews     *previewCache
+	board        atomic.Pointer[boardCache]
+	paintLimit   *limiter // per session
+	paintLimitIP *limiter
+	saveLimit    *limiter // snippets, per session
+	saveLimitIP  *limiter
 }
 
 type Deps struct {
@@ -61,8 +64,11 @@ func New(ctx context.Context, d Deps) *Server {
 		boot:    strings.ToLower(randomToken(6)),
 		secure:  strings.HasPrefix(d.Config.BaseURL, "https://"),
 
-		paintLimit: newLimiter(20, 60), // pixels per second, burst
-		previews:   newPreviewCache(d.Config.RepoURL),
+		paintLimit:   newLimiter(20, 60), // pixels per second, burst
+		paintLimitIP: newLimiter(60, 180),
+		saveLimit:    newLimiter(0.1, 10), // snippet saves: 6 a minute
+		saveLimitIP:  newLimiter(0.5, 30),
+		previews:     newPreviewCache(d.Config.RepoURL),
 	}
 	s.oauth = newOAuth(d.Config)
 	return s

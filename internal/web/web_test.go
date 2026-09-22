@@ -414,3 +414,18 @@ func TestAutoloaderCloak(t *testing.T) {
 		t.Error("site pages should start cloaked")
 	}
 }
+
+func TestSnippetSaveRateLimit(t *testing.T) {
+	ts, c := newServer(t)
+	c.Get(ts.URL + "/playground") // session cookie
+	body := `{"tabid":"tab12345","files":{"component.js":"rocket('sb-x', {})"}}`
+	codes := map[int]int{}
+	for range 12 {
+		res := post(t, c, ts.URL+"/cmd/snippet", body, "same-origin")
+		res.Body.Close()
+		codes[res.StatusCode]++
+	}
+	if codes[http.StatusNoContent] != 10 || codes[http.StatusTooManyRequests] != 2 {
+		t.Fatalf("status codes = %v, want 10×204 then 429s (burst 10)", codes)
+	}
+}
