@@ -1,0 +1,125 @@
+{
+  "tag": "sb-rating",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Initial value. Read the live value from the value property."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "number",
+      "default": 5,
+      "required": false,
+      "docs": {
+        "description": "Number of hearts (or stars)."
+      }
+    },
+    {
+      "name": "precision",
+      "attribute": "precision",
+      "type": "oneOf",
+      "default": "1",
+      "required": false,
+      "values": [
+        "1",
+        "0.5"
+      ],
+      "docs": {
+        "description": "Step: whole or half units."
+      }
+    },
+    {
+      "name": "icon",
+      "attribute": "icon",
+      "type": "oneOf",
+      "default": "heart",
+      "required": false,
+      "values": [
+        "heart",
+        "star"
+      ],
+      "docs": {
+        "description": "Pixel sprite."
+      }
+    },
+    {
+      "name": "size",
+      "attribute": "size",
+      "type": "oneOf",
+      "default": "md",
+      "required": false,
+      "values": [
+        "sm",
+        "md",
+        "lg"
+      ],
+      "docs": {
+        "description": "Size."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label (also the accessible name)."
+      }
+    },
+    {
+      "name": "readonly",
+      "attribute": "readonly",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show the value; no interaction."
+      }
+    },
+    {
+      "name": "clearable",
+      "attribute": "clearable",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Picking the current value again clears it to 0."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable interaction."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the value is committed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Same moment. detail: { value }."
+    }
+  ]
+}
