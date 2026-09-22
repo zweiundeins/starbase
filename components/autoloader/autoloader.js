@@ -4,8 +4,11 @@ import { rocket } from 'datastar'
 // page (or the same one after a morph) never fetch a module twice.
 const started = new Set()
 
+// The element adds nothing to the page: no box of its own, and any children
+// render exactly where they are written (so it can wrap markup, or stand
+// alone as a single tag).
 const styles = /* css */ `
-:host { display: none }
+:host { display: contents }
 `
 
 rocket('sb-autoloader', {
@@ -122,5 +125,5 @@ rocket('sb-autoloader', {
 		defineHostProp('load', { value: load })
 		defineHostProp('discover', { value: discover })
 	},
-	render: ({ html }) => html``,
+	render: ({ html }) => html`<slot></slot>`,
 })

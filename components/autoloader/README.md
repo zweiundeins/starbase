@@ -95,6 +95,7 @@ A component that renders another tag inside its own shadow root would otherwise 
 
 ## Notes
 
+- **Wrapping is optional.** `<sb-autoloader>` works as a single tag anywhere on the page; children render untouched, so you can also wrap the markup that needs the components.
 - **Once per tag.** Two autoloaders on a page, or one that survives a morph, never fetch the same module twice. A failed load is retried when the tag appears again.
 - **Shadow roots.** It watches the document, so components inside other components' shadow roots are discovered when those render into the page, not before. `requires` covers the rest.
 - **Rocket components** import `datastar`, so the page still needs the import map for it. Plain custom elements need nothing.
@@ -103,4 +104,4 @@ A component that renders another tag inside its own shadow root would otherwise 
 
 ## Accessibility
 
-The element renders nothing and is `display: none`; it adds no content and takes no focus. Use `cloak` so people don't see half-built elements, and remember the page must work if a module never arrives.
+The element has no box of its own (`display: contents`) and no role; it adds nothing to the accessibility tree and takes no focus. Children, if you wrap any, render exactly where they are written. Use `cloak` so people don't see half-built elements, and remember the page must work if a module never arrives.

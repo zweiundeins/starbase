@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
+
 ## [0.2.0] - 2026-09-22
 
 Eight new components (26 in total), a command contract that makes every value component CQRS-ready, continuous deployment, and a security, performance and SEO pass.
