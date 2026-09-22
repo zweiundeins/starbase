@@ -20,18 +20,20 @@ A tree of items (files, categories, an org chart…). Give it the items as JSON,
 
 ### Lazy loading from the server
 
-Every branch below is loaded when you first open it. Datastar does the wiring:
+Every branch below loads when you first open it, from the site's example dataset (`/demo/data/children`). Datastar does the wiring:
 
-1. `sb-load` runs `@get('/demo/tree?id=…')`.
-2. The server answers with a signal patch, `{_tree: {"sol": [children…]}}`. Signal patches merge, so each loaded branch adds to the rest.
-3. `data-attr:loaded` hands `$_tree` back to the tree.
+1. `sb-load` runs `@get('/demo/data/children?parent=…&into=_sky')`.
+2. The server answers with a signal patch, `{_sky: {"sol": [children…]}}`. Signal patches merge, so each loaded branch adds to the rest.
+3. `data-attr:loaded` hands `$_sky` back to the tree.
+
+`expanded` opens the path to the Moon from the start: each level loads once its parent has arrived.
 
 ```html preview
-<div data-signals="{_tree: {}, _picked: ''}" style="display: grid; gap: 12px; inline-size: min(100%, 22rem)">
-  <sb-tree label="The sky"
-    items='[{"id":"milkyway","label":"Milky Way","icon":"🌌","lazy":true},{"id":"andromeda","label":"Andromeda","icon":"🌀","lazy":true}]'
-    data-attr:loaded="JSON.stringify($_tree)" data-preserve-attr="loaded"
-    data-on:sb-load="@get('/demo/tree?id=' + evt.detail.id)"
+<div data-signals="{_sky: {}, _picked: ''}" style="display: grid; gap: 12px; inline-size: min(100%, 22rem)">
+  <sb-tree label="The sky" expanded="milkyway solarsystem earth"
+    items='[{"id":"milkyway","label":"Milky Way","icon":"🌌","lazy":true},{"id":"andromeda","label":"Andromeda","icon":"🌌","lazy":true}]'
+    data-attr:loaded="JSON.stringify($_sky)" data-preserve-attr="loaded"
+    data-on:sb-load="@get('/demo/data/children?parent=' + evt.detail.id + '&into=_sky&delay=250')"
     data-bind:_picked__prop.value></sb-tree>
   <span>Selected: <b data-text="$_picked || 'nothing'"></b></span>
 </div>
@@ -40,13 +42,15 @@ Every branch below is loaded when you first open it. Datastar does the wiring:
 The server side is a plain Datastar handler (Go here; any language works):
 
 ```go
-func tree(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+func children(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("parent")
 	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{
-		"_tree": map[string]any{id: childrenOf(id)}, // [{id, label, icon?, lazy?}]
+		"_sky": map[string]any{id: childrenOf(id)}, // [{id, label, icon?, lazy?}]
 	})
 }
 ```
+
+Without Datastar signals, the server can also re-render the element with a new `loaded` (or `items`, `value`, `expanded`) attribute: a changed attribute always wins.
 
 ### Multiple selection
 
