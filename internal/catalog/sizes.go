@@ -3,8 +3,8 @@ package catalog
 import (
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"io/fs"
+	"math/bits"
 	"slices"
 	"strings"
 	"sync"
@@ -43,7 +43,10 @@ func compressed(b []byte) Size {
 	zw, _ := gzip.NewWriterLevel(&gz, gzip.BestCompression)
 	zw.Write(b)
 	zw.Close()
-	bw := brotli.NewWriterLevel(&br, brotli.BestCompression)
+	// A window just larger than the file compresses the same and keeps the
+	// encoder's memory small (the default window is 4 MB).
+	win := max(10, min(24, bits.Len(uint(len(b)))+1))
+	bw := brotli.NewWriterOptions(&br, brotli.WriterOptions{Quality: brotli.BestCompression, LGWin: win})
 	bw.Write(b)
 	bw.Close()
 	return Size{Raw: len(b), Gzip: gz.Len(), Brotli: br.Len()}
@@ -101,23 +104,17 @@ func (cat *Catalog) ownSizes(c *Component) (Sizes, error) {
 	return s, nil
 }
 
-// computeSizes fills every component's Sizes (components in parallel).
+// computeSizes fills every component's Sizes. One component at a time: a
+// brotli -11 encoder is memory-hungry, and the service runs under a tight
+// memory limit.
 func (cat *Catalog) computeSizes() error {
 	own := make(map[*Component]Sizes, len(cat.Components))
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	errs := make([]error, len(cat.Components))
-	for i, c := range cat.Components {
-		wg.Go(func() {
-			s, err := cat.ownSizes(c)
-			mu.Lock()
-			own[c], errs[i] = s, err
-			mu.Unlock()
-		})
-	}
-	wg.Wait()
-	if err := errors.Join(errs...); err != nil {
-		return err
+	for _, c := range cat.Components {
+		s, err := cat.ownSizes(c)
+		if err != nil {
+			return err
+		}
+		own[c] = s
 	}
 	for _, c := range cat.Components {
 		s := own[c]
