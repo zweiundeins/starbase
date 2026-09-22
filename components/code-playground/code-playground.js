@@ -189,7 +189,7 @@ rocket('sb-code-playground', {
 								data-on:sb-run__stop="@run()"></sb-code-editor>`)}
 					</div>
 					<div class="preview">
-						<iframe part="preview" title="Preview" sandbox="allow-scripts allow-modals" data-ref:frame data-attr:src="$$src"></iframe>
+						<iframe part="preview" title="Preview" loading="lazy" sandbox="allow-scripts allow-modals" data-ref:frame data-attr:src="$$src"></iframe>
 						<div class="console" part="console" role="log" aria-label="Console"
 							data-effect="$$lines.length, requestAnimationFrame(() => (el.scrollTop = el.scrollHeight))">
 							<template data-for="line in $$lines">

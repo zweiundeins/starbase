@@ -111,8 +111,7 @@ func SVG(w, h int, css string, layers ...Layer) string {
 	return b.String()
 }
 
-// writeRuns emits one <rect> per horizontal run of equal colour, grouped
-// by colour to keep the markup small.
+// writeRuns emits the horizontal runs of equal colour, one path per colour.
 func writeRuns(b *strings.Builder, g Grid, ox, oy int) {
 	type run struct{ x, y, w int }
 	byColor := map[string][]run{}
@@ -134,16 +133,18 @@ func writeRuns(b *strings.Builder, g Grid, ox, oy int) {
 			byColor[c] = append(byColor[c], run{start, y, x - start})
 		}
 	}
+	// One path per colour (not a <rect> per run): the same pixels, a
+	// fraction of the DOM when the SVG is inlined.
 	for _, c := range order {
 		if strings.HasPrefix(c, "var(") {
-			fmt.Fprintf(b, `<g style="fill:%s">`, c) // a theme token (see art.go)
+			fmt.Fprintf(b, `<path style="fill:%s" d="`, c) // a theme token (see art.go)
 		} else {
-			fmt.Fprintf(b, `<g fill="%s">`, c)
+			fmt.Fprintf(b, `<path fill="%s" d="`, c)
 		}
 		for _, r := range byColor[c] {
-			fmt.Fprintf(b, `<rect x="%d" y="%d" width="%d" height="1"/>`, r.x+ox, r.y+oy, r.w)
+			fmt.Fprintf(b, "M%d %dh%dv1h-%dz", r.x+ox, r.y+oy, r.w, r.w)
 		}
-		b.WriteString("</g>")
+		b.WriteString(`"/>`)
 	}
 }
 

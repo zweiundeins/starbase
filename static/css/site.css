@@ -1379,6 +1379,12 @@
 		& sb-code-playground {
 			--sb-code-playground-height: max(28rem, calc(100dvh - 18rem));
 		}
+
+		/* Hold its place until the component is defined (no layout shift). */
+		& sb-code-playground:not(:defined) {
+			display: block;
+			block-size: var(--sb-code-playground-height);
+		}
 	}
 
 	.code-page__actions {

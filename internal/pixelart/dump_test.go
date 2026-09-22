@@ -8,7 +8,7 @@ import (
 
 func TestArtRenders(t *testing.T) {
 	for name, svg := range All() {
-		if !strings.HasPrefix(svg, "<svg") || !strings.Contains(svg, "<rect") {
+		if !strings.HasPrefix(svg, "<svg") || !strings.Contains(svg, "<path") {
 			t.Errorf("%s: not an SVG with pixels", name)
 		}
 	}
