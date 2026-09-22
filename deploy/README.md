@@ -48,9 +48,11 @@ ssh-keygen -t ed25519 -N "" -C "github-actions@zweiundeins/starbase" -f starbase
 **2. Install the deploy script and the restricted user on the server:**
 
 ```sh
-scp deploy/starbase-deploy deploy/setup-host.sh libretto.ch:/tmp/
-ssh libretto.ch 'sudo bash /tmp/setup-host.sh "$(cat)" && rm /tmp/setup-host.sh /tmp/starbase-deploy' < starbase-deploy-key.pub
+scp deploy/starbase-deploy deploy/setup-host.sh starbase-deploy-key.pub libretto.ch:/tmp/
+ssh libretto.ch 'sudo bash /tmp/setup-host.sh /tmp/starbase-deploy-key.pub && rm /tmp/setup-host.sh /tmp/starbase-deploy /tmp/starbase-deploy-key.pub'
 ```
+
+It should end with `>> ready: CI can deploy as starbase-deploy@…`.
 
 **3. Give GitHub the key and the host.** The job's `if` runs before environment variables are loaded, so the host and its fingerprint are repository variables. The private key is a secret of the `production` environment, which only `main` may use.
 

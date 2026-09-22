@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 #
 # One-time host setup for CI deploys (see deploy/README.md). Run as root on
-# the server, with the public half of the CI deploy key:
+# the server, with the public half of the CI deploy key (a .pub file):
 #
-#   sudo ./setup-host.sh "ssh-ed25519 AAAA… github-actions@zweiundeins/starbase"
+#   sudo bash setup-host.sh starbase-deploy-key.pub
 #
 # It installs /usr/local/bin/starbase-deploy and creates the `starbase-deploy`
 # user. That user's only key is forced to `sudo -n /usr/local/bin/starbase-deploy -`
 # (no shell, no forwarding), and sudo allows exactly that command. Rerunning
 # replaces the key.
 set -euo pipefail
-PUBKEY="${1:?usage: setup-host.sh \"<public key>\"}"
+KEYFILE="${1:?usage: setup-host.sh <public key file>}"
+[[ -f "$KEYFILE" ]] || { echo "!! no such file: $KEYFILE" >&2; exit 2; }
+PUBKEY=$(tr -d '\r' < "$KEYFILE" | sed '/^$/d')
 [[ "$PUBKEY" == ssh-* && "$PUBKEY" != *$'\n'* ]] || { echo "!! that does not look like one public key" >&2; exit 2; }
 HERE=$(cd "$(dirname "$0")" && pwd)
 
