@@ -1,0 +1,142 @@
+{
+  "tag": "sb-range",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "object",
+      "default": {
+        "start": null,
+        "end": null
+      },
+      "required": false,
+      "docs": {
+        "description": "The range, as JSON: {\"start\": 20, \"end\": 60}; a missing part is min or max. A new value from the server replaces it; the live value is the value property."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Minimum."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "number",
+      "default": 100,
+      "required": false,
+      "docs": {
+        "description": "Maximum."
+      }
+    },
+    {
+      "name": "step",
+      "attribute": "step",
+      "type": "number",
+      "default": 1,
+      "required": false,
+      "docs": {
+        "description": "Step size (0 for continuous)."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label; the thumbs are announced as \"<label> start\" and \"<label> end\"."
+      }
+    },
+    {
+      "name": "unit",
+      "attribute": "unit",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Suffix after the shown values, e.g. \"°\" or \" kg\"."
+      }
+    },
+    {
+      "name": "showValue",
+      "attribute": "show-value",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Show the current range next to the label."
+      }
+    },
+    {
+      "name": "ticks",
+      "attribute": "ticks",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show min and max below the track."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable interaction."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local range differs from the server's value attribute (see revert())."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change (e.g. the field of a command)."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "input",
+      "bubbles": true,
+      "composed": true,
+      "description": "While dragging either thumb (native, re-targeted to the host)."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the range is committed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the range is committed. detail: { name, value: { start, end } }: the whole range, one command."
+    }
+  ]
+}
