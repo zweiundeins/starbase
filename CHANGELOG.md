@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Versioned, immutable component URLs (`/c/<slug>@<hash>/…`) and catalog snapshots (`/c/@<catalog>/autoloader.js`), with SHA-384 integrity for every file (`/c/@<catalog>/importmap.json`). Sites can pin exactly what they reviewed; browsers refuse any file that changed. Old versions keep working after later deploys.
 - Vendored libraries are verified: `vendor.json` names each file's npm release, and the bot checks it byte for byte against the registry-verified tarball. Minified code that can't be verified is refused.
 - The Starbase service listens on a Unix socket and is denied all of localhost (other services on a shared host), with a fully hardened systemd unit. `starbase-deploy` asks a new binary its version inside a network-less sandbox with a timeout.
 - Pull request previews are limited to the repository's own submission branches; `script-src` is limited to `/static/` and `/c/`.

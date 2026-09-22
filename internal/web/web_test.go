@@ -3,6 +3,7 @@ package web_test
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"starbase/components"
@@ -28,6 +30,13 @@ import (
 )
 
 func newServer(t *testing.T) (*httptest.Server, *http.Client) {
+	t.Helper()
+	ts, c, _, _ := newServerBus(t)
+	return ts, c
+}
+
+// newServerBus also returns the bus and catalog, for tests that send commands.
+func newServerBus(t *testing.T) (*httptest.Server, *http.Client, *cqrs.Bus, *catalog.Catalog) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -55,7 +64,7 @@ func newServer(t *testing.T) (*httptest.Server, *http.Client) {
 	ts.Config.Handler = srv.Handler()
 	t.Cleanup(func() { cancel(); ts.Close() })
 	jar, _ := cookiejar.New(nil)
-	return ts, &http.Client{Jar: jar}
+	return ts, &http.Client{Jar: jar}, bus, cat
 }
 
 func get(t *testing.T, c *http.Client, url string) (*http.Response, string) {
@@ -390,7 +399,7 @@ func TestAutoloader(t *testing.T) {
 	if res.Header.Get("Access-Control-Allow-Origin") != "*" || !strings.Contains(res.Header.Get("Content-Type"), "javascript") {
 		t.Fatalf("headers: %v", res.Header)
 	}
-	for _, want := range []string{`"sb-button":"button/button.js?v=`, `"sb-code-playground":["sb-code-editor"]`, "export const discover", "new MutationObserver"} {
+	for _, want := range []string{`"sb-button":"button@`, `"sb-code-playground":["sb-code-editor"]`, "export const discover", "new MutationObserver"} {
 		if !strings.Contains(js, want) {
 			t.Errorf("autoloader lacks %q", want)
 		}
@@ -461,5 +470,62 @@ func TestSiteThemeFromCookie(t *testing.T) {
 	res.Body.Close()
 	if !strings.Contains(string(b), "@media (prefers-color-scheme: light)") || !strings.Contains(string(b), ":root:not([data-sb-theme])") || !strings.Contains(string(b), "color-scheme: light") {
 		t.Errorf("auto.css:\n%s", b)
+	}
+}
+
+func TestVersionedURLs(t *testing.T) {
+	ts, c, bus, cat := newServerBus(t)
+	button, _ := cat.Get("button")
+
+	// The current version of a module: immutable and open to other sites.
+	res, js := get(t, c, ts.URL+"/c/"+button.VersionedScript())
+	if res.StatusCode != 200 || !strings.Contains(res.Header.Get("Cache-Control"), "immutable") || res.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Fatalf("versioned module: %d %v", res.StatusCode, res.Header)
+	}
+	if catalog.SRI([]byte(js)) != button.Integrity {
+		t.Error("the module's bytes don't match its integrity")
+	}
+	for _, bad := range []string{"button@000000000000/button.js", "button@" + button.Hash + "/README.md", "button@nothex/button.js", "@000000000000/autoloader.js"} {
+		if r, _ := get(t, c, ts.URL+"/c/"+bad); r.StatusCode != 404 {
+			t.Errorf("%s = %d, want 404", bad, r.StatusCode)
+		}
+	}
+
+	// The snapshot: its autoloader loads versioned modules, and every file
+	// in its import map serves exactly the bytes its hash says.
+	res, auto := get(t, c, ts.URL+"/c/@"+cat.Hash+"/autoloader.js")
+	if res.StatusCode != 200 || !strings.Contains(auto, `"sb-button":"../`+button.VersionedScript()+`"`) {
+		t.Fatalf("snapshot autoloader: %d", res.StatusCode)
+	}
+	_, mapJSON := get(t, c, ts.URL+"/c/@"+cat.Hash+"/importmap.json")
+	var im struct{ Integrity map[string]string }
+	if err := json.Unmarshal([]byte(mapJSON), &im); err != nil || len(im.Integrity) < len(cat.Components)+1 {
+		t.Fatalf("import map: %v, %d entries", err, len(im.Integrity))
+	}
+	for u, sri := range im.Integrity {
+		_, body := get(t, c, u)
+		if catalog.SRI([]byte(body)) != sri {
+			t.Errorf("%s does not match its integrity", u)
+		}
+	}
+
+	// A version that is no longer in the catalog keeps working (from the database).
+	old := fstest.MapFS{
+		"gone/README.md": {Data: []byte("---\nname: Gone\ntag: sb-gone\ncategory: forms\nsummary: Removed since.\nauthor: someone\nsince: 2026-01-01\npreview: <sb-gone></sb-gone>\n---\nDocs.\n")},
+		"gone/gone.js":   {Data: []byte("rocket('sb-gone', {})")},
+	}
+	oldCat, err := catalog.Load(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bus.Exec(context.Background(), commands.SyncCatalog{Catalog: oldCat}); err != nil {
+		t.Fatal(err)
+	}
+	gone, _ := oldCat.Get("gone")
+	if r, body := get(t, c, ts.URL+"/c/"+gone.VersionedScript()); r.StatusCode != 200 || body != "rocket('sb-gone', {})" {
+		t.Errorf("old version = %d %q", r.StatusCode, body)
+	}
+	if r, _ := get(t, c, ts.URL+"/c/@"+oldCat.Hash+"/autoloader.js"); r.StatusCode != 200 {
+		t.Errorf("old snapshot = %d", r.StatusCode)
 	}
 }

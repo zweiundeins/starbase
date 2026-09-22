@@ -3,11 +3,9 @@ package web
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/benbjohnson/hashfs"
@@ -19,13 +17,14 @@ import (
 // assets serves static files under content-hashed names, the generated pixel
 // art and the community component modules. It implements ui.Assets.
 type assets struct {
-	static     *hashfs.FS
-	art        map[string]generated
-	catalog    *catalog.Catalog
-	components generated // /c/index.js: imports every component module
-	autoloader generated // /c/autoloader.js: loads <sb-*> modules on first use
-	autoTheme  generated // /theme/auto.css: daylight's tokens for "auto" on light systems
-	dev        bool
+	static      *hashfs.FS
+	art         map[string]generated
+	catalog     *catalog.Catalog
+	components  generated // /c/index.js: imports every component module
+	autoloader  generated // /c/autoloader.js: loads <sb-*> modules on first use
+	autoTheme   generated // /theme/auto.css: daylight's tokens for "auto" on light systems
+	datastarSRI string    // of the vendored bundle, identical to the jsDelivr release
+	dev         bool
 }
 
 type generated struct {
@@ -49,98 +48,13 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 		fmt.Fprintf(&js, "import %q\n", a.ComponentScript(c))
 	}
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
-	auto := autoloaderJS(cat)
+	auto := catalog.AutoloaderJS(cat, "")
 	a.autoloader = generated{body: []byte(auto), hash: hashOf([]byte(auto))}
+	ds, _ := fs.ReadFile(staticFS, "vendor/datastar-rocket.js")
+	a.datastarSRI = catalog.SRI(ds)
 	css := autoThemeCSS(staticFS)
 	a.autoTheme = generated{body: []byte(css), hash: hashOf([]byte(css))}
 	return a
-}
-
-var usesTagRe = regexp.MustCompile(`<(sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
-
-// autoloaderJS generates the autoloader: a map from every tag to its module
-// (relative to the autoloader, so it works from other sites too) and the
-// components each one renders (found as <sb-… in its source).
-func autoloaderJS(cat *catalog.Catalog) string {
-	modules := map[string]string{}
-	requires := map[string][]string{}
-	for _, c := range cat.Components {
-		modules[c.Tag] = c.Script + "?v=" + c.Hash
-	}
-	for _, c := range cat.Components {
-		src, _ := fs.ReadFile(cat.FS, c.Script)
-		seen := map[string]bool{c.Tag: true}
-		for _, m := range usesTagRe.FindAllStringSubmatch(string(src), -1) {
-			if _, ok := modules[m[1]]; ok && !seen[m[1]] {
-				seen[m[1]] = true
-				requires[c.Tag] = append(requires[c.Tag], m[1])
-			}
-		}
-	}
-	mj, _ := json.Marshal(modules)
-	rj, _ := json.Marshal(requires)
-	return `// Starbase autoloader (generated). Loads each <sb-*> component the first
-// time its tag appears, including tags added later (e.g. by a Datastar
-// morph). Components import 'datastar': the page needs an import map for it.
-//
-//   <script type="importmap">{"imports": {"datastar": "…/datastar-rocket.js"}}</script>
-//   <script type="module" src="…/c/autoloader.js"></script>
-//
-// Optional, against the flash of undefined elements: put class="sb-cloak" on
-// <html> and add  .sb-cloak :not(:defined) { visibility: hidden }
-// The class is removed once the first components are defined (or after 3 s).
-const modules = ` + string(mj) + `
-const requires = ` + string(rj) + `
-const started = new Set()
-let pending = 0
-let settled = false
-let markReady
-/** Resolves when the components present at startup are defined. */
-export const ready = new Promise((resolve) => (markReady = resolve))
-
-const report = (err) => (typeof reportError === 'function' ? reportError(err) : console.error(err))
-
-const uncloak = () => {
-	if (settled) return
-	settled = true
-	document.documentElement.classList.remove('sb-cloak')
-	markReady()
-}
-// Wait a microtask and a frame, so tags added right after a load count too.
-const settle = () =>
-	queueMicrotask(() => pending === 0 && requestAnimationFrame(() => pending === 0 && uncloak()))
-setTimeout(uncloak, 3000) // never leave a page cloaked
-
-const load = (tag) => {
-	if (started.has(tag) || !modules[tag] || customElements.get(tag)) return
-	started.add(tag)
-	for (const dep of requires[tag] || []) load(dep) // tags it renders itself
-	pending++
-	import(new URL(modules[tag], import.meta.url).href)
-		// Rocket defines elements once Datastar is ready: wait for that too.
-		.then(() => customElements.whenDefined(tag))
-		.catch((err) => {
-			started.delete(tag)
-			report(new Error('[starbase] could not load <' + tag + '>', { cause: err }))
-		})
-		.finally(() => {
-			pending--
-			settle()
-		})
-}
-
-/** Load the components used in root (an element, document or shadow root). */
-export const discover = (root) => {
-	if (root.localName?.startsWith('sb-')) load(root.localName)
-	for (const el of root.querySelectorAll?.(':not(:defined)') ?? []) load(el.localName)
-}
-
-discover(document.documentElement)
-settle() // nothing to load: uncloak right away
-new MutationObserver((records) => {
-	for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) discover(n)
-}).observe(document.documentElement, { subtree: true, childList: true })
-`
 }
 
 // autoThemeCSS: with no theme chosen ("auto"), the site is deep-space (the
@@ -177,8 +91,9 @@ func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
 }
 
+// ComponentScript is the component's versioned (immutable) module URL.
 func (a *assets) ComponentScript(c *catalog.Component) string {
-	return "/c/" + c.Script + "?v=" + c.Hash
+	return "/c/" + c.VersionedScript()
 }
 
 const immutable = "public, max-age=31536000, immutable"

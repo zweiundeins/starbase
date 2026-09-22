@@ -57,6 +57,28 @@ To avoid a flash of undefined elements, add `class="sb-cloak"` to `<html>` and `
 
 The autoloader (generated from the catalog) imports each `<sb-*>` component the first time its tag appears. It also watches for tags added later, and loads the components a component renders itself. For shadow roots of your own components, call `discover(shadowRoot)`, which it exports.
 
+### Pinning, for production
+
+`/c/autoloader.js` always loads the latest version of each component. In production, pin a snapshot of the whole catalog instead, and let the browser check every file against its hash:
+
+```html
+<script type="importmap">
+  { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" },
+    "integrity": { "…": "…the map from https://<starbase>/c/@<catalog>/importmap.json, plus Datastar's" } }
+</script>
+<script type="module" src="https://<starbase>/c/@<catalog>/autoloader.js" integrity="sha384-…"></script>
+```
+
+Every component page's Installation section has this snippet with the current catalog hash and real integrity values filled in. The URLs are immutable and keep working after later releases:
+
+| URL | |
+|---|---|
+| `/c/<slug>@<hash>/<file>.js` | one version of a component's file (its module and vendored files) |
+| `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions |
+| `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load |
+
+With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`.
+
 ## Adding a component
 
 **No tools needed:** use the [submission form](/submit) (a GitHub issue form). Paste the code, or link the GitHub repo the component lives in, and a bot validates it, generates its manifest and opens a pull request. See `.github/workflows/component-from-issue.yml`.

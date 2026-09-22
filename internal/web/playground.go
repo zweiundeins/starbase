@@ -196,7 +196,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		v.Loaded, v.Author = sn.ID, sn.Author
 		if c, ok := s.catalog.Get(sn.Component); ok {
 			v.Component, v.ComponentName = c.Slug, c.Name
-			v.Base = "/c/" + c.Slug + "/"
+			v.Base = "/c/" + c.Slug + "@" + c.Hash + "/"
 		}
 	} else if ref := q.Get("preview"); ref != "" {
 		p, err := s.previews.get(rc.ctx, ref)
@@ -219,7 +219,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		}
 		files = map[string]string{"component.js": string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
 		v.Component, v.ComponentName = comp.Slug, comp.Name
-		v.Base = "/c/" + comp.Slug + "/"
+		v.Base = "/c/" + comp.Slug + "@" + comp.Hash + "/"
 	}
 	initial, _ := json.Marshal(files)
 	v.Initial = string(initial)

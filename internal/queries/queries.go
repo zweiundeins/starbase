@@ -259,3 +259,49 @@ func (r *Reader) BoardCells(ctx context.Context, board string, size int) (string
 	}
 	return string(cells), rows.Err()
 }
+
+// ComponentFile is one published file of a component version.
+func (r *Reader) ComponentFile(ctx context.Context, slug, hash, path string) (body []byte, integrity string, ok bool, err error) {
+	err = r.tx.QueryRowContext(ctx, `SELECT body, integrity FROM component_files WHERE slug = ? AND hash = ? AND path = ?`,
+		slug, hash, path).Scan(&body, &integrity)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, "", false, nil
+	}
+	return body, integrity, err == nil, err
+}
+
+// Snapshot is a published snapshot of the whole catalog.
+func (r *Reader) Snapshot(ctx context.Context, hash string) (autoloader, integrity string, ok bool, err error) {
+	err = r.tx.QueryRowContext(ctx, `SELECT autoloader, integrity FROM catalog_snapshots WHERE hash = ?`, hash).Scan(&autoloader, &integrity)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", false, nil
+	}
+	return autoloader, integrity, err == nil, err
+}
+
+// VersionedFile names one file of a component version, with its SRI hash.
+type VersionedFile struct {
+	Slug, Hash, Path, Integrity string
+}
+
+// SnapshotFiles lists every file a catalog snapshot can load.
+func (r *Reader) SnapshotFiles(ctx context.Context, hash string) ([]VersionedFile, error) {
+	rows, err := r.tx.QueryContext(ctx, `
+		SELECT f.slug, f.hash, f.path, f.integrity
+		FROM catalog_snapshot_components s
+		JOIN component_files f ON f.slug = s.slug AND f.hash = s.hash
+		WHERE s.snapshot = ? ORDER BY f.slug, f.path`, hash)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []VersionedFile
+	for rows.Next() {
+		var f VersionedFile
+		if err := rows.Scan(&f.Slug, &f.Hash, &f.Path, &f.Integrity); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}

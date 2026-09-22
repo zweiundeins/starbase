@@ -43,6 +43,10 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - The playground resolves relative imports in `component.js` against `base` (`/c/<slug>/`, or `/playground/preview/<commit>/<slug>/` which proxies the pinned commit's `.js` files).
 - Every submission PR lists similar catalog components (`submission.Similar`, in the PR body) and gets a preview comment per revision: `/playground?preview=<commit>/<slug>` (`internal/web/preview.go`) fetches that commit's files from the repo on raw.githubusercontent.com, memoized per commit (immutable).
 
+## Versioned URLs
+- `internal/web/versions.go`: `/c/<slug>@<hash>/<file>` (a component version: current from the binary, older from `component_files`), `/c/@<catalog hash>/autoloader.js` and `/importmap.json` (SRI map). All immutable, `ACAO *`. `SyncCatalog` stores every version and catalog snapshot it sees (migration 005), so pinned URLs outlive deploys.
+- The site uses versioned module URLs too (`assets.ComponentScript`, `catalog.AutoloaderJS`); the old `/c/<slug>/<file>` route stays for compatibility.
+
 ## Code playground
 - `/playground` page (`internal/web/playground.go`, `ui.CodePlaygroundPage`): sources `?s=<snippet>`, `?component=<slug>` (JS + `Component.Examples`), or a starter. The editor area is a `data-ignore-morph` island; the share strip around it is stream-rendered from `tab_state.PlaygroundShare`.
 - `sb-code-editor` highlights with Prism, vendored as an ES module in `components/code-editor/vendor/prism.js` (js-templates plugin, plus `/* css */` templates and `data-*` values as JS). Rebuild it with `go tool task vendor-prism`. Components may import `'datastar'` or files in their own folder; `/c/<slug>/**.js` is served.

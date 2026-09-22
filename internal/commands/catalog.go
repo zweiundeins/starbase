@@ -47,6 +47,33 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 		if err != nil {
 			return err
 		}
+		// Keep this version's public files for good (pinned URLs).
+		files, err := c.Catalog.ModuleFiles(comp)
+		if err != nil {
+			return err
+		}
+		for p, body := range files {
+			_, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+				comp.Slug, comp.Hash, p, body, catalog.SRI(body), now)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	// And the snapshot of the whole catalog, with its frozen autoloader.
+	auto := catalog.AutoloaderJS(c.Catalog, "../")
+	res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO catalog_snapshots (hash, autoloader, integrity, created_at) VALUES (?, ?, ?, ?)`,
+		c.Catalog.Hash, auto, catalog.SRI([]byte(auto)), now)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		for _, comp := range c.Catalog.Components {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
+				c.Catalog.Hash, comp.Slug, comp.Hash); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

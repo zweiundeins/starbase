@@ -65,7 +65,11 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	if card == nil {
 		return view{}, errNotFound
 	}
-	install := s.installSnippet(comp)
+	_, snapshotSRI, _, err := rc.r.Snapshot(rc.ctx, s.catalog.Hash)
+	if err != nil {
+		return view{}, err
+	}
+	install := s.installSnippet(comp, snapshotSRI)
 	return view{
 		Title:       card.Name + " · Starbase",
 		Description: card.Summary,
@@ -83,21 +87,41 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	}, nil
 }
 
-func (s *Server) installSnippet(c *catalog.Component) string {
+// datastarCDN is the Datastar + Rocket bundle the snippets load. It is
+// byte-identical to static/vendor/datastar-rocket.js (so its SRI is ours).
+const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js"
+
+func (s *Server) installSnippet(c *catalog.Component, snapshotSRI string) string {
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
+	pinned := ""
+	if snapshotSRI != "" {
+		pinned = fmt.Sprintf(`
+
+<!-- In production, pin today's catalog instead of the latest: the browser then
+     refuses any file that changed. Add "integrity" to the import map above: the
+     hashes from %[1]s/c/@%[2]s/importmap.json and Datastar's, below. -->
+<!--
+<script type="importmap">
+  { "imports": { "datastar": "%[4]s" },
+    "integrity": { "%[4]s": "%[5]s", "…": "…from importmap.json" } }
+</script>
+<script type="module" src="%[1]s/c/@%[2]s/autoloader.js" integrity="%[3]s"></script>
+-->`, base, s.catalog.Hash, snapshotSRI, datastarCDN, s.assets.datastarSRI)
+	}
 	return fmt.Sprintf(`<!-- Once per page: Datastar with Rocket, and the Starbase autoloader.
      It loads every <sb-…> component the first time its tag appears. -->
 <script type="importmap">
-  { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" } }
+  { "imports": { "datastar": "%[5]s" } }
 </script>
 <script type="module" src="%[1]s/c/autoloader.js"></script>
 <!-- Optional, no flash of undefined elements: class="sb-cloak" on <html>, and -->
 <style>.sb-cloak :not(:defined) { visibility: hidden }</style>
 
-%[2]s
+%[2]s%[6]s
 
-<!-- Or skip the autoloader and load just this component: -->
-<!-- <script type="module" src="%[1]s/c/%[3]s"></script> -->`, base, strings.TrimSpace(c.Preview), c.Script)
+<!-- Or load just this component, pinned to this version: -->
+<!-- <script type="module" src="%[1]s/c/%[3]s" integrity="%[4]s"></script> -->`,
+		base, strings.TrimSpace(c.Preview), c.VersionedScript(), c.Integrity, datastarCDN, pinned)
 }
 
 func (s *Server) themesPage(rc *renderCtx) (view, error) {
