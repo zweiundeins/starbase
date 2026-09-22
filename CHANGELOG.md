@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `sb-nebula`, a WebGL nebula in dithered pixels: the first component that came in through the submission bot.
+- `--sb-notch` and `data-sb-style="smooth"`: opt out of the 8-bit details (pixel corners, notched frames, pixel display font). The slider and toggle follow it, and the Themes page has a switch.
 - Submission pull requests get a playground preview link for every revision (`/playground?preview=<commit>/<slug>`) and a list of similar existing components, to spot duplicates before merging.
 
 ### Changed

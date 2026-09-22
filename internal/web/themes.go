@@ -36,7 +36,7 @@ func (s *Server) themeCSS(theme string) string {
 // Themes page stage.
 func (s *Server) themePreviews() []ui.ThemePreview {
 	var out []ui.ThemePreview
-	for _, slug := range []string{"button", "input", "alert", "toggle", "tabs", "card", "tooltip", "modal"} {
+	for _, slug := range []string{"button", "input", "slider", "alert", "toggle", "tabs", "card", "tooltip", "modal"} {
 		if c, ok := s.catalog.Get(slug); ok {
 			html := c.Preview
 			if slug == "tooltip" { // the gallery's forced-open tooltip would cover the cell title

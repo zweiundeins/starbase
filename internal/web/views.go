@@ -110,7 +110,7 @@ func (s *Server) themesPage(rc *renderCtx) (view, error) {
 		Description: "Every component is styled with semantic design tokens. Swap the token set, restyle everything.",
 		Nav:         "themes",
 		Body: func(ui.Shell) templ.Component {
-			return ui.ThemesPage(ui.ThemesView{Theme: theme, CSS: s.themeCSS(theme), CSSHTML: catalog.Highlight(s.themeCSS(theme), "css"), Previews: s.themePreviews()})
+			return ui.ThemesPage(ui.ThemesView{Theme: theme, Smooth: rc.tab.PreviewSmooth, CSS: s.themeCSS(theme), CSSHTML: catalog.Highlight(s.themeCSS(theme), "css"), Previews: s.themePreviews()})
 		},
 	}, nil
 }

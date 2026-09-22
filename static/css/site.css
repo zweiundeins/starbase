@@ -1295,6 +1295,13 @@
 		}
 	}
 
+	.theme-style {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sb-space-3) var(--sb-space-6);
+	}
+
 	.theme-stage {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));

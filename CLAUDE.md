@@ -15,6 +15,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - Per-tab UI state goes in `tab_state` via commands, never in handler memory or client-only signals.
 
 ## Frontend rules
+- 8-bit details are opt-out: pixel-corner clip-paths scale with `--sb-notch` (1 or 0; at 0 use a border radius), frames with `--sb-frame-step`, display text uses `--sb-font-display`. `[data-sb-style="smooth"]` (theme.css) sets all three; the Themes page switch is `tab_state.PreviewSmooth`.
 - CSS: `@layer reset, tokens, theme, base, layout, components, utilities`. Use semantic `--sb-*` tokens (theme.css) in components, not primitives. Prefer container queries over media queries.
 - **Wire components declaratively:** events use `data-on:*` with local `action()`s (`@name()`), state is `$$` signals with `data-bind`/`data-show`/`data-class`/`data-attr`/`data-text`/`data-effect`, lists use `<template data-for>`, and elements come from `data-ref:x` → `onFirstRender({ refs })` (refs are not `$$` signals). `data-bind:x` in rendered markup binds the local `$$x`. Plain `addEventListener` is only for things without an attribute form (`matchMedia`, Intersection/ResizeObserver).
 - Rocket components (`components/<slug>/`): shadow DOM (default mode), `adoptStyles(host, css)`, `--_x: var(--sb-x, fallback)` locals, interaction state in `$$` signals (never reflected to attributes, because server morphs reset attributes), `emit()` for events, `.docs()` on every prop.

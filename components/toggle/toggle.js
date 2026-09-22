@@ -19,7 +19,8 @@ const peek = (fn) => {
 	}
 }
 
-// Pixel corners: a polygon that notches every corner by one "pixel".
+// Pixel corners: a polygon that notches every corner by one "pixel"
+// (times --sb-notch; 0 leaves the rectangle, rounded by border-radius).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
 
 const styles = /* css */ `
@@ -29,6 +30,7 @@ const styles = /* css */ `
 	--_knob: var(--sb-text-1, #F3F4FA);
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_focus: var(--sb-brand-light, #B09AFF);
+	--_notch: var(--sb-notch, 1);
 	display: inline-flex;
 	vertical-align: middle;
 }
@@ -40,7 +42,8 @@ button {
 	inline-size: calc(var(--_u) * 11);
 	block-size: calc(var(--_u) * 6);
 	background: var(--_track);
-	clip-path: ${notch('var(--_u)')};
+	clip-path: ${notch('calc(var(--_u) * var(--_notch))')};
+	border-radius: calc(var(--_u) * 3 * (1 - var(--_notch)));
 	cursor: pointer;
 	transition: background 180ms steps(3, end);
 }
@@ -53,7 +56,8 @@ button {
 	inset-inline-start: var(--_u);
 	inline-size: calc(var(--_u) * 4);
 	background: var(--_knob);
-	clip-path: ${notch('calc(var(--_u) / 2)')};
+	clip-path: ${notch('calc(var(--_u) / 2 * var(--_notch))')};
+	border-radius: calc(var(--_u) * 2 * (1 - var(--_notch)));
 	transition: translate 180ms steps(5, end);
 }
 button.on { background: var(--_on); }

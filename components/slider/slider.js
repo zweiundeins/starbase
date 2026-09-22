@@ -19,6 +19,10 @@ const peek = (fn) => {
 	}
 }
 
+// Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
+// border-radius takes over).
+const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+
 const styles = /* css */ `
 :host {
 	--_track: var(--sb-surface-inset, #0B1224);
@@ -29,6 +33,8 @@ const styles = /* css */ `
 	--_label: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
 	--_value: var(--sb-text-1, #F3F4FA);
+	--_notch: var(--sb-notch, 1);
+	--_n: calc(2px * var(--_notch));
 	display: block;
 	inline-size: 100%;
 	min-inline-size: 8rem;
@@ -47,7 +53,8 @@ output { color: var(--_value); font-variant-numeric: tabular-nums; font-weight: 
 	block-size: 8px;
 	background: linear-gradient(to right, var(--_fill) var(--_p), var(--_track) var(--_p));
 	box-shadow: 0 0 0 2px var(--_border);
-	clip-path: polygon(0 2px, 2px 2px, 2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
+	clip-path: ${notch('var(--_n)')};
+	border-radius: calc(4px * (1 - var(--_notch)));
 }
 input {
 	position: relative;
@@ -67,14 +74,15 @@ input::-webkit-slider-thumb {
 	border: 0;
 	background: var(--_thumb);
 	box-shadow: inset 0 -3px 0 var(--_thumb-edge);
-	clip-path: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 2px 2px);
+	clip-path: ${notch('var(--_n)')};
+	border-radius: calc(7px * (1 - var(--_notch)));
 	transition: translate 80ms;
 }
 input::-moz-range-thumb {
 	inline-size: 14px;
 	block-size: 20px;
 	border: 0;
-	border-radius: 0;
+	border-radius: calc(7px * (1 - var(--_notch)));
 	background: var(--_thumb);
 	box-shadow: inset 0 -3px 0 var(--_thumb-edge);
 }

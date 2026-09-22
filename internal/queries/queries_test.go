@@ -176,10 +176,11 @@ func TestTabState(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.bus.Exec(ctx, commands.SetPreviewTheme{SID: "s", TabID: "tab12345", Theme: "nebula"})
+	e.bus.Exec(ctx, commands.SetPreviewStyle{SID: "s", TabID: "tab12345", Smooth: true})
 	var st model.TabState
 	var ok bool
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, ok, err = r.Tab(ctx, "s", "tab12345"); return })
-	want := model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}, PreviewTheme: "nebula"}
+	want := model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}, PreviewTheme: "nebula", PreviewSmooth: true}
 	if !ok || st != want {
 		t.Fatalf("tab = %+v, want %+v", st, want)
 	}

@@ -82,6 +82,21 @@ func (c SetPreviewTheme) Apply(ctx context.Context, tx *sql.Tx) error {
 	})
 }
 
+// SetPreviewStyle turns the 8-bit details of the Themes page previews on or off.
+type SetPreviewStyle struct {
+	SID, TabID string
+	Smooth     bool
+}
+
+func (c SetPreviewStyle) Validate() error { return validTab(c.SID, c.TabID) }
+func (c SetPreviewStyle) Scope() string   { return c.SID }
+
+func (c SetPreviewStyle) Apply(ctx context.Context, tx *sql.Tx) error {
+	return updateTab(ctx, tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
+		st.PreviewSmooth = c.Smooth
+	})
+}
+
 // PruneTabs forgets tab state that has not been touched for a while.
 type PruneTabs struct{ OlderThan time.Duration }
 

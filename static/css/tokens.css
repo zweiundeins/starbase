@@ -135,6 +135,13 @@
 		 */
 		--sb-frame-step: 3px;
 
+		/* ── Pixel corners ──────────────────────────────────────────────────
+		 * Components notch their corners by --sb-notch "pixels": 1 is the
+		 * 8-bit look, 0 turns it off (components then use their normal
+		 * border radius). [data-sb-style="smooth"] sets it for you.
+		 */
+		--sb-notch: 1;
+
 		/* ── Motion ─────────────────────────────────────────────────────── */
 		--sb-duration-instant: 80ms;
 		--sb-duration-fast: 120ms;

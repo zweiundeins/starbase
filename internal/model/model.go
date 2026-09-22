@@ -79,6 +79,8 @@ func (b Browse) Query() url.Values {
 type TabState struct {
 	Browse       Browse `json:"browse"`
 	PreviewTheme string `json:"previewTheme,omitempty"`
+	// PreviewSmooth shows the Themes page previews without 8-bit details.
+	PreviewSmooth bool `json:"smooth,omitempty"`
 	// PlaygroundShare is the id of the snippet this tab saved last.
 	PlaygroundShare string `json:"share,omitempty"`
 }

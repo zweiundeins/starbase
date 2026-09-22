@@ -9,9 +9,17 @@ type ThemePreview struct {
 
 type ThemesView struct {
 	Theme    string
+	Smooth   bool // previews without 8-bit details
 	CSS      string
 	CSSHTML  string
 	Previews []ThemePreview
+}
+
+func styleAttr(smooth bool) string {
+	if smooth {
+		return "smooth"
+	}
+	return "pixel"
 }
 
 func themeClick(slug string) string {
@@ -51,7 +59,15 @@ templ ThemesPage(v ThemesView) {
 					</button>
 				}
 			</div>
-			<section class="theme-stage" data-sb-theme={ v.Theme } aria-label="Live preview">
+			<div class="theme-style">
+				<sb-toggle
+					label="8-bit details"
+					checked?={ !v.Smooth }
+					data-on:change="@post('/cmd/theme-style/' + (el.checked ? 'pixel' : 'smooth'))"
+				></sb-toggle>
+				<span class="muted">Pixel corners, notched frames and the pixel display font. Turn them off with <code>data-sb-style="smooth"</code>, or set only <code>--sb-notch: 0</code> to keep everything but the corners.</span>
+			</div>
+			<section class="theme-stage" data-sb-theme={ v.Theme } data-sb-style={ styleAttr(v.Smooth) } aria-label="Live preview">
 				for _, p := range v.Previews {
 					<div class="theme-stage__cell">
 						<h3>{ p.Name }</h3>
@@ -64,6 +80,7 @@ templ ThemesPage(v ThemesView) {
 			<section class="prose">
 				<h2>Use it</h2>
 				<p>Scope a theme to any element with <code>data-sb-theme</code>, or copy the overrides into your own stylesheet. Components only ever read <code>--sb-*</code> semantic tokens.</p>
+				<p>The 8-bit details are tokens too: <code>data-sb-style="smooth"</code> on any element sets <code>--sb-notch: 0</code> (plain corners with a normal radius), <code>--sb-frame-step: 1px</code> (hairline frames) and the UI font for display text. It combines with every theme.</p>
 				<div class="code-block">
 					<sb-copy-button class="code-copy" value={ v.CSS }></sb-copy-button>
 					@templ.Raw(v.CSSHTML)

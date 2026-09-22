@@ -85,3 +85,14 @@ func (s *Server) cmdTheme(w http.ResponseWriter, r *http.Request) {
 	}
 	s.send(w, r, commands.SetPreviewTheme{SID: sessionID(r), TabID: sig.TabID, Theme: r.PathValue("theme")})
 }
+
+func (s *Server) cmdThemeStyle(w http.ResponseWriter, r *http.Request) {
+	var sig struct {
+		TabID string `json:"tabid"`
+	}
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		http.Error(w, "bad signals", http.StatusBadRequest)
+		return
+	}
+	s.send(w, r, commands.SetPreviewStyle{SID: sessionID(r), TabID: sig.TabID, Smooth: r.PathValue("style") == "smooth"})
+}
