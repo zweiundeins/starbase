@@ -1,0 +1,91 @@
+{
+  "tag": "sb-tree",
+  "props": [
+    {
+      "name": "items",
+      "attribute": "items",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "The tree: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened."
+      }
+    },
+    {
+      "name": "loaded",
+      "attribute": "loaded",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "Loaded children by parent id: {\"<id>\": [items]}. Bind it to a signal the server patches (see the docs)."
+      }
+    },
+    {
+      "name": "selection",
+      "attribute": "selection",
+      "type": "oneOf",
+      "default": "single",
+      "required": false,
+      "values": [
+        "single",
+        "multiple",
+        "none"
+      ],
+      "docs": {
+        "description": "How many items can be selected."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Initial selection: an id, or ids separated by spaces (multiple). Read the live value from the value property."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Tree",
+      "required": false,
+      "docs": {
+        "description": "Accessible name."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-load",
+      "bubbles": true,
+      "composed": true,
+      "description": "A lazy item was opened and has no children yet. detail: { id }. Answer by adding its children to the loaded prop."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The selection changed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The selection changed. detail: { value } (an id, or an array of ids for multiple)."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-toggle",
+      "bubbles": true,
+      "composed": true,
+      "description": "An item opened or closed. detail: { id, open }."
+    }
+  ]
+}
