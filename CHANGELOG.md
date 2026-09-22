@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Continuous deployment: after CI passes on `main`, the Deploy workflow ships the binary over a single-purpose SSH key to `starbase-deploy`, which verifies it, checks `/healthz` and rolls back if the new version isn't healthy. The unit, env and Caddy files are in `deploy/`.
 - Vendored libraries: a submission from a repository brings along every file the component imports relatively (up to 2 MB each), listed with its license banner in the PR. Imports are now checked strictly: `'datastar'` or files in the component's folder, never URLs or bare packages.
 - `sb-nebula`, a WebGL nebula in dithered pixels: the first component that came in through the submission bot.
 - `--sb-notch` and `data-sb-style="smooth"`: opt out of the 8-bit details (pixel corners, notched frames, pixel display font). The slider and toggle follow it, and the Themes page has a switch.

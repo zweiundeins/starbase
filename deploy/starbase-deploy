@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#
+# Deploy Starbase on this host. Installed as /usr/local/bin/starbase-deploy.
+#
+#   starbase-deploy <binary>    install that binary, restart, verify, roll back on failure
+#   starbase-deploy -           the same, reading the binary from stdin (CI over SSH)
+#   starbase-deploy rollback    go back to the previous binary
+#
+# CI connects as the `starbase-deploy` user, whose only key is restricted to
+# `sudo -n /usr/local/bin/starbase-deploy -` (see deploy/README.md). Runs as root:
+# it writes /opt/starbase and restarts the unit. The new binary itself only
+# ever runs as the unprivileged `starbase` user.
+set -euo pipefail
+
+DIR=/opt/starbase
+UNIT=starbase
+URL=http://127.0.0.1:7331/healthz
+HEALTH_TIMEOUT=30
+MAX_BYTES=$((200 << 20))
+
+health() { # waits for /healthz to answer "ok <version>"
+	for ((i = 0; i < HEALTH_TIMEOUT; i++)); do
+		if [[ "$(curl -fsS "$URL" 2>/dev/null)" == "ok $1" ]]; then return 0; fi
+		sleep 1
+	done
+	return 1
+}
+
+version_of() { runuser -u starbase -- "$1" --version | awk '{print $2}'; }
+
+if [[ "${1:-}" == rollback ]]; then
+	[[ -x "$DIR/starbase.prev" ]] || { echo "!! no previous binary" >&2; exit 2; }
+	cp -f "$DIR/starbase.prev" "$DIR/starbase.new"
+	chmod 0755 "$DIR/starbase.new"
+else
+	SRC="${1:-}"
+	[[ -n "$SRC" ]] || { echo "usage: starbase-deploy <binary|-|rollback>" >&2; exit 2; }
+	install -d -m 0755 "$DIR"
+	if [[ "$SRC" == - ]]; then
+		head -c "$MAX_BYTES" > "$DIR/starbase.new"
+	else
+		[[ -f "$SRC" ]] || { echo "!! not a file: $SRC" >&2; exit 2; }
+		cp -f "$SRC" "$DIR/starbase.new"
+	fi
+	chmod 0755 "$DIR/starbase.new"
+	[[ "$(head -c 4 "$DIR/starbase.new" | od -An -c | tr -d ' ')" == '177ELF' ]] || {
+		rm -f "$DIR/starbase.new"; echo "!! not an ELF binary" >&2; exit 2; }
+fi
+
+NEW=$(version_of "$DIR/starbase.new") || { rm -f "$DIR/starbase.new"; echo "!! the binary does not run" >&2; exit 2; }
+[[ -n "$NEW" ]] || { rm -f "$DIR/starbase.new"; echo "!! the binary reports no version" >&2; exit 2; }
+OLD=$( [[ -x "$DIR/starbase" ]] && version_of "$DIR/starbase" || echo none)
+echo ">> $OLD -> $NEW"
+
+# Keep the running binary aside; it only becomes starbase.prev once the new
+# one is healthy, so a failed deploy leaves the rollback target alone.
+[[ -x "$DIR/starbase" ]] && cp -f "$DIR/starbase" "$DIR/starbase.running"
+mv -f "$DIR/starbase.new" "$DIR/starbase"
+systemctl restart "$UNIT"
+if health "$NEW"; then
+	[[ -f "$DIR/starbase.running" ]] && mv -f "$DIR/starbase.running" "$DIR/starbase.prev"
+	echo ">> healthy: $NEW"
+	exit 0
+fi
+
+echo "!! $NEW is not healthy after ${HEALTH_TIMEOUT}s; going back to $OLD" >&2
+journalctl -u "$UNIT" -n 20 --no-pager >&2 || true
+if [[ -f "$DIR/starbase.running" ]]; then
+	mv -f "$DIR/starbase.running" "$DIR/starbase"
+	systemctl restart "$UNIT"
+	health "$OLD" && echo ">> back on $OLD" >&2
+fi
+exit 1

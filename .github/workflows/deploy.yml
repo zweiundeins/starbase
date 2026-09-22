@@ -1,0 +1,73 @@
+# Deploys main to production after CI passes (or by hand: "Run workflow").
+#
+# Only runs when the `production` environment is configured (see
+# deploy/README.md): variable DEPLOY_HOST, variable DEPLOY_KNOWN_HOSTS and
+# secret DEPLOY_SSH_KEY. The key can do exactly one thing on the host: pipe a
+# binary into starbase-deploy, which verifies it, restarts and rolls back if
+# the new version is not healthy.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never cut a deploy short; a newer pending run replaces older pending ones
+
+jobs:
+  deploy:
+    if: >-
+      vars.DEPLOY_HOST != '' && (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.STARBASE_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0 # tags, for the version
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build
+        id: build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          version=$(git describe --tags --always)
+          go build -trimpath -ldflags="-s -w -X main.version=$version" -o starbase ./cmd/starbase
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Deploy
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+        run: |
+          install -m 600 /dev/null "$RUNNER_TEMP/key"
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+          ssh -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=20 \
+            "starbase-deploy@$HOST" < starbase
+          rm -f "$RUNNER_TEMP/key"
+      - name: Check the public site
+        if: vars.STARBASE_URL != ''
+        env:
+          SITE: ${{ vars.STARBASE_URL }}
+          VERSION: ${{ steps.build.outputs.version }}
+        run: |
+          got=$(curl -fsS --retry 5 --retry-delay 3 "${SITE%/}/healthz")
+          echo "$got"
+          [ "$got" = "ok $VERSION" ]

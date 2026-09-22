@@ -1,0 +1,18 @@
+# --- Starbase (github.com/zweiundeins/starbase): community components for
+# Rocket, until it moves to its own domain. Separate systemd unit (starbase),
+# loopback :7331. The app compresses its own SSE streams, so no `encode`. ---
+rocket.libretto.ch {
+	log {
+		output file /var/log/caddy/starbase-access.log {
+			roll_size 100mb
+			roll_keep 5
+			roll_keep_for 720h
+		}
+		format json
+	}
+
+	reverse_proxy localhost:7331 {
+		header_up X-Real-IP {http.request.remote.host}
+		flush_interval -1
+	}
+}

@@ -1,0 +1,32 @@
+# /etc/systemd/system/starbase.service
+[Unit]
+Description=Starbase (community components for Rocket), rocket.libretto.ch
+Documentation=https://github.com/zweiundeins/starbase
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=starbase
+Group=starbase
+WorkingDirectory=/var/lib/starbase
+EnvironmentFile=/etc/starbase/starbase.env
+ExecStart=/opt/starbase/starbase
+KillSignal=SIGTERM
+TimeoutStopSec=15
+Restart=on-failure
+RestartSec=2
+
+# Public and unauthenticated (pixel board, playground): keep it well away
+# from the Libretto services' memory.
+MemoryHigh=256M
+MemoryMax=384M
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/starbase
+
+[Install]
+WantedBy=multi-user.target

@@ -124,7 +124,7 @@ Every open tab keeps one long-lived SSE connection (its render stream). Over HTT
 - [CONTRIBUTING.md](CONTRIBUTING.md): submitting components and working on the site
 - [SECURITY.md](SECURITY.md): reporting vulnerabilities
 
-CI runs vet, tests, the templ and manifest checks, govulncheck, cross-platform builds and a container build on every push. Pushing a `v*` tag publishes a GitHub release (binaries, checksums, notes from the changelog) and the image.
+CI runs vet, tests, the templ and manifest checks, govulncheck, cross-platform builds and a container build on every push. Pushing a `v*` tag publishes a GitHub release (binaries, checksums, notes from the changelog) and the image. Once CI passes on `main`, it deploys to production, with health checks and automatic rollback: see [deploy/](deploy/README.md).
 
 ## Licences
 

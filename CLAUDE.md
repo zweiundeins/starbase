@@ -8,6 +8,9 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - `go tool task new -- <slug> --category <cat>`: scaffold a component
 - `go tool task manifests`: regenerate all `manifest.json` in headless Chrome (`cmd/manifests`, runs the app in-process); `--check` in CI
 
+## Deploy
+- `deploy/`: host files (systemd unit, env, Caddy snippet), `starbase-deploy` (root; verifies, restarts, checks `/healthz`, rolls back) and `setup-host.sh` (the restricted `starbase-deploy` user with a forced-command key). `.github/workflows/deploy.yml` runs after CI on `main`, gated by the repository variable `DEPLOY_HOST`.
+
 ## Architecture rules (CQRS)
 - State changes are **commands** (`internal/commands`): structs with `Apply(ctx, *sql.Tx)`, optional `Validate()`, and `Scope()` (session id) when only that session's views change. Handlers call `bus.Send` and return 204. Commands never render HTML.
 - Only the `cqrs.Bus` writes to the database (single writer, `db.W`). Queries use `db.R` through `queries.Queries.View` (one read tx per render).
