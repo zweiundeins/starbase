@@ -18,7 +18,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Open on first render. Use show() and close() afterwards."
+        "description": "Open. The server opens or closes it by changing the attribute; show() and close() work too."
       }
     },
     {

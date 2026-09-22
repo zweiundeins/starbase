@@ -2,14 +2,6 @@ import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signal, or that effect writes the stale bound value back.
-// data-bind may set a property before the element is upgraded; adopt it.
-const early = (host, name) => {
-	const d = Object.getOwnPropertyDescriptor(host, name)
-	if (!d || !('value' in d)) return undefined
-	delete host[name]
-	return d.value
-}
-
 const peek = (fn) => {
 	startPeeking()
 	try {
@@ -68,7 +60,7 @@ button:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; cl
 
 rocket('sb-toggle', {
 	props: ({ bool, oneOf, string }) => ({
-		checked: bool.docs({ description: 'Initial state. Read the live state from the checked property.' }),
+		checked: bool.docs({ description: 'On or off. A new state from the server wins (send checked="false" to switch it off); the live state is the checked property.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		label: string.trim.docs({ description: 'Visible label next to the switch.' }),
 		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Size of the switch.' }),
@@ -81,21 +73,17 @@ rocket('sb-toggle', {
 	},
 	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		// Interaction state lives in a local signal, never in the attribute:
-		// a server morph may re-send the original markup at any time.
+		// Interaction state lives in a local signal, never reflected.
 		$$.on = props.checked
-		const pre = early(host, 'checked')
-		$$.dirty = pre !== undefined
-		if ($$.dirty) $$.on = !!pre
-		// Like a native <input>: the attribute is only the default. Once the
-		// checked state is "dirty" (edited, or set as a property, e.g. by data-bind),
-		// attribute changes, including a server morph removing a reflected
-		// attribute, no longer touch it.
-		observeProps(() => peek(() => !$$.dirty && ($$.on = props.checked)), 'checked')
-		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => (($$.dirty = true), ($$.on = !!v))))
+		// A checked attribute sent by the server wins when it changes (a morph
+		// with a new value); re-sending the same markup changes nothing, so edits
+		// survive re-renders. A *removed* attribute changes nothing either: morphs
+		// also remove attributes that were only reflected (e.g. from a data-bind
+		// write before the upgrade). To clear it, the server sends checked="false".
+		observeProps(() => peek(() => host.hasAttribute('checked') && ($$.on = props.checked)), 'checked')
+		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
 		action('toggle', () => {
 			if (props.disabled) return
-			$$.dirty = true
 			$$.on = !$$.on
 			emit('change')
 			emit('sb-change', { checked: $$.on })

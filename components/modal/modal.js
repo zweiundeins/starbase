@@ -48,7 +48,7 @@ footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.875re
 rocket('sb-modal', {
 	props: ({ bool, string }) => ({
 		heading: string.trim.default('Dialog').docs({ description: 'Title of the dialog.' }),
-		open: bool.docs({ description: 'Open on first render. Use show() and close() afterwards.' }),
+		open: bool.docs({ description: 'Open. The server opens or closes it by changing the attribute; show() and close() work too.' }),
 		inline: bool.docs({ description: 'Render in place, without an overlay (previews, docs).' }),
 		closable: bool.default(true).docs({ description: 'Show the close button.' }),
 	}),

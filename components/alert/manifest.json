@@ -36,6 +36,16 @@
       "docs": {
         "description": "Show a dismiss button."
       }
+    },
+    {
+      "name": "open",
+      "attribute": "open",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Shown. The server can hide or re-show it by changing the attribute (open=\"false\")."
+      }
     }
   ],
   "slots": [

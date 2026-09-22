@@ -60,7 +60,7 @@ rocket('sb-pixel-board', {
 		size: number.clamp(8, 128).step(1).default(48).docs({ description: 'Cells per side.' }),
 		cells: string.docs({ description: 'Board state: one hex digit (palette index) per cell, row by row. Usually server-owned.' }),
 		palette: array(string.trim).default(() => PALETTE).docs({ description: '16 colours as a JSON array of #rrggbb.' }),
-		color: number.clamp(0, 15).default(7).docs({ description: 'Initially selected palette index.' }),
+		color: number.clamp(0, 15).default(7).docs({ description: 'Selected palette index (the attribute sets it; the user can change it).' }),
 		local: bool.docs({ description: 'Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells echoes them.' }),
 		readonly: bool.docs({ description: 'Watch only: no painting, no palette.' }),
 		grid: bool.docs({ description: 'Show faint cell lines.' }),

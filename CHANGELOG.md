@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The server can set every component's value: a `value`/`checked` attribute the server changes now wins over local edits (input, slider, toggle, code editor), while re-sent identical markup still leaves edits alone. Removed attributes are ignored (morphs also strip reflected ones), so to clear, send `value=""` / `checked="false"`. The manual pre-upgrade property adoption and the dirty flags are gone (Rocket replays those writes itself).
+- `sb-alert` has an `open` prop, so the server can hide and re-show it. `sb-theme-switch` draws its icons as CSS masks instead of injecting SVG markup.
+
 ### Security
 
 - Versioned, immutable component URLs (`/c/<slug>@<hash>/…`) and catalog snapshots (`/c/@<catalog>/autoloader.js`), with SHA-384 integrity for every file (`/c/@<catalog>/importmap.json`). Sites can pin exactly what they reviewed; browsers refuse any file that changed. Old versions keep working after later deploys.

@@ -8,7 +8,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Initial state. Read the live state from the checked property."
+        "description": "On or off. A new state from the server wins (send checked=\"false\" to switch it off); the live state is the checked property."
       }
     },
     {

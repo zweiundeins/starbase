@@ -61,14 +61,16 @@ rocket('sb-alert', {
 		variant: oneOf('info', 'success', 'warning', 'danger').default('info').docs({ description: 'Tone of the message.' }),
 		heading: string.trim.docs({ description: 'Bold first line.' }),
 		closable: bool.docs({ description: 'Show a dismiss button.' }),
+		open: bool.default(true).docs({ description: 'Shown. The server can hide or re-show it by changing the attribute (open="false").' }),
 	}),
 	manifest: {
 		slots: [{ name: 'default', description: 'The message.' }],
 		events: [{ name: 'sb-close', kind: 'custom-event', bubbles: true, composed: true, description: 'After the alert was dismissed.' }],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, emit, host }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
-		$$.open = true
+		$$.open = props.open
+		observeProps(() => ($$.open = props.open), 'open')
 		action('close', () => {
 			$$.open = false
 			emit('sb-close')

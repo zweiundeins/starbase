@@ -1,14 +1,24 @@
 import { rocket } from 'datastar'
 
-// Icons for the well-known names; other themes show their label only.
-const icon = (paths) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`
-const ICONS = {
-	auto: icon('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
-	dark: icon('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>'),
-	light: icon('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+// Icons for the well-known names, as CSS masks painted in currentColor:
+// the markup only picks a class (no HTML injected). Other themes get the
+// palette icon on the menu button, and text only elsewhere.
+const ICON_PATHS = {
+	auto: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+	dark: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
+	light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+	palette: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 21 9.8C21 6 17 3 12 3Z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7" r="1"/>',
 }
-// Any other theme (the menu button shows it for them).
-const PALETTE = icon('<path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 21 9.8C21 6 17 3 12 3Z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7" r="1"/>')
+const iconCSS = Object.entries(ICON_PATHS)
+	.map(([name, paths]) => {
+		const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`
+		return `.icon.${name} { --_mask: url("data:image/svg+xml,${encodeURIComponent(svg)}"); }`
+	})
+	.join('\n')
+const iconOf = (theme) => (theme in ICON_PATHS && theme !== 'palette' ? theme : '')
+
+// Text inside a single-quoted string of a Datastar expression.
+const quote = (s) => s.replace(/[\\']/g, '\\$&')
 
 const nameOf = (t) => t.charAt(0).toUpperCase() + t.slice(1).replaceAll('-', ' ')
 
@@ -61,8 +71,7 @@ label:has(:checked) { background: var(--_brand-subtle); color: var(--_active); b
 label:has(:focus-visible) { outline: 2px solid var(--_focus); outline-offset: 1px; }
 input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: inherit; }
 label { line-height: 1; }
-.icon { display: grid; place-items: center; flex: none; }
-svg { display: block; inline-size: 1.05rem; block-size: 1.05rem; }
+.icon { display: block; flex: none; inline-size: 1.05rem; block-size: 1.05rem; background: currentColor; mask: var(--_mask) center / contain no-repeat; }
 .compact .text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .compact .iconless .text { position: static; inline-size: auto; block-size: auto; clip-path: none; }
 select {
@@ -91,7 +100,7 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 }
 .trigger:hover, .trigger:has(+ :popover-open) { color: var(--_active); background: var(--_brand-subtle); }
 .trigger:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
-.trigger svg { inline-size: 1.25rem; block-size: 1.25rem; }
+.trigger .icon { inline-size: 1.25rem; block-size: 1.25rem; }
 .menu {
 	margin: 0;
 	padding: 4px;
@@ -125,13 +134,13 @@ rocket('sb-theme-switch', {
 		events: [{ name: 'sb-theme-change', kind: 'custom-event', bubbles: true, composed: true, description: 'After the user picks a theme. detail: { theme, cookie }.' }],
 	},
 	setup: ({ $$, action, adoptStyles, emit, host, props }) => {
-		adoptStyles(host, styles)
+		adoptStyles(host, styles + iconCSS)
 		const valid = (t) => props.themes.includes(t)
 		const fallback = () => (valid('auto') ? 'auto' : props.themes[0])
 		const saved = readCookie(props.cookie)
 		$$.theme = valid(saved) ? saved : fallback()
-		$$.options = props.themes.map((value, i) => ({ value, label: props.labels[i] || nameOf(value), icon: ICONS[value] || '' }))
-		$$.icon = () => ICONS[$$.theme] || PALETTE
+		$$.options = props.themes.map((value, i) => ({ value, label: props.labels[i] || nameOf(value), icon: iconOf(value) }))
+		$$.icon = () => iconOf($$.theme) || 'palette'
 		$$.current = () => $$.options.find((o) => o.value === $$.theme)?.label ?? ''
 
 		const root = document.documentElement
@@ -159,8 +168,8 @@ rocket('sb-theme-switch', {
 		variant === 'menu'
 			? html`
 				<button type="button" class="trigger" part="button" popovertarget="menu"
-					data-attr:aria-label="'${label}: ' + $$current" data-attr:title="'${label}: ' + $$current"
-					data-effect="el.innerHTML = $$icon"></button>
+					data-attr:aria-label="'${quote(label)}: ' + $$current" data-attr:title="'${quote(label)}: ' + $$current"
+					><span data-attr:class="'icon ' + $$icon" aria-hidden="true"></span></button>
 				<div id="menu" class="menu" part="menu" popover role="radiogroup" aria-label="${label}"
 					data-on:sb-theme-change__window="@sync()">
 					<template data-for="o in $$options">
@@ -169,7 +178,7 @@ rocket('sb-theme-switch', {
 								data-attr:value="o.value"
 								data-effect="el.checked = $$theme === o.value"
 								data-on:change="@pick(); el.closest('[popover]').hidePopover()"/>
-							<span class="icon" data-show="o.icon" data-effect="el.innerHTML = o.icon"></span>
+							<span aria-hidden="true" data-show="o?.icon" data-attr:class="'icon ' + o?.icon"></span>
 							<span class="text" data-text="o.label"></span>
 						</label>
 					</template>
@@ -192,7 +201,7 @@ rocket('sb-theme-switch', {
 								data-attr:value="o.value"
 								data-effect="el.checked = $$theme === o.value"
 								data-on:change="@pick()"/>
-							<span class="icon" data-show="o.icon" data-effect="el.innerHTML = o.icon"></span>
+							<span aria-hidden="true" data-show="o?.icon" data-attr:class="'icon ' + o?.icon"></span>
 							<span class="text" data-text="o.label"></span>
 						</label>
 					</template>

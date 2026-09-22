@@ -55,7 +55,7 @@
       "default": 7,
       "required": false,
       "docs": {
-        "description": "Initially selected palette index."
+        "description": "Selected palette index (the attribute sets it; the user can change it)."
       }
     },
     {

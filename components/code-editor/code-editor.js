@@ -1,14 +1,8 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 import Prism from './vendor/prism.js'
 
-// data-bind may set a property before the element is upgraded; adopt it.
-const early = (host, name) => {
-	const d = Object.getOwnPropertyDescriptor(host, name)
-	if (!d || !('value' in d)) return undefined
-	delete host[name]
-	return d.value
-}
-
+// Host getters must not subscribe callers (e.g. data-bind's sync effect) to
+// the internal signal, or that effect writes the stale bound value back.
 const peek = (fn) => {
 	startPeeking()
 	try {
@@ -118,7 +112,7 @@ textarea::selection { background: var(--_sel); -webkit-text-fill-color: transpar
 rocket('sb-code-editor', {
 	props: ({ bool, number, oneOf, string }) => ({
 		language: oneOf('js', 'html', 'css').default('js').docs({ description: 'Syntax to highlight.' }),
-		value: string.docs({ description: 'Initial code (or a child <script type="text/plain">). Read the live code from the value property.' }),
+		value: string.docs({ description: 'The code (or a child <script type="text/plain">). A new value from the server replaces it; the live code is the value property.' }),
 		lineNumbers: bool.default(true).docs({ description: 'Show a line-number gutter.' }),
 		tabSize: number.clamp(1, 8).default(2).docs({ description: 'Visual width of a tab.' }),
 		readonly: bool.docs({ description: 'Make the code read-only.' }),
@@ -135,9 +129,7 @@ rocket('sb-code-editor', {
 	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const child = host.querySelector(':scope > script[type="text/plain"]')
-		let initial = host.hasAttribute('value') ? props.value : child ? dedent(child.textContent) : ''
-		const pre = early(host, 'value')
-		if (pre !== undefined) initial = String(pre ?? '')
+		const initial = host.hasAttribute('value') || !child ? props.value : dedent(child.textContent)
 
 		// Local signals the markup renders from.
 		$$.code = initial
@@ -159,13 +151,13 @@ rocket('sb-code-editor', {
 
 		// Typing updates $$code; the textarea's data-effect only writes back
 		// external changes (the values differ), so the caret never jumps.
-		// Like a native <input>: the attribute is only the default. Once the
-		// value is "dirty" (edited, or set as a property, e.g. by data-bind),
-		// attribute changes, including a server morph removing a reflected
-		// attribute, no longer touch it.
-		$$.dirty = pre !== undefined
-		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => (($$.dirty = true), ($$.code = String(v ?? '')))))
-		observeProps(() => peek(() => !$$.dirty && ($$.code = String(props.value ?? ''))), 'value')
+		// A value attribute sent by the server wins when it changes (a morph
+		// with a new value); re-sending the same markup changes nothing, so edits
+		// survive re-renders. A *removed* attribute changes nothing either: morphs
+		// also remove attributes that were only reflected (e.g. from a data-bind
+		// write before the upgrade). To clear it, the server sends value="".
+		observeProps(() => peek(() => host.hasAttribute('value') && ($$.code = props.value)), 'value')
+		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => ($$.code = String(v ?? ''))))
 
 		const insert = (area, text) => {
 			// execCommand keeps the browser's undo stack; setRangeText is the fallback.
@@ -229,7 +221,7 @@ rocket('sb-code-editor', {
 						aria-label="${label || 'Code'}"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"
-						data-on:input="$$code = el.value; $$dirty = true"
+						data-on:input="$$code = el.value"
 						data-on:change="@change()"
 						data-on:keydown="@key()"
 					></textarea>

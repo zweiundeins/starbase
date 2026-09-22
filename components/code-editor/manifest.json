@@ -23,7 +23,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Initial code (or a child <script type=\"text/plain\">). Read the live code from the value property."
+        "description": "The code (or a child <script type=\"text/plain\">). A new value from the server replaces it; the live code is the value property."
       }
     },
     {
