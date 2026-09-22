@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Playground: the preview theme picker applied the previous choice (the run started before the binding updated).
+
 ### Changed
 
 - A command contract for value components (input, slider, toggle, code editor, tabs): a `name` prop and `sb-change {name, value}` on commit, ready to post as a command; with `confirm`, `:state(pending)` marks an edit the server hasn't confirmed, and `revert()` returns to the server's value after a rejected command. The Showcase demonstrates the loop (pending, a server-normalized value, a rejected command), and the Contribute page documents it for community components.

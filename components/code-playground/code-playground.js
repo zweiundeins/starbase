@@ -175,7 +175,9 @@ rocket('sb-code-playground', {
 					</div>
 					<span class="status" role="status" data-text="$$status"></span>
 					<label class="auto"><input type="checkbox" data-bind:auto> Auto</label>
-					<select aria-label="Preview theme" data-bind:theme data-on:change="@run()">
+					<!-- The handler takes the theme from el: data-bind's own change listener
+					     runs after it, so $$theme would still be the old one. -->
+					<select aria-label="Preview theme" data-bind:theme data-on:change="$$theme = el.value; @run()">
 						${themes.map((t) => html`<option value="${t}">${t}</option>`)}
 					</select>
 					<button type="button" class="btn run" part="run" title="Run (Ctrl+Enter)" data-on:click="@run()">▶ Run</button>
