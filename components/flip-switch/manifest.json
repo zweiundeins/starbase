@@ -1,0 +1,67 @@
+{
+  "tag": "sb-flip-switch",
+  "props": [
+    {
+      "name": "checked",
+      "attribute": "checked",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Initial state. Read the live state from the checked property."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable interaction."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label next to the switch."
+      }
+    },
+    {
+      "name": "size",
+      "attribute": "size",
+      "type": "oneOf",
+      "default": "md",
+      "required": false,
+      "values": [
+        "sm",
+        "md",
+        "lg"
+      ],
+      "docs": {
+        "description": "Size of the switch."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "After the user flips the switch."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Same moment. detail: { checked }."
+    }
+  ]
+}
