@@ -6,16 +6,47 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-22
+
+Eight new components (26 in total), a command contract that makes every value component CQRS-ready, continuous deployment, and a security, performance and SEO pass.
+
+### Added
+
+- **8 new components** (18 → 26):
+  - `sb-nebula`: a drifting WebGL nebula in dithered pixels. The first component that came in through the submission bot.
+  - `sb-theme-switch`: auto, dark or light (or any themes), as radio buttons, a select or a header menu. It remembers the choice in a cookie, so the server renders the theme before the first paint (no flash). The Starbase header uses it for the site's own themes, with "auto" following the system (Deep Space or Daylight).
+  - `sb-rating`: pixel hearts or stars for a score, with half steps, hover preview and keys.
+  - `sb-relative-time`: "3 minutes ago" that stays current, in any language, with a server fallback.
+  - `sb-qr-code`: pixel QR codes for any text or URL, with optional brand-coloured corners (uqr, vendored and verified).
+  - `sb-tree`: a keyboard-friendly tree whose branches load lazily from the server; `expanded` and `loaded` are props the server can morph.
+  - `sb-select`: filter, pick several, or autocomplete from the server through a `results` prop.
+  - `sb-range`: a two-thumb slider whose `{start, end}` is one value, committed as one command.
+- **Command contract** for value components (input, slider, toggle, code editor, tabs, rating, tree, select, range): a `name` prop and `sb-change {name, value}` on commit, ready to post as a command. With `confirm`, `:state(pending)` marks an edit the server hasn't confirmed, and `revert()` returns to the server's value after a rejected command. The Showcase demonstrates the loop (pending, a server-normalized value, a rejected command).
+- **Example dataset** (a seeded universe of galaxies, systems, planets and moons) with generic demo endpoints, `/demo/data/children` and `/demo/data/search`, for docs and playground demos (`into=` names the signal, `delay=` simulates latency).
+- **Component sizes:** gallery cards show the download size (brotli, including the components it renders), and component pages have a Size table with original, gzip and brotli sizes for each file and each rendered component, plus a total. Datastar and Rocket are not counted.
+- **Continuous deployment:** after CI passes on `main`, the Deploy workflow ships the binary over a single-purpose SSH key to `starbase-deploy`, which verifies it, checks `/healthz` and rolls back if the new version isn't healthy. The unit, env and Caddy files are in `deploy/`.
+- **Vendored libraries:** a submission from a repository brings along every file the component imports relatively (up to 2 MB each), listed with its license banner in the PR. Imports are checked strictly: `'datastar'` or files in the component's folder, never URLs or bare packages.
+- **Submission pull requests** get a playground preview link for every revision (`/playground?preview=<commit>/<slug>`) and a list of similar existing components, to spot duplicates before merging. When the pull request step fails, the bot tells the author on the issue.
+- **Opt out of the 8-bit look:** `--sb-notch` and `data-sb-style="smooth"` turn off pixel corners, notched frames and the pixel display font. The Themes page has a switch.
+- **SEO:** `robots.txt`, a sitemap, canonical URLs, Open Graph and Twitter cards, JSON-LD (`WebSite` with search, `SoftwareSourceCode` per component) and PNG icons rendered from the pixel art.
+- **Contribute guidelines** for component authors: the command contract, components with several values (one structured `value` per decision, view state and server data as separate props, `sb-<verb>` operations), and no optimistic updates (server results only come from the server's render; the user's own input stays, marked pending).
+
 ### Changed
 
-- Component sizes: gallery cards show the download size (brotli, including the components it renders), and component pages have a Size table: each file and each rendered component with original, gzip and brotli sizes, plus a total. Datastar and Rocket are not counted.
-- A command contract for value components (input, slider, toggle, code editor, tabs): a `name` prop and `sb-change {name, value}` on commit, ready to post as a command; with `confirm`, `:state(pending)` marks an edit the server hasn't confirmed, and `revert()` returns to the server's value after a rejected command. The Showcase demonstrates the loop (pending, a server-normalized value, a rejected command), and the Contribute page documents it for community components.
-- The Contribute page states the rule against optimistic updates: server results only come from the server's render; the user's own input stays, marked pending.
-- The Contribute page covers components with several values: one structured `value` per decision (one event, one command), view state and server data as separate props, and `sb-<verb>` operations with per-item pending.
-- The server can set every component's value: a `value`/`checked` attribute the server changes now wins over local edits (input, slider, toggle, code editor), while re-sent identical markup still leaves edits alone. Removed attributes are ignored (morphs also strip reflected ones), so to clear, send `value=""` / `checked="false"`. The manual pre-upgrade property adoption and the dirty flags are gone (Rocket replays those writes itself).
-- `sb-alert` has an `open` prop, so the server can hide and re-show it. `sb-theme-switch` draws its icons as CSS masks instead of injecting SVG markup.
-- The logo and the hero scene follow the site theme: they are inlined as SVG, and their themeable colours (brand stripes, planet, stars, smoke) are `--sb-art-*` tokens. As standalone files (favicon) they keep the original colours.
+- The server can set every component's value: a `value`/`checked` attribute the server changes wins over local edits, while re-sent identical markup leaves edits alone. Removed attributes are ignored (morphs also strip reflected ones), so to clear, send `value=""` / `checked="false"`. The manual pre-upgrade property adoption and the dirty flags are gone (Rocket replays those writes itself).
+- `sb-alert` has an `open` prop, so the server can hide and re-show it. `sb-theme-switch` draws its icons as CSS masks.
+- The logo and the hero scene follow the site theme: they are inlined as SVG, and their themeable colours are `--sb-art-*` tokens. As standalone files (favicon) they keep the original colours.
+- Performance: brotli, zstd or gzip for pages and text assets; one minified, hashed CSS bundle; hashed, preloaded fonts; immutable static files; pixel art drawn as one path per colour; lazy playground preview frames, and no layout shift on `/playground`.
 - GitHub Actions updated to their Node 24 (LTS) majors.
+
+### Fixed
+
+- `sb-copy-button`: a refused clipboard write (no secure context, no permission, unfocused document) was silently ignored; it now shows "Copy failed" (`failed-label`) and emits `sb-copy-error {value, error}`. The result is announced through a `role="status"` region outside the button, and the tip is readable on light themes and no longer cut off on code blocks.
+- Demo endpoints answer CORS preflights, so components in the playground sandbox (opaque origin) can load demo data with `@get`, e.g. the lazy tree.
+- Playground: the preview theme picker applied the previous choice.
+- The playground can run components that import their own files (e.g. `sb-code-editor` and its vendored Prism): relative imports resolve against the component's folder.
+- Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.
+- The hero scene keeps its proportions at every width; `sb-theme-switch` icons line up with their labels; light-theme contrast fixes.
 
 ### Security
 
@@ -26,22 +57,9 @@ All notable changes to this project are documented here. The format follows
 - Rate limits for snippet saves and painting (per session and per IP), and a cap on total snippet storage.
 - CI: actions pinned to commit SHAs (Dependabot keeps them current), job timeouts, Chrome's sandbox kept on for submitted code, the bot's write-capable job re-validates what the build job produced, CODEOWNERS for vendored code, CI/CD and deploy files, and tests that keep the production environment to `deploy.yml`.
 
-### Added
+### Known issues
 
-- `sb-theme-switch`: auto, dark or light (or any themes), as radio buttons, a select or a header menu. It remembers the choice in a cookie, so the server can render the theme before the first paint (no flash). The Starbase header uses it for the site's own themes, with "auto" following the system (Deep Space or Daylight).
-- Continuous deployment: after CI passes on `main`, the Deploy workflow ships the binary over a single-purpose SSH key to `starbase-deploy`, which verifies it, checks `/healthz` and rolls back if the new version isn't healthy. The unit, env and Caddy files are in `deploy/`.
-- Vendored libraries: a submission from a repository brings along every file the component imports relatively (up to 2 MB each), listed with its license banner in the PR. Imports are now checked strictly: `'datastar'` or files in the component's folder, never URLs or bare packages.
-- `sb-nebula`, a WebGL nebula in dithered pixels: the first component that came in through the submission bot.
-- `--sb-notch` and `data-sb-style="smooth"`: opt out of the 8-bit details (pixel corners, notched frames, pixel display font). The slider and toggle follow it, and the Themes page has a switch.
-- Submission pull requests get a playground preview link for every revision (`/playground?preview=<commit>/<slug>`) and a list of similar existing components, to spot duplicates before merging.
-
-### Fixed
-
-- `sb-copy-button`: a refused clipboard write (no secure context, no permission, unfocused document) was silently ignored; it now shows "Copy failed" (`failed-label`) and emits `sb-copy-error {value, error}`. The result is announced through a `role="status"` region outside the button, and the tip is readable on light themes.
-- Demo endpoints answer CORS preflights, so components in the playground sandbox (opaque origin) can load demo data with `@get`, e.g. the lazy tree.
-- Playground: the preview theme picker applied the previous choice (the run started before the binding updated).
-- The playground can run components that import their own files (e.g. `sb-code-editor` and its vendored Prism): relative imports resolve against the component's folder.
-- Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.
+- Datastar's morph is not re-entrant with Rocket components that are reordered by id: reported upstream as [starfederation/datastar#1209](https://github.com/starfederation/datastar/issues/1209), with a minimal reproduction and a fix in `docs/repro/rocket-morph-reentrancy/`. Starbase avoids the pattern.
 
 ## [0.1.0] - 2026-09-21
 
@@ -64,5 +82,6 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/zweiundeins/starbase/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zweiundeins/starbase/releases/tag/v0.1.0
