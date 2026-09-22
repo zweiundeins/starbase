@@ -3,20 +3,35 @@ package ui
 // Document is the full HTML page for the initial GET.
 templ Document(s Shell, body templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" data-sb-theme="deep-space" class="sb-cloak">
+	<html
+		lang="en"
+		class="sb-cloak"
+		if s.Theme != "auto" {
+			data-sb-theme={ s.Theme }
+		}
+	>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ s.Title }</title>
 			<meta name="description" content={ s.Description }/>
-			<meta name="color-scheme" content="dark"/>
-			<meta name="theme-color" content="#080D1D"/>
+			// Before any CSS: the browser's own canvas already matches the theme.
+			<meta name="color-scheme" content={ colorScheme(s.Theme) }/>
+			if s.Theme == "auto" {
+				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F8FC"/>
+				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#080D1D"/>
+			} else if lightTheme(s.Theme) {
+				<meta name="theme-color" content="#F7F8FC"/>
+			} else {
+				<meta name="theme-color" content="#080D1D"/>
+			}
 			<link rel="icon" type="image/svg+xml" href={ s.Assets.Art("logo") }/>
 			<link rel="preload" href="/static/fonts/pixelify-sans.woff2" as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href="/static/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin/>
 			for _, css := range stylesheets {
 				<link rel="stylesheet" href={ s.Assets.Static(css) }/>
 			}
+			<link rel="stylesheet" href={ s.Assets.AutoTheme() }/>
 			@templ.Raw(`<script type="importmap" nonce="` + s.Nonce + `">` + importMap(s.Assets) + `</script>`)
 			<script type="module" src={ s.Assets.Datastar() }></script>
 			<script type="module" src={ s.Assets.Components() }></script>
@@ -66,6 +81,13 @@ templ Header(s Shell) {
 			</nav>
 			<div class="header-tools">
 				@SearchBox(s)
+				<sb-theme-switch
+					class="header-theme"
+					variant="menu"
+					attribute="data-sb-theme"
+					label="Site theme"
+					themes={ siteThemes() }
+				></sb-theme-switch>
 				<a class="icon-btn" href={ safe(s.RepoURL) } aria-label="Starbase on GitHub">
 					@Icon("github")
 				</a>

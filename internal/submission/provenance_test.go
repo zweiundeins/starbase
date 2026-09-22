@@ -9,9 +9,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"os"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 

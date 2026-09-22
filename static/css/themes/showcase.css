@@ -1,7 +1,7 @@
 /*
  * Alternative token sets for the Themes page. Each theme only remaps
  * semantic tokens; scope one to any container with data-sb-theme="…".
- * The site chrome always uses deep-space.
+ * The site wears one too when picked in the header theme switch (sb-theme cookie).
  */
 @layer theme {
 	[data-sb-theme="nebula"] {

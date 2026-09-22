@@ -429,3 +429,37 @@ func TestSnippetSaveRateLimit(t *testing.T) {
 		t.Fatalf("status codes = %v, want 10×204 then 429s (burst 10)", codes)
 	}
 }
+
+func TestSiteThemeFromCookie(t *testing.T) {
+	ts, c := newServer(t)
+	for _, tc := range []struct{ cookie, html, scheme string }{
+		{"", `<html lang="en" class="sb-cloak">`, "dark light"},
+		{"auto", `<html lang="en" class="sb-cloak">`, "dark light"},
+		{"terminal", `<html lang="en" class="sb-cloak" data-sb-theme="terminal">`, "dark"},
+		{"daylight", `<html lang="en" class="sb-cloak" data-sb-theme="daylight">`, "light"},
+		{`x"><script>`, `<html lang="en" class="sb-cloak">`, "dark light"},
+	} {
+		req, _ := http.NewRequest("GET", ts.URL+"/about", nil)
+		if tc.cookie != "" {
+			req.AddCookie(&http.Cookie{Name: "sb-theme", Value: tc.cookie})
+		}
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if !strings.Contains(string(b), tc.html) || !strings.Contains(string(b), `<meta name="color-scheme" content="`+tc.scheme+`">`) {
+			t.Errorf("cookie %q: want %s and color-scheme %q", tc.cookie, tc.html, tc.scheme)
+		}
+	}
+	res, err := c.Get(ts.URL + "/theme/auto.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(b), "@media (prefers-color-scheme: light)") || !strings.Contains(string(b), ":root:not([data-sb-theme])") || !strings.Contains(string(b), "color-scheme: light") {
+		t.Errorf("auto.css:\n%s", b)
+	}
+}

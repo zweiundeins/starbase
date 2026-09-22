@@ -16,6 +16,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - Only the `cqrs.Bus` writes to the database (single writer, `db.W`). Queries use `db.R` through `queries.Queries.View` (one read tx per render).
 - Pages are `pageFunc`s in `internal/web` registered with `s.page(mux, pattern, fn)`, which gives the GET document and the POST render stream. A page must be a pure function of `renderCtx`.
 - Per-tab UI state goes in `tab_state` via commands, never in handler memory or client-only signals.
+- Exception: the site theme is a browser preference, kept by `sb-theme-switch` in the `sb-theme` cookie. The layout renders it (`Shell.Theme`, `siteTheme`) on `<html data-sb-theme>`, so there is no flash. "auto" means no attribute: `:root` is deep-space, and `/theme/auto.css` (generated from the daylight block in `css/themes/showcase.css`) applies daylight on light systems.
 
 ## Frontend rules
 - 8-bit details are opt-out: pixel-corner clip-paths scale with `--sb-notch` (1 or 0; at 0 use a border radius), frames with `--sb-frame-step`, display text uses `--sb-font-display`. `[data-sb-style="smooth"]` (theme.css) sets all three; the Themes page switch is `tab_state.PreviewSmooth`.

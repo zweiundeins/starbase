@@ -19,6 +19,7 @@ type Assets interface {
 	Art(name string) string    // generated pixel art (internal/pixelart)
 	Components() string        // module that loads every community component
 	Datastar() string          // the vendored datastar-rocket bundle
+	AutoTheme() string         // CSS: the light theme for "auto" on light systems
 }
 
 // Shell is the page chrome around a view.
@@ -42,6 +43,9 @@ type Shell struct {
 	// their Rocket manifests to the server once they are defined.
 	ManifestTags []string
 	Version      string
+	// Theme is the site theme from the sb-theme cookie: "auto" or a theme
+	// slug. The server renders it, so there is no flash of another theme.
+	Theme string
 }
 
 type navItem struct{ Key, Label, Href string }
@@ -120,4 +124,27 @@ const tags = ` + string(tags) + `
 await Promise.all(tags.map((t) => customElements.whenDefined(t)))
 publishRocketManifests({ endpoint: '/dev/manifests' })
 </script>`
+}
+
+func lightTheme(t string) bool { return model.LightThemes[t] }
+
+// colorScheme is the <meta name="color-scheme"> for the site theme.
+func colorScheme(theme string) string {
+	switch {
+	case theme == "auto":
+		return "dark light"
+	case model.LightThemes[theme]:
+		return "light"
+	}
+	return "dark"
+}
+
+// siteThemes is the header switch's list: auto, then every theme.
+func siteThemes() string {
+	names := []string{"auto"}
+	for _, t := range model.PreviewThemes {
+		names = append(names, t.Slug)
+	}
+	b, _ := json.Marshal(names)
+	return string(b)
 }

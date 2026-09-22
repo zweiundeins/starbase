@@ -94,6 +94,13 @@ var PreviewThemes = []struct {
 	{"daylight", "Daylight", "A light theme for documentation-heavy apps."},
 }
 
+// ValidSiteTheme reports whether s is a theme the site itself can wear:
+// "auto" (the system's dark or light) or one of the preview themes.
+func ValidSiteTheme(s string) bool { return s == "auto" || ValidPreviewTheme(s) }
+
+// LightThemes are the themes with a light color scheme.
+var LightThemes = map[string]bool{"daylight": true}
+
 func ValidPreviewTheme(s string) bool {
 	for _, t := range PreviewThemes {
 		if t.Slug == s {

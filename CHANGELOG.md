@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `sb-theme-switch`: auto, dark or light (or any themes), as radio buttons, a select or a header menu. It remembers the choice in a cookie, so the server can render the theme before the first paint (no flash). The Starbase header uses it for the site's own themes, with "auto" following the system (Deep Space or Daylight).
+
 ### Security
 
 - Vendored libraries are verified: `vendor.json` names each file's npm release, and the bot checks it byte for byte against the registry-verified tarball. Minified code that can't be verified is refused.

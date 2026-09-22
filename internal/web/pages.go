@@ -99,7 +99,17 @@ func (s *Server) shell(req *http.Request, user *model.User, v view) ui.Shell {
 		Dev:          s.cfg.Dev,
 		ManifestTags: s.manifestTags(),
 		Version:      cmp.Or(s.cfg.Version, "dev"),
+		Theme:        siteTheme(req),
 	}
+}
+
+// siteTheme is the theme the sb-theme-switch in the header stored in its
+// cookie (a preference of the browser, not tab state), or "auto".
+func siteTheme(r *http.Request) string {
+	if c, err := r.Cookie("sb-theme"); err == nil && model.ValidSiteTheme(c.Value) {
+		return c.Value
+	}
+	return "auto"
 }
 
 // loginURL is empty when nobody can sign in (production without OAuth).

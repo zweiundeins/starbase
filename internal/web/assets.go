@@ -24,6 +24,7 @@ type assets struct {
 	catalog    *catalog.Catalog
 	components generated // /c/index.js: imports every component module
 	autoloader generated // /c/autoloader.js: loads <sb-*> modules on first use
+	autoTheme  generated // /theme/auto.css: daylight's tokens for "auto" on light systems
 	dev        bool
 }
 
@@ -50,6 +51,8 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
 	auto := autoloaderJS(cat)
 	a.autoloader = generated{body: []byte(auto), hash: hashOf([]byte(auto))}
+	css := autoThemeCSS(staticFS)
+	a.autoTheme = generated{body: []byte(css), hash: hashOf([]byte(css))}
 	return a
 }
 
@@ -138,6 +141,28 @@ new MutationObserver((records) => {
 	for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) discover(n)
 }).observe(document.documentElement, { subtree: true, childList: true })
 `
+}
+
+// autoThemeCSS: with no theme chosen ("auto"), the site is deep-space (the
+// :root tokens), and on light systems the daylight tokens. They are copied
+// from the daylight block, so the two can't drift apart.
+func autoThemeCSS(staticFS fs.FS) string {
+	b, _ := fs.ReadFile(staticFS, "css/themes/showcase.css")
+	for _, m := range themeBlockRe.FindAllStringSubmatch(string(b), -1) {
+		if m[1] == "daylight" {
+			return "/* Generated from css/themes/showcase.css: the daylight tokens, for auto on light systems. */\n" +
+				"@layer theme {\n\t@media (prefers-color-scheme: light) {\n\t\t:root:not([data-sb-theme]) {" + m[2] + "\n\t\t}\n\t}\n}\n"
+		}
+	}
+	return ""
+}
+
+func (a *assets) AutoTheme() string { return "/theme/auto.css?v=" + a.autoTheme.hash }
+
+func (a *assets) serveAutoTheme(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	a.cacheHeader(w, r.URL.Query().Get("v") == a.autoTheme.hash)
+	w.Write(a.autoTheme.body)
 }
 
 func (a *assets) Static(name string) string { return "/static/" + a.static.HashName(name) }

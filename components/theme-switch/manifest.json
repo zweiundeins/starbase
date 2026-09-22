@@ -1,0 +1,94 @@
+{
+  "tag": "sb-theme-switch",
+  "props": [
+    {
+      "name": "themes",
+      "attribute": "themes",
+      "type": "array",
+      "default": [
+        "auto",
+        "dark",
+        "light"
+      ],
+      "required": false,
+      "docs": {
+        "description": "Theme names, in order. \"auto\" follows the system (prefers-color-scheme)."
+      }
+    },
+    {
+      "name": "labels",
+      "attribute": "labels",
+      "type": "array",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Visible names, in the order of themes (default: from the names)."
+      }
+    },
+    {
+      "name": "attribute",
+      "attribute": "attribute",
+      "type": "string",
+      "default": "data-theme",
+      "required": false,
+      "docs": {
+        "description": "Attribute set on <html> to the chosen theme. \"auto\" removes it."
+      }
+    },
+    {
+      "name": "cookie",
+      "attribute": "cookie",
+      "type": "string",
+      "default": "sb-theme",
+      "required": false,
+      "docs": {
+        "description": "Cookie that remembers the choice (a year, whole site). Servers can read it to render the theme, with no flash."
+      }
+    },
+    {
+      "name": "variant",
+      "attribute": "variant",
+      "type": "oneOf",
+      "default": "segmented",
+      "required": false,
+      "values": [
+        "segmented",
+        "select",
+        "menu"
+      ],
+      "docs": {
+        "description": "Radio buttons, a select, or an icon button with a menu (for headers)."
+      }
+    },
+    {
+      "name": "compact",
+      "attribute": "compact",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Segmented only: icons without text for auto, dark and light."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Theme",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the control."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-theme-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "After the user picks a theme. detail: { theme, cookie }."
+    }
+  ]
+}
