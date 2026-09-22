@@ -43,7 +43,17 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Initial selection: an id, or ids separated by spaces (multiple). Read the live value from the value property."
+        "description": "Selection: an id, or ids separated by spaces (multiple). A new value from the server replaces it; the live value is the value property."
+      }
+    },
+    {
+      "name": "expanded",
+      "attribute": "expanded",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Open items: ids separated by spaces. A new list from the server replaces it; lazy items in it load their children."
       }
     },
     {

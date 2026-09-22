@@ -1,13 +1,5 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 
-// data-bind may set a property before the element is upgraded; adopt it.
-const early = (host, name) => {
-	const d = Object.getOwnPropertyDescriptor(host, name)
-	if (!d || !('value' in d)) return undefined
-	delete host[name]
-	return d.value
-}
-
 // Host getters must not subscribe callers (e.g. data-bind's sync effect).
 const peek = (fn) => {
 	startPeeking()
@@ -70,7 +62,8 @@ rocket('sb-tree', {
 		items: json.default(() => []).docs({ description: 'The tree: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened.' }),
 		loaded: json.default(() => ({})).docs({ description: 'Loaded children by parent id: {"<id>": [items]}. Bind it to a signal the server patches (see the docs).' }),
 		selection: oneOf('single', 'multiple', 'none').default('single').docs({ description: 'How many items can be selected.' }),
-		value: string.docs({ description: 'Initial selection: an id, or ids separated by spaces (multiple). Read the live value from the value property.' }),
+		value: string.docs({ description: 'Selection: an id, or ids separated by spaces (multiple). A new value from the server replaces it; the live value is the value property.' }),
+		expanded: string.docs({ description: 'Open items: ids separated by spaces. A new list from the server replaces it; lazy items in it load their children.' }),
 		label: string.trim.default('Tree').docs({ description: 'Accessible name.' }),
 	}),
 	manifest: {
@@ -90,12 +83,9 @@ rocket('sb-tree', {
 		$$.mode = props.selection
 		const ids = (v) => (Array.isArray(v) ? v.map(String) : String(v ?? '').split(/\s+/).filter(Boolean))
 		$$.selected = ids(props.value)
-		const pre = early(host, 'value')
-		$$.dirty = pre !== undefined
-		if ($$.dirty) $$.selected = ids(pre)
 		// Plain sets, not signals: assigning an object to a signal merges into
 		// it (keys never go away), and only $$.rows is rendered anyway.
-		const open = new Set()
+		const open = new Set(ids(props.expanded))
 		const loading = new Set() // ids whose children are on their way
 		$$.focus = '' // the row in the tab order (roving tabindex)
 		$$.hasFocus = false // whether keyboard focus is inside the tree
@@ -109,6 +99,11 @@ rocket('sb-tree', {
 				const el = host.shadowRoot?.querySelector(`[data-id="${CSS.escape($$.focus)}"]`)
 				if (el && host.shadowRoot.activeElement !== el) el.focus()
 			})
+		// Load requests go out in a later task: during setup the page's
+		// data-on:sb-load isn't attached yet, and inside another effect (a
+		// morph) the @get it starts would be tracked by that effect.
+		const request = (id) => setTimeout(() => emit('sb-load', { id }))
+
 		// The visible rows: a depth-first walk through the open items.
 		const rebuild = () => {
 			const rows = []
@@ -118,6 +113,12 @@ rocket('sb-tree', {
 					const kids = it.children ?? props.loaded[id]
 					const branch = !!(kids?.length || (it.lazy && !kids))
 					const isOpen = open.has(id) && branch
+					// An open lazy item without children asks for them (also when
+					// the server opened it through expanded).
+					if (isOpen && it.lazy && !kids && !loading.has(id)) {
+						loading.add(id)
+						request(id)
+					}
 					rows.push({ id, label: String(it.label ?? id), icon: it.icon ?? '', depth, parent, branch, open: isOpen, loading: loading.has(id), pos: i + 1, size: items.length })
 					if (isOpen && kids?.length) walk(kids, depth + 1, id)
 				})
@@ -130,11 +131,14 @@ rocket('sb-tree', {
 		rebuild()
 		// peek: attribute changes arrive inside the effect of whoever set them
 		// (e.g. data-attr:loaded); reading signals here must not subscribe it.
-		observeProps(() =>
+		observeProps((_, changes) =>
 			peek(() => {
 				// Children arrived: the lazy item is done loading.
 				for (const id of loading) if (props.loaded[id]) loading.delete(id)
-				if (!$$.dirty) $$.selected = ids(props.value)
+				// Attributes the server sends win when they change; removals are ignored
+				// (morphs also strip reflected attributes; see sb-slider).
+				if ('value' in changes && host.hasAttribute('value')) $$.selected = ids(props.value)
+				if ('expanded' in changes && host.hasAttribute('expanded')) (open.clear(), ids(props.expanded).forEach((id) => open.add(id)))
 				$$.label = props.label
 				$$.mode = props.selection
 				rebuild()
@@ -142,7 +146,7 @@ rocket('sb-tree', {
 		)
 
 		const value = () => (props.selection === 'multiple' ? [...$$.selected] : $$.selected[0] ?? '')
-		overrideProp('value', () => peek(value), (v) => peek(() => (($$.dirty = true), ($$.selected = ids(v)))))
+		overrideProp('value', () => peek(value), (v) => peek(() => ($$.selected = ids(v))))
 		const row = (id) => $$.rows.find((r) => r.id === id)
 
 		const setOpen = (id, wantOpen) => {
@@ -150,26 +154,13 @@ rocket('sb-tree', {
 			if (!r?.branch || r.open === wantOpen) return
 			if (wantOpen) open.add(id)
 			else open.delete(id)
-			const it = find(props.items, id)
-			if (wantOpen && it?.lazy && !it.children && !props.loaded[id]) {
-				loading.add(id)
-				emit('sb-load', { id })
-			}
 			emit('sb-toggle', { id, open: wantOpen })
 			rebuild()
-		}
-		const find = (items, id) => {
-			for (const it of items || []) {
-				if (String(it.id) === id) return it
-				const hit = find(it.children ?? props.loaded[String(it.id)], id)
-				if (hit) return hit
-			}
 		}
 		const select = (id) => {
 			if (props.selection === 'none') return
 			const has = $$.selected.includes(id)
 			$$.selected = props.selection === 'multiple' ? (has ? $$.selected.filter((x) => x !== id) : [...$$.selected, id]) : [id]
-			$$.dirty = true
 			emit('change')
 			emit('sb-change', { value: value() })
 		}
