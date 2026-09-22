@@ -1,13 +1,5 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 
-// data-bind may set a property before the element is upgraded; adopt it.
-const early = (host, name) => {
-	const d = Object.getOwnPropertyDescriptor(host, name)
-	if (!d || !('value' in d)) return undefined
-	delete host[name]
-	return d.value
-}
-
 // Host getters must not subscribe callers (e.g. data-bind's sync effect).
 const peek = (fn) => {
 	startPeeking()
@@ -144,13 +136,14 @@ input[readonly] { cursor: pointer; }
 
 rocket('sb-select', {
 	props: ({ bool, json, number, string }) => ({
-		options: json.default(() => []).docs({ description: 'Choices: ["A", "B"] or [{value, label, description?, disabled?}]. Bind it to a signal to update it (e.g. from the server).' }),
-		value: string.docs({ description: 'Initial value; for multiple, a JSON array or values separated by commas. Read the live value from the value property.' }),
+		options: json.default(() => []).docs({ description: 'Choices: ["A", "B"] or [{value, label, description?, disabled?}].' }),
+		results: json.default(() => []).docs({ description: 'Remote: the results of the current search, in the same shape. The server sets it (a signal patch through data-attr, or a morph).' }),
+		value: string.docs({ description: 'The value; for multiple, a JSON array or values separated by commas. A new value from the server replaces it; the live value is the value property.' }),
 		label: string.trim.docs({ description: 'Visible label.' }),
 		placeholder: string.docs({ description: 'Placeholder text.' }),
 		multiple: bool.docs({ description: 'Pick several; they show as chips.' }),
 		searchable: bool.docs({ description: 'Type to filter the options (in the browser).' }),
-		remote: bool.docs({ description: 'Type to search on the server: emits sb-search; the server answers by updating options.' }),
+		remote: bool.docs({ description: 'Type to search on the server: emits sb-search; the server answers with results.' }),
 		delay: number.clamp(0, 2000).default(250).docs({ description: 'Remote: debounce before sb-search, in ms.' }),
 		minChars: number.clamp(0, 10).default(1).docs({ description: 'Remote: characters needed before searching.' }),
 		loading: bool.docs({ description: 'Show that results are on their way (bind it to data-indicator).' }),
@@ -160,7 +153,7 @@ rocket('sb-select', {
 	}),
 	manifest: {
 		events: [
-			{ name: 'sb-search', kind: 'custom-event', bubbles: true, composed: true, description: 'Remote: the query changed (debounced). detail: { query }. Answer by updating options.' },
+			{ name: 'sb-search', kind: 'custom-event', bubbles: true, composed: true, description: 'Remote: the query changed (debounced). detail: { query }. Answer by setting results.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The value changed.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The value changed. detail: { name, value } (a string, or an array for multiple).' },
 		],
@@ -184,17 +177,14 @@ rocket('sb-select', {
 		// Labels of everything ever offered, so a selection keeps its label
 		// when remote results move on.
 		const labels = new Map()
-		let options = []
+		let options = [] // what the list offers: options, or results when remote
 		const learn = () => {
-			options = normalize(props.options)
+			options = normalize(props.remote ? props.results : props.options)
 			for (const o of options) labels.set(o.value, o.label)
 		}
 		learn()
 
 		$$.selected = parseValue(props.value)
-		const pre = early(host, 'value')
-		$$.dirty = pre !== undefined
-		if ($$.dirty) $$.selected = parseValue(pre)
 		$$.query = ''
 		$$.open = false
 		$$.active = -1 // index into $$.view
@@ -225,12 +215,14 @@ rocket('sb-select', {
 		refresh()
 
 		// peek: attribute changes arrive inside the effect of whoever set them.
-		observeProps(() =>
+		observeProps((_, changes) =>
 			peek(() => {
-				// The search is answered: new options arrived, or the request ended.
-				if (!props.loading || JSON.stringify(normalize(props.options)) !== JSON.stringify(options)) $$.pending = false
+				// The search is answered: results arrived, or the request ended.
+				if ('results' in changes || !props.loading) $$.pending = false
 				learn()
-				if (!$$.dirty) $$.selected = parseValue(props.value)
+				// A value attribute sent by the server wins when it changes; removed
+				// attributes are ignored (morphs also strip reflected ones; see sb-slider).
+				if ('value' in changes && host.hasAttribute('value')) $$.selected = parseValue(props.value)
 				$$.label = props.label
 				$$.placeholder = props.placeholder
 				$$.multiple = props.multiple
@@ -243,7 +235,7 @@ rocket('sb-select', {
 		)
 
 		const value = () => (props.multiple ? [...$$.selected] : ($$.selected[0] ?? ''))
-		overrideProp('value', () => peek(value), (v) => peek(() => (($$.dirty = true), ($$.selected = parseValue(v)), refresh())))
+		overrideProp('value', () => peek(value), (v) => peek(() => (($$.selected = parseValue(v)), refresh())))
 
 		const popover = () => host.shadowRoot?.querySelector('[popover]')
 		const input = () => host.shadowRoot?.querySelector('input')
@@ -267,7 +259,6 @@ rocket('sb-select', {
 			refresh()
 		}
 		const change = () => {
-			$$.dirty = true
 			refresh()
 			emit('change')
 			emit('sb-change', { name: props.name, value: value() })

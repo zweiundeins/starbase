@@ -8,7 +8,17 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "Choices: [\"A\", \"B\"] or [{value, label, description?, disabled?}]. Bind it to a signal to update it (e.g. from the server)."
+        "description": "Choices: [\"A\", \"B\"] or [{value, label, description?, disabled?}]."
+      }
+    },
+    {
+      "name": "results",
+      "attribute": "results",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Remote: the results of the current search, in the same shape. The server sets it (a signal patch through data-attr, or a morph)."
       }
     },
     {
@@ -18,7 +28,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Initial value; for multiple, a JSON array or values separated by commas. Read the live value from the value property."
+        "description": "The value; for multiple, a JSON array or values separated by commas. A new value from the server replaces it; the live value is the value property."
       }
     },
     {
@@ -68,7 +78,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Type to search on the server: emits sb-search; the server answers by updating options."
+        "description": "Type to search on the server: emits sb-search; the server answers with results."
       }
     },
     {
@@ -139,7 +149,7 @@
       "name": "sb-search",
       "bubbles": true,
       "composed": true,
-      "description": "Remote: the query changed (debounced). detail: { query }. Answer by updating options."
+      "description": "Remote: the query changed (debounced). detail: { query }. Answer by setting results."
     },
     {
       "kind": "event",
