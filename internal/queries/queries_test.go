@@ -309,7 +309,7 @@ func TestSnippetStoreCap(t *testing.T) {
 		t.Fatalf("stored bytes = %d, want the JSON size of one ~100 byte snippet", n)
 	}
 	defer func(old int64) { commands.MaxSnippetStore = old }(commands.MaxSnippetStore)
-	commands.MaxSnippetStore = 2*n + 10 // room for exactly one more of the same size
+	commands.MaxSnippetStore = 2*n + 10           // room for exactly one more of the same size
 	if err := save("BBBBBBBB", 100); err != nil { // fits
 		t.Fatal(err)
 	}

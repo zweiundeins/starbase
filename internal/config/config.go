@@ -18,6 +18,9 @@ type Config struct {
 
 	// RepoURL is where the component sources live; used for "Edit on GitHub" links.
 	RepoURL string
+	// GitHubToken (optional, read-only) raises the GitHub API rate limit for
+	// pull request preview checks.
+	GitHubToken string
 
 	Dev bool
 
@@ -35,6 +38,7 @@ func Load() Config {
 		GitHubClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 		GitHubClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 		RepoURL:            cmp.Or(os.Getenv("REPO_URL"), "https://github.com/zweiundeins/starbase"),
+		GitHubToken:        os.Getenv("GITHUB_TOKEN"),
 		Dev:                Dev,
 	}
 }

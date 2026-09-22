@@ -68,7 +68,7 @@ func New(ctx context.Context, d Deps) *Server {
 		paintLimitIP: newLimiter(60, 180),
 		saveLimit:    newLimiter(0.1, 10), // snippet saves: 6 a minute
 		saveLimitIP:  newLimiter(0.5, 30),
-		previews:     newPreviewCache(d.Config.RepoURL),
+		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
 	}
 	s.oauth = newOAuth(d.Config)
 	return s

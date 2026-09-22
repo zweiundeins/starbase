@@ -126,6 +126,8 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 	})
 }
 
+var hostRe = regexp.MustCompile(`^[A-Za-z0-9.-]+(:[0-9]+)?$|^\[[0-9A-Fa-f:.]+\](:[0-9]+)?$`)
+
 // securityHeaders sets a strict CSP with a per-request nonce (for the
 // import map). Datastar evaluates expressions, which needs 'unsafe-eval';
 // Rocket renders <style> into shadow roots, which needs inline styles.
@@ -133,12 +135,23 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := randomToken(16)
 		h := w.Header()
+		// Scripts only from the two folders that hold them, not the whole
+		// origin: other paths serve content that isn't ours to trust
+		// (e.g. pull request previews for the playground's sandbox).
+		scheme := "http"
+		if s.secure {
+			scheme = "https"
+		}
+		origin := scheme + "://" + r.Host
+		if !hostRe.MatchString(r.Host) {
+			origin = strings.TrimSuffix(s.cfg.BaseURL, "/")
+		}
 		h.Set("Content-Security-Policy", fmt.Sprintf("default-src 'self'; "+
-			"script-src 'self' 'nonce-%s' 'unsafe-eval'; "+
+			"script-src %[2]s/static/ %[2]s/c/ 'nonce-%[1]s' 'unsafe-eval'; "+
 			"style-src 'self' 'unsafe-inline'; "+
 			"img-src 'self' data: https://github.com https://avatars.githubusercontent.com; "+
 			"font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; "+
-			"form-action 'self'; frame-ancestors 'none'", n))
+			"form-action 'self'; frame-ancestors 'none'", n, origin))
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("X-Frame-Options", "DENY")
