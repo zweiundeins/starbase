@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- GitHub Actions updated to their Node 24 (LTS) majors.
+
 ### Fixed
 
 - Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.

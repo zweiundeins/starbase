@@ -32,10 +32,10 @@ jobs:
       tag: ${{ steps.build.outputs.tag }}
       name: ${{ steps.build.outputs.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Build component folder from the issue form
@@ -51,7 +51,7 @@ jobs:
         run: go test ./internal/catalog/ ./internal/submission/
       - name: Keep the result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: submission
           path: |
@@ -68,8 +68,8 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: submission
           path: .submission
@@ -82,7 +82,7 @@ jobs:
           rm -rf .submission
       - name: Open or update the pull request
         id: pr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: component/${{ needs.build.outputs.slug }}
           add-paths: components/${{ needs.build.outputs.slug }}
@@ -121,7 +121,7 @@ jobs:
     permissions:
       issues: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: submission
