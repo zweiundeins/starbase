@@ -105,6 +105,7 @@ func (s *Server) Handler() http.Handler {
 	// Code playground runner (sandboxed iframe page).
 	mux.HandleFunc("GET /playground/run", s.playgroundRun)
 	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)
+	mux.HandleFunc("GET /playground/preview/{commit}/{slug}/{file...}", s.servePreviewFile)
 
 	// Demo data: a read-only signal stream for the live examples.
 	mux.HandleFunc("GET /demo/telemetry", s.demoTelemetry)

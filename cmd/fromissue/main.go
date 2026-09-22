@@ -40,7 +40,7 @@ func main() {
 	eventPath := flag.String("event", os.Getenv("GITHUB_EVENT_PATH"), "GitHub event payload (JSON)")
 	dir := flag.String("dir", "components", "components directory")
 	report := flag.String("report", "report.md", "where to write the markdown report")
-	similar := flag.String("similar", "similar.md", "where to write the similar components (markdown)")
+	notes := flag.String("notes", "notes.md", "where to write the reviewer notes for the PR body (markdown)")
 	api := flag.String("api", "https://api.github.com", "GitHub API base URL")
 	site := flag.String("site", os.Getenv("STARBASE_URL"), "public Starbase URL; playground links must point here")
 	flag.Parse()
@@ -54,7 +54,7 @@ func main() {
 		os.Exit(1)
 	}
 	os.WriteFile(*report, []byte(fmt.Sprintf("✅ `<%s>` is valid. Opening a pull request…\n", res.Tag)), 0o644)
-	os.WriteFile(*similar, []byte(like+"\n"), 0o644)
+	os.WriteFile(*notes, []byte(like+"\n"), 0o644)
 	if out := os.Getenv("GITHUB_OUTPUT"); out != "" {
 		f, err := os.OpenFile(out, os.O_APPEND|os.O_WRONLY, 0o644)
 		if err == nil {
@@ -117,6 +117,9 @@ func run(eventPath, dir, api, site string) (submission.Result, string, string, e
 		return submission.Result{}, "", "", err
 	}
 	for name, data := range res.Files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(target, name)), 0o755); err != nil {
+			return submission.Result{}, "", "", err
+		}
 		if err := os.WriteFile(filepath.Join(target, name), data, 0o644); err != nil {
 			return submission.Result{}, "", "", err
 		}
@@ -137,5 +140,5 @@ func run(eventPath, dir, api, site string) (submission.Result, string, string, e
 		return submission.Result{}, "", "", errors.New(strings.Join(lines, "\n"))
 	}
 	c, _ := cat.Get(res.Slug)
-	return res, sub.Name, submission.SimilarMarkdown(submission.Similar(cat, c), site), nil
+	return res, sub.Name, submission.ReviewNotes(res, submission.Similar(cat, c), site), nil
 }

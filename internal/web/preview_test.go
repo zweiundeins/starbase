@@ -18,6 +18,8 @@ func TestPreviewCache(t *testing.T) {
 		switch r.URL.Path {
 		case "/o/r/" + commit + "/components/nebula/nebula.js":
 			w.Write([]byte("rocket('sb-nebula', {})"))
+		case "/o/r/" + commit + "/components/nebula/vendor/lib.js":
+			w.Write([]byte("export const x = 1"))
 		case "/o/r/" + commit + "/components/nebula/README.md":
 			w.Write([]byte("---\nname: Nebula\n---\n\n```html preview\n<sb-nebula></sb-nebula>\n```\n"))
 		default:
@@ -40,9 +42,28 @@ func TestPreviewCache(t *testing.T) {
 			t.Fatalf("preview = %+v", p)
 		}
 	}
-	if hits.Load() != 2 {
+	if hits.Load() != 2 { // before the file requests below
 		t.Errorf("fetched %d files, want 2 (the second get is cached)", hits.Load())
 	}
+	srv := &Server{previews: c}
+	for _, tc := range []struct {
+		file string
+		code int
+	}{{"vendor/lib.js", 200}, {"vendor/missing.js", 404}, {"README.md", 404}, {"../x.js", 404}} {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.SetPathValue("commit", commit)
+		req.SetPathValue("slug", "nebula")
+		req.SetPathValue("file", tc.file)
+		rec := httptest.NewRecorder()
+		srv.servePreviewFile(rec, req)
+		if rec.Code != tc.code {
+			t.Errorf("%s: status %d, want %d", tc.file, rec.Code, tc.code)
+		}
+		if tc.code == 200 && (rec.Body.String() != "export const x = 1" || rec.Header().Get("Cache-Control") != immutable) {
+			t.Errorf("%s: body %q, headers %v", tc.file, rec.Body, rec.Header())
+		}
+	}
+
 	for _, ref := range []string{commit + "/missing", "main/nebula", commit + "/../x", commit} {
 		if _, err := c.get(context.Background(), ref); !errors.Is(err, errNoPreview) {
 			t.Errorf("%s: err = %v, want errNoPreview", ref, err)

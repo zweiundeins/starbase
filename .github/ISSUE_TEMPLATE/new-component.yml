@@ -51,7 +51,7 @@ body:
     attributes:
       label: Source repository
       description: |
-        Made it in the Starbase playground? Paste its share link (`…/playground?s=…`). Already have the component in a public GitHub repo? Paste its URL: the repo, or a folder like `https://github.com/you/repo/tree/main/components/orbit-picker`. The folder must contain exactly one file with `rocket('sb-…')`. A `README.md` next to it becomes the docs (Starbase front matter in it is used too). **With a repository, the code and documentation fields below are ignored**, and editing this issue re-syncs from the repo.
+        Made it in the Starbase playground? Paste its share link (`…/playground?s=…`). Already have the component in a public GitHub repo? Paste its URL: the repo, or a folder like `https://github.com/you/repo/tree/main/components/orbit-picker`. The folder must contain exactly one file with `rocket('sb-…')`. A `README.md` next to it becomes the docs (Starbase front matter in it is used too). Using a library? Vendor it in the component's folder (e.g. `vendor/lib.js`, up to 2 MB per file) and import it relatively; the files it imports come along. **With a repository, the code and documentation fields below are ignored**, and editing this issue re-syncs from the repo.
       placeholder: https://github.com/you/sb-orbit-picker or a playground link
   - type: textarea
     id: code

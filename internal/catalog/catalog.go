@@ -157,6 +157,21 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	}
 
 	var problems []string
+	// Imports: 'datastar', or files inside the folder (vendored libraries).
+	for _, spec := range Imports(string(js)) {
+		target := path.Join(slug, spec)
+		switch {
+		case spec == "datastar":
+		case !strings.HasPrefix(spec, "./") && !strings.HasPrefix(spec, "../"):
+			problems = append(problems, fmt.Sprintf("%s.js imports %q: only 'datastar' and files in the component's folder", slug, spec))
+		case !strings.HasPrefix(target, slug+"/"):
+			problems = append(problems, fmt.Sprintf("%s.js imports %q, outside the component's folder", slug, spec))
+		default:
+			if _, err := fs.Stat(fsys, target); err != nil {
+				problems = append(problems, fmt.Sprintf("%s.js imports %q, which does not exist", slug, spec))
+			}
+		}
+	}
 	req := func(v, field string) {
 		if strings.TrimSpace(v) == "" {
 			problems = append(problems, "front matter: "+field+" is required")

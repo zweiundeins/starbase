@@ -30,7 +30,10 @@ import (
 // Protocol (postMessage, all messages carry source: "sb-runner"):
 //
 //	runner → parent  {type: "ready"}
-//	parent → runner  {type: "run", files: {"component.js", "index.html", "style.css"}, deps: [urls], theme}
+//	parent → runner  {type: "run", files: {"component.js", "index.html", "style.css"}, deps: [urls], theme, base}
+//
+// base (optional) is the URL relative imports in component.js resolve
+// against: the folder the component's other files are served from.
 //	runner → parent  {type: "console", level, args: [string]} | {type: "error", message, line} | {type: "done"}
 func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 	scheme := "http"
@@ -98,7 +101,9 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 		document.body.innerHTML = files['index.html'] || ''
 		try {
 			// The edited code first: Rocket must never see the site's copy of its tag.
-			const js = files['component.js'] || ''
+			let js = files['component.js'] || ''
+			// A blob has no folder: resolve relative imports (vendored files) against base.
+			if (m.base) js = js.replace(/(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"\n]*)\2/g, (_, pre, q, spec) => pre + q + new URL(spec, m.base).href + q)
 			if (js.trim()) await import(URL.createObjectURL(new Blob([js], { type: 'text/javascript' })))
 			for (const url of m.deps || []) await import(url)
 			await import('datastar')
@@ -189,6 +194,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		v.Loaded, v.Author = sn.ID, sn.Author
 		if c, ok := s.catalog.Get(sn.Component); ok {
 			v.Component, v.ComponentName = c.Slug, c.Name
+			v.Base = "/c/" + c.Slug + "/"
 		}
 	} else if ref := q.Get("preview"); ref != "" {
 		p, err := s.previews.get(rc.ctx, ref)
@@ -199,6 +205,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		}
 		files = p.Files
 		v.Preview = cmp.Or(p.Name, "This component")
+		v.Base = "/playground/preview/" + ref + "/"
 	} else if slug := q.Get("component"); slug != "" {
 		comp, ok := s.catalog.Get(slug)
 		if !ok {
@@ -210,6 +217,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		}
 		files = map[string]string{"component.js": string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
 		v.Component, v.ComponentName = comp.Slug, comp.Name
+		v.Base = "/c/" + comp.Slug + "/"
 	}
 	initial, _ := json.Marshal(files)
 	v.Initial = string(initial)

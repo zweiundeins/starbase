@@ -119,3 +119,24 @@ func TestExamplesExtracted(t *testing.T) {
 		t.Fatalf("button examples = %q", b.Examples)
 	}
 }
+
+func TestImportsValidated(t *testing.T) {
+	js := "import { rocket } from 'datastar'\nimport * as lib from './vendor/lib.js'\nimport 'https://cdn.example/x.js'\nimport '../other/other.js'\nimport './vendor/missing.js'\nrocket('sb-widget', {})"
+	fsys := fstest.MapFS{
+		"widget/README.md":     {Data: []byte(validReadme)},
+		"widget/widget.js":     {Data: []byte(js)},
+		"widget/vendor/lib.js": {Data: []byte("export const x = 1")},
+	}
+	_, err := catalog.Load(fsys)
+	if err == nil {
+		t.Fatal("bad imports must fail")
+	}
+	for _, want := range []string{`"https://cdn.example/x.js": only 'datastar'`, `"../other/other.js", outside`, `"./vendor/missing.js", which does not exist`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error lacks %q:\n%v", want, err)
+		}
+	}
+	if strings.Contains(err.Error(), "lib.js") {
+		t.Errorf("the vendored file is fine: %v", err)
+	}
+}

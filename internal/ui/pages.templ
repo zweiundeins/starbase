@@ -181,6 +181,7 @@ type CodePlaygroundView struct {
 	Component     string // slug, when opened from a component page
 	ComponentName string
 	Preview       string // component name, when opened as a pull request preview
+	Base          string // folder relative imports resolve against (vendored files)
 	Loaded        string // snippet id from ?s=
 	Author        string // snippet author (GitHub login), if any
 	Share         string // snippet id to offer as a link
@@ -216,7 +217,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 			</p>
 		</header>
 		<div class="code-page__island" data-ignore-morph>
-			<sb-code-playground initial={ v.Initial } deps={ v.Deps }></sb-code-playground>
+			<sb-code-playground initial={ v.Initial } deps={ v.Deps } base={ v.Base }></sb-code-playground>
 		</div>
 		<div class="code-page__actions">
 			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) }>

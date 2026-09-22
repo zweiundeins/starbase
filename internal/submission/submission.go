@@ -43,6 +43,7 @@ type Submission struct {
 	Playground string // YAML, optional
 	Source     string // repository URL (as given, or pinned after Apply)
 	Licensed   bool
+	Vendor     map[string]string // files the code imports relatively (from a linked repository)
 }
 
 var fenceRe = regexp.MustCompile("(?s)^```[a-zA-Z]*\\n(.*?)\\n?```$")
@@ -144,8 +145,21 @@ func (s Submission) Build(author string, since time.Time) (Result, error) {
 	if !s.Licensed {
 		add("Please confirm the license checkbox.")
 	}
-	if strings.Contains(s.Code, "import ") && !strings.Contains(s.Code, "from 'datastar'") && !strings.Contains(s.Code, `from "datastar"`) {
-		add("Components may only import from `'datastar'`.")
+	var vendor map[string]string
+	if tag != "" {
+		// Check the imports exactly as the folder will be laid out.
+		entry := strings.TrimPrefix(tag, "sb-") + ".js"
+		files := map[string]string{"component/" + entry: s.Code}
+		for rel, code := range s.Vendor {
+			if rel == entry || rel == "README.md" || rel == "manifest.json" {
+				add("The vendored file `%s` clashes with a generated file. Please rename it.", rel)
+			}
+			files["component/"+rel] = code
+		}
+		var err error
+		if vendor, err = vendorFiles(files, "component/"+entry); err != nil {
+			add("%s", err.Error())
+		}
 	}
 	var pg map[string]any
 	if strings.TrimSpace(s.Playground) != "" {
@@ -184,14 +198,11 @@ func (s Submission) Build(author string, since time.Time) (Result, error) {
 	}
 	readme := "---\n" + fm + "---\n\n" + docs + "\n"
 	code := strings.TrimSpace(s.Code) + "\n"
-	return Result{
-		Slug: slug,
-		Tag:  tag,
-		Files: map[string][]byte{
-			"README.md":  []byte(readme),
-			slug + ".js": []byte(code),
-		},
-	}, nil
+	out := map[string][]byte{"README.md": []byte(readme), slug + ".js": []byte(code)}
+	for rel, b := range vendor {
+		out[rel] = []byte(b)
+	}
+	return Result{Slug: slug, Tag: tag, Files: out}, nil
 }
 
 // marshalOrdered writes YAML keys in a fixed, human-friendly order.

@@ -34,7 +34,8 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 ## Submissions
 - `.github/ISSUE_TEMPLATE/new-component.yml` is the "Submit a component" form (`/submit` redirects to it). Its labels must match `internal/submission` (a test enforces it).
 - `.github/workflows/component-from-issue.yml`: `build` (read-only, runs untrusted code only there: `cmd/fromissue` then `cmd/manifests`) → `pull-request` (write, never executes submitted code) / `report-failure` (comments on the issue).
-- Submissions may link a public GitHub repo; `submission.Fetch` pins the commit, recorded as `source:` front matter (shown as a Source link). Playground links set no `source:`.
+- Submissions may link a public GitHub repo; `submission.Fetch` pins the commit, recorded as `source:` front matter (shown as a Source link). Playground links set no `source:`. Imports are checked for every submission (`submission.Imports`): only `'datastar'` and relative files inside the component folder; with a repo link the bot vendors every file the component reaches (≤ 2 MB each, 4 MB total) and lists them in the PR notes.
+- The playground resolves relative imports in `component.js` against `base` (`/c/<slug>/`, or `/playground/preview/<commit>/<slug>/` which proxies the pinned commit's `.js` files).
 - Every submission PR lists similar catalog components (`submission.Similar`, in the PR body) and gets a preview comment per revision: `/playground?preview=<commit>/<slug>` (`internal/web/preview.go`) fetches that commit's files from the repo on raw.githubusercontent.com, memoized per commit (immutable).
 
 ## Code playground

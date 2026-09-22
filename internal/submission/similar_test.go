@@ -30,3 +30,20 @@ func TestSimilar(t *testing.T) {
 		t.Error("empty list")
 	}
 }
+
+func TestReviewNotes(t *testing.T) {
+	res := submission.Result{Slug: "chart", Files: map[string][]byte{
+		"README.md":     nil,
+		"chart.js":      nil,
+		"vendor/lib.js": []byte("/*! lib v1 | MIT @someone */\nexport const x = 1\n"),
+	}}
+	md := submission.ReviewNotes(res, nil, "")
+	for _, want := range []string{"### Similar components", "No similar components", "### Vendored files", "- `vendor/lib.js` (48 B): `lib v1 | MIT @someone`"} {
+		if !strings.Contains(md, want) {
+			t.Errorf("notes lack %q:\n%s", want, md)
+		}
+	}
+	if strings.Contains(submission.ReviewNotes(submission.Result{Slug: "x", Files: map[string][]byte{"x.js": nil}}, nil, ""), "Vendored") {
+		t.Error("no vendored section without vendored files")
+	}
+}

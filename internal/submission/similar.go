@@ -66,6 +66,52 @@ func SimilarMarkdown(list []*catalog.Component, site string) string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
+// ReviewNotes is the reviewer's part of the PR body: similar components,
+// then any vendored files with their size and license banner.
+func ReviewNotes(res Result, similar []*catalog.Component, site string) string {
+	var b strings.Builder
+	b.WriteString("### Similar components\n\n" + SimilarMarkdown(similar, site) + "\n")
+	var vendored []string
+	for name := range res.Files {
+		if name != "README.md" && name != res.Slug+".js" && name != "manifest.json" {
+			vendored = append(vendored, name)
+		}
+	}
+	if len(vendored) > 0 {
+		slices.Sort(vendored)
+		b.WriteString("\n### Vendored files\n\nThird-party code: check the license and that it is an official build.\n\n")
+		for _, name := range vendored {
+			fmt.Fprintf(&b, "- `%s` (%s)%s\n", name, size(len(res.Files[name])), banner(res.Files[name]))
+		}
+	}
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
+func size(n int) string {
+	if n < 1<<10 {
+		return fmt.Sprintf("%d B", n)
+	}
+	return fmt.Sprintf("%.1f KB", float64(n)/(1<<10))
+}
+
+// banner returns the file's leading comment line (usually name, version and
+// license), for the notes.
+func banner(b []byte) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(string(b[:min(len(b), 400)])), "\n")
+	if !strings.HasPrefix(line, "/*") && !strings.HasPrefix(line, "//") {
+		return ""
+	}
+	line = strings.TrimSpace(strings.Trim(line, "/*! "))
+	if line == "" {
+		return ""
+	}
+	if len(line) > 120 {
+		line = line[:120] + "…"
+	}
+	// Untrusted text: inline code, so it can't mention anyone or link anywhere.
+	return ": `" + strings.ReplaceAll(line, "`", "'") + "`"
+}
+
 var stopWords = set([]string{"with", "that", "this", "from", "your", "into", "attribute", "attributes", "component", "components"})
 
 func summaryWords(s string) []string {

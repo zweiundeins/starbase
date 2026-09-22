@@ -41,7 +41,7 @@ jobs:
       - name: Build component folder from the issue form
         id: build
         # The issue is read from $GITHUB_EVENT_PATH, never interpolated here.
-        run: go run ./cmd/fromissue --report report.md --similar similar.md
+        run: go run ./cmd/fromissue --report report.md --notes notes.md
         env:
           GITHUB_TOKEN: ${{ github.token }} # read-only; raises the API limit for source repos
           STARBASE_URL: ${{ vars.STARBASE_URL }} # playground links are only imported from here
@@ -56,7 +56,7 @@ jobs:
           name: submission
           path: |
             report.md
-            similar.md
+            notes.md
             components/${{ steps.build.outputs.slug || 'none' }}/
           if-no-files-found: ignore
           retention-days: 3
@@ -85,16 +85,14 @@ jobs:
           {
             echo "Submitted by @$AUTHOR in #$ISSUE. Generated from the issue form: validated, with its manifest generated in headless Chrome. The bot comments a playground preview link for every revision."
             echo
-            echo "### Similar components"
-            echo
-            cat .submission/similar.md 2>/dev/null || echo "Not computed."
+            cat .submission/notes.md 2>/dev/null || echo "No reviewer notes."
             echo
             echo "### Review checklist"
             echo
             echo "- [ ] Not a duplicate of an existing component (see above)"
             echo "- [ ] Works in the playground preview, and looks right in every theme there"
             echo "- [ ] Docs examples work, Playground makes sense"
-            echo "- [ ] No network access, no imports beyond \`datastar\`"
+            echo "- [ ] No network access; imports only \`datastar\` and its own folder (vendored files: official builds, compatible license)"
             echo
             echo "Closes #$ISSUE"
           } > "$RUNNER_TEMP/body.md"

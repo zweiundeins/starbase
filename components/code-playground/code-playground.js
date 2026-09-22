@@ -77,6 +77,7 @@ rocket('sb-code-playground', {
 		theme: string.trim.default('deep-space').docs({ description: 'Initial preview theme (data-sb-theme).' }),
 		themes: array(string.trim).default(() => ['deep-space', 'nebula', 'terminal', 'daylight']).docs({ description: 'Themes offered in the picker.' }),
 		delay: number.clamp(100, 5000).default(600).docs({ description: 'Auto-run debounce, in ms.' }),
+		base: string.trim.docs({ description: 'URL that relative imports in component.js resolve against (the folder its vendored files are served from).' }),
 		initial: json.default(() => ({})).docs({ description: 'Initial files as JSON {"component.js": "…"}; handy for server-rendered pages. Child scripts are used when empty.' }),
 	}),
 	manifest: {
@@ -120,7 +121,8 @@ rocket('sb-code-playground', {
 			const deps = Object.entries(props.deps || {})
 				.filter(([tag]) => !own.has(tag))
 				.map(([, url]) => new URL(url, location.href).href)
-			pending = { type: 'run', files: all(), deps, theme: $$.theme }
+			const base = props.base ? new URL(props.base, location.href).href : ''
+			pending = { type: 'run', files: all(), deps, theme: $$.theme, base }
 			const url = new URL(props.runner, location.href)
 			url.searchParams.set('r', String(++runs))
 			$$.src = url.href // a fresh document: custom elements can't be redefined

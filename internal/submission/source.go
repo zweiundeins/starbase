@@ -21,6 +21,9 @@ type Source struct {
 	Code     string
 	Readme   string // README.md next to the component file, if any
 	Examples string // playground index.html, if any
+	// Vendor holds the files the component imports relatively, keyed by
+	// their path inside the component's folder (e.g. "vendor/lib.js").
+	Vendor map[string]string
 }
 
 var playgroundURLRe = regexp.MustCompile(`^(https?://[^/?#]+)/playground\?s=([A-Za-z0-9]{8})$`)
@@ -69,8 +72,8 @@ func FetchSnippet(ctx context.Context, client *http.Client, site, link string) (
 var repoURLRe = regexp.MustCompile(`^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:/tree/([^/]+)(?:/(.*?))?)?/?$`)
 
 const (
-	maxTarball = 10 << 20
-	maxFile    = 256 << 10
+	maxTarball = 25 << 20
+	maxFile    = maxVendorFile
 )
 
 // Fetch downloads a public GitHub repository (or a folder of it) through the
@@ -170,7 +173,11 @@ func Fetch(ctx context.Context, client *http.Client, apiBase, token, repoURL str
 	if srcDir != "." {
 		pinned += "/" + srcDir
 	}
-	return Source{URL: pinned, CodeFile: file, Code: files[file], Readme: readme}, nil
+	vendor, err := vendorFiles(files, file)
+	if err != nil {
+		return Source{}, err
+	}
+	return Source{URL: pinned, CodeFile: file, Code: files[file], Readme: readme, Vendor: vendor}, nil
 }
 
 // Apply merges a fetched source into the submission. The repository wins
@@ -179,6 +186,7 @@ func Fetch(ctx context.Context, client *http.Client, apiBase, token, repoURL str
 func (s *Submission) Apply(src Source) {
 	s.Source = src.URL
 	s.Code = src.Code
+	s.Vendor = src.Vendor
 	fm, body := splitFrontMatter(src.Readme)
 	if strings.TrimSpace(body) != "" {
 		s.Docs = body

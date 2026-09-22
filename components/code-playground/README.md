@@ -53,10 +53,10 @@ The iframe (`sandbox="allow-scripts"`) loads `runner` and exchanges `postMessage
 | Direction | Message |
 |---|---|
 | runner → host | `{type: "ready"}` |
-| host → runner | `{type: "run", files, deps: [url], theme}` |
+| host → runner | `{type: "run", files, deps: [url], theme, base}` |
 | runner → host | `{type: "console", level, args}` · `{type: "error", message, line}` · `{type: "done"}` |
 
-The runner should import the edited `component.js` (for example from a `blob:` URL) **before** the dependencies, then `datastar`, and resolve `'datastar'` through an import map.
+The runner should import the edited `component.js` (for example from a `blob:` URL) **before** the dependencies, then `datastar`, and resolve `'datastar'` through an import map. A `blob:` module has no folder, so the runner resolves relative imports (`./vendor/lib.js`) against `base`, the `base` attribute as an absolute URL (empty when unset).
 
 ## Accessibility
 

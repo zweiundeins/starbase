@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"regexp"
 	"strings"
@@ -27,6 +28,7 @@ var commitRe = regexp.MustCompile(`^[0-9a-f]{40}$`)
 const (
 	maxPreviewFile = 512 << 10
 	maxPreviews    = 64
+	maxVendorBytes = 2 << 20 // per vendored file, as in the submission bot
 )
 
 type preview struct {
@@ -130,4 +132,37 @@ func (c *previewCache) file(ctx context.Context, url string) ([]byte, error) {
 		err = fmt.Errorf("%s is larger than %d KB", url, maxPreviewFile>>10)
 	}
 	return b, err
+}
+
+// servePreviewFile serves a preview's other .js files (vendored libraries)
+// from the pinned commit, so relative imports work in the playground. It
+// streams them; a commit's files never change, so browsers cache them for good.
+func (s *Server) servePreviewFile(w http.ResponseWriter, r *http.Request) {
+	commit, slug, file := r.PathValue("commit"), r.PathValue("slug"), r.PathValue("file")
+	c := s.previews
+	if !commitRe.MatchString(commit) || !catalog.ValidSlug(slug) || !fs.ValidPath(file) || c.raw == "" ||
+		!(strings.HasSuffix(file, ".js") || strings.HasSuffix(file, ".mjs")) {
+		http.NotFound(w, r)
+		return
+	}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, c.raw+"/"+commit+"/components/"+slug+"/"+file, nil)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	res, err := c.client.Do(req)
+	if err != nil {
+		http.Error(w, "upstream error", http.StatusBadGateway)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK || res.ContentLength > maxVendorBytes {
+		http.NotFound(w, r)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/javascript; charset=utf-8")
+	h.Set("Access-Control-Allow-Origin", "*") // the sandboxed runner has an opaque origin
+	h.Set("Cache-Control", immutable)
+	io.Copy(w, io.LimitReader(res.Body, maxVendorBytes))
 }

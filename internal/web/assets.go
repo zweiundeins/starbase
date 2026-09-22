@@ -215,11 +215,11 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 		w.Write(g.body)
 		return
 	}
-	// A component's own .js files are public (its module, plus anything it
-	// imports relatively, like vendored libraries); nothing else is.
+	// A component's own .js and .mjs files are public (its module, plus
+	// anything it imports relatively, like vendored libraries); nothing else is.
 	slug, file, ok := strings.Cut(p, "/")
 	c, found := a.catalog.Get(slug)
-	if !ok || !found || !strings.HasSuffix(file, ".js") || !fs.ValidPath(p) {
+	if !ok || !found || !(strings.HasSuffix(file, ".js") || strings.HasSuffix(file, ".mjs")) || !fs.ValidPath(p) {
 		http.NotFound(w, r)
 		return
 	}

@@ -67,6 +67,16 @@
       }
     },
     {
+      "name": "base",
+      "attribute": "base",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "URL that relative imports in component.js resolve against (the folder its vendored files are served from)."
+      }
+    },
+    {
       "name": "initial",
       "attribute": "initial",
       "type": "json",

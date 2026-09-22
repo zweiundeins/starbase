@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Vendored libraries: a submission from a repository brings along every file the component imports relatively (up to 2 MB each), listed with its license banner in the PR. Imports are now checked strictly: `'datastar'` or files in the component's folder, never URLs or bare packages.
 - `sb-nebula`, a WebGL nebula in dithered pixels: the first component that came in through the submission bot.
 - `--sb-notch` and `data-sb-style="smooth"`: opt out of the 8-bit details (pixel corners, notched frames, pixel display font). The slider and toggle follow it, and the Themes page has a switch.
 - Submission pull requests get a playground preview link for every revision (`/playground?preview=<commit>/<slug>`) and a list of similar existing components, to spot duplicates before merging.
@@ -18,6 +19,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The playground can run components that import their own files (e.g. `sb-code-editor` and its vendored Prism): relative imports resolve against the component's folder.
 - Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.
 
 ## [0.1.0] - 2026-09-21
