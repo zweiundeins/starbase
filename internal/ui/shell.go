@@ -24,6 +24,7 @@ type Assets interface {
 	// ArtSVG is a pixel art illustration as inline SVG markup, so its
 	// theme-aware colours (--sb-art-*) follow the page's theme.
 	ArtSVG(name string) string
+	ArtSize(name string) (w, h int) // intrinsic size, for width/height attributes
 }
 
 // Shell is the page chrome around a view.

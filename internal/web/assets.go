@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/benbjohnson/hashfs"
@@ -155,6 +156,16 @@ func (a *assets) AllComponents() string { return "/c/index.js?v=" + a.components
 
 func (a *assets) ArtSVG(name string) string { return string(a.art[name].body) }
 
+var svgSizeRe = regexp.MustCompile(`<svg[^>]* width="(\d+)" height="(\d+)"`)
+
+func (a *assets) ArtSize(name string) (w, h int) {
+	if m := svgSizeRe.FindSubmatch(a.art[name].body); m != nil {
+		w, _ = strconv.Atoi(string(m[1]))
+		h, _ = strconv.Atoi(string(m[2]))
+	}
+	return w, h
+}
+
 func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
 }
@@ -218,6 +229,9 @@ func (a *assets) serveArt(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
+	if !a.dev && r.URL.Query().Get("v") == "" {
+		w.Header().Set("Cache-Control", "public, max-age=86400") // e.g. linked from docs; art rarely changes
+	}
 	w.Write(g.body)
 }
 

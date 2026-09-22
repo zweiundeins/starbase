@@ -1,5 +1,7 @@
 package ui
 
+import "strconv"
+
 // Document is the full HTML page for the initial GET.
 templ Document(s Shell, body templ.Component) {
 	<!DOCTYPE html>
@@ -185,5 +187,6 @@ templ Footer(s Shell) {
 }
 
 templ PixelArt(s Shell, name string, class string) {
-	<img class={ "pixel-sprite", class } src={ s.Assets.Art(name) } alt=""/>
+	{{ w, h := s.Assets.ArtSize(name) }}
+	<img class={ "pixel-sprite", class } src={ s.Assets.Art(name) } alt="" width={ strconv.Itoa(w) } height={ strconv.Itoa(h) }/>
 }
