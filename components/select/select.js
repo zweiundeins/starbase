@@ -10,6 +10,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // Options come as strings or {value, label?, description?, disabled?}.
 const normalize = (list) =>
 	(Array.isArray(list) ? list : []).map((o) =>
@@ -149,19 +155,20 @@ rocket('sb-select', {
 		loading: bool.docs({ description: 'Show that results are on their way (bind it to data-indicator).' }),
 		clearable: bool.docs({ description: 'Show a button that clears the value.' }),
 		disabled: bool.docs({ description: 'Disable the control.' }),
-		name: string.trim.docs({ description: 'Name reported in events.' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'sb-search', kind: 'custom-event', bubbles: true, composed: true, description: 'Remote: the query changed (debounced). detail: { query }. Answer by setting results.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The value changed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The value changed. detail: { name, value } (a string, or an array for multiple).' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The value changed. detail: { name, value } (a string, or an array for multiple): ready for a command.' },
 		],
 	},
 	// Rendered once: options, query and selection all flow through signals,
 	// so updates (e.g. server results while typing) never rebuild the input.
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, cleanup, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const parseValue = (v) => {
 			if (Array.isArray(v)) return v.map(String)
@@ -236,6 +243,14 @@ rocket('sb-select', {
 
 		const value = () => (props.multiple ? [...$$.selected] : ($$.selected[0] ?? ''))
 		overrideProp('value', () => peek(value), (v) => peek(() => (($$.selected = parseValue(v)), refresh())))
+		// Commands: the attribute is the server's value, JSON.stringify($$.selected) the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && JSON.stringify($$.selected) !== JSON.stringify(parseValue(props.value)) ? states.add('pending') : states.delete('pending')))
+		effect(() => (JSON.stringify($$.selected), sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.selected = parseValue(props.value), refresh()), sync())) })
 
 		const popover = () => host.shadowRoot?.querySelector('[popover]')
 		const input = () => host.shadowRoot?.querySelector('input')
