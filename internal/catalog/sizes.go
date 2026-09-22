@@ -3,9 +3,11 @@ package catalog
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io/fs"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/andybalholm/brotli"
 )
@@ -62,35 +64,60 @@ func (cat *Catalog) Uses(c *Component) []*Component {
 	return out
 }
 
-// computeSizes fills every component's Sizes.
-func (cat *Catalog) computeSizes() error {
-	own := map[*Component]Sizes{}
-	for _, c := range cat.Components {
-		files, err := cat.ModuleFiles(c)
-		if err != nil {
-			return err
-		}
-		main := strings.TrimPrefix(c.Script, c.Slug+"/")
-		names := make([]string, 0, len(files))
-		for n := range files {
-			names = append(names, n)
-		}
-		slices.SortFunc(names, func(a, b string) int {
-			if (a == main) != (b == main) {
-				if a == main {
-					return -1
-				}
-				return 1
+// ownSizes caches each component version's own Sizes by its content hash:
+// brotli -11 is slow, and a process (a test binary above all) loads the
+// same catalog many times.
+var ownSizes sync.Map // Component.Hash → Sizes (Files and Own)
+
+func (cat *Catalog) ownSizes(c *Component) (Sizes, error) {
+	if s, ok := ownSizes.Load(c.Hash); ok {
+		return s.(Sizes), nil
+	}
+	files, err := cat.ModuleFiles(c)
+	if err != nil {
+		return Sizes{}, err
+	}
+	main := strings.TrimPrefix(c.Script, c.Slug+"/")
+	names := make([]string, 0, len(files))
+	for n := range files {
+		names = append(names, n)
+	}
+	slices.SortFunc(names, func(a, b string) int {
+		if (a == main) != (b == main) {
+			if a == main {
+				return -1
 			}
-			return strings.Compare(a, b)
-		})
-		var s Sizes
-		for _, n := range names {
-			sz := compressed(files[n])
-			s.Files = append(s.Files, NamedSize{n, sz})
-			s.Own = s.Own.Add(sz)
+			return 1
 		}
-		own[c] = s
+		return strings.Compare(a, b)
+	})
+	var s Sizes
+	for _, n := range names {
+		sz := compressed(files[n])
+		s.Files = append(s.Files, NamedSize{n, sz})
+		s.Own = s.Own.Add(sz)
+	}
+	ownSizes.Store(c.Hash, s)
+	return s, nil
+}
+
+// computeSizes fills every component's Sizes (components in parallel).
+func (cat *Catalog) computeSizes() error {
+	own := make(map[*Component]Sizes, len(cat.Components))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	errs := make([]error, len(cat.Components))
+	for i, c := range cat.Components {
+		wg.Go(func() {
+			s, err := cat.ownSizes(c)
+			mu.Lock()
+			own[c], errs[i] = s, err
+			mu.Unlock()
+		})
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 	for _, c := range cat.Components {
 		s := own[c]
