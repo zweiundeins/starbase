@@ -90,6 +90,13 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
 
 `datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a rejected command.
 
+### Components with several values
+
+- **One decision, one value.** Parts that change together (a range's start and end, a multi-select's picks, a colour's channels) are one structured `value`: a JSON attribute such as `value='{"start":20,"end":60}'`, one `sb-change` with the whole value, and one command the server accepts or rejects as a whole. Never one event per part: two commands could leave the server with half a change, or start after end.
+- **View state is not the value.** What the user looks at rather than decides (a tree's `expanded` branches, an open panel) is a separate prop with its own event, e.g. `sb-toggle`. The server may keep it with its own command, but it isn't part of `pending` or `revert()`.
+- **Server data only flows in.** Props the server fills (`results`, `options`, `loaded`) are never pending and never sent back.
+- **Operations instead of a value.** When an intent is an operation, not a new value (painting pixels, moving a card, sending a message), emit an `sb-<verb>` event with the operation and show each item as pending until the server's re-render contains it, like the [pixel board](/components/pixel-board).
+
 ## Review
 
 A maintainer checks that the component renders in the gallery and on the Themes page, that `go test ./...` passes, and that the docs examples work. Components are published under the MIT licence with you as the author.
