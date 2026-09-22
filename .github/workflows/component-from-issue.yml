@@ -115,7 +115,7 @@ jobs:
           gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "$msg"
 
   report-failure:
-    needs: build
+    needs: [build, pull-request]
     if: failure()
     runs-on: ubuntu-latest
     permissions:
@@ -131,8 +131,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ github.event.issue.number }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BUILT: ${{ needs.build.result }}
         run: |
-          if [ -s .submission/report.md ] && ! grep -q '^✅' .submission/report.md; then
+          if [ "$BUILT" = success ]; then
+            body="✅ Your component is valid, but the pull request could not be opened. A maintainer will take it from here (run: $RUN)."
+          elif [ -s .submission/report.md ] && ! grep -q '^✅' .submission/report.md; then
             body="$(cat .submission/report.md)"
           else
             body="🛑 The component was built but failed validation or manifest generation (does it load without errors?). Details: $RUN
