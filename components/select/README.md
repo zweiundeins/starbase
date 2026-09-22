@@ -19,7 +19,7 @@ A select for one or several values:
 
 - **Plain:** pick from a list.
 - **`searchable`:** type to filter the options in the browser.
-- **`remote`:** type to search on the server. It follows the same pattern as the tree: the select asks with an event, and the server answers by patching a signal.
+- **`remote`:** type to search on the server. It follows the same pattern as the tree: the select asks with an event, and the server answers with `results`.
 
 The live value is the `value` property (a string, or an array with `multiple`), so `data-bind` works.
 
@@ -27,25 +27,25 @@ The live value is the `value` property (a string, or an array with `multiple`), 
 
 ### Autocomplete from the server
 
-Type a star or a constellation ("or", "cru", "lyra"…):
+Type a star, planet or moon ("or", "sat", "eu"…), from the site's example dataset:
 
 1. After a short pause, the select emits `sb-search` with the query.
-2. `@get('/demo/search?q=…')` asks the server.
+2. `@get('/demo/data/search?q=…&into=_found')` asks the server.
 3. The server patches `$_found` with the results.
-4. `data-attr:options` hands them back.
+4. `data-attr:results` hands them back.
 
 `data-indicator` shows the spinner while the request is in flight.
 
 ```html preview
-<div data-signals="{_found: [], _star: '', _searching: false}" style="display: grid; gap: 12px">
-  <sb-select remote clearable label="Find a star" placeholder="Type a star or constellation…"
-    data-attr:options="JSON.stringify($_found)"
+<div data-signals="{_found: [], _body: '', _searching: false}" style="display: grid; gap: 12px">
+  <sb-select remote clearable label="Find a star, planet or moon" placeholder="Type a name…"
+    data-attr:results="JSON.stringify($_found)"
     data-attr:loading="$_searching"
-    data-preserve-attr="options loading"
+    data-preserve-attr="results loading"
     data-indicator:_searching
-    data-on:sb-search="@get('/demo/search?q=' + encodeURIComponent(evt.detail.query))"
-    data-bind:_star__prop.value></sb-select>
-  <span>Picked: <b data-text="$_star || 'nothing yet'"></b></span>
+    data-on:sb-search="@get('/demo/data/search?kind=star,planet,dwarf,moon&into=_found&delay=150&q=' + encodeURIComponent(evt.detail.query))"
+    data-bind:_body__prop.value></sb-select>
+  <span>Picked: <b data-text="$_body || 'nothing yet'"></b></span>
 </div>
 ```
 
@@ -55,10 +55,12 @@ The server side is a plain Datastar handler (Go here; any language works):
 func search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{
-		"_found": findStars(q), // [{value, label, description?}], at most a few
+		"_found": find(q), // [{value, label, description?}], at most a few
 	})
 }
 ```
+
+Or the server re-renders the element with a new `results` attribute: a changed attribute always wins.
 
 ### Searchable
 
@@ -82,7 +84,7 @@ With `multiple`, the value is an array. Keep it in a signal with `sb-change`: `d
 
 ## Options
 
-`options` is a JSON array of strings, or of `{value, label?, description?, disabled?}`. Bind it to a signal to change it, e.g. from the server. A selected value keeps its label even after the options it came from are gone.
+`options` (and `results`, for remote searches) is a JSON array of strings, or of `{value, label?, description?, disabled?}`. The server can change either at any time. A selected value keeps its label even after the options it came from are gone.
 
 ## Accessibility
 
