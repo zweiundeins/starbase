@@ -53,6 +53,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - Every submission PR lists similar catalog components (`submission.Similar`, in the PR body) and gets a preview comment per revision: `/playground?preview=<commit>/<slug>` (`internal/web/preview.go`) fetches that commit's files from the repo on raw.githubusercontent.com, memoized per commit (immutable).
 
 ## Versioned URLs
+- Download sizes: `catalog.Load` computes `Component.Sizes` (each module file compressed on its own at gzip -9 / brotli -11; `Uses` = components it renders, transitively, via `Catalog.Uses`, which the autoloader's `requires` also uses). Gallery cards show `Sizes.Total.Brotli`; `ui.SizeTable` on component pages.
 - `internal/web/versions.go`: `/c/<slug>@<hash>/<file>` (a component version: current from the binary, older from `component_files`), `/c/@<catalog hash>/autoloader.js` and `/importmap.json` (SRI map). All immutable, `ACAO *`. `SyncCatalog` stores every version and catalog snapshot it sees (migration 005), so pinned URLs outlive deploys.
 - The site uses versioned module URLs too (`assets.ComponentScript`, `catalog.AutoloaderJS`); the old `/c/<slug>/<file>` route stays for compatibility.
 

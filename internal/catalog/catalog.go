@@ -49,6 +49,7 @@ type Component struct {
 	Integrity string
 	Headings  []Heading
 	Examples  []string // bodies of the README's ```html preview blocks
+	Sizes     Sizes    // download weight (computed by Load)
 }
 
 // Manifest mirrors one entry of Rocket's generated manifest document.
@@ -135,6 +136,9 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		h.Write([]byte(c.Hash))
 	}
 	cat.Hash = hex.EncodeToString(h.Sum(nil))[:12]
+	if err := cat.computeSizes(); err != nil {
+		return nil, err
+	}
 	return cat, nil
 }
 

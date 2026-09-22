@@ -52,13 +52,8 @@ func AutoloaderJS(cat *Catalog, prefix string) string {
 		modules[c.Tag] = prefix + c.VersionedScript()
 	}
 	for _, c := range cat.Components {
-		src, _ := fs.ReadFile(cat.FS, c.Script)
-		seen := map[string]bool{c.Tag: true}
-		for _, m := range usesTagRe.FindAllStringSubmatch(string(src), -1) {
-			if _, ok := modules[m[1]]; ok && !seen[m[1]] {
-				seen[m[1]] = true
-				requires[c.Tag] = append(requires[c.Tag], m[1])
-			}
+		for _, u := range cat.Uses(c) {
+			requires[c.Tag] = append(requires[c.Tag], u.Tag)
 		}
 	}
 	mj, _ := json.Marshal(modules)

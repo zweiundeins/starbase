@@ -6,6 +6,7 @@ require (
 	github.com/CAFxX/httpcompression v0.0.9
 	github.com/a-h/templ v0.3.1020
 	github.com/alecthomas/chroma/v2 v2.27.0
+	github.com/andybalholm/brotli v1.2.0
 	github.com/benbjohnson/hashfs v0.2.2
 	github.com/starfederation/datastar-go v1.2.2
 	github.com/tdewolff/minify/v2 v2.24.17
@@ -38,7 +39,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/air-verse/air v1.67.4 // indirect
-	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.43.4 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.16 // indirect

@@ -863,6 +863,19 @@
 		margin-block-start: var(--sb-space-4);
 	}
 
+	.card__stats {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sb-space-3);
+	}
+
+	.card__size {
+		color: var(--sb-text-muted);
+		font-size: var(--sb-font-size-00);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
 	.author {
 		display: inline-flex;
 		align-items: center;
@@ -1229,6 +1242,31 @@
 
 		& td:first-child code {
 			white-space: nowrap;
+		}
+	}
+
+	/* Numbers line up on the right; the total row stands out. */
+	.size-table {
+		& :is(th, td):not(:first-child) {
+			text-align: end;
+			font-variant-numeric: tabular-nums;
+			white-space: nowrap;
+		}
+
+		& tfoot :is(th, td) {
+			border-block-end: 0;
+			color: var(--sb-text-1);
+		}
+
+		& tfoot th {
+			font-size: inherit;
+			letter-spacing: normal;
+			text-transform: none;
+		}
+
+		& td .muted {
+			margin-inline-start: var(--sb-space-2);
+			font-size: var(--sb-font-size-00);
 		}
 	}
 

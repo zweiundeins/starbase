@@ -9,7 +9,8 @@ import (
 type GalleryView struct {
 	Browse   model.Browse
 	Result   queries.BrowseResult
-	Previews map[string]string // slug → preview snippet
+	Previews map[string]string       // slug → preview snippet
+	Sizes    map[string]catalog.Size // slug → total download size
 }
 
 func browseHref(b model.Browse) templ.SafeURL {
@@ -163,7 +164,7 @@ templ Collection(s Shell, v GalleryView) {
 		} else {
 			<ul class="card-grid" role="list">
 				for _, c := range v.Result.Cards {
-					@Card(s, c, v.Previews[c.Slug])
+					@Card(s, c, v.Previews[c.Slug], v.Sizes[c.Slug])
 				}
 			</ul>
 		}
@@ -173,7 +174,7 @@ templ Collection(s Shell, v GalleryView) {
 // Card deliberately has no id: Datastar's morph parks id-matched nodes while
 // reordering, and parked Rocket elements re-render re-entrantly inside the
 // morph (upstream bug). Positional morphing avoids the parking entirely.
-templ Card(s Shell, c queries.Card, preview string) {
+templ Card(s Shell, c queries.Card, preview string, size catalog.Size) {
 	<li class="card" data-slug={ c.Slug } style={ templ.SafeCSS("view-transition-name: card-" + c.Slug) }>
 		<div class="card__preview">
 			@templ.Raw(preview)
@@ -186,7 +187,12 @@ templ Card(s Shell, c queries.Card, preview string) {
 					<img class="avatar" src={ avatar(c.Author) } alt="" width="24" height="24" loading="lazy"/>
 					<span>{ c.Author }</span>
 				</span>
-				@StarButton(s, c, false)
+				<span class="card__stats">
+					if size.Brotli > 0 {
+						<span class="card__size" title={ fmtBytes(size.Brotli) + " brotli, with the components it uses" }>{ fmtBytes(size.Brotli) }</span>
+					}
+					@StarButton(s, c, false)
+				</span>
 			</div>
 		</div>
 	</li>

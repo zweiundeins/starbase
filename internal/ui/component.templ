@@ -38,6 +38,9 @@ templ ComponentPage(s Shell, v ComponentView) {
 					<span class="tag-chip">{ t }</span>
 				}
 				<span class="muted">Since { v.Card.Since }</span>
+				if v.Component.Sizes.Total.Brotli > 0 {
+					<a class="muted" href="#size" title="Download size, brotli">{ fmtBytes(v.Component.Sizes.Total.Brotli) }</a>
+				}
 				@StarButton(s, v.Card, true)
 				<a class="btn btn--outline btn--sm" href={ safe("/playground?component=" + v.Card.Slug) }>
 					@Icon("code")
@@ -68,6 +71,7 @@ templ ComponentPage(s Shell, v ComponentView) {
 					<sb-copy-button class="code-copy" value={ v.InstallRaw }></sb-copy-button>
 					@templ.Raw(v.Install)
 				</div>
+				@SizeTable(v.Component.Sizes)
 				@APIReference(v.Component)
 			</article>
 			<aside>
@@ -80,11 +84,66 @@ templ ComponentPage(s Shell, v ComponentView) {
 						<a href={ safe("#" + h.ID) }>{ h.Text }</a>
 					}
 					<a href="#installation">Installation</a>
+					<a href="#size">Size</a>
 					<a href="#api">API reference</a>
 				</nav>
 			</aside>
 		</div>
 	</div>
+}
+
+// SizeTable lists what the component downloads: its own files, then each
+// component it renders, and a total when there is more than one line.
+templ SizeTable(sz catalog.Sizes) {
+	if len(sz.Files) > 0 {
+		<h2 id="size">Size</h2>
+		<p>Each file compressed on its own, the way it is served (gzip -9, brotli -11). Datastar and Rocket are shared by every component and not counted.</p>
+		<div class="table-scroll">
+			<table class="api-table size-table">
+				<thead><tr><th>File</th><th>Original</th><th>gzip</th><th>brotli</th></tr></thead>
+				<tbody>
+					for _, f := range sz.Files {
+						@sizeRow(f.Name, f.Size, false)
+					}
+					for _, u := range sz.Uses {
+						@sizeRow("<"+u.Name+">", u.Size, true)
+					}
+				</tbody>
+				if len(sz.Files)+len(sz.Uses) > 1 {
+					<tfoot>
+						<tr>
+							<th scope="row">Total</th>
+							<td>{ fmtBytes(sz.Total.Raw) }</td>
+							<td>{ fmtBytes(sz.Total.Gzip) }</td>
+							<td><strong>{ fmtBytes(sz.Total.Brotli) }</strong></td>
+						</tr>
+					</tfoot>
+				}
+			</table>
+		</div>
+	}
+}
+
+templ sizeRow(name string, s catalog.Size, uses bool) {
+	<tr>
+		<td>
+			<code>{ name }</code>
+			if uses {
+				<span class="muted">renders it</span>
+			}
+		</td>
+		<td>{ fmtBytes(s.Raw) }</td>
+		<td>{ fmtBytes(s.Gzip) }</td>
+		<td>{ fmtBytes(s.Brotli) }</td>
+	</tr>
+}
+
+// fmtBytes formats a byte count in SI units: 870 B, 4.2 kB.
+func fmtBytes(n int) string {
+	if n < 1000 {
+		return strconv.Itoa(n) + " B"
+	}
+	return strconv.FormatFloat(float64(n)/1000, 'f', 1, 64) + " kB"
 }
 
 templ APIReference(c *catalog.Component) {

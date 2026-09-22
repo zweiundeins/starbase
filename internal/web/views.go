@@ -26,9 +26,11 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 		return view{}, err
 	}
 	previews := make(map[string]string, len(res.Cards))
+	sizes := make(map[string]catalog.Size, len(res.Cards))
 	for _, c := range res.Cards {
 		if comp, ok := s.catalog.Get(c.Slug); ok {
 			previews[c.Slug] = comp.Preview
+			sizes[c.Slug] = comp.Sizes.Total
 		}
 	}
 	u := "/"
@@ -40,7 +42,7 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 		Description: "Community-built Rocket web components for the Datastar ecosystem. Copy, use, remix, and launch something great.",
 		Nav:         "components",
 		Body: func(sh ui.Shell) templ.Component {
-			return ui.Gallery(sh, ui.GalleryView{Browse: b, Result: res, Previews: previews})
+			return ui.Gallery(sh, ui.GalleryView{Browse: b, Result: res, Previews: previews, Sizes: sizes})
 		},
 		URL:        u,
 		SearchLive: true,
