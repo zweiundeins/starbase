@@ -35,6 +35,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Demo endpoints answer CORS preflights, so components in the playground sandbox (opaque origin) can load demo data with `@get`, e.g. the lazy tree.
 - Playground: the preview theme picker applied the previous choice (the run started before the binding updated).
 - The playground can run components that import their own files (e.g. `sb-code-editor` and its vendored Prism): relative imports resolve against the component's folder.
 - Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.

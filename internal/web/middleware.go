@@ -106,7 +106,8 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 		origin = u.Scheme + "://" + u.Host
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		// OPTIONS is a CORS preflight: it never changes state.
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
 			site := r.Header.Get("Sec-Fetch-Site")
 			ok := site == "same-origin" || (site == "" && r.Header.Get("Origin") == origin)
 			if !ok {

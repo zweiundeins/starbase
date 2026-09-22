@@ -55,6 +55,18 @@ func TelemetryAt(now time.Time) Telemetry {
 	return m
 }
 
+// demoPreflight answers CORS preflights for the public demo endpoints: Datastar
+// requests carry a Datastar-Request header, so a cross-origin @get (e.g. from
+// the playground sandbox, whose origin is opaque) is preflighted first.
+func demoPreflight(w http.ResponseWriter, r *http.Request) {
+	h := w.Header()
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Allow-Methods", "GET")
+	h.Set("Access-Control-Allow-Headers", "Datastar-Request, Content-Type")
+	h.Set("Access-Control-Max-Age", "86400")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // demoTelemetry streams the demo mission as signal patches ($_tm): a pure
 // query stream, no commands, no database.
 func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {

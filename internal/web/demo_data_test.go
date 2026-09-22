@@ -50,3 +50,30 @@ func TestDemoDataEndpoints(t *testing.T) {
 		t.Errorf("a bad signal name = %d, want 400", r.StatusCode)
 	}
 }
+
+// The playground sandbox has an opaque origin, and Datastar's header makes
+// every @get cross-origin preflighted: demo endpoints answer the preflight,
+// commands don't.
+func TestDemoPreflight(t *testing.T) {
+	ts, c := newServer(t)
+	preflight := func(path string) *http.Response {
+		req, _ := http.NewRequest("OPTIONS", ts.URL+path, nil)
+		req.Header.Set("Origin", "null")
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+		req.Header.Set("Access-Control-Request-Method", "GET")
+		req.Header.Set("Access-Control-Request-Headers", "datastar-request")
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+	res := preflight("/demo/data/children?parent=milkyway")
+	if res.StatusCode != http.StatusNoContent || res.Header.Get("Access-Control-Allow-Origin") != "*" || !strings.Contains(res.Header.Get("Access-Control-Allow-Headers"), "Datastar-Request") {
+		t.Errorf("demo preflight: %d %v", res.StatusCode, res.Header)
+	}
+	if res := preflight("/cmd/star/button"); res.Header.Get("Access-Control-Allow-Origin") != "" || res.StatusCode < 400 {
+		t.Errorf("command preflight must fail: %d %v", res.StatusCode, res.Header)
+	}
+}
