@@ -1174,6 +1174,13 @@
 		z-index: var(--sb-z-raised);
 	}
 
+	/* In the block's corner a tip above the button is cut off: show it to the left. */
+	.code-copy::part(tip) {
+		inset-block: 50% auto;
+		inset-inline: auto calc(100% + 6px);
+		translate: 0 -50%;
+	}
+
 	/* ── Playground ───────────────────────────────────────────────────────── */
 	.playground {
 		container: playground / inline-size;
