@@ -104,7 +104,9 @@ jobs:
             echo "- [ ] Not a duplicate of an existing component (see above)"
             echo "- [ ] Works in the playground preview, and looks right in every theme there"
             echo "- [ ] Docs examples work, Playground makes sense"
-            echo "- [ ] No network access; imports only \`datastar\` and its own folder (vendored files: official builds, compatible license)"
+            echo "- [ ] No network access; imports only \`datastar\` and its own folder"
+            echo "- [ ] Vendored files are ✅ verified against npm and the license is compatible; anything ⚠️ unverified is reviewed line by line"
+            echo "- [ ] The docs' live demos (\`data-on\`, \`data-init\`, \`@get\`/\`@post\`) are reviewed as code: they run on the site"
             echo
             echo "Closes #$ISSUE"
           } > "$RUNNER_TEMP/body.md"

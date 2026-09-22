@@ -67,25 +67,26 @@ func SimilarMarkdown(list []*catalog.Component, site string) string {
 }
 
 // ReviewNotes is the reviewer's part of the PR body: similar components,
-// then any vendored files with their size and license banner.
-func ReviewNotes(res Result, similar []*catalog.Component, site string) string {
+// then the vendored files with their provenance (see VerifyVendor).
+func ReviewNotes(res Result, similar []*catalog.Component, site string, checks []VendorCheck) string {
 	var b strings.Builder
 	b.WriteString("### Similar components\n\n" + SimilarMarkdown(similar, site) + "\n")
-	var vendored []string
-	for name := range res.Files {
-		if name != "README.md" && name != res.Slug+".js" && name != "manifest.json" {
-			vendored = append(vendored, name)
-		}
-	}
-	if len(vendored) > 0 {
-		slices.Sort(vendored)
-		b.WriteString("\n### Vendored files\n\nThird-party code: check the license and that it is an official build.\n\n")
-		for _, name := range vendored {
-			fmt.Fprintf(&b, "- `%s` (%s)%s\n", name, size(len(res.Files[name])), banner(res.Files[name]))
+	if len(checks) > 0 {
+		b.WriteString("\n### Vendored files\n\nThird-party code. Verified files are byte-for-byte the named npm release (checked against the registry's integrity hash); check the license. Anything unverified needs a real review.\n\n")
+		for _, c := range checks {
+			code := res.Files[c.Path]
+			if c.Verified {
+				fmt.Fprintf(&b, "- ✅ `%s` (%s) is `%s` from `%s`, license `%s`\n", c.Path, size(len(code)), inline(c.File), inline(c.Package), inline(c.License))
+			} else {
+				fmt.Fprintf(&b, "- ⚠️ `%s` (%s) is unverified (%s)%s\n", c.Path, size(len(code)), c.Problem, banner(code))
+			}
 		}
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }
+
+// inline makes untrusted text safe inside inline code.
+func inline(s string) string { return strings.ReplaceAll(s, "`", "'") }
 
 func size(n int) string {
 	if n < 1<<10 {

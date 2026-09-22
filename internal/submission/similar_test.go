@@ -37,13 +37,18 @@ func TestReviewNotes(t *testing.T) {
 		"chart.js":      nil,
 		"vendor/lib.js": []byte("/*! lib v1 | MIT @someone */\nexport const x = 1\n"),
 	}}
-	md := submission.ReviewNotes(res, nil, "")
-	for _, want := range []string{"### Similar components", "No similar components", "### Vendored files", "- `vendor/lib.js` (48 B): `lib v1 | MIT @someone`"} {
+	checks := []submission.VendorCheck{{Path: "vendor/lib.js", Problem: "not listed in vendor.json"}}
+	md := submission.ReviewNotes(res, nil, "", checks)
+	for _, want := range []string{"### Similar components", "No similar components", "### Vendored files", "- ⚠️ `vendor/lib.js` (48 B) is unverified (not listed in vendor.json): `lib v1 | MIT @someone`"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("notes lack %q:\n%s", want, md)
 		}
 	}
-	if strings.Contains(submission.ReviewNotes(submission.Result{Slug: "x", Files: map[string][]byte{"x.js": nil}}, nil, ""), "Vendored") {
+	verified := submission.ReviewNotes(res, nil, "", []submission.VendorCheck{{Path: "vendor/lib.js", Verified: true, Package: "lib@1.0.0", File: "dist/lib.js", License: "MIT"}})
+	if !strings.Contains(verified, "- ✅ `vendor/lib.js` (48 B) is `dist/lib.js` from `lib@1.0.0`, license `MIT`") {
+		t.Errorf("verified notes:\n%s", verified)
+	}
+	if strings.Contains(submission.ReviewNotes(submission.Result{Slug: "x", Files: map[string][]byte{"x.js": nil}}, nil, "", nil), "Vendored") {
 		t.Error("no vendored section without vendored files")
 	}
 }

@@ -72,7 +72,7 @@ Your page automatically gets a **Playground** built from the manifest. Add a `pl
 - **Wire it declaratively.** In `render`, use `data-on:*` with local actions (`action('press', …)` → `data-on:click="@press()"`), and `data-bind`, `data-show`, `data-class`, `data-text` and `<template data-for>` on `$$` signals. Get elements through `data-ref` and `onFirstRender({ refs })`. Reach for `addEventListener` only where no attribute exists (`matchMedia`, observers).
 - **Accessible by default.** Use native elements inside the shadow root, keyboard support, visible focus, and `prefers-reduced-motion`.
 - **Document the API.** Give every prop `.docs({ description })` and declare slots and events in `manifest`. The API tables are generated from it.
-- **Few dependencies.** Import from `'datastar'`, or relatively from files inside your own folder (for example a vendored ES module in `vendor/`, together with its licence). Submit those from a repository link: the bot brings along every file the component imports, up to 2 MB each. No imports from CDNs or other URLs. Keep it small.
+- **Few dependencies.** Import from `'datastar'`, or relatively from files inside your own folder (for example a vendored ES module in `vendor/`, together with its licence). Submit those from a repository link: the bot brings along every file the component imports, up to 2 MB each. Vendored libraries must be unmodified files from an npm release, listed in a `vendor.json` next to the component (`{"vendor/lib.js": {"npm": "lib@1.2.3", "file": "dist/lib.esm.js"}}`). The bot verifies them byte for byte against the registry, and refuses minified code it can't verify. No imports from CDNs or other URLs. Keep it small.
 
 ## Review
 

@@ -24,6 +24,8 @@ type Source struct {
 	// Vendor holds the files the component imports relatively, keyed by
 	// their path inside the component's folder (e.g. "vendor/lib.js").
 	Vendor map[string]string
+	// VendorManifest is the folder's vendor.json, if any (see provenance.go).
+	VendorManifest string
 }
 
 var playgroundURLRe = regexp.MustCompile(`^(https?://[^/?#]+)/playground\?s=([A-Za-z0-9]{8})$`)
@@ -135,7 +137,7 @@ func Fetch(ctx context.Context, client *http.Client, apiBase, token, repoURL str
 		if dir != "" && rel != dir && !strings.HasPrefix(rel, dir+"/") {
 			continue
 		}
-		if !strings.HasSuffix(rel, ".js") && !strings.HasSuffix(rel, ".mjs") && path.Base(rel) != "README.md" {
+		if !strings.HasSuffix(rel, ".js") && !strings.HasSuffix(rel, ".mjs") && path.Base(rel) != "README.md" && path.Base(rel) != VendorManifest {
 			continue
 		}
 		if strings.Contains(rel, "node_modules/") || h.Size > maxFile {
@@ -182,7 +184,7 @@ func Fetch(ctx context.Context, client *http.Client, apiBase, token, repoURL str
 	if err != nil {
 		return Source{}, err
 	}
-	return Source{URL: pinned, CodeFile: file, Code: files[file], Readme: readme, Vendor: vendor}, nil
+	return Source{URL: pinned, CodeFile: file, Code: files[file], Readme: readme, Vendor: vendor, VendorManifest: files[path.Join(srcDir, VendorManifest)]}, nil
 }
 
 // Apply merges a fetched source into the submission. The repository wins
@@ -192,6 +194,7 @@ func (s *Submission) Apply(src Source) {
 	s.Source = src.URL
 	s.Code = src.Code
 	s.Vendor = src.Vendor
+	s.VendorManifest = src.VendorManifest
 	fm, body := splitFrontMatter(src.Readme)
 	if strings.TrimSpace(body) != "" {
 		s.Docs = body

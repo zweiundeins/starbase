@@ -78,7 +78,9 @@ func newPreviewCache(repoURL, token string) *previewCache {
 }
 
 // submission reports whether commit belongs to a pull request from one of
-// the repository's own component/* branches (the bot's). Answers are
+// the repository's own component/* branches (the bot's). GitHub lists open
+// and merged pull requests for a commit, so a submission closed without
+// merging loses its preview. Answers are
 // cached: yes for good, no for a minute (GitHub links new commits to their
 // pull request with a short delay).
 func (c *previewCache) submission(ctx context.Context, commit string) (bool, error) {

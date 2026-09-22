@@ -43,9 +43,10 @@ func main() {
 	notes := flag.String("notes", "notes.md", "where to write the reviewer notes for the PR body (markdown)")
 	api := flag.String("api", "https://api.github.com", "GitHub API base URL")
 	site := flag.String("site", os.Getenv("STARBASE_URL"), "public Starbase URL; playground links must point here")
+	npm := flag.String("npm", "https://registry.npmjs.org", "npm registry, to verify vendored files")
 	flag.Parse()
 
-	res, name, like, err := run(*eventPath, *dir, *api, *site)
+	res, name, like, err := run(*eventPath, *dir, *api, *site, *npm)
 	if err != nil {
 		msg := "🛑 **This submission can't be turned into a pull request yet.**\n\n" + err.Error() +
 			"\n\nEdit the issue to fix it, and I'll try again automatically."
@@ -66,7 +67,7 @@ func main() {
 	fmt.Printf("wrote %s/%s\n", *dir, res.Slug)
 }
 
-func run(eventPath, dir, api, site string) (submission.Result, string, string, error) {
+func run(eventPath, dir, api, site, npm string) (submission.Result, string, string, error) {
 	raw, err := os.ReadFile(eventPath)
 	if err != nil {
 		return submission.Result{}, "", "", err
@@ -100,6 +101,23 @@ func run(eventPath, dir, api, site string) (submission.Result, string, string, e
 	res, err := sub.Build(author, since)
 	if err != nil {
 		return submission.Result{}, "", "", err
+	}
+
+	// Vendored third-party code must be proven, not reviewed (see provenance.go).
+	var checks []submission.VendorCheck
+	if vendored := res.Vendored(); len(vendored) > 0 {
+		manifest, err := submission.ParseVendorManifest(res.Files[submission.VendorManifest], vendored)
+		if res.Files[submission.VendorManifest] == nil {
+			manifest, err = nil, nil
+		}
+		if err != nil {
+			return submission.Result{}, "", "", fmt.Errorf("- %v", err)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if checks, err = submission.VerifyVendor(ctx, http.DefaultClient, npm, vendored, manifest); err != nil {
+			return submission.Result{}, "", "", fmt.Errorf("- %v", err)
+		}
 	}
 
 	// Updating is allowed for the same author; taking over a slug is not.
@@ -140,5 +158,5 @@ func run(eventPath, dir, api, site string) (submission.Result, string, string, e
 		return submission.Result{}, "", "", errors.New(strings.Join(lines, "\n"))
 	}
 	c, _ := cat.Get(res.Slug)
-	return res, sub.Name, submission.ReviewNotes(res, submission.Similar(cat, c), site), nil
+	return res, sub.Name, submission.ReviewNotes(res, submission.Similar(cat, c), site, checks), nil
 }

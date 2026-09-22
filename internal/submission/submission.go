@@ -44,6 +44,8 @@ type Submission struct {
 	Source     string // repository URL (as given, or pinned after Apply)
 	Licensed   bool
 	Vendor     map[string]string // files the code imports relatively (from a linked repository)
+	// VendorManifest is vendor.json: where each vendored file comes from.
+	VendorManifest string
 }
 
 var fenceRe = regexp.MustCompile("(?s)^```[a-zA-Z]*\\n(.*?)\\n?```$")
@@ -114,6 +116,20 @@ type Result struct {
 	Files map[string][]byte // file name → contents
 }
 
+// Vendored returns the vendored files (everything but the component's own
+// files), keyed by path inside the folder.
+func (r Result) Vendored() map[string]string {
+	out := map[string]string{}
+	for name, b := range r.Files {
+		switch name {
+		case "README.md", r.Slug + ".js", "manifest.json", VendorManifest:
+		default:
+			out[name] = string(b)
+		}
+	}
+	return out
+}
+
 // Build validates the submission and renders the component folder.
 // author is the GitHub login of the issue's author.
 func (s Submission) Build(author string, since time.Time) (Result, error) {
@@ -151,7 +167,7 @@ func (s Submission) Build(author string, since time.Time) (Result, error) {
 		entry := strings.TrimPrefix(tag, "sb-") + ".js"
 		files := map[string]string{"component/" + entry: s.Code}
 		for rel, code := range s.Vendor {
-			if rel == entry || rel == "README.md" || rel == "manifest.json" {
+			if rel == entry || rel == "README.md" || rel == "manifest.json" || rel == VendorManifest {
 				add("The vendored file `%s` clashes with a generated file. Please rename it.", rel)
 			}
 			files["component/"+rel] = code
@@ -159,6 +175,10 @@ func (s Submission) Build(author string, since time.Time) (Result, error) {
 		var err error
 		if vendor, err = vendorFiles(files, "component/"+entry); err != nil {
 			add("%s", err.Error())
+		} else if s.VendorManifest != "" {
+			if _, err := ParseVendorManifest([]byte(s.VendorManifest), vendor); err != nil {
+				add("%s", err.Error())
+			}
 		}
 	}
 	var pg map[string]any
@@ -201,6 +221,9 @@ func (s Submission) Build(author string, since time.Time) (Result, error) {
 	out := map[string][]byte{"README.md": []byte(readme), slug + ".js": []byte(code)}
 	for rel, b := range vendor {
 		out[rel] = []byte(b)
+	}
+	if s.VendorManifest != "" && len(vendor) > 0 {
+		out[VendorManifest] = []byte(s.VendorManifest)
 	}
 	return Result{Slug: slug, Tag: tag, Files: out}, nil
 }

@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Vendored libraries are verified: `vendor.json` names each file's npm release, and the bot checks it byte for byte against the registry-verified tarball. Minified code that can't be verified is refused.
+- The Starbase service listens on a Unix socket and is denied all of localhost (other services on a shared host), with a fully hardened systemd unit. `starbase-deploy` asks a new binary its version inside a network-less sandbox with a timeout.
+- Pull request previews are limited to the repository's own submission branches; `script-src` is limited to `/static/` and `/c/`.
+- Rate limits for snippet saves and painting (per session and per IP), and a cap on total snippet storage.
+- CI: actions pinned to commit SHAs (Dependabot keeps them current), job timeouts, Chrome's sandbox kept on for submitted code, the bot's write-capable job re-validates what the build job produced, CODEOWNERS for vendored code, CI/CD and deploy files, and tests that keep the production environment to `deploy.yml`.
+
 ### Added
 
 - Continuous deployment: after CI passes on `main`, the Deploy workflow ships the binary over a single-purpose SSH key to `starbase-deploy`, which verifies it, checks `/healthz` and rolls back if the new version isn't healthy. The unit, env and Caddy files are in `deploy/`.
