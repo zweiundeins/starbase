@@ -1397,7 +1397,87 @@
 		font-size: var(--sb-font-size-1);
 	}
 
-		/* ── Mission Control (showcase) ──────────────────────────────────────── */
+		/* ── Commands and components (showcase) ───────────────────────────────── */
+	.flight-section {
+		display: grid;
+		gap: var(--sb-space-4);
+		padding-block: var(--sb-space-10) 0;
+	}
+
+	.flight__lede {
+		max-inline-size: 70ch;
+		color: var(--sb-text-2);
+	}
+
+	.flight {
+		display: grid;
+		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+		gap: var(--sb-space-6);
+		padding: var(--sb-space-6);
+		border: var(--sb-border-width) solid var(--sb-border);
+		border-radius: var(--sb-radius-md);
+		background: var(--sb-surface-card);
+
+		@container page (width < 48rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		/* An edit the server hasn't confirmed yet. */
+		& :state(pending) {
+			outline: 2px dashed var(--sb-warn);
+			outline-offset: 6px;
+			border-radius: 2px;
+		}
+	}
+
+	.flight__controls {
+		display: grid;
+		gap: var(--sb-space-5);
+		align-content: start;
+	}
+
+	.flight__state {
+		display: grid;
+		gap: var(--sb-space-3);
+		align-content: start;
+		margin: 0;
+		padding: var(--sb-space-4);
+		border-radius: var(--sb-radius-sm);
+		background: var(--sb-surface-inset);
+		font-size: var(--sb-font-size-1);
+
+		& div {
+			display: flex;
+			justify-content: space-between;
+			gap: var(--sb-space-4);
+		}
+
+		& dt {
+			color: var(--sb-text-muted);
+		}
+
+		& dd {
+			margin: 0;
+			color: var(--sb-text-1);
+			font-weight: var(--sb-font-weight-bold);
+		}
+
+		&::before {
+			content: "The server's state";
+			color: var(--sb-text-muted);
+			font-size: var(--sb-font-size-0, 0.75rem);
+			letter-spacing: var(--sb-letter-spacing-caps);
+			text-transform: uppercase;
+		}
+	}
+
+	.flight__error {
+		margin: 0;
+		color: var(--sb-danger);
+		font-size: var(--sb-font-size-1);
+	}
+
+	/* ── Mission Control (showcase) ──────────────────────────────────────── */
 	.mission {
 		container: mission / inline-size;
 		display: grid;

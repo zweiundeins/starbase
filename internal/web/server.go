@@ -95,6 +95,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /cmd/star/{slug}", s.cmdStar(true))
 	mux.HandleFunc("POST /cmd/unstar/{slug}", s.cmdStar(false))
 	mux.HandleFunc("POST /cmd/theme/{theme}", s.cmdTheme)
+	mux.HandleFunc("POST /cmd/flight", s.cmdFlight) // the Showcase's commands demo
 	mux.HandleFunc("POST /cmd/theme-style/{style}", s.cmdThemeStyle)
 	mux.HandleFunc("POST /cmd/snippet", s.cmdSnippet)
 	mux.HandleFunc("POST /cmd/paint", s.cmdPaint)

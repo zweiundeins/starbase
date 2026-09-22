@@ -35,6 +35,10 @@ A segmented tab bar with keyboard support. Labels come from a JSON attribute. Ea
 </div>
 ```
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
 ## Accessibility
 
 It follows the WAI-ARIA tabs pattern: `role="tablist"`, `tab` and `tabpanel`, a roving `tabindex`, and arrow keys, Home and End for navigation.

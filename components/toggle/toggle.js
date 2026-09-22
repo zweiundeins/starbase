@@ -11,6 +11,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // Pixel corners: a polygon that notches every corner by one "pixel"
 // (times --sb-notch; 0 leaves the rectangle, rounded by border-radius).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -64,14 +70,16 @@ rocket('sb-toggle', {
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		label: string.trim.docs({ description: 'Visible label next to the switch.' }),
 		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Size of the switch.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'After the user flips the switch.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { checked }.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value, checked } (value is the checked state): ready for a command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Interaction state lives in a local signal, never reflected.
 		$$.on = props.checked
@@ -82,11 +90,19 @@ rocket('sb-toggle', {
 		// write before the upgrade). To clear it, the server sends checked="false".
 		observeProps(() => peek(() => host.hasAttribute('checked') && ($$.on = props.checked)), 'checked')
 		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
+		// Commands: the attribute is the server's value, $$.on the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.on !== props.checked ? states.add('pending') : states.delete('pending')))
+		effect(() => ($$.on, sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.on = props.checked), sync())) })
 		action('toggle', () => {
 			if (props.disabled) return
 			$$.on = !$$.on
 			emit('change')
-			emit('sb-change', { checked: $$.on })
+			emit('sb-change', { name: props.name, value: $$.on, checked: $$.on })
 		})
 	},
 	render: ({ html, props: { label, size, disabled } }) => html`

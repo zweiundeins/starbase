@@ -83,6 +83,25 @@ type TabState struct {
 	PreviewSmooth bool `json:"smooth,omitempty"`
 	// PlaygroundShare is the id of the snippet this tab saved last.
 	PlaygroundShare string `json:"share,omitempty"`
+	// Flight is the Showcase's commands demo (FlightPlan.OrDefault).
+	Flight FlightPlan `json:"flight,omitempty"`
+}
+
+// FlightPlan is the state behind the Showcase's "Commands and components"
+// demo: each control's value is a command, validated and stored here.
+type FlightPlan struct {
+	Set      bool   `json:"set,omitempty"` // false: nothing stored yet, use the defaults
+	Thrust   int    `json:"thrust"`
+	Shields  bool   `json:"shields"`
+	Callsign string `json:"callsign"`
+}
+
+// OrDefault is the plan, or the starting plan when nothing is stored yet.
+func (f FlightPlan) OrDefault() FlightPlan {
+	if !f.Set {
+		return FlightPlan{Set: true, Thrust: 40, Shields: true, Callsign: "STARBASE-1"}
+	}
+	return f
 }
 
 var PreviewThemes = []struct {

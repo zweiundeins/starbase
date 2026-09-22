@@ -45,6 +45,26 @@
       "docs": {
         "description": "Size of the switch."
       }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change (e.g. the field of a command)."
+      }
     }
   ],
   "slots": [],
@@ -61,7 +81,7 @@
       "name": "sb-change",
       "bubbles": true,
       "composed": true,
-      "description": "Same moment. detail: { checked }."
+      "description": "Same moment. detail: { name, value, checked } (value is the checked state): ready for a command."
     }
   ]
 }

@@ -1,4 +1,20 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// Reading signals without subscribing the caller.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
+
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
 const slug = (s) => String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
@@ -50,24 +66,38 @@ const styles = /* css */ `
 `
 
 rocket('sb-tabs', {
-	props: ({ array, number, string }) => ({
+	props: ({ array, bool, number, string }) => ({
 		labels: array(string.trim).default(() => ['Home', 'Docs', 'API']).docs({ description: 'Tab labels, as a JSON array.' }),
-		selected: number.min(0).docs({ description: 'Index of the initially selected tab.' }),
+		selected: number.min(0).docs({ description: 'Index of the selected tab. A new index from the server wins.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		slots: [{ name: '<label-slug>', description: 'Panel content per tab, e.g. slot="docs" for a tab labelled "Docs".' }],
-		events: [{ name: 'sb-tab-change', kind: 'custom-event', bubbles: true, composed: true, description: 'detail: { index, label }.' }],
+		events: [
+			{ name: 'sb-tab-change', kind: 'custom-event', bubbles: true, composed: true, description: 'detail: { index, label }.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value } (value is the index): ready for a command.' },
+		],
 	},
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		$$.selected = props.selected
 		observeProps(() => ($$.selected = props.selected), 'selected')
+		// Commands: the attribute is the server's value, $$.selected the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.selected !== props.selected ? states.add('pending') : states.delete('pending')))
+		effect(() => ($$.selected, sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.selected = props.selected), sync())) })
 		const select = (i, focus) => {
 			const n = props.labels.length
 			const next = ((i % n) + n) % n
 			if (next !== $$.selected) {
 				$$.selected = next
 				emit('sb-tab-change', { index: next, label: props.labels[next] })
+				emit('sb-change', { name: props.name, value: next })
 			}
 			if (focus) host.shadowRoot?.querySelectorAll('[role="tab"]')[next]?.focus()
 		}

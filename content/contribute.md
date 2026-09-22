@@ -74,6 +74,22 @@ Your page automatically gets a **Playground** built from the manifest. Add a `pl
 - **Document the API.** Give every prop `.docs({ description })` and declare slots and events in `manifest`. The API tables are generated from it.
 - **Few dependencies.** Import from `'datastar'`, or relatively from files inside your own folder (for example a vendored ES module in `vendor/`, together with its licence). Submit those from a repository link: the bot brings along every file the component imports, up to 2 MB each. Vendored libraries must be unmodified files from an npm release, listed in a `vendor.json` next to the component (`{"vendor/lib.js": {"npm": "lib@1.2.3", "file": "dist/lib.esm.js"}}`). The bot verifies them byte for byte against the registry, and refuses minified code it can't verify. No imports from CDNs or other URLs. Keep it small.
 
+## Commands and components
+
+Starbase is built on CQRS: a change is a command sent to the server, and the page shows the server's state again. Components that hold a value follow one contract, so any of them can drive a command:
+
+- **Intent:** when the user commits a value (release, blur, Enter; never every keystroke), emit `sb-change` with `{ name, value }`, and give the component a `name` prop. A page can then send it as is: `data-on:sb-change="@post('/cmd/…', {payload: evt.detail})"`.
+- **The server's value is the attribute.** A `value` (or `checked`, `selected`…) attribute the server changes wins over local edits; re-sent identical markup changes nothing. A *removed* attribute is ignored, so to clear, the server sends `value=""` or `checked="false"`.
+- **Pending and revert:** with the `confirm` attribute, the component sets `:state(pending)` (a CSS custom state, styleable from the page, safe from morphs) while its local value differs from the server's. `host.revert()` goes back to the server's value, for a rejected command:
+
+```html
+<sb-slider name="thrust" confirm value="40"
+  data-on:sb-change="@post('/cmd/flight', {payload: {tabid: $tabid, ...evt.detail}})"
+  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-slider>
+```
+
+`datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a rejected command.
+
 ## Review
 
 A maintainer checks that the component renders in the gallery and on the Themes page, that `go test ./...` passes, and that the docs examples work. Components are published under the MIT licence with you as the author.

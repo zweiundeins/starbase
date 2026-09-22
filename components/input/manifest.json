@@ -56,7 +56,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in the sb-submit event."
+        "description": "Name reported in sb-change and sb-submit (e.g. the field of a command)."
       }
     },
     {
@@ -118,6 +118,16 @@
       "docs": {
         "description": "Show a submit arrow button."
       }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+      }
     }
   ],
   "slots": [],
@@ -135,6 +145,13 @@
       "bubbles": true,
       "composed": true,
       "description": "When the value is committed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the value is committed (blur or Enter). detail: { name, value }: ready for a command."
     },
     {
       "kind": "custom-event",

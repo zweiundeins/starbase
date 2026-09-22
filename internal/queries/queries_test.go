@@ -358,3 +358,33 @@ func TestDemoData(t *testing.T) {
 		}
 	}
 }
+
+func TestSetFlight(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	send := func(name, value string) error {
+		return e.bus.Exec(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Name: name, Value: value})
+	}
+	for _, c := range [][2]string{{"thrust", "70"}, {"shields", "false"}, {"callsign", " apollo-11 "}} {
+		if err := send(c[0], c[1]); err != nil {
+			t.Fatalf("%s=%s: %v", c[0], c[1], err)
+		}
+	}
+	if err := send("thrust", "95"); !errors.Is(err, commands.ErrThrust) {
+		t.Errorf("thrust 95: err = %v, want the business rule", err)
+	}
+	for _, bad := range [][2]string{{"thrust", "abc"}, {"shields", "maybe"}, {"callsign", "no spaces"}, {"warp", "9"}} {
+		if err := send(bad[0], bad[1]); err == nil {
+			t.Errorf("%s=%q must be rejected", bad[0], bad[1])
+		}
+	}
+	var st model.TabState
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11"}
+	if st.Flight != want {
+		t.Errorf("flight = %+v, want %+v (normalized, the rejected thrust not applied)", st.Flight, want)
+	}
+	if (model.FlightPlan{}).OrDefault().Thrust != 40 {
+		t.Error("defaults")
+	}
+}

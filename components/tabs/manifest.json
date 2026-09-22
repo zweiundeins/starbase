@@ -22,7 +22,27 @@
       "default": 0,
       "required": false,
       "docs": {
-        "description": "Index of the initially selected tab."
+        "description": "Index of the selected tab. A new index from the server wins."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change (e.g. the field of a command)."
       }
     }
   ],
@@ -39,6 +59,13 @@
       "bubbles": true,
       "composed": true,
       "description": "detail: { index, label }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Same moment. detail: { name, value } (value is the index): ready for a command."
     }
   ]
 }

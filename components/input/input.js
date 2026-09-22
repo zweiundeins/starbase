@@ -11,6 +11,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-control-bg, #0B1224);
@@ -78,22 +84,24 @@ rocket('sb-input', {
 		label: string.trim.docs({ description: 'Visible label.' }),
 		placeholder: string.docs({ description: 'Placeholder text.' }),
 		type: oneOf('text', 'email', 'search', 'url', 'tel', 'password').default('text').docs({ description: 'Input type.' }),
-		name: string.trim.docs({ description: 'Name reported in the sb-submit event.' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change and sb-submit (e.g. the field of a command).' }),
 		required: bool.docs({ description: 'Value must not be empty.' }),
 		minlength: number.min(0).docs({ description: 'Minimum length.' }),
 		pattern: string.docs({ description: 'Regular expression the value must match.' }),
 		hint: string.docs({ description: 'Help text below the field.' }),
 		error: string.docs({ description: 'Message shown when invalid (defaults to the browser message).' }),
 		action: bool.docs({ description: 'Show a submit arrow button.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'input', kind: 'event', bubbles: true, composed: true, description: 'On every keystroke (native, re-targeted to the host).' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'When the value is committed.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed (blur or Enter). detail: { name, value }: ready for a command.' },
 			{ name: 'sb-submit', kind: 'custom-event', bubbles: true, composed: true, description: 'Enter or arrow button with a valid value. detail: { name, value }.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		$$.value = props.value
 		// A value attribute sent by the server wins when it changes (a morph
@@ -103,6 +111,14 @@ rocket('sb-input', {
 		// write before the upgrade). To clear it, the server sends value="".
 		observeProps(() => peek(() => host.hasAttribute('value') && ($$.value = props.value)), 'value')
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = String(v ?? ''))))
+		// Commands: the attribute is the server's value, $$.value the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.value !== props.value ? states.add('pending') : states.delete('pending')))
+		effect(() => ($$.value, sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.value = props.value), sync())) })
 		$$.touched = false
 		$$.invalid = false
 		$$.message = ''
@@ -128,6 +144,7 @@ rocket('sb-input', {
 			$$.touched = true
 			validate()
 			emit('change')
+			emit('sb-change', { name: props.name, value: $$.value })
 		})
 		action('submit', submit)
 	},

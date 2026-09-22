@@ -12,6 +12,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // Initial code can come from a child <script type="text/plain">: its text
 // is never parsed as HTML and never executed. Common indentation is removed.
 const dedent = (text) => {
@@ -117,16 +123,19 @@ rocket('sb-code-editor', {
 		tabSize: number.clamp(1, 8).default(2).docs({ description: 'Visual width of a tab.' }),
 		readonly: bool.docs({ description: 'Make the code read-only.' }),
 		label: string.trim.docs({ description: 'Visible label; also the accessible name.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'input', kind: 'event', bubbles: true, composed: true, description: 'On every edit (native, re-targeted to the host).' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'When the field loses focus after edits.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value }: ready for a command.' },
 			{ name: 'sb-run', kind: 'custom-event', bubbles: true, composed: true, description: 'Ctrl/Cmd+Enter. detail: { value }.' },
 		],
 	},
 	renderOnPropChange: ({ changes }) => 'label' in changes,
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const child = host.querySelector(':scope > script[type="text/plain"]')
 		const initial = host.hasAttribute('value') || !child ? props.value : dedent(child.textContent)
@@ -158,6 +167,14 @@ rocket('sb-code-editor', {
 		// write before the upgrade). To clear it, the server sends value="".
 		observeProps(() => peek(() => host.hasAttribute('value') && ($$.code = props.value)), 'value')
 		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => ($$.code = String(v ?? ''))))
+		// Commands: the attribute is the server's value, $$.code the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.code !== props.value ? states.add('pending') : states.delete('pending')))
+		effect(() => ($$.code, sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.code = props.value), sync())) })
 
 		const insert = (area, text) => {
 			// execCommand keeps the browser's undo stack; setRangeText is the fallback.
@@ -167,7 +184,7 @@ rocket('sb-code-editor', {
 			}
 		}
 		let escaped = false
-		action('change', () => emit('change'))
+		action('change', () => (emit('change'), emit('sb-change', { name: props.name, value: $$.code })))
 		action('key', ({ el: area, evt: e }) => {
 			if (e.key === 'Escape') {
 				escaped = true // the next Tab moves focus instead of indenting

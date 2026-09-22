@@ -1,6 +1,10 @@
 package ui
 
-import "starbase/internal/model"
+import (
+	"strconv"
+
+	"starbase/internal/model"
+)
 
 type ThemePreview struct {
 	Name string
@@ -255,9 +259,44 @@ type BoardView struct {
 // requests to the same URL by default), or fast strokes would lose pixels.
 const paintExpr = "@post('/cmd/paint', {payload: {color: evt.detail.color, cells: evt.detail.cells}, requestCancellation: 'disabled'})"
 
-templ Showcase(board BoardView) {
+templ Showcase(board BoardView, flight model.FlightPlan) {
 	@MissionControl()
 	@PixelBoard(board)
+	@FlightDemo(flight)
+}
+
+// flightCommand posts a control's sb-change as a command. On a rejection
+// (an error fetch event from this control), it goes back to the server's
+// value and says so.
+const flightCommand = `$_flightErr = ''; @post('/cmd/flight', {payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'})`
+const flightRejected = `evt.detail.el === el && evt.detail.type === 'error' && (el.revert(), $_flightErr = 'The server rejected that ' + el.getAttribute('name') + ': it is back to the server\'s value.')`
+
+// FlightDemo shows the command loop with components: each control's value
+// is a command; the server validates, stores (tab state) and re-renders, and
+// the new attribute confirms the control (:state(pending) until then).
+templ FlightDemo(f model.FlightPlan) {
+	<section class="flight-section" aria-labelledby="flight-title" data-signals="{_flightErr: ''}">
+		<header class="mission__head">
+			<h2 id="flight-title" class="section-title">Commands and components</h2>
+		</header>
+		<p class="flight__lede">Every control here sends a command. The server validates it, stores it and re-renders the page; until the new value comes back, the control is <em>pending</em> (dashed). The server upper-cases call signs, and it rejects thrust above 90%: the slider goes back.</p>
+		<div class="flight">
+			<div class="flight__controls">
+				<sb-slider name="thrust" label="Thrust" unit="%" max="100" confirm value={ strconv.Itoa(f.Thrust) }
+					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-slider>
+				<sb-toggle name="shields" label="Shields" confirm checked={ strconv.FormatBool(f.Shields) }
+					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-toggle>
+				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } hint="Letters, digits and dashes; press Enter or leave the field."
+					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-input>
+			</div>
+			<dl class="flight__state" aria-label="The server's state">
+				<div><dt>Thrust</dt><dd>{ strconv.Itoa(f.Thrust) }%</dd></div>
+				<div><dt>Shields</dt><dd>{ onOff(f.Shields) }</dd></div>
+				<div><dt>Call sign</dt><dd>{ f.Callsign }</dd></div>
+			</dl>
+		</div>
+		<p class="flight__error" role="alert" data-show="$_flightErr" data-text="$_flightErr"></p>
+	</section>
 }
 
 // PixelBoard is server-owned: every frame of the page's render stream brings

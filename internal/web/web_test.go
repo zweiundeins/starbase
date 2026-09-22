@@ -590,3 +590,22 @@ func TestSEO(t *testing.T) {
 		}
 	}
 }
+
+func TestFlightCommand(t *testing.T) {
+	ts, c := newServer(t)
+	get(t, c, ts.URL+"/showcase") // session cookie
+	for _, tc := range []struct {
+		body string
+		want int
+	}{
+		{`{"tabid":"tab12345","name":"thrust","value":70}`, http.StatusNoContent},
+		{`{"tabid":"tab12345","name":"shields","value":false}`, http.StatusNoContent},
+		{`{"tabid":"tab12345","name":"thrust","value":95}`, http.StatusBadRequest},
+	} {
+		res := post(t, c, ts.URL+"/cmd/flight", tc.body, "same-origin")
+		res.Body.Close()
+		if res.StatusCode != tc.want {
+			t.Errorf("%s: %d, want %d", tc.body, res.StatusCode, tc.want)
+		}
+	}
+}

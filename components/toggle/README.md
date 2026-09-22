@@ -43,6 +43,10 @@ Bind the `checked` property with `data-bind` and the `__prop` and `__event` modi
 </div>
 ```
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
 ## Accessibility
 
 The switch is a `<button role="switch">` with `aria-checked`, so it is focusable and toggles with Space and Enter. Give it a `label`. Without one it is announced as "Toggle".

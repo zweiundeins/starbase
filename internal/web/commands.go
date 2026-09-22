@@ -2,7 +2,9 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/starfederation/datastar-go/datastar"
 
@@ -95,4 +97,25 @@ func (s *Server) cmdThemeStyle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.send(w, r, commands.SetPreviewStyle{SID: sessionID(r), TabID: sig.TabID, Smooth: r.PathValue("style") == "smooth"})
+}
+
+// cmdFlight is the Showcase's commands demo: one field per request, from a
+// component's sb-change ({name, value}). A short pause keeps the controls'
+// pending state visible.
+func (s *Server) cmdFlight(w http.ResponseWriter, r *http.Request) {
+	var p struct {
+		TabID string `json:"tabid"`
+		Name  string `json:"name"`
+		Value any    `json:"value"`
+	}
+	if err := datastar.ReadSignals(r, &p); err != nil {
+		http.Error(w, "bad payload", http.StatusBadRequest)
+		return
+	}
+	select {
+	case <-time.After(400 * time.Millisecond):
+	case <-r.Context().Done():
+		return
+	}
+	s.send(w, r, commands.SetFlight{SID: sessionID(r), TabID: p.TabID, Name: p.Name, Value: fmt.Sprint(p.Value)})
 }

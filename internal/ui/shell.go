@@ -154,3 +154,10 @@ func Art(a Assets, name, class string) templ.Component {
 		`<svg xmlns="http://www.w3.org/2000/svg" class="px-art `+class+`" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMax meet"`, 1)
 	return templ.Raw(svg)
 }
+
+func onOff(b bool) string {
+	if b {
+		return "on"
+	}
+	return "off"
+}

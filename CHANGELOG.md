@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- A command contract for value components (input, slider, toggle, code editor, tabs): a `name` prop and `sb-change {name, value}` on commit, ready to post as a command; with `confirm`, `:state(pending)` marks an edit the server hasn't confirmed, and `revert()` returns to the server's value after a rejected command. The Showcase demonstrates the loop (pending, a server-normalized value, a rejected command), and the Contribute page documents it for community components.
 - The server can set every component's value: a `value`/`checked` attribute the server changes now wins over local edits (input, slider, toggle, code editor), while re-sent identical markup still leaves edits alone. Removed attributes are ignored (morphs also strip reflected ones), so to clear, send `value=""` / `checked="false"`. The manual pre-upgrade property adoption and the dirty flags are gone (Rocket replays those writes itself).
 - `sb-alert` has an `open` prop, so the server can hide and re-show it. `sb-theme-switch` draws its icons as CSS masks instead of injecting SVG markup.
 - The logo and the hero scene follow the site theme: they are inlined as SVG, and their themeable colours (brand stripes, planet, stars, smoke) are `--sb-art-*` tokens. As standalone files (favicon) they keep the original colours.

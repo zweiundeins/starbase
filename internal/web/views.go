@@ -210,7 +210,7 @@ func (s *Server) showcasePage(rc *renderCtx) (view, error) {
 	}
 	board := ui.BoardView{Cells: cells, Size: commands.BoardSize, Pixels: pixels, Viewers: max(1, s.hub.Count("/showcase"))}
 	v.Body = func(ui.Shell) templ.Component {
-		return ui.ContentPage(meta.Title, meta.Lede, html, ui.Showcase(board))
+		return ui.ContentPage(meta.Title, meta.Lede, html, ui.Showcase(board, rc.tab.Flight.OrDefault()))
 	}
 	return v, nil
 }

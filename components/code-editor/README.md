@@ -65,6 +65,10 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 | Ctrl/Cmd+Enter | Emit `sb-run` |
 | Esc, then Tab | Leave the editor, so Tab is never a focus trap |
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
 ## Accessibility
 
 The editable element is a native textarea with an accessible name (`label`, or "Code"). The highlighted layer and the gutter are `aria-hidden`.

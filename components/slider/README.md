@@ -47,6 +47,10 @@ When the driven element is a component inside a server-rendered region, add `dat
 <sb-gauge data-attr:value="$_fuel" data-preserve-attr="value"></sb-gauge>
 ```
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
 ## Accessibility
 
 The native range input provides the role, value and keyboard support (arrow keys, Page Up/Down, Home/End). Give it a `label`; without one it is announced as "Value".

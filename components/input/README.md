@@ -54,6 +54,10 @@ Declare the signal first, because `data-bind` only writes to a signal that alrea
 </div>
 ```
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
 ## Accessibility
 
 The native `<input>` sits inside a `<label>`. Without a `label`, the placeholder becomes the accessible name. Errors are announced with `role="alert"`, and `aria-invalid` follows the validation state.

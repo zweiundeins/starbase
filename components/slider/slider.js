@@ -11,6 +11,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -94,15 +100,17 @@ rocket('sb-slider', {
 		showValue: bool.default(true).docs({ description: 'Show the current value next to the label.' }),
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'input', kind: 'event', bubbles: true, composed: true, description: 'While dragging (native, re-targeted to the host).' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'When the value is committed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed. detail: { value }.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed. detail: { name, value }: ready for a command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const clamp = (v) => Math.min(props.max, Math.max(props.min, Number.isFinite(v) ? v : props.min))
 		const decimals = () => (String(props.step).split('.')[1] || '').length
@@ -115,11 +123,19 @@ rocket('sb-slider', {
 		// A new min or max re-clamps the current value.
 		observeProps((p, changes) => peek(() => ($$.value = clamp('value' in changes && host.hasAttribute('value') ? p.value : $$.value))), 'value', 'min', 'max')
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
+		// Commands: the attribute is the server's value, $$.value the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.value !== clamp(props.value) ? states.add('pending') : states.delete('pending')))
+		effect(() => ($$.value, sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.value = clamp(props.value)), sync())) })
 		$$.pct = () => ((($$.value - props.min) / (props.max - props.min || 1)) * 100).toFixed(2) + '%'
 		$$.shown = () => Number($$.value).toFixed(decimals()) + props.unit
 		action('commit', () => {
 			emit('change')
-			emit('sb-change', { value: $$.value })
+			emit('sb-change', { name: props.name, value: $$.value })
 		})
 	},
 	// The filled part of the track follows the value through a custom
