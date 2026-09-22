@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
+
 ### Added
 
 - `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.

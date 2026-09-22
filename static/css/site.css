@@ -794,6 +794,14 @@
 			box-shadow: var(--sb-glow-brand);
 			translate: 0 -2px;
 		}
+
+		&:hover .card__preview {
+			--_grid: color-mix(in oklch, var(--sb-brand) 30%, transparent);
+
+			&::after {
+				opacity: 1;
+			}
+		}
 	}
 
 	.card__preview {
@@ -805,10 +813,35 @@
 		min-block-size: 9rem;
 		padding: var(--sb-space-4);
 		border-radius: var(--sb-radius-md);
+		/* A pixel grid marks a live demo: this panel is the component itself,
+		   not a picture, and the only part of the card that isn't the link. */
+		--_grid: color-mix(in oklch, var(--sb-border) 60%, transparent);
 		background:
 			radial-gradient(circle at 50% 120%, oklch(from var(--sb-brand) l c h / 0.08), transparent 60%),
+			linear-gradient(var(--_grid) 1px, transparent 1px),
+			linear-gradient(90deg, var(--_grid) 1px, transparent 1px),
 			var(--sb-surface-inset);
+		background-size: auto, 16px 16px, 16px 16px, auto;
 		overflow: hidden;
+
+		/* Hover hint, so the panel's different job is discoverable. */
+		&::after {
+			content: "live demo";
+			position: absolute;
+			inset-block-start: var(--sb-space-2);
+			inset-inline-end: var(--sb-space-2);
+			padding: 2px 6px;
+			border-radius: var(--sb-radius-sm);
+			/* Readable over busy previews (starfield, code editor). */
+			background: color-mix(in oklch, var(--sb-surface-inset) 85%, transparent);
+			color: var(--sb-text-muted);
+			font-size: var(--sb-font-size-00);
+			letter-spacing: var(--sb-letter-spacing-caps);
+			text-transform: uppercase;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity var(--sb-duration-base) var(--sb-ease-standard);
+		}
 
 		& > * {
 			max-inline-size: 100%;
@@ -1144,9 +1177,13 @@
 		gap: var(--sb-space-4);
 		min-block-size: 8rem;
 		padding: var(--sb-space-8) var(--sb-space-6);
+		--_grid: color-mix(in oklch, var(--sb-border) 60%, transparent);
 		background:
 			radial-gradient(circle at 50% 140%, oklch(from var(--sb-brand) l c h / 0.1), transparent 60%),
+			linear-gradient(var(--_grid) 1px, transparent 1px),
+			linear-gradient(90deg, var(--_grid) 1px, transparent 1px),
 			var(--sb-surface-inset);
+		background-size: auto, 16px 16px, 16px 16px, auto;
 		color: var(--sb-text-1);
 		font-size: var(--sb-font-size-2);
 
