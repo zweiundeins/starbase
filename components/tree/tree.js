@@ -10,6 +10,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 const styles = /* css */ `
 :host {
 	--_text: var(--sb-text-1, #F3F4FA);
@@ -58,26 +64,28 @@ const styles = /* css */ `
 `
 
 rocket('sb-tree', {
-	props: ({ json, oneOf, string }) => ({
+	props: ({ bool, json, oneOf, string }) => ({
 		items: json.default(() => []).docs({ description: 'The tree: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened.' }),
 		loaded: json.default(() => ({})).docs({ description: 'Loaded children by parent id: {"<id>": [items]}. Bind it to a signal the server patches (see the docs).' }),
 		selection: oneOf('single', 'multiple', 'none').default('single').docs({ description: 'How many items can be selected.' }),
 		value: string.docs({ description: 'Selection: an id, or ids separated by spaces (multiple). A new value from the server replaces it; the live value is the value property.' }),
 		expanded: string.docs({ description: 'Open items: ids separated by spaces. A new list from the server replaces it; lazy items in it load their children.' }),
 		label: string.trim.default('Tree').docs({ description: 'Accessible name.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'sb-load', kind: 'custom-event', bubbles: true, composed: true, description: 'A lazy item was opened and has no children yet. detail: { id }. Answer by adding its children to the loaded prop.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The selection changed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The selection changed. detail: { value } (an id, or an array of ids for multiple).' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The selection changed. detail: { name, value } (an id, or an array of ids for multiple): ready for a command.' },
 			{ name: 'sb-toggle', kind: 'custom-event', bubbles: true, composed: true, description: 'An item opened or closed. detail: { id, open }.' },
 		],
 	},
 	// Rendered once: everything that changes goes through signals, so a new
 	// `loaded` doesn't rebuild the DOM (and take the keyboard focus with it).
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		$$.label = props.label
 		$$.mode = props.selection
@@ -147,6 +155,14 @@ rocket('sb-tree', {
 
 		const value = () => (props.selection === 'multiple' ? [...$$.selected] : $$.selected[0] ?? '')
 		overrideProp('value', () => peek(value), (v) => peek(() => ($$.selected = ids(v))))
+		// Commands: the attribute is the server's value, JSON.stringify($$.selected) the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && JSON.stringify($$.selected) !== JSON.stringify(ids(props.value)) ? states.add('pending') : states.delete('pending')))
+		effect(() => (JSON.stringify($$.selected), sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.selected = ids(props.value)), sync())) })
 		const row = (id) => $$.rows.find((r) => r.id === id)
 
 		const setOpen = (id, wantOpen) => {
@@ -162,7 +178,7 @@ rocket('sb-tree', {
 			const has = $$.selected.includes(id)
 			$$.selected = props.selection === 'multiple' ? (has ? $$.selected.filter((x) => x !== id) : [...$$.selected, id]) : [id]
 			emit('change')
-			emit('sb-change', { value: value() })
+			emit('sb-change', { name: props.name, value: value() })
 		}
 		const focus = (id) => id && (($$.focus = id), refocus())
 

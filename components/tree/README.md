@@ -59,6 +59,10 @@ Without Datastar signals, the server can also re-render the element with a new `
   items='[{"id":"jupiter","label":"Jupiter","icon":"🪐","children":[{"id":"io","label":"Io"},{"id":"europa","label":"Europa"},{"id":"ganymede","label":"Ganymede"},{"id":"callisto","label":"Callisto"}]}]'></sb-tree>
 ```
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's selection when a command is rejected. `sb-toggle` reports opened and closed branches, so the server can keep `expanded` too. See [Commands and components](/contribute#commands-and-components).
+
 ## Items
 
 Each item is `{id, label, icon?, children?, lazy?}`:
