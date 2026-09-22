@@ -71,6 +71,7 @@ Custom elements are empty until their module arrives. Put a class on `<html>`, h
     modules='{"demo-card": "/c/autoloader/demo-badge.js?tag=demo-card"}'
     data-on:sb-load="$_log = 'loaded <' + evt.detail.tag + '>'"
     data-on:sb-ready="$_log += ' · ready (' + evt.detail.loaded + ')'"
+    data-on:sb-load-error="$_log = 'could not load <' + evt.detail.tag + '>: ' + evt.detail.error"
   ></sb-autoloader>
   <demo-card>a tag of its own</demo-card>
   <p data-text="$_log"></p>
@@ -98,7 +99,7 @@ A component that renders another tag inside its own shadow root would otherwise 
 - **Shadow roots.** It watches the document, so components inside other components' shadow roots are discovered when those render into the page, not before. `requires` covers the rest.
 - **Rocket components** import `datastar`, so the page still needs the import map for it. Plain custom elements need nothing.
 - **A failed module** reports through `reportError` (so `window.onerror` sees it) and emits `sb-load-error`. A `match` that isn't a valid regular expression is reported the same way, and the pattern is skipped.
-- **`demo-badge.js`** in this component's folder belongs to the examples above, not to the loader; that is why it shows up in the size table.
+- **`demo-badge.js`** in this component's folder belongs to the examples above, not to the loader; that is why it shows up in the size table. It is served at `/c/autoloader/demo-badge.js`, so in a pull-request preview (where the component is not in the catalog yet) the examples report a failed load: the loader works, the demo module is simply not there.
 
 ## Accessibility
 
