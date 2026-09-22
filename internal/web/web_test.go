@@ -57,6 +57,9 @@ func newServerBus(t *testing.T) (*httptest.Server, *http.Client, *cqrs.Bus, *cat
 	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
 		t.Fatal(err)
 	}
+	if err := bus.Exec(ctx, commands.SeedDemo{}); err != nil {
+		t.Fatal(err)
+	}
 	ts := httptest.NewUnstartedServer(nil)
 	ts.Start()
 	cfg := config.Config{BaseURL: ts.URL, RepoURL: "https://example.com/repo"}

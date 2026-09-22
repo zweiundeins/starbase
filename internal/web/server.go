@@ -122,6 +122,8 @@ func (s *Server) Handler() http.Handler {
 
 	// Demo data: a read-only signal stream for the live examples.
 	mux.HandleFunc("GET /demo/telemetry", s.demoTelemetry)
+	mux.HandleFunc("GET /demo/data/children", s.demoChildren) // the example dataset (demo_data.go)
+	mux.HandleFunc("GET /demo/data/search", s.demoSearch)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

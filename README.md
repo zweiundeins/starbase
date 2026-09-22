@@ -125,6 +125,11 @@ POST /cmd/...        commands: validate → enqueue → 204. Never HTML.
 - **Multiplayer pixel board** (Showcase): `sb-pixel-board` is driven by one server-owned attribute (`cells`, a hex digit per pixel) re-rendered in every stream frame. Painting is the `PaintPixels` command (`POST /cmd/paint`, rate-limited per session). The hub counts viewers per page ("N watching").
 - **Code playground:** `/playground` (and "Open in playground" on every component) edits a component's JS and HTML with `sb-code-editor` and `sb-code-playground`. Previews run in a `sandbox="allow-scripts"` iframe served by `/playground/run`, with its own CSP and an opaque origin. "Save & share" is the `SaveSnippet` command (immutable `/playground?s=<id>` links). "Submit as component" prefills the issue form with that link, and the bot imports it (set the repository variable `STARBASE_URL`).
 - **Live demo data:** `GET /demo/telemetry` streams a simulated mission as signal patches (`$_tm`). It is a pure function of time, with no state. The Showcase page's Mission Control and the gauge, sparkline and meter docs use it.
+- **Example dataset:** a small universe (galaxies, star systems, planets, moons, bright stars by constellation), seeded into SQLite at startup (`internal/demo`, `SeedDemo`). Two generic, stateless endpoints serve it to any component's docs:
+  - `GET /demo/data/children?parent=<id>` returns the children of a node, or the top level without `parent`.
+  - `GET /demo/data/search?q=…&kind=star,planet&limit=8` returns name matches, prefix matches first, accent-insensitive.
+
+  For Datastar requests they patch the signal named by `&into=`: a list, or `{"<parent>": [...]}` for children. With `Accept: application/json` they return the list. `&delay=<ms>` makes loading states visible. Items are `{id, value, label, description, icon, kind, lazy}`, so they work both as tree items and as select options.
 
 ## Deployment note: serve over HTTP/2
 

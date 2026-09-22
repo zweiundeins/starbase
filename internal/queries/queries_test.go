@@ -322,3 +322,39 @@ func TestSnippetStoreCap(t *testing.T) {
 		t.Fatal("the refused snippet must not be stored")
 	}
 }
+
+func TestDemoData(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	for range 2 { // idempotent
+		if err := e.bus.Exec(ctx, commands.SeedDemo{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var top, moons, found, stars []queries.DemoBody
+	e.q.View(ctx, func(r *queries.Reader) (err error) {
+		top, _ = r.DemoChildren(ctx, "")
+		moons, _ = r.DemoChildren(ctx, "jupiter")
+		found, _ = r.DemoSearch(ctx, "bootes", nil, 10)
+		stars, err = r.DemoSearch(ctx, "an", []string{"star"}, 50)
+		return
+	})
+	if len(top) != 5 || top[0].ID != "milkyway" || top[0].Children == 0 {
+		t.Errorf("top level = %+v", top)
+	}
+	if len(moons) != 4 || moons[0].Name != "Io" || moons[0].Children != 0 {
+		t.Errorf("jupiter = %+v", moons)
+	}
+	if len(found) == 0 { // accents fold: Boötes
+		t.Error("no match for bootes")
+	}
+	for i, s := range stars {
+		if s.Kind != "star" {
+			t.Errorf("kind filter let %s through", s.Kind)
+		}
+		prefix := strings.HasPrefix(strings.ToLower(s.Name), "an")
+		if i > 0 && prefix && !strings.HasPrefix(strings.ToLower(stars[i-1].Name), "an") {
+			t.Errorf("prefix matches must come first: %v", stars)
+		}
+	}
+}

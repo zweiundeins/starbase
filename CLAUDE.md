@@ -38,6 +38,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - `tab_state` is for server-owned UI state (filters, sort, theme). High-frequency, ephemeral demo state (sliders, playgrounds) stays in local `_`-prefixed signals.
 - Component pages render an auto Playground from the manifest (`internal/catalog/playground.go`, `ui.Playground`). It is a `data-ignore-morph` island driven by local `$_pg` signals, tuned by `playground:` front matter.
 - `GET /demo/telemetry` (`internal/web/demo.go`) is a stateless query stream of `$_tm` signal patches for live demos.
+- Demo data for components' docs comes from the example dataset (`internal/demo`, seeded by `SeedDemo`): use the generic `GET /demo/data/children` and `/demo/data/search` (`internal/web/demo_data.go`, `&into=` names the signal, `&delay=` for loading states) instead of adding component-specific endpoints.
 - Canvas components: `renderOnPropChange: false`, repaint on `observeProps`, read theme tokens at paint time (via a 1×1 canvas probe), pause offscreen (IntersectionObserver) and honour `prefers-reduced-motion`.
 - The CSP uses a nonce (import map) plus `'unsafe-eval'` (Datastar). No inline `<script>` without `s.Nonce`. `script-src` allows only `<origin>/static/` and `<origin>/c/`, not `'self'`: new script locations must be added there.
 - Rate limits (`limiter`, per session and per `clientIP`, which trusts `X-Real-IP` only from loopback/Unix-socket peers): painting, snippet saves. Snippet storage is capped (`MaxSnippetStore`, tracked in `snippet_stats`).
