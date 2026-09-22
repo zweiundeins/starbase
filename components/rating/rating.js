@@ -10,6 +10,12 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // Pixel sprites, 7×7: '#' is the shape, '+' its highlight.
 const SPRITES = {
 	heart: ['.##.##.', '#+#####', '#######', '#######', '.#####.', '..###..', '...#...'],
@@ -63,14 +69,16 @@ rocket('sb-rating', {
 		readonly: bool.docs({ description: 'Show the value; no interaction.' }),
 		clearable: bool.docs({ description: 'Picking the current value again clears it to 0.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
+		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'When the value is committed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { value }.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value }: ready for a command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const step = () => Number(props.precision)
 		const clamp = (v) => Math.min(props.max, Math.max(0, Math.round((Number(v) || 0) / step()) * step()))
@@ -81,6 +89,14 @@ rocket('sb-rating', {
 		// re-clamps the current value.
 		observeProps((p, changes) => peek(() => ($$.value = clamp('value' in changes && host.hasAttribute('value') ? p.value : $$.value))), 'value', 'max', 'precision')
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(v))))
+		// Commands: the attribute is the server's value, $$.value the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.value !== clamp(props.value) ? states.add('pending') : states.delete('pending')))
+		effect(() => ($$.value, sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => (($$.value = clamp(props.value)), sync())) })
 		$$.shown = () => ($$.hover >= 0 ? $$.hover : $$.value)
 
 		const commit = (v) => {
@@ -89,7 +105,7 @@ rocket('sb-rating', {
 			if (v === $$.value) return
 			$$.value = v
 			emit('change')
-			emit('sb-change', { value: v })
+			emit('sb-change', { name: props.name, value: v })
 		}
 		// Which value the pointer is on: the unit under it, and for half steps
 		// which half.

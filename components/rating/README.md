@@ -53,6 +53,10 @@ With `clearable`, picking the current value again resets it to 0.
 <sb-rating clearable value="2"></sb-rating>
 ```
 
+## With commands
+
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is picked: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
+
 ## Theming
 
 The filled colour is `--sb-rating-color` (hearts default to `--sb-danger`, stars to `--sb-warn`); empty units use `--sb-border-strong`.
