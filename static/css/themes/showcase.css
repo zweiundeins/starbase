@@ -73,6 +73,11 @@
 
 	[data-sb-theme="daylight"] {
 		color-scheme: light;
+		--sb-art-star: oklch(42% 0.08 285);
+		--sb-art-star-dim: oklch(68% 0.05 280);
+		--sb-art-smoke-light: oklch(95% 0.012 280);
+		--sb-art-smoke: oklch(87% 0.025 282);
+		--sb-art-smoke-shade: oklch(74% 0.04 284);
 		--sb-bg: oklch(98.5% 0.005 270);
 		--sb-bg-glow: oklch(90% 0.05 290 / 0.5);
 		--sb-surface-raised: oklch(100% 0 0);
@@ -105,5 +110,23 @@
 		--sb-frame-color: oklch(55% 0.22 288);
 		--sb-focus-ring: 0 0 0 2px var(--sb-bg), 0 0 0 4px oklch(55% 0.22 288);
 		--sb-glow-brand: 0 0 0 1px oklch(55% 0.22 288 / 0.2), 0 8px 24px -10px oklch(55% 0.22 288 / 0.35);
+	}
+
+	/* The theme-aware parts of the pixel art (internal/pixelart: --sb-art-*,
+	 * used where the SVG is inlined). Deep Space keeps the original colours
+	 * (the fallbacks); other themes derive them from their tokens. Declared
+	 * on the themed element itself, so they use its --sb-brand. */
+	[data-sb-theme]:not([data-sb-theme="deep-space"]) {
+		--sb-art-brand: var(--sb-brand);
+		--sb-art-brand-light: var(--sb-brand-light);
+		--sb-art-star: var(--sb-text-1);
+		--sb-art-star-dim: var(--sb-text-muted);
+		--sb-art-planet-light: color-mix(in oklch, var(--sb-brand) 90%, white);
+		--sb-art-planet-lip: color-mix(in oklch, var(--sb-brand) 84%, black);
+		--sb-art-planet-band: color-mix(in oklch, var(--sb-brand) 78%, black);
+		--sb-art-planet: color-mix(in oklch, var(--sb-brand) 70%, black);
+		--sb-art-planet-crater: color-mix(in oklch, var(--sb-brand) 58%, black);
+		--sb-art-planet-shade: color-mix(in oklch, var(--sb-brand) 50%, black);
+		--sb-art-planet-deep: color-mix(in oklch, var(--sb-brand) 36%, black);
 	}
 }

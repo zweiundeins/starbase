@@ -87,6 +87,8 @@ func (a *assets) Components() string        { return "/c/autoloader.js?v=" + a.a
 // and the dev manifest publisher need them all at once).
 func (a *assets) AllComponents() string { return "/c/index.js?v=" + a.components.hash }
 
+func (a *assets) ArtSVG(name string) string { return string(a.art[name].body) }
+
 func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
 }

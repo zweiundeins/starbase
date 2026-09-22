@@ -26,6 +26,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The logo and the hero scene follow the site theme: they are inlined as SVG, and their themeable colours (brand stripes, planet, stars, smoke) are `--sb-art-*` tokens. As standalone files (favicon) they keep the original colours.
 - GitHub Actions updated to their Node 24 (LTS) majors.
 
 ### Fixed

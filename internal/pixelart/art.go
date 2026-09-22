@@ -5,7 +5,11 @@ import (
 	"strings"
 )
 
-// Palette (illustration colours are fixed; they are art, not theme).
+// Palette. Most illustration colours are fixed: they are art, not theme.
+// The ones that follow the theme are CSS variables (--sb-art-*, set per theme
+// in theme.css and showcase.css) with the original colour as fallback. They
+// take effect where the SVG is inlined into the page (see ui.Art); as a
+// standalone file (favicon, other sites) it shows the fallbacks.
 const (
 	outline   = "#1B1F3B"
 	white     = "#F3F4FA"
@@ -13,20 +17,26 @@ const (
 	steel     = "#8E97C4"
 	red       = "#E5484D"
 	redDark   = "#A52A3A"
-	violet    = "#8C6BFF"
-	violetLt  = "#B09AFF"
+	violet    = "var(--sb-art-brand, #8C6BFF)"
+	violetLt  = "var(--sb-art-brand-light, #B09AFF)"
 	cyan      = "#65BFFF"
 	navy      = "#2B4C9A"
 	flameY    = "#FFE066"
 	flameO    = "#FF9F43"
 	flameR    = "#FF5E3A"
 	starGold  = "#FFD84D"
-	starDim   = "#7785A8"
-	surfLight = "#8A7CF5"
-	surfBase  = "#5B4FD6"
-	surfShade = "#3F36A8"
-	surfCrate = "#4A40B8"
-	surfDeep  = "#2E2780"
+	starWhite = "var(--sb-art-star, #F3F4FA)"
+	starDim   = "var(--sb-art-star-dim, #7785A8)"
+	smokeLt   = "var(--sb-art-smoke-light, #F3F4FA)"
+	smoke     = "var(--sb-art-smoke, #DADDF6)"
+	smokeDk   = "var(--sb-art-smoke-shade, #A3A8DA)"
+	surfLight = "var(--sb-art-planet-light, #8A7CF5)"
+	surfBase  = "var(--sb-art-planet, #5B4FD6)"
+	surfBand  = "var(--sb-art-planet-band, #6D60E6)"
+	surfLip   = "var(--sb-art-planet-lip, #7466EE)"
+	surfShade = "var(--sb-art-planet-shade, #3F36A8)"
+	surfCrate = "var(--sb-art-planet-crater, #4A40B8)"
+	surfDeep  = "var(--sb-art-planet-deep, #2E2780)"
 )
 
 var rocketPalette = map[rune]string{
@@ -100,7 +110,7 @@ func sparkle(c string) Grid {
 func dot(c string) Grid { return Sprite(map[rune]string{'#': c}, "#") }
 
 func smokePuff(r int, seed uint32) Grid {
-	return Planet{R: r, Light: white, Base: "#DADDF6", Shade: "#A3A8DA", Seed: seed}.Grid()
+	return Planet{R: r, Light: smokeLt, Base: smoke, Shade: smokeDk, Seed: seed}.Grid()
 }
 
 // Crop copies a window of g.
@@ -131,7 +141,7 @@ func surface(w, h, r int) Grid {
 			case depth < 1:
 				c = surfLight
 			case depth < 2.2:
-				c = "#6D60E6"
+				c = surfBand
 			case depth > 11:
 				c = surfDeep
 			case depth > 7:
@@ -146,7 +156,7 @@ func surface(w, h, r int) Grid {
 					}
 				}
 				if n > 0.74 && noise(float64(x)/3.2, float64(y-1)/1.6, 7) <= 0.74 {
-					c = "#7466EE" // crater lip catches the light
+					c = surfLip // crater lip catches the light
 				}
 			}
 			g.Set(x, y, c)
@@ -156,15 +166,15 @@ func surface(w, h, r int) Grid {
 }
 
 const sceneCSS = `
-.twinkle{animation:tw 3.2s steps(2,jump-none) infinite}
-.twinkle.b{animation-delay:-1.3s;animation-duration:4.4s}
-.twinkle.c{animation-delay:-2.6s;animation-duration:5.6s}
-.float{animation:fl 4s steps(4,jump-none) infinite alternate}
-.flame{animation:fk .4s steps(2,jump-none) infinite}
-@keyframes tw{0%,70%,100%{opacity:1}80%{opacity:.2}}
-@keyframes fl{from{transform:translate(0,0)}to{transform:translate(1px,-2px)}}
-@keyframes fk{from{opacity:1}to{opacity:.55}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+.px-art .twinkle{animation:px-tw 3.2s steps(2,jump-none) infinite}
+.px-art .twinkle.b{animation-delay:-1.3s;animation-duration:4.4s}
+.px-art .twinkle.c{animation-delay:-2.6s;animation-duration:5.6s}
+.px-art .float{animation:px-fl 4s steps(4,jump-none) infinite alternate}
+.px-art .flame{animation:px-fk .4s steps(2,jump-none) infinite}
+@keyframes px-tw{0%,70%,100%{opacity:1}80%{opacity:.2}}
+@keyframes px-fl{from{transform:translate(0,0)}to{transform:translate(1px,-2px)}}
+@keyframes px-fk{from{opacity:1}to{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.px-art *{animation:none!important}}
 `
 
 // Hero is the launch scene: starfield, moon, earth, a rocket lifting off a
@@ -182,7 +192,7 @@ func Hero() string {
 	}
 	phase := []string{"twinkle", "twinkle b", "twinkle c"}
 	for i, s := range stars {
-		c := white
+		c := starWhite
 		if i%3 == 1 {
 			c = starDim
 		}
@@ -196,7 +206,7 @@ func Hero() string {
 		Layer{Grid: sparkle(cyan), X: 18, Y: 30, Class: "twinkle"},
 		Layer{Grid: sparkle(cyan), X: 112, Y: 50, Class: "twinkle c"},
 		Layer{Grid: sparkle(starGold), X: 170, Y: 32, Class: "twinkle"},
-		Layer{Grid: sparkle(white), X: 38, Y: 58, Class: "twinkle c"},
+		Layer{Grid: sparkle(starWhite), X: 38, Y: 58, Class: "twinkle c"},
 	)
 
 	moon := Planet{R: 7, Outline: "#3A3E7A", Light: "#B4B8EA", Base: "#8C8FD0", Shade: "#5E62A8",

@@ -60,8 +60,8 @@ templ Hero(s Shell) {
 				</a>
 			</div>
 		</div>
-		<div class="hero__art">
-			<img class="scene pixel-sprite" src={ s.Assets.Art("hero") } alt="" width="720" height="336"/>
+		<div class="hero__art" data-ignore-morph>
+			@Art(s.Assets, "hero", "scene pixel-sprite")
 			<p class="hero__motto" aria-hidden="true">Build<br/>Share<br/>Launch<br/>Together</p>
 			<a class="badge-datastar sb-pixel-frame" href="https://data-star.dev">
 				<span>Powered by <b>Datastar</b></span>

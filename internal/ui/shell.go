@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
 
@@ -20,6 +21,9 @@ type Assets interface {
 	Components() string        // module that loads every community component
 	Datastar() string          // the vendored datastar-rocket bundle
 	AutoTheme() string         // CSS: the light theme for "auto" on light systems
+	// ArtSVG is a pixel art illustration as inline SVG markup, so its
+	// theme-aware colours (--sb-art-*) follow the page's theme.
+	ArtSVG(name string) string
 }
 
 // Shell is the page chrome around a view.
@@ -147,4 +151,13 @@ func siteThemes() string {
 	}
 	b, _ := json.Marshal(names)
 	return string(b)
+}
+
+// Art inlines a pixel art illustration: decorative, with the given classes,
+// stretched to its box like an <img> (preserveAspectRatio="none").
+func Art(a Assets, name, class string) templ.Component {
+	svg := a.ArtSVG(name)
+	svg = strings.Replace(svg, `<svg xmlns="http://www.w3.org/2000/svg" class="px-art"`,
+		`<svg xmlns="http://www.w3.org/2000/svg" class="px-art `+class+`" aria-hidden="true" focusable="false" preserveAspectRatio="none"`, 1)
+	return templ.Raw(svg)
 }

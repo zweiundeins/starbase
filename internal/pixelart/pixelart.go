@@ -94,7 +94,7 @@ type Layer struct {
 // <style> element (animations work even when the SVG is used via <img>).
 func SVG(w, h int, css string, layers ...Layer) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%d" height="%d" shape-rendering="crispEdges">`, w, h, w*4, h*4)
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" class="px-art" viewBox="0 0 %d %d" width="%d" height="%d" shape-rendering="crispEdges">`, w, h, w*4, h*4)
 	if css != "" {
 		b.WriteString("<style>" + css + "</style>")
 	}
@@ -135,7 +135,11 @@ func writeRuns(b *strings.Builder, g Grid, ox, oy int) {
 		}
 	}
 	for _, c := range order {
-		fmt.Fprintf(b, `<g fill="%s">`, c)
+		if strings.HasPrefix(c, "var(") {
+			fmt.Fprintf(b, `<g style="fill:%s">`, c) // a theme token (see art.go)
+		} else {
+			fmt.Fprintf(b, `<g fill="%s">`, c)
+		}
 		for _, r := range byColor[c] {
 			fmt.Fprintf(b, `<rect x="%d" y="%d" width="%d" height="1"/>`, r.x+ox, r.y+oy, r.w)
 		}

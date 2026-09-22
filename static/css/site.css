@@ -408,7 +408,7 @@
 		font-size: var(--sb-font-size-5);
 		line-height: 1.15;
 		letter-spacing: var(--sb-letter-spacing-caps);
-		color: var(--sb-violet-3, var(--sb-brand-light));
+		color: var(--sb-brand-light);
 		text-transform: uppercase;
 
 		&::after {

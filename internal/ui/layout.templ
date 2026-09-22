@@ -63,7 +63,7 @@ templ Header(s Shell) {
 	<header class="site-header">
 		<div class="wrap site-header__inner">
 			<a class="brand" href="/" aria-label="Starbase, community components for Rocket: home">
-				<img class="pixel-sprite" src={ s.Assets.Art("logo") } alt="" width="56" height="96"/>
+				@Art(s.Assets, "logo", "pixel-sprite")
 				<span>
 					<span class="brand__word">STARBASE</span>
 					<span class="brand__tag">Community Components<br/>{ "for Rocket" }</span>

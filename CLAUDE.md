@@ -29,6 +29,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - Bindable components must adopt a property set before upgrade (`data-bind` writes `host.value` early): read and delete the own data property in `setup` (see `early()` in `components/slider/slider.js`).
 - Form-like components (value/checked) follow native dirty semantics: the attribute is only the default; after an edit or a property write (`$$dirty`), attribute changes are ignored. Otherwise a morph that removes a reflected `value` attribute wipes the live value.
 - Hosts whose attributes are driven by signals (`data-attr:x=...`) need `data-preserve-attr="x ..."`: the morph resets every attribute to the server markup.
+- Pixel art (`internal/pixelart`) is generated SVG. Theme-aware colours are `var(--sb-art-*, #fallback)` (set per theme in `css/themes/showcase.css`; Deep Space uses the fallbacks), which only apply where the SVG is inlined with `ui.Art` (logo, hero). As `<img>`/favicon the fallbacks show. Its CSS is scoped under `.px-art`.
 - `tab_state` is for server-owned UI state (filters, sort, theme). High-frequency, ephemeral demo state (sliders, playgrounds) stays in local `_`-prefixed signals.
 - Component pages render an auto Playground from the manifest (`internal/catalog/playground.go`, `ui.Playground`). It is a `data-ignore-morph` island driven by local `$_pg` signals, tuned by `playground:` front matter.
 - `GET /demo/telemetry` (`internal/web/demo.go`) is a stateless query stream of `$_tm` signal patches for live demos.
