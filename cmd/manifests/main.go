@@ -93,8 +93,15 @@ func run(check bool, chrome string) error {
 		before[p], _ = os.ReadFile(p) // nil if missing
 	}
 
-	cmd := exec.Command(chrome, "--headless=new", "--no-sandbox", "--disable-gpu",
-		"--virtual-time-budget=10000", "--dump-dom", base+"/")
+	// Submitted components run in this browser (the submission bot), so keep
+	// Chrome's sandbox. It can't start as root (e.g. in a container) or where
+	// user namespaces are unavailable; STARBASE_CHROME_NO_SANDBOX=1 turns it
+	// off for such dev machines. CI never sets it.
+	args := []string{"--headless=new", "--disable-gpu", "--virtual-time-budget=10000", "--dump-dom", base + "/"}
+	if os.Geteuid() == 0 || os.Getenv("STARBASE_CHROME_NO_SANDBOX") == "1" {
+		args = append([]string{"--no-sandbox"}, args...)
+	}
+	cmd := exec.Command(chrome, args...)
 	cmd.Stdout = io.Discard
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -17,11 +17,12 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Generated templ code is committed
@@ -32,17 +33,22 @@ jobs:
         run: go vet ./... && go vet -tags dev ./...
       - name: Test
         run: go test -race ./...
+      - name: Let Chrome use its sandbox
+        # Ubuntu 24.04 restricts unprivileged user namespaces, which Chrome's
+        # sandbox needs; without this it would have to run with --no-sandbox.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Component manifests are up to date (headless Chrome)
         run: go run -tags dev ./cmd/manifests --check
 
   vulncheck:
     name: govulncheck
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: govulncheck
@@ -51,6 +57,7 @@ jobs:
   build:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -61,10 +68,10 @@ jobs:
           - { goos: darwin, goarch: arm64 }
           - { goos: windows, goarch: amd64 }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Build (pure Go, no cgo)
@@ -77,13 +84,14 @@ jobs:
   image:
     name: Container image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build (linux/amd64, linux/arm64; not pushed)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64

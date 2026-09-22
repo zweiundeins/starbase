@@ -25,6 +25,7 @@ jobs:
   build:
     if: contains(github.event.issue.labels.*.name, 'new-component') && github.event.issue.state == 'open'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     outputs:
@@ -32,10 +33,10 @@ jobs:
       tag: ${{ steps.build.outputs.tag }}
       name: ${{ steps.build.outputs.name }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Build component folder from the issue form
@@ -45,13 +46,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }} # read-only; raises the API limit for source repos
           STARBASE_URL: ${{ vars.STARBASE_URL }} # playground links are only imported from here
+      - name: Let Chrome use its sandbox
+        # Ubuntu 24.04 restricts unprivileged user namespaces, which Chrome's
+        # sandbox needs; without this it would have to run with --no-sandbox.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Generate manifest in headless Chrome
         run: go run -tags dev ./cmd/manifests
       - name: Validate
         run: go test ./internal/catalog/ ./internal/submission/
       - name: Keep the result
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: submission
           path: |
@@ -64,13 +69,14 @@ jobs:
   pull-request:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
       pull-requests: write
       issues: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: submission
           path: .submission
@@ -80,8 +86,14 @@ jobs:
           AUTHOR: ${{ github.event.issue.user.login }}
           ISSUE: ${{ github.event.issue.number }}
         run: |
+          # Never trust the build job's outputs blindly (it ran submitted code):
+          # a valid slug, and only regular files of the expected kinds.
+          [[ "$SLUG" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] || { echo "::error::bad slug"; exit 1; }
+          src=".submission/components/$SLUG"
+          if [ -n "$(find "$src" ! -type f ! -type d)" ]; then echo "::error::unexpected non-regular files"; exit 1; fi
           rm -rf "components/$SLUG"
-          cp -r ".submission/components/$SLUG" "components/$SLUG"
+          (cd "$src" && find . -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.md' -o -name '*.json' \) -print0) |
+            while IFS= read -r -d '' f; do install -D -m 644 "$src/$f" "components/$SLUG/$f"; done
           {
             echo "Submitted by @$AUTHOR in #$ISSUE. Generated from the issue form: validated, with its manifest generated in headless Chrome. The bot comments a playground preview link for every revision."
             echo
@@ -99,7 +111,7 @@ jobs:
           rm -rf .submission
       - name: Open or update the pull request
         id: pr
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: component/${{ needs.build.outputs.slug }}
           add-paths: components/${{ needs.build.outputs.slug }}
@@ -138,10 +150,11 @@ jobs:
     needs: [build, pull-request]
     if: failure()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       issues: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         continue-on-error: true
         with:
           name: submission

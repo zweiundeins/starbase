@@ -1,0 +1,7 @@
+# Changes to these paths need a code owner's approval (enforced by the
+# main branch ruleset). Vendored third-party code, CI/CD and the deploy
+# tooling can compromise every site that uses Starbase components.
+/.github/                    @mbolli
+/deploy/                     @mbolli
+/components/**/vendor/       @mbolli
+/components/**/vendor.json   @mbolli

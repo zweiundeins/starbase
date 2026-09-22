@@ -72,8 +72,9 @@ func FetchSnippet(ctx context.Context, client *http.Client, site, link string) (
 var repoURLRe = regexp.MustCompile(`^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:/tree/([^/]+)(?:/(.*?))?)?/?$`)
 
 const (
-	maxTarball = 25 << 20
+	maxTarball = 25 << 20 // compressed
 	maxFile    = maxVendorFile
+	maxRead    = 64 << 20 // uncompressed bytes kept from the archive, in total
 )
 
 // Fetch downloads a public GitHub repository (or a folder of it) through the
@@ -114,6 +115,7 @@ func Fetch(ctx context.Context, client *http.Client, apiBase, token, repoURL str
 	tr := tar.NewReader(gz)
 	files := map[string]string{} // repo-relative path → contents (.js and README.md only)
 	sha := ""
+	read := 0
 	for {
 		h, err := tr.Next()
 		if errors.Is(err, io.EOF) {
@@ -142,6 +144,9 @@ func Fetch(ctx context.Context, client *http.Client, apiBase, token, repoURL str
 		b, err := io.ReadAll(io.LimitReader(tr, maxFile))
 		if err != nil {
 			return Source{}, err
+		}
+		if read += len(b); read > maxRead {
+			return Source{}, fmt.Errorf("the repository has more than %d MB of JavaScript. Link the component's folder instead", maxRead>>20)
 		}
 		files[rel] = string(b)
 	}

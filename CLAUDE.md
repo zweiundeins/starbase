@@ -6,7 +6,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 - `go tool task live`: dev server (air, `-tags dev`, live reload via `/dev/reload`)
 - `go tool task test`: `go vet` + `go test ./...`. Run `go tool templ generate` after editing `.templ` (the `_templ.go` files are committed).
 - `go tool task new -- <slug> --category <cat>`: scaffold a component
-- `go tool task manifests`: regenerate all `manifest.json` in headless Chrome (`cmd/manifests`, runs the app in-process); `--check` in CI
+- `go tool task manifests`: regenerate all `manifest.json` in headless Chrome (`cmd/manifests`, runs the app in-process); `--check` in CI. Chrome keeps its sandbox (submitted code runs there); on machines without one, set `STARBASE_CHROME_NO_SANDBOX=1` (never in CI).
 
 ## Deploy
 - `deploy/`: host files (systemd unit, env, Caddy snippet), `starbase-deploy` (root; verifies, restarts, checks `/healthz`, rolls back) and `setup-host.sh` (the restricted `starbase-deploy` user with a forced-command key). `.github/workflows/deploy.yml` runs after CI on `main`, gated by the repository variable `DEPLOY_HOST`.
