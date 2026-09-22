@@ -74,6 +74,10 @@ Rocket renders **synchronously in `connectedCallback`**: it runs `setup` and the
    outer call is still using. The outer call's next `moveBefore` out of the detached
    pantry throws `HierarchyRequestError`. The nested call also clears the outer call's
    id maps (`ctxIdMap.clear()`, `ctxPersistentIds.clear()`).
+5. The failure outlives the patch: the pantry ends up detached with a parked Rocket
+   element still inside. The next `morph` anywhere on the page (even on plain elements)
+   re-inserts it first, reconnects that element, overflows again and never applies its
+   own patch. Click "swap (Rocket)", then "swap (plain)": the plain items don't swap.
 
 ## Fix that works
 
