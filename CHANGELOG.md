@@ -6,10 +6,6 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
-
-- `sb-theme-switch`: auto, dark or light (or any themes), as radio buttons, a select or a header menu. It remembers the choice in a cookie, so the server can render the theme before the first paint (no flash). The Starbase header uses it for the site's own themes, with "auto" following the system (Deep Space or Daylight).
-
 ### Security
 
 - Vendored libraries are verified: `vendor.json` names each file's npm release, and the bot checks it byte for byte against the registry-verified tarball. Minified code that can't be verified is refused.
@@ -20,6 +16,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `sb-theme-switch`: auto, dark or light (or any themes), as radio buttons, a select or a header menu. It remembers the choice in a cookie, so the server can render the theme before the first paint (no flash). The Starbase header uses it for the site's own themes, with "auto" following the system (Deep Space or Daylight).
 - Continuous deployment: after CI passes on `main`, the Deploy workflow ships the binary over a single-purpose SSH key to `starbase-deploy`, which verifies it, checks `/healthz` and rolls back if the new version isn't healthy. The unit, env and Caddy files are in `deploy/`.
 - Vendored libraries: a submission from a repository brings along every file the component imports relatively (up to 2 MB each), listed with its license banner in the PR. Imports are now checked strictly: `'datastar'` or files in the component's folder, never URLs or bare packages.
 - `sb-nebula`, a WebGL nebula in dithered pixels: the first component that came in through the submission bot.
