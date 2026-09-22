@@ -112,11 +112,12 @@ Every open tab keeps one long-lived SSE connection (its render stream). Over HTT
 
 | Variable | Default | |
 |---|---|---|
-| `ADDR` | `:7331` | listen address |
+| `ADDR` | `:7331` | listen address, or `unix:/path/to.sock` for a Unix socket |
 | `BASE_URL` | `http://localhost:7331` | public origin (OAuth callback, CSRF origin, `__Host-` cookies on https) |
 | `DB_PATH` | `data/starbase.db` | SQLite file |
 | `REPO_URL` | `https://github.com/zweiundeins/starbase` | "Edit on GitHub" links |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | | GitHub OAuth app; callback `$BASE_URL/auth/github/callback` |
+| `GITHUB_TOKEN` | | optional read-only token for pull request preview checks (API rate limit) |
 
 ## Project
 

@@ -4,9 +4,9 @@
 
 On the server, [`starbase-deploy`](starbase-deploy):
 
-1. checks it's an ELF binary that reports a version (it runs `--version` as the unprivileged `starbase` user, never as root)
+1. checks it's an ELF binary that reports a version. It runs `--version` via `systemd-run` as the unprivileged `starbase` user, never as root, with no network, a read-only system and a 10 s limit.
 2. swaps it into `/opt/starbase/starbase` and restarts the `starbase` unit
-3. waits up to 30 s for `/healthz` to answer `ok <new version>`
+3. waits up to 30 s for `/healthz` to answer `ok <new version>` (over the Unix socket)
 4. if that fails, puts the running binary back and exits non-zero, so the workflow fails
 
 The last good binary is kept as `starbase.prev`. `sudo starbase-deploy rollback` switches to it.
@@ -25,7 +25,7 @@ That means no shell, no port forwarding, and no other commands. Sudo allows exac
 
 **0. The service itself** (skip it if Starbase already runs there). The files are in this folder:
 
-- [`starbase.service`](starbase.service): the systemd unit. It runs as the `starbase` user, capped at 384 MB, and can only write `/var/lib/starbase`.
+- [`starbase.service`](starbase.service): the systemd unit. It runs as the `starbase` user, capped at 384 MB, and can only write `/var/lib/starbase`. It listens on a Unix socket and is denied all of localhost (`IPAddressDeny=localhost`, except the DNS stub). On a shared host, that keeps it away from other services' local ports, such as Caddy's admin API.
 - [`starbase.env.example`](starbase.env.example): its environment, installed as `/etc/starbase/starbase.env`.
 - [`Caddyfile.snippet`](Caddyfile.snippet): the TLS reverse proxy (HTTP/2, no buffering for the render streams).
 

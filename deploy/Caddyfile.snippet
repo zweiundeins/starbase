@@ -1,6 +1,7 @@
 # --- Starbase (github.com/zweiundeins/starbase): community components for
-# Rocket, until it moves to its own domain. Separate systemd unit (starbase),
-# loopback :7331. The app compresses its own SSE streams, so no `encode`. ---
+# Rocket. Separate systemd unit (starbase) behind a Unix socket, so the
+# service itself can't reach anything on localhost. The app compresses its
+# own SSE streams, so no `encode`. ---
 rocket.libretto.ch {
 	log {
 		output file /var/log/caddy/starbase-access.log {
@@ -11,7 +12,7 @@ rocket.libretto.ch {
 		format json
 	}
 
-	reverse_proxy localhost:7331 {
+	reverse_proxy unix//run/starbase/starbase.sock {
 		header_up X-Real-IP {http.request.remote.host}
 		flush_interval -1
 	}

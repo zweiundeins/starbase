@@ -1,7 +1,7 @@
 # /etc/systemd/system/starbase.service
 [Unit]
-Description=Starbase (community components for Rocket), rocket.libretto.ch
-Documentation=https://github.com/zweiundeins/starbase
+Description=Starbase (community components for Rocket)
+Documentation=https://github.com/zweiundeins/starbase/tree/main/deploy
 After=network-online.target
 Wants=network-online.target
 
@@ -17,16 +17,48 @@ TimeoutStopSec=15
 Restart=on-failure
 RestartSec=2
 
+# Caddy reaches Starbase through a Unix socket (ADDR=unix:/run/starbase/starbase.sock),
+# so the service needs no access to localhost at all. That matters on a shared
+# host: other services listen there (Caddy's admin API, internal app ports,
+# monitoring). DNS goes through systemd-resolved's stub, which stays allowed.
+RuntimeDirectory=starbase
+RuntimeDirectoryMode=0755
+IPAddressDeny=localhost
+IPAddressAllow=127.0.0.53 127.0.0.54
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
 # Public and unauthenticated (pixel board, playground): keep it well away
-# from the Libretto services' memory.
+# from the other services' memory.
 MemoryHigh=256M
 MemoryMax=384M
+TasksMax=256
 
+# Hardening: the only path it writes is its data dir.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+PrivateDevices=true
 ReadWritePaths=/var/lib/starbase
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

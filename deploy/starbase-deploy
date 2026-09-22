@@ -14,19 +14,33 @@ set -euo pipefail
 
 DIR=/opt/starbase
 UNIT=starbase
-URL=http://127.0.0.1:7331/healthz
+SOCK=/run/starbase/starbase.sock # ADDR=unix:… (see starbase.service)
+TCP=http://127.0.0.1:7331          # the older TCP setup
 HEALTH_TIMEOUT=30
 MAX_BYTES=$((200 << 20))
 
 health() { # waits for /healthz to answer "ok <version>"
 	for ((i = 0; i < HEALTH_TIMEOUT; i++)); do
-		if [[ "$(curl -fsS "$URL" 2>/dev/null)" == "ok $1" ]]; then return 0; fi
+		if [[ -S "$SOCK" ]]; then
+			got=$(curl -fsS --max-time 2 --unix-socket "$SOCK" http://starbase/healthz 2>/dev/null || true)
+		else
+			got=$(curl -fsS --max-time 2 "$TCP/healthz" 2>/dev/null || true)
+		fi
+		if [[ "$got" == "ok $1" ]]; then return 0; fi
 		sleep 1
 	done
 	return 1
 }
 
-version_of() { runuser -u starbase -- "$1" --version | awk '{print $2}'; }
+# The binary is new and unverified: ask it its version as the starbase user,
+# in a sandbox without network or write access, and never wait long.
+version_of() {
+	timeout 20 systemd-run --quiet --pipe --wait --collect \
+		--uid=starbase --gid=starbase -p RuntimeMaxSec=10 \
+		-p PrivateNetwork=yes -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes \
+		-p PrivateDevices=yes -p NoNewPrivileges=yes -p CapabilityBoundingSet= \
+		"$1" --version | awk '{print $2}'
+}
 
 if [[ "${1:-}" == rollback ]]; then
 	[[ -x "$DIR/starbase.prev" ]] || { echo "!! no previous binary" >&2; exit 2; }

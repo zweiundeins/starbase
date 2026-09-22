@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Pure Go (SQLite via modernc.org/sqlite): cross-compile on the build
 # platform, no cgo, no emulation needed for multi-arch images.
-FROM --platform=$BUILDPLATFORM golang:1.27 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.1 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

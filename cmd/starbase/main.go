@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -57,10 +59,14 @@ func run() error {
 		// No WriteTimeout: render streams are long-lived.
 	}
 
+	ln, err := listen(cfg.Addr)
+	if err != nil {
+		return err
+	}
 	errc := make(chan error, 1)
 	go func() {
 		log.Info("listening", "addr", cfg.Addr, "url", cfg.BaseURL, "dev", cfg.Dev)
-		errc <- httpSrv.ListenAndServe()
+		errc <- httpSrv.Serve(ln)
 	}()
 
 	select {
@@ -74,4 +80,25 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return httpSrv.Shutdown(shutdownCtx) // render streams end via ctx
+}
+
+// listen opens addr: host:port, or unix:/path/to.sock for a Unix socket
+// (so the service can run with no access to localhost at all; the reverse
+// proxy connects through the socket).
+func listen(addr string) (net.Listener, error) {
+	path, ok := strings.CutPrefix(addr, "unix:")
+	if !ok {
+		return net.Listen("tcp", addr)
+	}
+	os.Remove(path) // a stale socket from the last run
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		return nil, err
+	}
+	// The proxy runs as another user; the directory's permissions are the gate.
+	if err := os.Chmod(path, 0o666); err != nil {
+		ln.Close()
+		return nil, err
+	}
+	return ln, nil
 }
