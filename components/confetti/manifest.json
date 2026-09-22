@@ -1,0 +1,17 @@
+{
+  "tag": "sb-confetti",
+  "props": [
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Celebrate",
+      "required": false,
+      "docs": {
+        "description": "Button text."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
