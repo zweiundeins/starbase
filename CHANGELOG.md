@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.
+
 ## [0.1.0] - 2026-09-21
 
 The first release: a community gallery of Rocket web components for Datastar.

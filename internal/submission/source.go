@@ -16,7 +16,7 @@ import (
 
 // Source is a component fetched from the contributor's own repository.
 type Source struct {
-	URL      string // pinned: https://github.com/<owner>/<repo>/tree/<sha>/<dir>, or a playground link
+	URL      string // pinned: https://github.com/<owner>/<repo>/tree/<sha>/<dir>; empty for playground snippets
 	CodeFile string // path of the component file inside the repo
 	Code     string
 	Readme   string // README.md next to the component file, if any
@@ -61,7 +61,9 @@ func FetchSnippet(ctx context.Context, client *http.Client, site, link string) (
 	if n := len(tagInCodeRe.FindAllString(code, -1)); n != 1 {
 		return Source{}, fmt.Errorf("the snippet's component.js must define exactly one component with `rocket('sb-…')` (found %d)", n)
 	}
-	return Source{URL: m[0], CodeFile: "component.js", Code: code, Examples: sn.Files["index.html"]}, nil
+	// No URL: `source:` is the component's repository, and a snippet has
+	// none (the issue keeps the playground link).
+	return Source{CodeFile: "component.js", Code: code, Examples: sn.Files["index.html"]}, nil
 }
 
 var repoURLRe = regexp.MustCompile(`^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:/tree/([^/]+)(?:/(.*?))?)?/?$`)

@@ -10,9 +10,11 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"gopkg.in/yaml.v3"
 
+	"starbase/internal/catalog"
 	"starbase/internal/submission"
 )
 
@@ -108,11 +110,19 @@ func TestFetchSnippet(t *testing.T) {
 	}
 	sub := submission.Submission{Name: "Orbit Picker", Category: "forms", Summary: "Spins.", Licensed: true, Docs: submission.DocsTemplate}
 	sub.Apply(src)
-	if sub.Preview != "<sb-orbit-picker></sb-orbit-picker>" || strings.Count(sub.Docs, "```html preview") != 2 || sub.Source != link {
+	if sub.Preview != "<sb-orbit-picker></sb-orbit-picker>" || strings.Count(sub.Docs, "```html preview") != 2 || sub.Source != "" {
 		t.Fatalf("applied = %+v", sub)
 	}
-	if _, err := sub.Build("you", timeNow()); err != nil {
+	res, err := sub.Build("you", timeNow())
+	if err != nil {
 		t.Fatal(err)
+	}
+	fsys := fstest.MapFS{}
+	for name, data := range res.Files {
+		fsys[res.Slug+"/"+name] = &fstest.MapFile{Data: data}
+	}
+	if _, err := catalog.Load(fsys); err != nil {
+		t.Fatalf("generated folder is invalid: %v", err)
 	}
 }
 
