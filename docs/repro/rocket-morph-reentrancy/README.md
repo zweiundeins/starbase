@@ -1,5 +1,7 @@
 # Morph re-entrancy with Rocket components
 
+Upstream: [starfederation/datastar#1209](https://github.com/starfederation/datastar/issues/1209).
+
 **Datastar v1.0.4 + Rocket beta.2** (`bundles/datastar-rocket.js`), Chromium 14x.
 
 ## Reproduce
