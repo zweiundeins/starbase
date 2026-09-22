@@ -15,10 +15,6 @@ All notable changes to this project are documented here. The format follows
 - The logo and the hero scene follow the site theme: they are inlined as SVG, and their themeable colours (brand stripes, planet, stars, smoke) are `--sb-art-*` tokens. As standalone files (favicon) they keep the original colours.
 - GitHub Actions updated to their Node 24 (LTS) majors.
 
-### Fixed
-
-- Playground: the preview theme picker applied the previous choice (the run started before the binding updated).
-
 ### Security
 
 - Versioned, immutable component URLs (`/c/<slug>@<hash>/…`) and catalog snapshots (`/c/@<catalog>/autoloader.js`), with SHA-384 integrity for every file (`/c/@<catalog>/importmap.json`). Sites can pin exactly what they reviewed; browsers refuse any file that changed. Old versions keep working after later deploys.
@@ -39,6 +35,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Playground: the preview theme picker applied the previous choice (the run started before the binding updated).
 - The playground can run components that import their own files (e.g. `sb-code-editor` and its vendored Prism): relative imports resolve against the component's folder.
 - Submissions from a playground link failed validation: the link was recorded as the component's `source:`, which must be a GitHub repository.
 
