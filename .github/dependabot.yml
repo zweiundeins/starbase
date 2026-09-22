@@ -1,5 +1,6 @@
-# Keeps the SHA-pinned actions and the Go modules current. Updates arrive
-# as pull requests, so they go through CI and review like any change.
+# Keeps the SHA-pinned actions, the Go modules and the container base image
+# current. Updates arrive as pull requests, so they go through CI and review
+# like any change.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -15,4 +16,11 @@ updates:
       interval: weekly
     groups:
       go:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      docker:
         patterns: ["*"]

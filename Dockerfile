@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
 	go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/starbase ./cmd/starbase \
 	&& mkdir -p /out/data
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /out/starbase /starbase
 COPY --from=build --chown=65532:65532 /out/data /data
 ENV ADDR=:7331 DB_PATH=/data/starbase.db

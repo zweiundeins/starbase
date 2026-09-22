@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Dependencies updated (brotli 1.2.4, x/text 0.42), the container base image moved to distroless Debian 13, and Dependabot now watches the Dockerfile as well as the actions and Go modules.
+
 ### Changed
 
 - Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
