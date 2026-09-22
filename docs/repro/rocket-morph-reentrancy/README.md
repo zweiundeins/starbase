@@ -16,14 +16,16 @@ It is visible only in devtools: with the stack exhausted, no `error` or `unhandl
 listener can run, so the failure is silent to the page itself:
 
 ```
-at Qt                         ← morph
-at #w                         ← Rocket render (morphs into its shadow root)
+at morph                      ← plugins/watchers/patchElements.ts
+at #render                    ← rocket/runtime.ts (morphs into its shadow root)
 at HTMLElement.connectedCallback
-at Qt
-at #w
+at morph
+at #render
 at HTMLElement.connectedCallback
 …
 ```
+
+(Source names; the minified bundle shows `Qt` / `#w`.)
 
 With more elements (reorders plus inserts and removals in one patch) there are also
 `HierarchyRequestError: Failed to execute 'moveBefore' on 'Element': State-preserving
@@ -41,44 +43,71 @@ the morph aborts halfway, leaving the DOM out of sync with the patch.
 
 ## Cause
 
-The morph (`Qt`, the `outer`/`inner` patch path) keeps **module-global state**: the
-pantry element `yt`, where id-matched nodes are parked while siblings are
-reordered, and the id maps `z`, `Le`, `$e`, `ze`. Each call does:
+Source: `library/src/plugins/watchers/patchElements.ts` and `library/src/rocket/runtime.ts`,
+unchanged on `main` as of v1.0.4.
 
-```js
-R.body.insertAdjacentElement("afterend", yt)   // start: (re)insert the pantry
-…                                               // park/move id-matched nodes via yt
-yt.remove()                                     // end
+`morph()` keeps **module-level state**: the pantry `ctxPantry`, where id-matched nodes are
+parked while siblings are reordered, and the id maps `ctxIdMap`, `ctxPersistentIds`,
+`oldIdTagNameMap` and `duplicateIds`. Each call does:
+
+```ts
+export const morph = (oldElt, newContent, mode = 'outer') => {
+  …
+  DOCUMENT.body.insertAdjacentElement('afterend', ctxPantry)  // start: (re)insert the pantry
+  …                                                           // fill the id maps, clear them
+  morphChildren(…)                                            // park/move id-matched nodes via ctxPantry
+  ctxPantry.remove()                                          // end
+}
 ```
 
-Rocket renders **synchronously in `connectedCallback`**, and that render is itself a
-morph into the shadow root (`#w → Qt(this.#t, g, "inner")`). So:
+Rocket renders **synchronously in `connectedCallback`**: it runs `setup` and then
+`this.#render({})`, and `#render` ends in `morph(this.#mountRoot!, fragment, 'inner')`. So:
 
-1. The outer morph parks `<p id="a">…<x-item>` in `yt`.
+1. The outer `morph` parks `<p id="a">…<x-item>` in `ctxPantry`.
 2. Moving it back into the list connects `<x-item>`, and its `connectedCallback`
-   starts a **nested** `Qt`.
-3. The nested `Qt` re-inserts `yt` with `insertAdjacentElement`. That is a move of
-   the pantry *with the parked `<x-item>` still inside*, which disconnects and
+   starts a **nested** `morph`.
+3. The nested `morph` re-inserts `ctxPantry` with `insertAdjacentElement`. That is a move
+   of the pantry *with the parked `<x-item>` still inside*, which disconnects and
    reconnects it, so `connectedCallback` runs again and goes back to step 2.
    The recursion never ends.
-4. When a nested call does finish, its `yt.remove()` detaches the pantry that the
-   outer call is still using. The outer call's next `moveBefore` out of the
-   detached pantry throws `HierarchyRequestError`. The nested call also clears the
-   outer call's id maps.
+4. When a nested call does finish, its `ctxPantry.remove()` detaches the pantry that the
+   outer call is still using. The outer call's next `moveBefore` out of the detached
+   pantry throws `HierarchyRequestError`. The nested call also clears the outer call's
+   id maps (`ctxIdMap.clear()`, `ctxPersistentIds.clear()`).
 
 ## Fix that works
 
-Make the pantry lifecycle re-entrant: only the outermost morph inserts and removes
-it. In the minified v1.0.4 bundle, that is three edits:
+Make the pantry lifecycle re-entrant: only the outermost `morph` inserts and removes it.
 
 ```diff
--var Ze=B("ignore-morph")
-+var Qd=0,Ze=B("ignore-morph")
--o.append(t),R.body.insertAdjacentElement("afterend",yt);
-+o.append(t),Qd++||R.body.insertAdjacentElement("afterend",yt);
--ir(s,o,r==="outer"?e:null,e.nextSibling),yt.remove()},
-+ir(s,o,r==="outer"?e:null,e.nextSibling),--Qd||yt.remove()},
+ const ctxPantry = DOCUMENT.createElement('div')
+ ctxPantry.hidden = true
++let morphDepth = 0
+
+ export const morph = (…): void => {
+   …
+   const normalizedElt = DOCUMENT.createElement('div')
+   normalizedElt.append(newContent)
+-  DOCUMENT.body.insertAdjacentElement('afterend', ctxPantry)
++  if (!morphDepth++) DOCUMENT.body.insertAdjacentElement('afterend', ctxPantry)
++  try {
+   …
+   morphChildren(
+     parent,
+     normalizedElt,
+     mode === 'outer' ? oldElt : null,
+     oldElt.nextSibling,
+   )
+-
+-  ctxPantry.remove()
++  } finally {
++    if (!--morphDepth) ctxPantry.remove()
++  }
+ }
 ```
+
+The `try`/`finally` keeps an exception from leaving the counter raised. The fuzz test below ran the
+same counter patched into the minified v1.0.4 bundle (without the `try`).
 
 A fuzz test ran 30 random patches, each reordering, adding and dropping 2–9 keyed
 items that contain Rocket elements:
@@ -86,7 +115,7 @@ items that contain Rocket elements:
 | Bundle | exceptions | frames with wrong result |
 |---|---|---|
 | v1.0.4 as shipped | 2444 | 1/30 |
-| guard only the insert (`yt.isConnected \|\| …`) | 3 (`HierarchyRequestError`) | 3/30 |
+| guard only the insert (`ctxPantry.isConnected \|\| …`) | 3 (`HierarchyRequestError`) | 3/30 |
 | depth counter (diff above) | 0 | 0/30 |
 
 A cleaner upstream fix would also scope the id maps per call, or defer Rocket's
