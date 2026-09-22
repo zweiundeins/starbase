@@ -28,7 +28,17 @@
       "default": "Copied!",
       "required": false,
       "docs": {
-        "description": "Label shown after copying."
+        "description": "Shown and announced after copying."
+      }
+    },
+    {
+      "name": "failedLabel",
+      "attribute": "failed-label",
+      "type": "string",
+      "default": "Copy failed",
+      "required": false,
+      "docs": {
+        "description": "Shown and announced when the browser refuses the clipboard (no secure context, permissions policy…)."
       }
     },
     {
@@ -38,7 +48,7 @@
       "default": 1600,
       "required": false,
       "docs": {
-        "description": "How long the copied state lasts, in ms."
+        "description": "How long the copied or failed state lasts, in ms."
       }
     }
   ],
@@ -50,6 +60,13 @@
       "bubbles": true,
       "composed": true,
       "description": "After copying. detail: { value }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-copy-error",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the browser refuses the clipboard write. detail: { value, error } (the error's name, e.g. \"NotAllowedError\")."
     }
   ]
 }

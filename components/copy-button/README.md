@@ -12,7 +12,7 @@ playground:
   values: {value: go run .}
 ---
 
-A small icon button that copies its `value` to the clipboard and confirms with a check mark. Every code block on this site uses it.
+A small icon button that copies its `value` to the clipboard and confirms with a check mark, or says so when the browser refuses. Every code block on this site uses it.
 
 ## Examples
 
@@ -45,6 +45,14 @@ The `sb-copy` event bubbles out of the shadow root, so `data-on` works on any an
 </div>
 ```
 
+### When copying fails
+
+Browsers can refuse the clipboard: outside a secure context (plain `http://`), in an iframe without the `clipboard-write` permission, or when the document isn't focused. The button then shows a cross and `failed-label`, and emits `sb-copy-error` with `{ value, error }` (e.g. `"NotAllowedError"`), so a page can offer another way, like selecting the text:
+
+```html
+<sb-copy-button value="go run ." data-on:sb-copy-error="console.warn('copy refused:', evt.detail.error)"></sb-copy-button>
+```
+
 ## Accessibility
 
-The button has an accessible label (`label`, then `copied-label` after copying). The visual "Copied!" bubble is decorative.
+The button's accessible name is `label`. The result ("Copied!" or "Copy failed") goes to a `role="status"` region next to the button, so screen readers announce it without moving focus. It sits outside the button on purpose: a button's children are presentational, so a live region inside one may never be read out. The same element is the visual tip (`::part(tip)`).

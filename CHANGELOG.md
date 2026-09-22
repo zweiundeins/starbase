@@ -37,6 +37,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-copy-button`: a refused clipboard write (no secure context, no permission, unfocused document) was silently ignored; it now shows "Copy failed" (`failed-label`) and emits `sb-copy-error {value, error}`. The result is announced through a `role="status"` region outside the button, and the tip is readable on light themes.
 - Demo endpoints answer CORS preflights, so components in the playground sandbox (opaque origin) can load demo data with `@get`, e.g. the lazy tree.
 - Playground: the preview theme picker applied the previous choice (the run started before the binding updated).
 - The playground can run components that import their own files (e.g. `sb-code-editor` and its vendored Prism): relative imports resolve against the component's folder.
