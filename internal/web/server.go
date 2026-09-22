@@ -109,6 +109,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /art/{name}", s.assets.serveArt)
 	mux.HandleFunc("GET /c/{path...}", s.serveC)
 	mux.HandleFunc("GET /theme/auto.css", s.assets.serveAutoTheme)
+	mux.HandleFunc("GET /bundle/{name}", s.assets.serveBundle)
 	// Code playground runner (sandboxed iframe page).
 	mux.HandleFunc("GET /playground/run", s.playgroundRun)
 	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)

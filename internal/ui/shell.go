@@ -20,7 +20,7 @@ type Assets interface {
 	Art(name string) string    // generated pixel art (internal/pixelart)
 	Components() string        // module that loads every community component
 	Datastar() string          // the vendored datastar-rocket bundle
-	AutoTheme() string         // CSS: the light theme for "auto" on light systems
+	SiteCSS() string           // all the site's CSS in one file (see web/assets.go)
 	// ArtSVG is a pixel art illustration as inline SVG markup, so its
 	// theme-aware colours (--sb-art-*) follow the page's theme.
 	ArtSVG(name string) string
@@ -61,18 +61,6 @@ var navItems = []navItem{
 	{"showcase", "Showcase", "/showcase"},
 	{"contribute", "Contribute", "/contribute"},
 	{"about", "About", "/about"},
-}
-
-var stylesheets = []string{
-	"css/tokens.css",
-	"css/theme.css",
-	"css/themes/showcase.css",
-	"css/reset.css",
-	"css/base.css",
-	"css/layout.css",
-	"css/site.css",
-	"css/code.css",
-	"css/utilities.css",
 }
 
 func jsString(s string) string {

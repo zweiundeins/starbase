@@ -8,6 +8,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/benbjohnson/hashfs v0.2.2
 	github.com/starfederation/datastar-go v1.2.2
+	github.com/tdewolff/minify/v2 v2.24.17
 	github.com/yuin/goldmark v1.8.6
 	go.abhg.dev/goldmark/frontmatter v0.3.0
 	golang.org/x/oauth2 v0.37.0
@@ -128,7 +129,7 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/tdewolff/parse/v2 v2.8.12 // indirect
+	github.com/tdewolff/parse/v2 v2.8.16 // indirect
 	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/ulikunitz/xz v0.5.16 // indirect

@@ -26,12 +26,9 @@ templ Document(s Shell, body templ.Component) {
 				<meta name="theme-color" content="#080D1D"/>
 			}
 			<link rel="icon" type="image/svg+xml" href={ s.Assets.Art("logo") }/>
-			<link rel="preload" href="/static/fonts/pixelify-sans.woff2" as="font" type="font/woff2" crossorigin/>
-			<link rel="preload" href="/static/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin/>
-			for _, css := range stylesheets {
-				<link rel="stylesheet" href={ s.Assets.Static(css) }/>
-			}
-			<link rel="stylesheet" href={ s.Assets.AutoTheme() }/>
+			<link rel="preload" href={ s.Assets.Static("fonts/pixelify-sans.woff2") } as="font" type="font/woff2" crossorigin/>
+			<link rel="preload" href={ s.Assets.Static("fonts/jetbrains-mono.woff2") } as="font" type="font/woff2" crossorigin/>
+			<link rel="stylesheet" href={ s.Assets.SiteCSS() }/>
 			@templ.Raw(`<script type="importmap" nonce="` + s.Nonce + `">` + importMap(s.Assets) + `</script>`)
 			<script type="module" src={ s.Assets.Datastar() }></script>
 			<script type="module" src={ s.Assets.Components() }></script>

@@ -56,9 +56,7 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 
 	imports, _ := json.Marshal(map[string]any{"imports": map[string]string{"datastar": origin + s.assets.Datastar()}})
 	var css strings.Builder
-	for _, name := range []string{"css/tokens.css", "css/theme.css", "css/themes/showcase.css", "css/reset.css"} {
-		fmt.Fprintf(&css, `<link rel="stylesheet" href="%s">`, html.EscapeString(origin+s.assets.Static(name)))
-	}
+	fmt.Fprintf(&css, `<link rel="stylesheet" href="%s">`, html.EscapeString(origin+s.assets.RunnerCSS()))
 	fmt.Fprintf(w, `<!DOCTYPE html>
 <html lang="en" data-sb-theme="deep-space">
 <head>

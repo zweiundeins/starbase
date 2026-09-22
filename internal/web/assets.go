@@ -4,8 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/tdewolff/minify/v2"
+	mincss "github.com/tdewolff/minify/v2/css"
 	"io/fs"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/benbjohnson/hashfs"
@@ -20,10 +23,11 @@ type assets struct {
 	static      *hashfs.FS
 	art         map[string]generated
 	catalog     *catalog.Catalog
-	components  generated // /c/index.js: imports every component module
-	autoloader  generated // /c/autoloader.js: loads <sb-*> modules on first use
-	autoTheme   generated // /theme/auto.css: daylight's tokens for "auto" on light systems
-	datastarSRI string    // of the vendored bundle, identical to the jsDelivr release
+	components  generated            // /c/index.js: imports every component module
+	autoloader  generated            // /c/autoloader.js: loads <sb-*> modules on first use
+	autoTheme   generated            // /theme/auto.css: daylight's tokens for "auto" on light systems
+	datastarSRI string               // of the vendored bundle, identical to the jsDelivr release
+	bundles     map[string]generated // /bundle/<name>.css: stylesheets in one file, minified
 	dev         bool
 }
 
@@ -54,6 +58,10 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 	a.datastarSRI = catalog.SRI(ds)
 	css := autoThemeCSS(staticFS)
 	a.autoTheme = generated{body: []byte(css), hash: hashOf([]byte(css))}
+	a.bundles = map[string]generated{
+		"site.css":   a.bundleCSS(staticFS, siteStylesheets, css),
+		"runner.css": a.bundleCSS(staticFS, runnerStylesheets, ""),
+	}
 	return a
 }
 
@@ -72,6 +80,64 @@ func autoThemeCSS(staticFS fs.FS) string {
 }
 
 func (a *assets) AutoTheme() string { return "/theme/auto.css?v=" + a.autoTheme.hash }
+
+// The site's stylesheets, in cascade order (they declare their @layer).
+var siteStylesheets = []string{
+	"css/tokens.css",
+	"css/theme.css",
+	"css/themes/showcase.css",
+	"css/reset.css",
+	"css/base.css",
+	"css/layout.css",
+	"css/site.css",
+	"css/code.css",
+	"css/utilities.css",
+}
+
+// The playground runner's: tokens and themes for the components, no chrome.
+var runnerStylesheets = []string{"css/tokens.css", "css/theme.css", "css/themes/showcase.css", "css/reset.css"}
+
+var fontURLRe = regexp.MustCompile(`url\(\s*["']?\.\./fonts/([^"')]+)["']?\s*\)`)
+
+// bundleCSS concatenates stylesheets into one minified file (one request,
+// nothing render-blocking behind it). Font URLs become their hashed,
+// immutable names.
+func (a *assets) bundleCSS(staticFS fs.FS, files []string, extra string) generated {
+	var b strings.Builder
+	for _, f := range files {
+		src, err := fs.ReadFile(staticFS, f)
+		if err != nil {
+			panic("bundle: " + err.Error()) // embedded: a missing file is a build error
+		}
+		b.Write(src)
+		b.WriteByte('\n')
+	}
+	b.WriteString(extra)
+	css := fontURLRe.ReplaceAllStringFunc(b.String(), func(m string) string {
+		return `url("/static/` + a.static.HashName("fonts/"+fontURLRe.FindStringSubmatch(m)[1]) + `")`
+	})
+	m := minify.New()
+	m.AddFunc("text/css", mincss.Minify)
+	if out, err := m.String("text/css", css); err == nil {
+		css = out
+	}
+	return generated{body: []byte(css), hash: hashOf([]byte(css))}
+}
+
+func (a *assets) SiteCSS() string   { return "/bundle/site.css?v=" + a.bundles["site.css"].hash }
+func (a *assets) RunnerCSS() string { return "/bundle/runner.css?v=" + a.bundles["runner.css"].hash }
+
+func (a *assets) serveBundle(w http.ResponseWriter, r *http.Request) {
+	g, ok := a.bundles[r.PathValue("name")]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // the runner's opaque origin loads it
+	a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
+	w.Write(g.body)
+}
 
 func (a *assets) serveAutoTheme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
@@ -118,18 +184,27 @@ func (a *assets) serveStatic() http.Handler {
 	h := http.StripPrefix("/static/", hashfs.FileServer(a.static))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		if a.dev {
-			w = noStoreWriter{w}
+		switch _, hash := hashfs.ParseName(strings.TrimPrefix(r.URL.Path, "/static/")); {
+		case a.dev:
+			w = cacheWriter{w, "no-store"}
+		case hash != "":
+			w = cacheWriter{w, immutable} // the name changes with the content
 		}
 		h.ServeHTTP(w, r)
 	})
 }
 
-// noStoreWriter overrides hashfs's immutable caching in development.
-type noStoreWriter struct{ http.ResponseWriter }
+// cacheWriter overrides hashfs's Cache-Control: no-store in development,
+// immutable for content-hashed names.
+type cacheWriter struct {
+	http.ResponseWriter
+	value string
+}
 
-func (w noStoreWriter) WriteHeader(code int) {
-	w.Header().Set("Cache-Control", "no-store")
+func (w cacheWriter) WriteHeader(code int) {
+	if code == http.StatusOK {
+		w.Header().Set("Cache-Control", w.value)
+	}
 	w.ResponseWriter.WriteHeader(code)
 }
 
