@@ -1,0 +1,63 @@
+{
+  "tag": "sb-qr-code",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Text or URL to encode."
+      }
+    },
+    {
+      "name": "ecc",
+      "attribute": "ecc",
+      "type": "oneOf",
+      "default": "M",
+      "required": false,
+      "values": [
+        "L",
+        "M",
+        "Q",
+        "H"
+      ],
+      "docs": {
+        "description": "Error correction: L 7%, M 15%, Q 25%, H 30% of the code can be damaged or covered."
+      }
+    },
+    {
+      "name": "border",
+      "attribute": "border",
+      "type": "number",
+      "default": 2,
+      "required": false,
+      "docs": {
+        "description": "Quiet zone around the code, in modules (the standard asks for 4; 2 scans fine on a plain background)."
+      }
+    },
+    {
+      "name": "accent",
+      "attribute": "accent",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Colour the three corner squares with --sb-qr-accent (default: the brand colour)."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Accessible name (default: \"QR code: \" and the value)."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
