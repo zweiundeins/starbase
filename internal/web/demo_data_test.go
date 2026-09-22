@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -31,6 +32,19 @@ func TestDemoDataEndpoints(t *testing.T) {
 	res.Body.Close()
 	if len(items) == 0 || items[0].Label != "Orion" {
 		t.Errorf("search json = %+v", items)
+	}
+	// Datastar's requests accept JSON as well, and must still get a patch.
+	req, _ = http.NewRequest("GET", ts.URL+"/demo/data/search?q=orion", nil)
+	req.Header.Set("Accept", "text/event-stream, application/json")
+	req.Header.Set("Datastar-Request", "true")
+	res, err = c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(b), "datastar-patch-signals") {
+		t.Errorf("a Datastar request got:\n%.200s", b)
 	}
 	if r, _ := get(t, c, ts.URL+"/demo/data/search?q=a&into=x.y"); r.StatusCode != 400 {
 		t.Errorf("a bad signal name = %d, want 400", r.StatusCode)

@@ -23,7 +23,8 @@ import (
 // They answer Datastar requests with a signal patch into the signal named by
 // &into= (default _tree and _found): the top level and search results as a
 // list, children as {"<parent>": [...]} (patches merge, so a lazy tree's
-// branches accumulate). With Accept: application/json, they return the list.
+// branches accumulate). Other clients sending Accept: application/json get
+// the list as JSON.
 // &delay=<ms> (up to 1500) makes loading states visible in demos.
 //
 // Items: {id, value, label, description, icon, kind, lazy}: value is the id
@@ -102,7 +103,8 @@ func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSigna
 			return
 		}
 	}
-	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+	// Datastar's own requests accept JSON too: they always get the patch.
+	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=300")
 		json.NewEncoder(w).Encode(list)
