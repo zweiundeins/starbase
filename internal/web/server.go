@@ -131,6 +131,7 @@ func (s *Server) Handler() http.Handler {
 	h = s.sameOrigin(h)
 	h = s.session(h)
 	h = s.securityHeaders(h)
+	h = compress(h)
 	h = s.logRequests(h)
 	h = s.recoverer(h)
 	return h

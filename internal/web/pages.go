@@ -133,7 +133,7 @@ func (s *Server) document(fn pageFunc) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Vary", "Cookie")
+		w.Header().Add("Vary", "Cookie")
 		if v.Status != 0 {
 			w.WriteHeader(v.Status)
 		}

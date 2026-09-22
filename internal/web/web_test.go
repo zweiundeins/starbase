@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -527,5 +528,34 @@ func TestVersionedURLs(t *testing.T) {
 	}
 	if r, _ := get(t, c, ts.URL+"/c/@"+oldCat.Hash+"/autoloader.js"); r.StatusCode != 200 {
 		t.Errorf("old snapshot = %d", r.StatusCode)
+	}
+}
+
+func TestCompression(t *testing.T) {
+	ts, _ := newServer(t)
+	c := &http.Client{Transport: &http.Transport{DisableCompression: true}} // see the raw encoding
+	for _, tc := range []struct{ path, accept, want string }{
+		{"/", "br, gzip", "br"},
+		{"/", "gzip", "gzip"},
+		{"/", "", ""},
+		{"/c/autoloader.js", "br", "br"},
+		{"/healthz", "br", ""}, // too small to bother
+	} {
+		req, _ := http.NewRequest("GET", ts.URL+tc.path, nil)
+		if tc.accept != "" {
+			req.Header.Set("Accept-Encoding", tc.accept)
+		}
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.Copy(io.Discard, res.Body)
+		res.Body.Close()
+		if got := res.Header.Get("Content-Encoding"); got != tc.want {
+			t.Errorf("%s with %q: encoding %q, want %q", tc.path, tc.accept, got, tc.want)
+		}
+		if tc.want != "" && !slices.Contains(res.Header.Values("Vary"), "Accept-Encoding") {
+			t.Errorf("%s: Vary = %v", tc.path, res.Header.Values("Vary"))
+		}
 	}
 }
