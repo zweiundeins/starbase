@@ -60,7 +60,9 @@ label:hover { color: var(--_active); }
 label:has(:checked) { background: var(--_brand-subtle); color: var(--_active); box-shadow: inset 0 0 0 1px var(--_brand); }
 label:has(:focus-visible) { outline: 2px solid var(--_focus); outline-offset: 1px; }
 input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: inherit; }
-svg { inline-size: 1.05rem; block-size: 1.05rem; flex: none; }
+label { line-height: 1; }
+.icon { display: grid; place-items: center; flex: none; }
+svg { display: block; inline-size: 1.05rem; block-size: 1.05rem; }
 .compact .text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .compact .iconless .text { position: static; inline-size: auto; block-size: auto; clip-path: none; }
 select {
@@ -167,7 +169,7 @@ rocket('sb-theme-switch', {
 								data-attr:value="o.value"
 								data-effect="el.checked = $$theme === o.value"
 								data-on:change="@pick(); el.closest('[popover]').hidePopover()"/>
-							<span data-show="o.icon" data-effect="el.innerHTML = o.icon"></span>
+							<span class="icon" data-show="o.icon" data-effect="el.innerHTML = o.icon"></span>
 							<span class="text" data-text="o.label"></span>
 						</label>
 					</template>
@@ -190,7 +192,7 @@ rocket('sb-theme-switch', {
 								data-attr:value="o.value"
 								data-effect="el.checked = $$theme === o.value"
 								data-on:change="@pick()"/>
-							<span data-show="o.icon" data-effect="el.innerHTML = o.icon"></span>
+							<span class="icon" data-show="o.icon" data-effect="el.innerHTML = o.icon"></span>
 							<span class="text" data-text="o.label"></span>
 						</label>
 					</template>
