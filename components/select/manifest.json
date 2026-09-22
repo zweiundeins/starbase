@@ -1,0 +1,159 @@
+{
+  "tag": "sb-select",
+  "props": [
+    {
+      "name": "options",
+      "attribute": "options",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Choices: [\"A\", \"B\"] or [{value, label, description?, disabled?}]. Bind it to a signal to update it (e.g. from the server)."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Initial value; for multiple, a JSON array or values separated by commas. Read the live value from the value property."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label."
+      }
+    },
+    {
+      "name": "placeholder",
+      "attribute": "placeholder",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Placeholder text."
+      }
+    },
+    {
+      "name": "multiple",
+      "attribute": "multiple",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Pick several; they show as chips."
+      }
+    },
+    {
+      "name": "searchable",
+      "attribute": "searchable",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Type to filter the options (in the browser)."
+      }
+    },
+    {
+      "name": "remote",
+      "attribute": "remote",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Type to search on the server: emits sb-search; the server answers by updating options."
+      }
+    },
+    {
+      "name": "delay",
+      "attribute": "delay",
+      "type": "number",
+      "default": 250,
+      "required": false,
+      "docs": {
+        "description": "Remote: debounce before sb-search, in ms."
+      }
+    },
+    {
+      "name": "minChars",
+      "attribute": "min-chars",
+      "type": "number",
+      "default": 1,
+      "required": false,
+      "docs": {
+        "description": "Remote: characters needed before searching."
+      }
+    },
+    {
+      "name": "loading",
+      "attribute": "loading",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show that results are on their way (bind it to data-indicator)."
+      }
+    },
+    {
+      "name": "clearable",
+      "attribute": "clearable",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show a button that clears the value."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable the control."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in events."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-search",
+      "bubbles": true,
+      "composed": true,
+      "description": "Remote: the query changed (debounced). detail: { query }. Answer by updating options."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The value changed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The value changed. detail: { name, value } (a string, or an array for multiple)."
+    }
+  ]
+}
