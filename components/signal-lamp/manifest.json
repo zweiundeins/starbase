@@ -1,0 +1,32 @@
+{
+  "tag": "sb-signal-lamp",
+  "props": [
+    {
+      "name": "state",
+      "attribute": "state",
+      "type": "oneOf",
+      "default": "on",
+      "required": false,
+      "values": [
+        "off",
+        "on",
+        "blink"
+      ],
+      "docs": {
+        "description": "Lamp state."
+      }
+    },
+    {
+      "name": "large",
+      "attribute": "large",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Double size."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
