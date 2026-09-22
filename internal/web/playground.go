@@ -1,8 +1,10 @@
 package web
 
 import (
+	"cmp"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io/fs"
@@ -188,6 +190,15 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		if c, ok := s.catalog.Get(sn.Component); ok {
 			v.Component, v.ComponentName = c.Slug, c.Name
 		}
+	} else if ref := q.Get("preview"); ref != "" {
+		p, err := s.previews.get(rc.ctx, ref)
+		if errors.Is(err, errNoPreview) {
+			return view{}, errNotFound
+		} else if err != nil {
+			return view{}, err
+		}
+		files = p.Files
+		v.Preview = cmp.Or(p.Name, "This component")
 	} else if slug := q.Get("component"); slug != "" {
 		comp, ok := s.catalog.Get(slug)
 		if !ok {
@@ -203,8 +214,8 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	initial, _ := json.Marshal(files)
 	v.Initial = string(initial)
 	title := "Playground · Starbase"
-	if v.ComponentName != "" {
-		title = v.ComponentName + " in the playground · Starbase"
+	if name := cmp.Or(v.ComponentName, v.Preview); name != "" {
+		title = name + " in the playground · Starbase"
 	}
 	if v.Share == "" {
 		v.Share = v.Loaded

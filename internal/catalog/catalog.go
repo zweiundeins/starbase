@@ -150,9 +150,7 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 		return nil, fmt.Errorf("README.md: %w", err)
 	}
 	c.Headings = headings(c.DocHTML)
-	for _, m := range previewRe.FindAllStringSubmatch(string(readme), -1) {
-		c.Examples = append(c.Examples, strings.TrimRight(m[1], "\n"))
-	}
+	c.Examples = Examples(readme)
 	js, err := fs.ReadFile(fsys, c.Script)
 	if err != nil {
 		return nil, fmt.Errorf("missing %s.js", slug)
@@ -220,6 +218,15 @@ type Heading struct{ ID, Text string }
 
 var previewRe = regexp.MustCompile("(?s)```html preview\n(.*?)```")
 
+// Examples returns the bodies of a README's ```html preview blocks.
+func Examples(readme []byte) []string {
+	var out []string
+	for _, m := range previewRe.FindAllStringSubmatch(string(readme), -1) {
+		out = append(out, strings.TrimRight(m[1], "\n"))
+	}
+	return out
+}
+
 var h2Re = regexp.MustCompile(`<h2 id="([^"]+)">(.*?)</h2>`)
 var tagStrip = regexp.MustCompile(`<[^>]+>`)
 
@@ -230,3 +237,6 @@ func headings(html string) []Heading {
 	}
 	return hs
 }
+
+// ValidSlug reports whether s is a valid component folder name.
+func ValidSlug(s string) bool { return slugRe.MatchString(s) }

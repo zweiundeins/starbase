@@ -41,7 +41,7 @@ jobs:
       - name: Build component folder from the issue form
         id: build
         # The issue is read from $GITHUB_EVENT_PATH, never interpolated here.
-        run: go run ./cmd/fromissue --report report.md
+        run: go run ./cmd/fromissue --report report.md --similar similar.md
         env:
           GITHUB_TOKEN: ${{ github.token }} # read-only; raises the API limit for source repos
           STARBASE_URL: ${{ vars.STARBASE_URL }} # playground links are only imported from here
@@ -56,6 +56,7 @@ jobs:
           name: submission
           path: |
             report.md
+            similar.md
             components/${{ steps.build.outputs.slug || 'none' }}/
           if-no-files-found: ignore
           retention-days: 3
@@ -73,12 +74,30 @@ jobs:
         with:
           name: submission
           path: .submission
-      - name: Copy the generated folder
+      - name: Copy the generated folder and write the PR body
         env:
           SLUG: ${{ needs.build.outputs.slug }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE: ${{ github.event.issue.number }}
         run: |
           rm -rf "components/$SLUG"
           cp -r ".submission/components/$SLUG" "components/$SLUG"
+          {
+            echo "Submitted by @$AUTHOR in #$ISSUE. Generated from the issue form: validated, with its manifest generated in headless Chrome. The bot comments a playground preview link for every revision."
+            echo
+            echo "### Similar components"
+            echo
+            cat .submission/similar.md 2>/dev/null || echo "Not computed."
+            echo
+            echo "### Review checklist"
+            echo
+            echo "- [ ] Not a duplicate of an existing component (see above)"
+            echo "- [ ] Works in the playground preview, and looks right in every theme there"
+            echo "- [ ] Docs examples work, Playground makes sense"
+            echo "- [ ] No network access, no imports beyond \`datastar\`"
+            echo
+            echo "Closes #$ISSUE"
+          } > "$RUNNER_TEMP/body.md"
           rm -rf .submission
       - name: Open or update the pull request
         id: pr
@@ -90,28 +109,31 @@ jobs:
           author: ${{ github.event.issue.user.login }} <${{ github.event.issue.user.id }}+${{ github.event.issue.user.login }}@users.noreply.github.com>
           title: "Add <${{ needs.build.outputs.tag }}>: ${{ needs.build.outputs.name }}"
           labels: new-component
-          body: |
-            Submitted by @${{ github.event.issue.user.login }} in #${{ github.event.issue.number }}. Generated from the issue form: validated, with its manifest generated in headless Chrome.
-
-            Review checklist:
-            - [ ] Renders in the gallery card and on its page (`go tool task live`)
-            - [ ] Looks right on the Themes page (tokens only)
-            - [ ] Docs examples work, Playground makes sense
-            - [ ] No network access, no imports beyond `datastar`
-
-            Closes #${{ github.event.issue.number }}
-      - name: Tell the author
+          body-path: ${{ runner.temp }}/body.md
+      - name: Link the preview and tell the author
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ github.event.issue.number }}
+          PR: ${{ steps.pr.outputs.pull-request-number }}
           URL: ${{ steps.pr.outputs.pull-request-url }}
           OP: ${{ steps.pr.outputs.pull-request-operation }}
+          SHA: ${{ steps.pr.outputs.pull-request-head-sha }}
+          SLUG: ${{ needs.build.outputs.slug }}
+          SITE: ${{ vars.STARBASE_URL }}
         run: |
+          [ "$OP" = created ] || [ "$OP" = updated ] || exit 0 # unchanged: nothing to say
+          preview=""
+          if [ -n "$SITE" ] && [ -n "$SHA" ]; then
+            preview="${SITE%/}/playground?preview=$SHA/$SLUG"
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "🔭 Try this revision (\`${SHA:0:7}\`) in the playground: $preview"
+          fi
           case "$OP" in
             created) msg="🚀 Your component is on the launch pad: $URL. A maintainer will review it. Edit this issue to update the pull request." ;;
             updated) msg="🔁 Pull request updated with your changes: $URL" ;;
-            *) exit 0 ;;
           esac
+          [ -n "$preview" ] && msg="$msg
+
+          Try it in the playground: $preview"
           gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "$msg"
 
   report-failure:

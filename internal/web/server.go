@@ -31,6 +31,7 @@ type Server struct {
 	boot    string
 	secure  bool
 
+	previews   *previewCache
 	board      atomic.Pointer[boardCache]
 	paintLimit *limiter
 }
@@ -61,6 +62,7 @@ func New(ctx context.Context, d Deps) *Server {
 		secure:  strings.HasPrefix(d.Config.BaseURL, "https://"),
 
 		paintLimit: newLimiter(20, 60), // pixels per second, burst
+		previews:   newPreviewCache(d.Config.RepoURL),
 	}
 	s.oauth = newOAuth(d.Config)
 	return s

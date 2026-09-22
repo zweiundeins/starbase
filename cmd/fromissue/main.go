@@ -40,11 +40,12 @@ func main() {
 	eventPath := flag.String("event", os.Getenv("GITHUB_EVENT_PATH"), "GitHub event payload (JSON)")
 	dir := flag.String("dir", "components", "components directory")
 	report := flag.String("report", "report.md", "where to write the markdown report")
+	similar := flag.String("similar", "similar.md", "where to write the similar components (markdown)")
 	api := flag.String("api", "https://api.github.com", "GitHub API base URL")
 	site := flag.String("site", os.Getenv("STARBASE_URL"), "public Starbase URL; playground links must point here")
 	flag.Parse()
 
-	res, name, err := run(*eventPath, *dir, *api, *site)
+	res, name, like, err := run(*eventPath, *dir, *api, *site)
 	if err != nil {
 		msg := "🛑 **This submission can't be turned into a pull request yet.**\n\n" + err.Error() +
 			"\n\nEdit the issue to fix it, and I'll try again automatically."
@@ -53,6 +54,7 @@ func main() {
 		os.Exit(1)
 	}
 	os.WriteFile(*report, []byte(fmt.Sprintf("✅ `<%s>` is valid. Opening a pull request…\n", res.Tag)), 0o644)
+	os.WriteFile(*similar, []byte(like+"\n"), 0o644)
 	if out := os.Getenv("GITHUB_OUTPUT"); out != "" {
 		f, err := os.OpenFile(out, os.O_APPEND|os.O_WRONLY, 0o644)
 		if err == nil {
@@ -64,14 +66,14 @@ func main() {
 	fmt.Printf("wrote %s/%s\n", *dir, res.Slug)
 }
 
-func run(eventPath, dir, api, site string) (submission.Result, string, error) {
+func run(eventPath, dir, api, site string) (submission.Result, string, string, error) {
 	raw, err := os.ReadFile(eventPath)
 	if err != nil {
-		return submission.Result{}, "", err
+		return submission.Result{}, "", "", err
 	}
 	var ev event
 	if err := json.Unmarshal(raw, &ev); err != nil {
-		return submission.Result{}, "", err
+		return submission.Result{}, "", "", err
 	}
 	author := ev.Issue.User.Login
 	sub := submission.Parse(ev.Issue.Body)
@@ -87,7 +89,7 @@ func run(eventPath, dir, api, site string) (submission.Result, string, error) {
 			src, err = submission.Fetch(ctx, http.DefaultClient, api, os.Getenv("GITHUB_TOKEN"), sub.Source)
 		}
 		if err != nil {
-			return submission.Result{}, "", fmt.Errorf("- %v", err)
+			return submission.Result{}, "", "", fmt.Errorf("- %v", err)
 		}
 		sub.Apply(src)
 	}
@@ -97,7 +99,7 @@ func run(eventPath, dir, api, site string) (submission.Result, string, error) {
 	}
 	res, err := sub.Build(author, since)
 	if err != nil {
-		return submission.Result{}, "", err
+		return submission.Result{}, "", "", err
 	}
 
 	// Updating is allowed for the same author; taking over a slug is not.
@@ -105,22 +107,23 @@ func run(eventPath, dir, api, site string) (submission.Result, string, error) {
 	if b, err := os.ReadFile(filepath.Join(target, "README.md")); err == nil {
 		var meta catalog.Meta
 		if _, err := catalog.RenderMarkdown(b, &meta); err == nil && !strings.EqualFold(meta.Author, author) {
-			return submission.Result{}, "", fmt.Errorf("- `<%s>` already exists, by @%s. Please pick another tag.", res.Tag, meta.Author)
+			return submission.Result{}, "", "", fmt.Errorf("- `<%s>` already exists, by @%s. Please pick another tag.", res.Tag, meta.Author)
 		}
 		if err := os.RemoveAll(target); err != nil {
-			return submission.Result{}, "", err
+			return submission.Result{}, "", "", err
 		}
 	}
 	if err := os.MkdirAll(target, 0o755); err != nil {
-		return submission.Result{}, "", err
+		return submission.Result{}, "", "", err
 	}
 	for name, data := range res.Files {
 		if err := os.WriteFile(filepath.Join(target, name), data, 0o644); err != nil {
-			return submission.Result{}, "", err
+			return submission.Result{}, "", "", err
 		}
 	}
 	// Validate exactly like a hand-made pull request would be.
-	if _, err := catalog.Load(os.DirFS(dir)); err != nil {
+	cat, err := catalog.Load(os.DirFS(dir))
+	if err != nil {
 		os.RemoveAll(target)
 		var lines []string
 		for _, l := range strings.Split(err.Error(), "\n") {
@@ -131,7 +134,8 @@ func run(eventPath, dir, api, site string) (submission.Result, string, error) {
 		if len(lines) == 0 {
 			lines = []string{"- " + err.Error()}
 		}
-		return submission.Result{}, "", errors.New(strings.Join(lines, "\n"))
+		return submission.Result{}, "", "", errors.New(strings.Join(lines, "\n"))
 	}
-	return res, sub.Name, nil
+	c, _ := cat.Get(res.Slug)
+	return res, sub.Name, submission.SimilarMarkdown(submission.Similar(cat, c), site), nil
 }

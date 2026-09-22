@@ -33,7 +33,8 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 ## Submissions
 - `.github/ISSUE_TEMPLATE/new-component.yml` is the "Submit a component" form (`/submit` redirects to it). Its labels must match `internal/submission` (a test enforces it).
 - `.github/workflows/component-from-issue.yml`: `build` (read-only, runs untrusted code only there: `cmd/fromissue` then `cmd/manifests`) → `pull-request` (write, never executes submitted code) / `report-failure` (comments on the issue).
-- Submissions may link a public GitHub repo; `submission.Fetch` pins the commit, recorded as `source:` front matter (shown as a Source link).
+- Submissions may link a public GitHub repo; `submission.Fetch` pins the commit, recorded as `source:` front matter (shown as a Source link). Playground links set no `source:`.
+- Every submission PR lists similar catalog components (`submission.Similar`, in the PR body) and gets a preview comment per revision: `/playground?preview=<commit>/<slug>` (`internal/web/preview.go`) fetches that commit's files from the repo on raw.githubusercontent.com, memoized per commit (immutable).
 
 ## Code playground
 - `/playground` page (`internal/web/playground.go`, `ui.CodePlaygroundPage`): sources `?s=<snippet>`, `?component=<slug>` (JS + `Component.Examples`), or a starter. The editor area is a `data-ignore-morph` island; the share strip around it is stream-rendered from `tab_state.PlaygroundShare`.

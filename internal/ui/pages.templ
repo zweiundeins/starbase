@@ -163,6 +163,7 @@ type CodePlaygroundView struct {
 	Deps          string // JSON {tag: module URL}
 	Component     string // slug, when opened from a component page
 	ComponentName string
+	Preview       string // component name, when opened as a pull request preview
 	Loaded        string // snippet id from ?s=
 	Author        string // snippet author (GitHub login), if any
 	Share         string // snippet id to offer as a link
@@ -190,6 +191,8 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 			<p class="lede">
 				if v.Component != "" {
 					The real source of { v.ComponentName }, with its examples. Change anything; the preview runs in a sandbox.
+				} else if v.Preview != "" {
+					{ v.Preview } as submitted in a pull request, with its examples. It is not in the catalog yet; the preview runs in a sandbox.
 				} else {
 					Write a Rocket component and try it live. The preview runs in a sandbox with every community component available.
 				}

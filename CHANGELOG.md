@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Submission pull requests get a playground preview link for every revision (`/playground?preview=<commit>/<slug>`) and a list of similar existing components, to spot duplicates before merging.
+
 ### Changed
 
 - GitHub Actions updated to their Node 24 (LTS) majors.

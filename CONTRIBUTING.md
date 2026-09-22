@@ -8,7 +8,9 @@ The easiest way needs no tools at all. Open the
 [submission form](https://github.com/zweiundeins/starbase/issues/new?template=new-component.yml),
 then paste your code, link the GitHub repository it lives in, or paste a
 share link from the site's `/playground`. A bot
-validates it and opens a pull request with you as the author.
+validates it and opens a pull request with you as the author. It comments a
+playground link where you (and the reviewers) can try that exact revision, and
+lists similar components already in the gallery.
 
 The house rules (shadow DOM, `--sb-*` tokens with fallbacks, `$$` signals for interaction state, declarative wiring, accessibility) are on the
 [Contribute page](content/contribute.md).
