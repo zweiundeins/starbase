@@ -74,4 +74,5 @@ To pause deploys, delete the `DEPLOY_HOST` variable. To revoke CI's access, dele
 
 - On the server, change `BASE_URL` in `/etc/starbase/starbase.env` and the Caddy site block.
 - On GitHub, set `STARBASE_URL` (a repository variable) to the new URL. Both the bot and this workflow's final check use it.
+- `sudo caddy validate` can leave root-owned log files behind, and then `systemctl reload caddy` fails. Fix them with `sudo sh -c 'chown caddy:caddy /var/log/caddy/*.log'` (the directory isn't readable, so a plain `sudo chown … *.log` fails on the glob).
 - Change both together: `BASE_URL` sets the CSP's script origin and the canonical URLs, so pages served under one domain with the other `BASE_URL` load no scripts. Keep the old domain as a permanent redirect (see `Caddyfile.snippet`).
