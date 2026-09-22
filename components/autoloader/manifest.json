@@ -1,0 +1,99 @@
+{
+  "tag": "sb-autoloader",
+  "props": [
+    {
+      "name": "modules",
+      "attribute": "modules",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "Explicit map of tag to module URL: {\"x-chart\": \"/js/x-chart.js\"}. Wins over pattern."
+      }
+    },
+    {
+      "name": "pattern",
+      "attribute": "pattern",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "URL template for tags not in modules, with {tag}, e.g. \"/components/{tag}/{tag}.js\"."
+      }
+    },
+    {
+      "name": "match",
+      "attribute": "match",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Regular expression the tag must match before pattern applies, e.g. \"^x-\". Empty: every unknown custom element."
+      }
+    },
+    {
+      "name": "requires",
+      "attribute": "requires",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "Tags a component renders itself, loaded with it: {\"x-table\": [\"x-cell\"]}."
+      }
+    },
+    {
+      "name": "base",
+      "attribute": "base",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Base for relative URLs. Default: the document's base URL."
+      }
+    },
+    {
+      "name": "cloak",
+      "attribute": "cloak",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Class removed from <html> once the first components are defined (against the flash of undefined elements)."
+      }
+    },
+    {
+      "name": "timeout",
+      "attribute": "timeout",
+      "type": "number",
+      "default": 3000,
+      "required": false,
+      "docs": {
+        "description": "Remove the cloak class after this many ms, whatever happens."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-load",
+      "bubbles": true,
+      "composed": true,
+      "description": "After a component is defined. detail: { tag, url }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-load-error",
+      "bubbles": true,
+      "composed": true,
+      "description": "When a module fails to load. detail: { tag, url, error }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-ready",
+      "bubbles": true,
+      "composed": true,
+      "description": "Once, when the components present at startup are defined (right away when there were none). detail: { loaded }."
+    }
+  ]
+}
