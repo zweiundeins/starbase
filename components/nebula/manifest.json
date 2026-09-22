@@ -1,0 +1,103 @@
+{
+  "tag": "sb-nebula",
+  "props": [
+    {
+      "name": "speed",
+      "attribute": "speed",
+      "type": "number",
+      "default": 1,
+      "required": false,
+      "docs": {
+        "description": "Drift speed (0 is still)."
+      }
+    },
+    {
+      "name": "density",
+      "attribute": "density",
+      "type": "number",
+      "default": 0.5,
+      "required": false,
+      "docs": {
+        "description": "How much of the sky the gas covers, 0 to 1."
+      }
+    },
+    {
+      "name": "palette",
+      "attribute": "palette",
+      "type": "oneOf",
+      "default": "violet",
+      "required": false,
+      "values": [
+        "violet",
+        "aurora",
+        "ember",
+        "mono"
+      ],
+      "docs": {
+        "description": "Colour scheme (from theme tokens)."
+      }
+    },
+    {
+      "name": "pixel",
+      "attribute": "pixel",
+      "type": "number",
+      "default": 4,
+      "required": false,
+      "docs": {
+        "description": "Size of one pixel, in CSS pixels."
+      }
+    },
+    {
+      "name": "levels",
+      "attribute": "levels",
+      "type": "number",
+      "default": 6,
+      "required": false,
+      "docs": {
+        "description": "Colour levels per channel, dithered (0 for smooth)."
+      }
+    },
+    {
+      "name": "stars",
+      "attribute": "stars",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Draw twinkling stars."
+      }
+    },
+    {
+      "name": "seed",
+      "attribute": "seed",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Picks a different nebula."
+      }
+    },
+    {
+      "name": "parallax",
+      "attribute": "parallax",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Shift with the pointer."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Animated nebula",
+      "required": false,
+      "docs": {
+        "description": "Accessible label."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
