@@ -1,13 +1,5 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 
-// data-bind may set a property before the element is upgraded; adopt it.
-const early = (host, name) => {
-	const d = Object.getOwnPropertyDescriptor(host, name)
-	if (!d || !('value' in d)) return undefined
-	delete host[name]
-	return d.value
-}
-
 // Host getters must not subscribe callers (e.g. data-bind's sync effect).
 const peek = (fn) => {
 	startPeeking()
@@ -28,8 +20,6 @@ const path = (rows, ch) => {
 	rows.forEach((row, y) => [...row].forEach((c, x) => ch.includes(c) && (d += `M${x} ${y}h1v1h-1z`)))
 	return d
 }
-const svg = (kind, cls) =>
-	`<svg class="${cls}" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path class="body" d="${path(SPRITES[kind], '#+')}"/><path class="shine" d="${path(SPRITES[kind], '+')}"/></svg>`
 
 const styles = /* css */ `
 :host {
@@ -64,7 +54,7 @@ svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 
 rocket('sb-rating', {
 	props: ({ bool, number, oneOf, string }) => ({
-		value: number.min(0).docs({ description: 'Initial value. Read the live value from the value property.' }),
+		value: number.min(0).docs({ description: 'The value. A new value from the server replaces it; the live value is the value property.' }),
 		max: number.clamp(1, 20).default(5).docs({ description: 'Number of hearts (or stars).' }),
 		precision: oneOf('1', '0.5').default('1').docs({ description: 'Step: whole or half units.' }),
 		icon: oneOf('heart', 'star').default('heart').docs({ description: 'Pixel sprite.' }),
@@ -85,22 +75,19 @@ rocket('sb-rating', {
 		const step = () => Number(props.precision)
 		const clamp = (v) => Math.min(props.max, Math.max(0, Math.round((Number(v) || 0) / step()) * step()))
 		$$.value = clamp(props.value)
-		const pre = early(host, 'value')
-		$$.dirty = pre !== undefined
-		if ($$.dirty) $$.value = clamp(pre)
 		$$.hover = -1 // preview while pointing, -1 when not
-		// Like a native <input>: the attribute is only the default (see sb-slider).
-		observeProps(() => peek(() => ($$.value = clamp($$.dirty ? $$.value : props.value))), 'value', 'max', 'precision')
-		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.dirty = true), ($$.value = clamp(v)))))
+		// A value attribute sent by the server wins when it changes; removed
+		// attributes are ignored (see sb-slider). A new max or precision
+		// re-clamps the current value.
+		observeProps((p, changes) => peek(() => ($$.value = clamp('value' in changes && host.hasAttribute('value') ? p.value : $$.value))), 'value', 'max', 'precision')
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(v))))
 		$$.shown = () => ($$.hover >= 0 ? $$.hover : $$.value)
-		$$.sprite = () => svg(props.icon, 'empty') + svg(props.icon, 'full')
 
 		const commit = (v) => {
 			v = clamp(v)
 			if (props.clearable && v === $$.value) v = 0
 			if (v === $$.value) return
 			$$.value = v
-			$$.dirty = true
 			emit('change')
 			emit('sb-change', { value: v })
 		}
@@ -132,8 +119,12 @@ rocket('sb-rating', {
 			evt.preventDefault()
 		})
 	},
-	render: ({ html, props: { max, size, label, readonly, disabled } }) => {
+	render: ({ html, svg, props: { max, icon, size, label, readonly, disabled } }) => {
 		const units = Array.from({ length: max }, (_, i) => i)
+		const body = path(SPRITES[icon], '#+'), shine = path(SPRITES[icon], '+')
+		// d via data-attr: a template placeholder in a raw d="" is an invalid path
+		// for a moment, which browsers log. The paths are letters and digits.
+		const sprite = (cls) => svg`<svg class="${cls}" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path class="body" data-attr:d="'${body}'"></path><path class="shine" data-attr:d="'${shine}'"></path></svg>`
 		return html`
 			${label ? html`<span class="label" part="label" id="label">${label}</span>` : null}
 			<div
@@ -156,8 +147,7 @@ rocket('sb-rating', {
 				${units.map(
 					(i) => html`<span class="unit" part="unit" data-i="${i}"
 						data-class:hot="$$hover > ${i}"
-						data-style:--fill="Math.max(0, Math.min(1, $$shown - ${i}))"
-						data-effect="el.innerHTML = $$sprite"></span>`,
+						data-style:--fill="Math.max(0, Math.min(1, $$shown - ${i}))">${sprite('empty')}${sprite('full')}</span>`,
 				)}
 			</div>
 		`

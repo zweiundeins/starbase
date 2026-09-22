@@ -15,7 +15,7 @@ playground:
   values: {value: 3, max: 5}
 ---
 
-A row of pixel hearts (or stars) for a score. Point to preview, click to pick, or use the arrow keys. Like a native input, `value` is the starting value; the live value is the `value` property, so `data-bind` works.
+A row of pixel hearts (or stars) for a score. Point to preview, click to pick, or use the arrow keys. The live value is the `value` property, so `data-bind` works, and a new `value` attribute from the server replaces it.
 
 ## Examples
 

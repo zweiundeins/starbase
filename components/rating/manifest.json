@@ -8,7 +8,7 @@
       "default": 0,
       "required": false,
       "docs": {
-        "description": "Initial value. Read the live value from the value property."
+        "description": "The value. A new value from the server replaces it; the live value is the value property."
       }
     },
     {
