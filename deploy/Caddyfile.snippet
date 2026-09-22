@@ -2,7 +2,7 @@
 # Rocket. Separate systemd unit (starbase) behind a Unix socket, so the
 # service itself can't reach anything on localhost. The app compresses its
 # own SSE streams, so no `encode`. ---
-rocket.libretto.ch {
+starbase.zweiundeins.gmbh {
 	log {
 		output file /var/log/caddy/starbase-access.log {
 			roll_size 100mb
@@ -16,4 +16,9 @@ rocket.libretto.ch {
 		header_up X-Real-IP {http.request.remote.host}
 		flush_interval -1
 	}
+}
+
+# The first, temporary domain: links keep working.
+rocket.libretto.ch {
+	redir https://starbase.zweiundeins.gmbh{uri} permanent
 }
