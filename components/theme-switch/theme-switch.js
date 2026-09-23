@@ -20,6 +20,18 @@ const iconOf = (theme) => (theme in ICON_PATHS && theme !== 'palette' ? theme : 
 // Text inside a single-quoted string of a Datastar expression.
 const quote = (s) => s.replace(/[\\']/g, '\\$&')
 
+// schemeOf is the colour scheme the page actually paints in, whatever the
+// theme is called: a theme that sets its own color-scheme (deep-space → dark,
+// daylight → light) decides, and only "light dark" (or none) defers to the
+// system. Consumers get it in sb-theme-change, so a canvas needs no list of
+// theme names to pick its palette.
+const schemeOf = (el) => {
+	const cs = getComputedStyle(el).colorScheme
+	const light = /\blight\b/.test(cs), dark = /\bdark\b/.test(cs)
+	if (light !== dark) return dark ? 'dark' : 'light'
+	return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 const nameOf = (t) => t.charAt(0).toUpperCase() + t.slice(1).replaceAll('-', ' ')
 
 const readCookie = (name) => {
@@ -132,7 +144,7 @@ rocket('sb-theme-switch', {
 		label: string.trim.default('Theme').docs({ description: 'Accessible name of the control.' }),
 	}),
 	manifest: {
-		events: [{ name: 'sb-theme-change', kind: 'custom-event', bubbles: true, composed: true, description: 'After the user picks a theme. detail: { theme, cookie }.' }],
+		events: [{ name: 'sb-theme-change', kind: 'custom-event', bubbles: true, composed: true, description: 'After the user picks a theme. detail: { theme, cookie, scheme }, where scheme is "light" or "dark": what the page now paints in.' }],
 	},
 	setup: ({ $$, action, adoptStyles, emit, host, props }) => {
 		adoptStyles(host, styles + iconCSS)
@@ -175,7 +187,7 @@ rocket('sb-theme-switch', {
 			$$.theme = t
 			apply(t)
 			save(t)
-			emit('sb-theme-change', { theme: t, cookie: props.cookie })
+			emit('sb-theme-change', { theme: t, cookie: props.cookie, scheme: schemeOf(root) })
 		})
 		// Other switches for the same cookie follow along.
 		action('sync', ({ evt }) => {

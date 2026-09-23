@@ -2,6 +2,8 @@ import { rocket } from 'datastar'
 
 const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
 const rgbCache = new Map()
+// Per-instance repaint, so setup's actions can reach the canvas code.
+const kicks = new WeakMap()
 const rgbOf = (css) => {
 	if (rgbCache.has(css)) return rgbCache.get(css)
 	probe.clearRect(0, 0, 1, 1)
@@ -45,8 +47,10 @@ rocket('sb-gauge', {
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals shown in the readout.' }),
 	}),
 	renderOnPropChange: ({ changes }) => 'label' in changes || 'unit' in changes,
-	setup: ({ $$, adoptStyles, host, observeProps, props }) => {
+	setup: ({ $$, action, adoptStyles, host, observeProps, props }) => {
 		adoptStyles(host, styles)
+		// Colours are read at paint time, so a new theme only needs a repaint.
+		action('repaint', () => kicks.get(host)?.())
 		const sync = () => {
 			$$.now = props.value
 			$$.shown = Number(props.value).toFixed(props.decimals) + props.unit
@@ -55,7 +59,7 @@ rocket('sb-gauge', {
 		observeProps(sync, 'value', 'decimals', 'unit')
 	},
 	render: ({ html, props: { label, min, max } }) => html`
-		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true"></canvas>
+		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true" data-on:sb-theme-change__window="@repaint()"></canvas>
 		<div class="readout" role="meter" aria-valuemin="${min}" aria-valuemax="${max}" aria-label="${label || 'Gauge'}"
 			data-attr:aria-valuenow="$$now" data-attr:aria-valuetext="$$shown">
 			<span class="value" part="value" data-text="$$shown"></span>
@@ -135,13 +139,19 @@ rocket('sb-gauge', {
 			if (!raf) raf = requestAnimationFrame(tick)
 		}
 		observeProps(kick)
-		// Theme tokens are re-read on every paint; repaint when scrolled in.
+		kicks.set(host, kick)
+		// Theme tokens are re-read on every paint; repaint when scrolled in, and when
+		// the system flips under "auto" (a pick on <sb-theme-switch> arrives as
+		// sb-theme-change, see the template).
 		const io = new IntersectionObserver(([e]) => e.isIntersecting && kick())
 		io.observe(host)
+		const scheme = matchMedia('(prefers-color-scheme: dark)')
+		scheme.addEventListener('change', kick)
 		paint()
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			io.disconnect()
+			scheme.removeEventListener('change', kick)
 		})
 	},
 })
