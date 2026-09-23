@@ -1,0 +1,101 @@
+{
+  "tag": "sb-radio-group",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "The selected value. A new value from the server replaces it; the live value is the value property."
+      }
+    },
+    {
+      "name": "options",
+      "attribute": "options",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Choices from the server: [\"A\", \"B\"] or [{value, label, description?, disabled?}]. <sb-radio> children win over it."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label, and the accessible name of the group."
+      }
+    },
+    {
+      "name": "orientation",
+      "attribute": "orientation",
+      "type": "oneOf",
+      "default": "vertical",
+      "required": false,
+      "values": [
+        "vertical",
+        "horizontal"
+      ],
+      "docs": {
+        "description": "Stack the choices or lay them out in a row."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable the whole group."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change (e.g. the field of a command)."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "",
+      "description": "<sb-radio value=\"…\" [description] [disabled]>Label</sb-radio> items: markup the group reads as its choices, like <option> in a native <select>. Nothing is slotted; the group renders the items itself."
+    }
+  ],
+  "events": [
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the user picks a choice."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Same moment. detail: { name, value }: ready for a command."
+    }
+  ]
+}
