@@ -99,8 +99,20 @@ const styles = /* css */ `
 	block-size: 1em;
 	margin-block-start: -0.5em;
 	line-height: 1em;
-	text-align: center;
+	display: grid;
+	place-items: center;
 	backface-visibility: hidden;
+}
+/* A digit sits high in its line box – room for ascenders above it, descenders
+   below – so on a drum it would ride above its face's centre: the neighbour
+   above slides out of the window and the one below into it. Trimming the box
+   to the cap height centres every digit on its face. The separators get the
+   same trim, so the decimal mark keeps the digits' baseline. Where text-box is
+   not supported the drum simply looks as it did without it. */
+.face > span,
+:host([drum]) .static > span {
+	display: block;
+	text-box: trim-both cap alphabetic;
 }
 @media (prefers-reduced-motion: no-preference) {
 	.strip, .cyl { transition: transform var(--_duration) var(--_easing); }
@@ -170,12 +182,12 @@ rocket('sb-odometer', {
 		const wheel = () => {
 			const i = n++
 			return drum
-				? html`<span class="drum" part="digit"><span class="cyl" style="transform:translateZ(calc(-1 * var(--_r))) rotateX(${turn[i] * STEP}deg)">${DIGITS.map((d) => html`<span class="face" style="transform:rotateX(${-d * STEP}deg) translateZ(var(--_r))">${d}</span>`)}</span></span>`
+				? html`<span class="drum" part="digit"><span class="cyl" style="transform:translateZ(calc(-1 * var(--_r))) rotateX(${turn[i] * STEP}deg)">${DIGITS.map((d) => html`<span class="face" style="transform:rotateX(${-d * STEP}deg) translateZ(var(--_r))"><span>${d}</span></span>`)}</span></span>`
 				: html`<span class="col" part="digit"><span class="strip" style="transform:${offset(pos[i])}">${CELLS.map((d) => html`<span>${d}</span>`)}</span></span>`
 		}
 		return html`
 			<span class="sr">${text}</span><span class="odo" id="${shape}" aria-hidden="true">${[...text].map((ch) =>
-				isDigit(ch) ? wheel() : html`<span class="static" part="separator">${ch}</span>`,
+				isDigit(ch) ? wheel() : html`<span class="static" part="separator"><span>${ch}</span></span>`,
 			)}</span>
 		`
 	},
