@@ -14,3 +14,6 @@
 .DS_Store
 .idea/
 *.swp
+
+# Agent worktrees
+.claude/worktrees/
