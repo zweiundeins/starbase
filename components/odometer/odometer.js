@@ -13,8 +13,20 @@ import { rocket } from 'datastar'
 // Ported from Libretto's <odo-meter>, where it has run the live-drive distance
 // readout since 2026-09.
 
-const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+// Each wheel is three turns of 0–9 stacked, resting on the middle one. A wheel
+// that passes 9 → 0 while the number climbs rolls on into the turn below and
+// one passing 0 → 9 while it falls rolls back into the turn above, the way a
+// real odometer turns over, instead of spinning back through every digit. Before
+// the next change, a wheel left in an outer turn moves to the same digit in the
+// middle turn, which looks identical, so it always has room to roll either way.
+const CELLS = Array.from({ length: 30 }, (_, i) => i % 10)
+const REST = 10 // the middle turn
 const isDigit = (c) => c >= '0' && c <= '9'
+const offset = (pos) => `translateY(-${(pos * 100) / CELLS.length}%)`
+
+// Per element: the last value, and each wheel's position, counted from the
+// right so the units wheel stays the units wheel when a digit is gained.
+const wheels = new WeakMap()
 
 // The shape key: the same length and the same digit/static layout means a roll
 // is valid. Statics (signs, separators, the decimal mark) are encoded by char
@@ -68,12 +80,44 @@ rocket('sb-odometer', {
 	render: ({ html, host, props: { value, decimals, grouping, lang } }) => {
 		const locale = lang || host.closest('[lang]')?.lang || navigator.language
 		const text = formatterFor(locale, decimals, grouping).format(value)
-		// Assistive tech gets the formatted value once; each strip holds all ten
+		const shape = shapeKey(text)
+		const digits = [...text].filter(isDigit).map(Number)
+
+		const last = wheels.get(host)
+		const same = last?.shape === shape
+		const up = same && value > last.value
+		const down = same && value < last.value
+		if (same) {
+			// Settle wheels still standing in an outer turn onto the middle one:
+			// the same digit, so nothing visibly moves, but the roll that follows
+			// starts from the middle and can turn over in either direction.
+			host.shadowRoot?.querySelectorAll('.strip').forEach((strip, i) => {
+				const k = digits.length - 1 - i
+				const pos = last.pos[k]
+				if (pos === undefined || (pos >= REST && pos < REST + 10)) return
+				strip.style.transition = 'none'
+				strip.style.transform = offset(REST + (pos % 10))
+				void strip.offsetHeight
+				strip.style.transition = ''
+				last.pos[k] = REST + (pos % 10)
+			})
+		}
+		const pos = digits.map((d, i) => {
+			const k = digits.length - 1 - i
+			const from = same ? last.pos[k] % 10 : d
+			if (up && d < from) return REST + 10 + d // 9 → 0 going up: roll on over the top
+			if (down && d > from) return d // 0 → 9 going down: roll back under
+			return REST + d
+		})
+		wheels.set(host, { value, shape, pos: Object.fromEntries(pos.map((p, i) => [digits.length - 1 - i, p])) })
+
+		// Assistive tech gets the formatted value once; each strip holds all its
 		// digits, so the strips are hidden from it.
+		let n = 0
 		return html`
-			<span class="sr">${text}</span><span class="odo" id="${shapeKey(text)}" aria-hidden="true">${[...text].map((ch) =>
+			<span class="sr">${text}</span><span class="odo" id="${shape}" aria-hidden="true">${[...text].map((ch) =>
 				isDigit(ch)
-					? html`<span class="col" part="digit"><span class="strip" style="transform:translateY(-${Number(ch) * 10}%)">${DIGITS.map((d) => html`<span>${d}</span>`)}</span></span>`
+					? html`<span class="col" part="digit"><span class="strip" style="transform:${offset(pos[n++])}">${CELLS.map((d) => html`<span>${d}</span>`)}</span></span>`
 					: html`<span class="static" part="separator">${ch}</span>`,
 			)}</span>
 		`

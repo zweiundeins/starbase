@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `sb-odometer`: a number that rolls its digit wheels to each new value. Only the digits that change turn, a gained digit (9.9 → 10.0) snaps to the new layout instead of rolling from the old one, and separators follow the locale while the digits stay 0–9. Screen readers get the value once, as text. From Libretto, where it runs the live-drive distance readout.
+- `sb-odometer`: a number that rolls its digit wheels to each new value. Only the digits that change turn, and a wheel turns the way the number moves: over the top when it climbs (9 → 0), back when it falls. A gained digit (9.9 → 10.0) snaps to the new layout, separators follow the locale while the digits stay 0–9, and with a linear roll as long as the update interval the wheels move continuously, like a car's. Screen readers get the value once, as text. From Libretto, where it runs the live-drive distance readout.
 - `sb-button` takes `loading`: an inline pixel spinner (the same one `sb-busy` draws), clicks and Enter blocked against double submits, `aria-busy`, and focus kept. It costs no space until it is loading; bind it to `data-indicator`.
 - `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
 - `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
