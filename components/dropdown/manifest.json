@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. Items are {value, label?, description?, icon?, disabled?, danger?} or {\"divider\":true} (\"-\" works too). Server data: a new array from the server replaces the menu, open or not."
+        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. An item is {value, label?, description?, icon?, disabled?, danger?}, {\"divider\":true} (\"-\" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. Server data: a new array replaces the whole tree, open or not."
       }
     },
     {
@@ -36,7 +36,7 @@
         "top-end"
       ],
       "docs": {
-        "description": "Preferred side and alignment of the menu; it flips and shifts when there is no room."
+        "description": "Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start."
       }
     },
     {
@@ -77,7 +77,7 @@
     },
     {
       "name": "item",
-      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, or <hr slot=\"item\"> for a divider. They are read as data; items wins when it is not empty."
+      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, or <hr slot=\"item\"> for a divider. A submenu is data-children='[…]' (the same JSON as items). They are read as data; items wins when it is not empty."
     }
   ],
   "events": [
@@ -86,14 +86,14 @@
       "name": "sb-select",
       "bubbles": true,
       "composed": true,
-      "description": "An item was chosen. detail: { name, value }: ready for a command."
+      "description": "A leaf item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value."
     },
     {
       "kind": "custom-event",
       "name": "sb-open",
       "bubbles": true,
       "composed": true,
-      "description": "The menu opened."
+      "description": "The menu opened (the root; submenus are view state and stay quiet)."
     },
     {
       "kind": "custom-event",
