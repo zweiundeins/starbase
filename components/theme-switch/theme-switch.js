@@ -126,6 +126,7 @@ rocket('sb-theme-switch', {
 		labels: array(string.trim).default(() => []).docs({ description: 'Visible names, in the order of themes (default: from the names).' }),
 		attribute: string.trim.default('data-theme').docs({ description: 'Attribute set on <html> to the chosen theme. "auto" removes it.' }),
 		cookie: string.trim.default('sb-theme').docs({ description: 'Cookie that remembers the choice (a year, whole site). Servers can read it to render the theme, with no flash.' }),
+		domain: string.trim.docs({ description: 'Cookie domain, e.g. ".example.com" to share the choice with every subdomain. Default: this host only.' }),
 		variant: oneOf('segmented', 'select', 'menu').default('segmented').docs({ description: 'Radio buttons, a select, or an icon button with a menu (for headers).' }),
 		compact: bool.docs({ description: 'Segmented only: icons without text for auto, dark and light.' }),
 		label: string.trim.default('Theme').docs({ description: 'Accessible name of the control.' }),
@@ -149,13 +150,31 @@ rocket('sb-theme-switch', {
 		// attribute before the first paint; this only repairs a page that didn't.
 		if ((root.getAttribute(props.attribute) ?? 'auto') !== $$.theme) apply($$.theme)
 
+		// A domain widens the choice to every subdomain that shares it; without one
+		// the cookie stays on this host, which is the safe default. A domain the
+		// page does not belong to is refused by the browser without a word, so the
+		// write is read back and falls back to this host rather than losing the
+		// choice silently.
+		const save = (t) => {
+			const secure = location.protocol === 'https:' ? '; Secure' : ''
+			const value = `${props.cookie}=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+			if (!props.domain) return void (document.cookie = value)
+			// Drop a host-only cookie of the same name first: both would be sent,
+			// and which one the server reads is undefined.
+			document.cookie = `${props.cookie}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+			document.cookie = `${value}; Domain=${props.domain}`
+			if (readCookie(props.cookie) === t) return
+			document.cookie = value
+			const err = new Error(`<sb-theme-switch> domain="${props.domain}" was refused by the browser (this page is ${location.hostname}); the theme is remembered for this host only`)
+			typeof reportError === 'function' ? reportError(err) : console.error(err)
+		}
+
 		action('pick', ({ el }) => {
 			const t = el.value
 			if (!valid(t) || t === $$.theme) return
 			$$.theme = t
 			apply(t)
-			const secure = location.protocol === 'https:' ? '; Secure' : ''
-			document.cookie = `${props.cookie}=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+			save(t)
 			emit('sb-theme-change', { theme: t, cookie: props.cookie })
 		})
 		// Other switches for the same cookie follow along.

@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
+- `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
+
+### Changed
+
+- Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
+
 ### Fixed
 
 - Two console errors when the gallery's search morph removed a card: `sb-nebula` freed its GPU context in cleanup, which fired `webglcontextlost` after Rocket had torn the element down (the context events are wired with `addEventListener` now), and `sb-select`'s computed label read its chips signal while it was already gone.
@@ -13,14 +22,6 @@ All notable changes to this project are documented here. The format follows
 ### Security
 
 - Dependencies updated (brotli 1.2.4, x/text 0.42), the container base image moved to distroless Debian 13, and Dependabot now watches the Dockerfile as well as the actions and Go modules.
-
-### Changed
-
-- Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
-
-### Added
-
-- `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
 
 ## [0.2.0] - 2026-09-22
 
