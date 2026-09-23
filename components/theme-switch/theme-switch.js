@@ -150,16 +150,31 @@ rocket('sb-theme-switch', {
 		// attribute before the first paint; this only repairs a page that didn't.
 		if ((root.getAttribute(props.attribute) ?? 'auto') !== $$.theme) apply($$.theme)
 
+		// A domain widens the choice to every subdomain that shares it; without one
+		// the cookie stays on this host, which is the safe default. A domain the
+		// page does not belong to is refused by the browser without a word, so the
+		// write is read back and falls back to this host rather than losing the
+		// choice silently.
+		const save = (t) => {
+			const secure = location.protocol === 'https:' ? '; Secure' : ''
+			const value = `${props.cookie}=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+			if (!props.domain) return void (document.cookie = value)
+			// Drop a host-only cookie of the same name first: both would be sent,
+			// and which one the server reads is undefined.
+			document.cookie = `${props.cookie}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+			document.cookie = `${value}; Domain=${props.domain}`
+			if (readCookie(props.cookie) === t) return
+			document.cookie = value
+			const err = new Error(`<sb-theme-switch> domain="${props.domain}" was refused by the browser (this page is ${location.hostname}); the theme is remembered for this host only`)
+			typeof reportError === 'function' ? reportError(err) : console.error(err)
+		}
+
 		action('pick', ({ el }) => {
 			const t = el.value
 			if (!valid(t) || t === $$.theme) return
 			$$.theme = t
 			apply(t)
-			const secure = location.protocol === 'https:' ? '; Secure' : ''
-			// A domain widens the choice to every subdomain that shares it; without
-			// one the cookie stays on this host, which is the safe default.
-			const domain = props.domain ? `; Domain=${props.domain}` : ''
-			document.cookie = `${props.cookie}=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax${domain}${secure}`
+			save(t)
 			emit('sb-theme-change', { theme: t, cookie: props.cookie })
 		})
 		// Other switches for the same cookie follow along.

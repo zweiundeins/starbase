@@ -86,7 +86,7 @@ Also set `<meta name="color-scheme" content="light dark">`, so the browser's own
 <sb-theme-switch domain=".example.com"></sb-theme-switch>
 ```
 
-Only a domain the page itself belongs to is accepted, and every subdomain can then read and overwrite the value — fine for a preference, so keep anything else out of this cookie.
+Only a domain the page itself belongs to is accepted, and every subdomain can then read and overwrite the value — fine for a preference, so keep anything else out of this cookie. A domain the browser refuses would otherwise drop the choice without a word, so the component reads the cookie back and falls back to this host, reporting the mismatch through `reportError`.
 
 ## Why a cookie
 

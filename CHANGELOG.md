@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
+
 ### Security
 
 - Dependencies updated (brotli 1.2.4, x/text 0.42), the container base image moved to distroless Debian 13, and Dependabot now watches the Dockerfile as well as the actions and Go modules.
