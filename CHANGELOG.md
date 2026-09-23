@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows
 - `sb-button` takes `loading`: an inline pixel spinner (the same one `sb-busy` draws), clicks and Enter blocked against double submits, `aria-busy`, and focus kept. It costs no space until it is loading; bind it to `data-indicator`.
 - `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
 - `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
+- `sb-count-up`: counts a number to its value the first time it is on screen, and on from where it stands when the server sends a new one. The server's text inside it is what search engines and people without JavaScript see; screen readers get the final value, never the frames. From libretto.ch, whose version rendered nothing without JavaScript.
 
 ### Changed
 
