@@ -111,23 +111,24 @@ A skeleton usually stands in for the content it is waiting for, so give it the s
 
 ### A spinner inside the button
 
-The most common loading state there is: the button that fired the request carries the spinner itself. `for` points at that button, and that is the whole wiring — no signal, no `data-indicator`, nothing for the page to keep track of.
+The most common loading state there is: the button that fired the request carries the spinner itself. Drop an `sb-busy` into the button and that is the whole wiring — no signal, no `data-indicator`, nothing for the page to keep track of.
 
 ```html preview
 <div data-signals="{_sync: []}" style="display: flex; align-items: center; gap: 16px">
-  <sb-button id="sb-busy-sync" data-on:click="@get('/demo/data/children?into=_sync&delay=900')">
-    <span style="display: inline-flex; inline-size: 16px; justify-content: center">
-      <sb-busy size="sm" for="#sb-busy-sync" label="Syncing" style="--sb-brand: currentColor"></sb-busy>
-    </span>
+  <sb-button data-on:click="@get('/demo/data/children?into=_sync&delay=900')">
+    <sb-busy size="sm" label="Syncing" style="display: contents; --sb-brand: currentColor"></sb-busy>
     Sync catalog
   </sb-button>
   <span style="color: var(--sb-text-2); font-size: 0.8125rem" data-text="$_sync.length ? 'synced ' + $_sync.length + ' galaxies' : 'not synced yet'"></span>
 </div>
 ```
 
-The spinner lives in a fixed 16 px box, so the button is exactly as wide before, during and after the request: nothing jumps and the label never moves. `--sb-brand: currentColor` gives the dots the button's own text colour, so they stay readable on a filled button. The same wiring works for `@post('/cmd/…')` — `sb-busy` watches the element, not the method.
+It needs no `for`: the default rule watches any request from inside the host's parent element, and here that parent *is* the button it sits in. Point `for` at the button (`for="#save"`) only when the spinner lives somewhere else on the page. The same wiring works for `@post('/cmd/…')` — `sb-busy` watches the element, not the method.
 
-Nested straight into the button, without that box, it needs no `for` at all: the default rule (any request from inside the host's parent element) already covers the button it sits in. The box is only there to reserve the space.
+Two details make it behave inside a button:
+
+- **`display: contents`** so the idle spinner costs nothing. The host is an `inline-block`, and a zero-width child still takes the button's flex `gap`, which would leave a blank notch in an idle button forever. With `display: contents` the host generates no box at all: while idle the button is exactly as wide as a button without it, and when the request starts the spinner and its gap appear and the button grows. Nothing is reserved for a state the button is not in. It arrives at once, undecorated; `sb-busy::part(spinner)` is there if you want to animate it in.
+- **`--sb-brand: currentColor`** so the dots take the button's own text colour instead of the brand purple they would be invisible in on a filled button.
 
 ### When a plain indicator is enough
 
