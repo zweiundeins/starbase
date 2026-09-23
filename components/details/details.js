@@ -19,14 +19,14 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // Accordion groups: group name -> the records in it. A plain Map of plain Sets
 // on purpose: assigning an object to a signal *merges* into it, so keys would
 // never go away, and none of this is rendered anyway.
+//
+// <details name="..."> would do this natively, but only within one tree scope:
+// every host has its own shadow root, so no two of ours are ever in the same
+// one. The registry is what makes the group work across hosts.
 const groups = new Map()
 
-// Two frames: the panel has to be laid out (hidden removed) and seen at 0fr
-// before the row grows, or the browser skips the transition.
+// Two frames, long enough for the first paint to settle.
 const next = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn))
-
-// The longest duration in a transition-duration value, in milliseconds.
-const ms = (v) => Math.max(0, ...String(v).split(',').map((s) => (parseFloat(s) || 0) * (s.includes('ms') ? 1 : 1000)))
 
 const styles = /* css */ `
 :host {
@@ -42,34 +42,37 @@ const styles = /* css */ `
 	--_n: calc(3px * var(--_notch));
 	--_dur: var(--sb-details-duration, 220ms);
 	display: block;
+	/* Lets block-size animate to and from auto, so the panel ends at exactly
+	 * its own height without anything being measured. */
+	interpolate-size: allow-keywords;
 }
-:host([disabled]) { opacity: 0.55; }
-.details {
+details {
 	border: 1px solid var(--_border);
 	background: var(--_bg);
 	color: var(--_muted);
 	clip-path: ${notch('var(--_n)')};
 	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
 }
-.summary {
-	all: unset;
-	box-sizing: border-box;
+details.disabled { opacity: 0.55; }
+summary {
 	display: flex;
 	align-items: center;
 	gap: 0.625rem;
-	inline-size: 100%;
-	padding: 0.75rem 0.875rem;
+	padding: 0.875rem;
 	color: var(--_text);
-	font: inherit;
 	font-weight: 600;
-	text-align: start;
 	cursor: pointer;
+	/* The UA's disclosure triangle, in all three spellings. */
+	list-style: none;
+	-webkit-tap-highlight-color: transparent;
 }
-.summary:hover { background: var(--_bg-hover); }
-/* An inset ring: the notched clip-path on .details would cut an outer one off. */
-.summary:focus-visible { outline: 2px solid var(--_focus); outline-offset: -3px; }
-.summary[disabled] { cursor: not-allowed; }
-.summary[disabled]:hover { background: none; }
+summary::-webkit-details-marker { display: none; }
+summary::marker { content: ""; }
+summary:hover { background: var(--_bg-hover); }
+/* An inset ring: the notched clip-path on details would cut an outer one off. */
+summary:focus-visible { outline: 2px solid var(--_focus); outline-offset: -3px; }
+details.disabled summary { cursor: not-allowed; }
+details.disabled summary:hover { background: none; }
 .icon { flex: none; }
 .label { flex: 1; min-inline-size: 0; }
 /* A pixel triangle that turns a quarter when the panel opens. */
@@ -89,35 +92,34 @@ const styles = /* css */ `
 	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
 	transition: rotate var(--_dur) steps(3, end);
 }
-.summary:hover .marker { color: var(--_text); }
-.open > .summary .marker::before { rotate: 90deg; }
+summary:hover .marker { color: var(--_text); }
+details[open] .marker::before { rotate: 90deg; }
 /*
- * The animation. The panel is a one-row grid that grows from 0fr to 1fr, so
- * the open height is the content's own height: nothing is measured, and the
- * transition always ends exactly right. hidden="until-found" keeps the closed
- * content out of the layout and out of the tab order, and still lets the
- * browser's find-in-page reach it (it fires beforematch, and we open).
+ * The animation. ::details-content is the box the browser already wraps the
+ * revealed content in, so the height it grows to is the content's own height.
+ * content-visibility flips discretely at the ends of the transition, which is
+ * what keeps the closed content out of the layout and out of the tab order
+ * while still letting find-in-page reach it (and open the panel).
  *
- * display comes from :not([hidden]) so the UA's [hidden] rule still wins where
- * until-found is unsupported; an author "display: grid" would beat it.
+ * Where ::details-content is unsupported the whole rule is dropped and the
+ * panel simply opens at once.
  */
-.panel:not([hidden]) { display: grid; }
-.panel {
-	grid-template-rows: 0fr;
-	transition: grid-template-rows var(--_dur) cubic-bezier(0.2, 0, 0, 1);
+details::details-content {
+	block-size: 0;
+	overflow: hidden;
+	transition: block-size var(--_dur) cubic-bezier(0.2, 0, 0, 1), content-visibility var(--_dur) allow-discrete;
+	transition-behavior: allow-discrete;
 }
-.panel.open { grid-template-rows: 1fr; }
-.panel.instant { transition: none; }
-/* The row is the only thing with a height: the content is clipped while it grows. */
-.clip { overflow: hidden; }
+details[open]::details-content { block-size: auto; }
+/* The first paint, and anything the browser reveals itself: no animation. */
+details.instant::details-content { transition: none; }
 .body {
-	padding: 0.25rem 0.875rem 0.875rem;
-	border-block-start: 1px solid transparent;
+	padding: 0.875rem;
+	border-block-start: 1px solid var(--_border);
 	font-size: 0.875rem;
 }
-.open > .panel .body { border-block-start-color: var(--_border); }
 @media (prefers-reduced-motion: reduce) {
-	.panel, .marker::before { transition: none; }
+	details::details-content, .marker::before { transition: none; }
 }
 `
 
@@ -148,26 +150,15 @@ rocket('sb-details', {
 		$$.summary = props.summary
 		$$.icon = props.icon
 		$$.disabled = props.disabled
-		// open: what the user (or the server) asked for.
-		// rendered: whether the panel takes part in the layout at all; it stays
-		// on until a closing animation has finished.
+		// The open state lives here and is written to the inner <details>
+		// through data-effect. It is never written to the *host* attribute: that
+		// one belongs to the server. The <details> reflects its own state into
+		// its own open attribute, but that one is inside the shadow root, where
+		// no morph can see it.
 		$$.open = props.open
-		$$.rendered = props.open
 		// The first paint never animates: an initially open panel is simply open.
 		$$.instant = true
 		next(() => ($$.instant = false))
-
-		const panel = () => host.shadowRoot?.querySelector('.panel')
-		const duration = () => {
-			const el = panel()
-			return el ? ms(getComputedStyle(el).transitionDuration) : 0
-		}
-		let timer = 0
-		const stop = () => {
-			clearTimeout(timer)
-			timer = 0
-		}
-		cleanup(stop)
 
 		const toggled = (open, defer) => {
 			const fire = () => emit('sb-toggle', { name: props.name, open })
@@ -178,31 +169,12 @@ rocket('sb-details', {
 			else fire()
 		}
 
-		// The one place the open state changes, whoever asked: the click, the
-		// keyboard, host.open, show()/hide(), a group sibling, the server.
-		const set = (want, { announce = true, defer = false, instant = false } = {}) => {
+		// The one place the open state changes, whoever asked: the native
+		// element's own toggle, host.open, show()/hide(), a sibling, the server.
+		const set = (want, { announce = true, defer = false } = {}) => {
 			if (want === $$.open) return
-			stop()
-			const d = instant ? 0 : duration()
-			if (want) {
-				$$.rendered = true
-				if (d <= 0) {
-					// Nothing to animate (reduced motion, or a find-in-page reveal):
-					// suppress the transition for this frame instead of waiting for it.
-					$$.instant = true
-					$$.open = true
-					next(() => ($$.instant = false))
-				} else {
-					next(() => $$.rendered && ($$.open = true))
-				}
-				closeSiblings(defer)
-			} else {
-				$$.open = false
-				// Keep the panel in the layout until the row has shrunk. transitionend
-				// normally gets there first; this is the fallback when it never fires.
-				if (d <= 0) $$.rendered = false
-				else timer = setTimeout(() => ($$.rendered = false), d + 60)
-			}
+			$$.open = want
+			if (want) closeSiblings(defer)
 			if (announce) toggled(want, defer)
 		}
 
@@ -272,49 +244,35 @@ rocket('sb-details', {
 		defineHostProp('show', { value: () => peek(() => set(true)) })
 		defineHostProp('hide', { value: () => peek(() => set(false)) })
 
-		// A real <button> brings Enter and Space with it.
-		action('toggle', () => !$$.disabled && set(!$$.open))
-		action('settled', ({ el, evt }) => {
-			if (evt.target !== el || evt.propertyName !== 'grid-template-rows') return
-			stop()
-			if (!$$.open) $$.rendered = false
-		})
-		// Find-in-page hit the closed content: the browser is about to reveal it
-		// and scroll there, so open at once instead of scrolling to a growing box.
-		action('found', () => set(true, { instant: true }))
+		// Everything the browser opens or closes by itself lands here: the click
+		// and the keyboard on <summary>, and find-in-page revealing the content.
+		action('sync', ({ el }) => set(el.open))
+		// <summary> has no disabled state, so the default action is what we stop.
+		// It is the default action of Enter and Space on it as well.
+		action('guard', ({ evt }) => $$.disabled && evt.preventDefault())
 	},
-	render: ({ html }) => html`
-		<div class="details" part="details" data-class:open="$$open">
-			<button
-				type="button"
-				class="summary"
+	render: ({ html, props }) => html`
+		<details
+			part="details"
+			open="${props.open ? 'open' : null}"
+			data-class:instant="$$instant"
+			data-class:disabled="$$disabled"
+			data-effect="el.open !== $$open && (el.open = $$open)"
+			data-on:toggle="@sync()"
+		>
+			<summary
 				part="summary"
 				id="summary"
-				aria-controls="panel"
 				data-attr:aria-expanded="String($$open)"
-				data-attr:disabled="$$disabled ? 'disabled' : null"
-				data-on:click="@toggle()"
+				data-attr:aria-disabled="$$disabled ? 'true' : null"
+				data-attr:tabindex="$$disabled ? '-1' : null"
+				data-on:click="@guard()"
 			>
 				<span class="icon" part="icon" aria-hidden="true" data-show="$$icon" data-text="$$icon"></span>
 				<span class="label" part="label"><slot name="summary" data-text="$$summary"></slot></span>
 				<span class="marker" part="marker" aria-hidden="true"></span>
-			</button>
-			<div
-				class="panel"
-				part="panel"
-				id="panel"
-				role="region"
-				aria-labelledby="summary"
-				data-attr:hidden="$$rendered ? null : 'until-found'"
-				data-class:open="$$open"
-				data-class:instant="$$instant"
-				data-on:transitionend="@settled()"
-				data-on:beforematch="@found()"
-			>
-				<div class="clip">
-					<div class="body" part="content"><slot></slot></div>
-				</div>
-			</div>
-		</div>
+			</summary>
+			<div class="body" part="content" role="region" aria-labelledby="summary"><slot></slot></div>
+		</details>
 	`,
 })
