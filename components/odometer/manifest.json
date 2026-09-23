@@ -40,6 +40,16 @@
       "docs": {
         "description": "Locale for the separators (default: the page's lang, then the browser's)."
       }
+    },
+    {
+      "name": "drum",
+      "attribute": "drum",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Draw each wheel as a 3D drum: digits curve away above and below, and foreshorten as they roll."
+      }
     }
   ],
   "slots": [],

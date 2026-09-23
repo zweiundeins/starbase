@@ -24,8 +24,18 @@ const REST = 10 // the middle turn
 const isDigit = (c) => c >= '0' && c <= '9'
 const offset = (pos) => `translateY(-${(pos * 100) / CELLS.length}%)`
 
-// Per element: the last value, and each wheel's position, counted from the
-// right so the units wheel stays the units wheel when a digit is gained.
+// With `drum`, each wheel is a cylinder instead: its ten digits sit on faces
+// 36° apart, and rolling turns the cylinder, so a digit foreshortens as it
+// turns toward the top or bottom like print on a real wheel. The angle only
+// ever accumulates (+36° a digit going up, −36° going down), which makes
+// turning over the top natural and needs none of the strip's outer turns.
+const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+const STEP = 36 // degrees per digit
+const mod10 = (n) => ((n % 10) + 10) % 10
+
+// Per element: the last value, and each wheel's strip position and drum turn,
+// counted from the right so the units wheel stays the units wheel when a
+// digit is gained.
 const wheels = new WeakMap()
 
 // The shape key: the same length and the same digit/static layout means a roll
@@ -62,8 +72,38 @@ const styles = /* css */ `
 .strip { display: block; will-change: transform; }
 .strip > span { display: block; block-size: 1em; line-height: 1em; text-align: center; }
 .static { display: inline-block; }
+
+/* Drum: the window shows the digit face-on and the neighbours curving away
+   above and below it, fading into the page. A face is 1em tall, so ten of them
+   close into a cylinder of radius 0.5em / tan(18°). */
+:host([drum]) {
+	--_window: var(--sb-odometer-window, 1.5em);
+	--_perspective: var(--sb-odometer-perspective, 5em);
+	--_r: 1.5388em;
+	align-items: center;
+}
+.drum {
+	position: relative;
+	inline-size: 1ch;
+	block-size: var(--_window);
+	overflow: hidden;
+	perspective: var(--_perspective);
+	-webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+	mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+.cyl { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
+.face {
+	position: absolute;
+	inset-inline: 0;
+	inset-block-start: 50%;
+	block-size: 1em;
+	margin-block-start: -0.5em;
+	line-height: 1em;
+	text-align: center;
+	backface-visibility: hidden;
+}
 @media (prefers-reduced-motion: no-preference) {
-	.strip { transition: transform var(--_duration) var(--_easing); }
+	.strip, .cyl { transition: transform var(--_duration) var(--_easing); }
 }
 `
 
@@ -73,14 +113,16 @@ rocket('sb-odometer', {
 		decimals: number.round.clamp(0, 7).docs({ description: 'Fixed digits after the decimal mark, so a whole-number step still shows ".0" and the layout does not jump.' }),
 		grouping: bool.default(true).docs({ description: 'Group thousands the way the locale does (221’180, 221,180, 221 180).' }),
 		lang: string.trim.docs({ description: "Locale for the separators (default: the page's lang, then the browser's)." }),
+		drum: bool.docs({ description: 'Draw each wheel as a 3D drum: digits curve away above and below, and foreshorten as they roll.' }),
 	}),
 	setup: ({ adoptStyles, host }) => {
 		adoptStyles(host, styles)
 	},
-	render: ({ html, host, props: { value, decimals, grouping, lang } }) => {
+	render: ({ html, host, props: { value, decimals, grouping, lang, drum } }) => {
 		const locale = lang || host.closest('[lang]')?.lang || navigator.language
 		const text = formatterFor(locale, decimals, grouping).format(value)
-		const shape = shapeKey(text)
+		// The mode is part of the shape: switching it builds fresh wheels.
+		const shape = shapeKey(text) + (drum ? '-drum' : '')
 		const digits = [...text].filter(isDigit).map(Number)
 
 		const last = wheels.get(host)
@@ -109,16 +151,31 @@ rocket('sb-odometer', {
 			if (down && d > from) return d // 0 → 9 going down: roll back under
 			return REST + d
 		})
-		wheels.set(host, { value, shape, pos: Object.fromEntries(pos.map((p, i) => [digits.length - 1 - i, p])) })
+		// Drum turns: from where each wheel stands, forward to the new digit when
+		// the number climbs and back when it falls, however many digits away.
+		const turn = digits.map((d, i) => {
+			const k = digits.length - 1 - i
+			const t = same ? last.turn[k] : undefined
+			if (t === undefined) return d
+			if (up) return t + mod10(d - mod10(t))
+			if (down) return t - mod10(mod10(t) - d)
+			return t + (mod10(d - mod10(t)) <= 5 ? mod10(d - mod10(t)) : mod10(d - mod10(t)) - 10)
+		})
+		const byWheel = (list) => Object.fromEntries(list.map((v, i) => [digits.length - 1 - i, v]))
+		wheels.set(host, { value, shape, pos: byWheel(pos), turn: byWheel(turn) })
 
 		// Assistive tech gets the formatted value once; each strip holds all its
 		// digits, so the strips are hidden from it.
 		let n = 0
+		const wheel = () => {
+			const i = n++
+			return drum
+				? html`<span class="drum" part="digit"><span class="cyl" style="transform:translateZ(calc(-1 * var(--_r))) rotateX(${turn[i] * STEP}deg)">${DIGITS.map((d) => html`<span class="face" style="transform:rotateX(${-d * STEP}deg) translateZ(var(--_r))">${d}</span>`)}</span></span>`
+				: html`<span class="col" part="digit"><span class="strip" style="transform:${offset(pos[i])}">${CELLS.map((d) => html`<span>${d}</span>`)}</span></span>`
+		}
 		return html`
 			<span class="sr">${text}</span><span class="odo" id="${shape}" aria-hidden="true">${[...text].map((ch) =>
-				isDigit(ch)
-					? html`<span class="col" part="digit"><span class="strip" style="transform:${offset(pos[n++])}">${CELLS.map((d) => html`<span>${d}</span>`)}</span></span>`
-					: html`<span class="static" part="separator">${ch}</span>`,
+				isDigit(ch) ? wheel() : html`<span class="static" part="separator">${ch}</span>`,
 			)}</span>
 		`
 	},

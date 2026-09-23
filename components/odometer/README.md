@@ -8,7 +8,7 @@ tags: [number, counter, animation, odometer, intl]
 since: 2026-09-23
 preview: |
   <div data-signals="{_odo: 221180.4}" data-on-interval__duration.3600ms.leading="$_odo = Math.round(($_odo + 0.1) * 10) / 10">
-    <sb-odometer decimals="1" data-attr:value="$_odo" data-preserve-attr="value" style="font-size: 2rem; --sb-odometer-duration: 3.6s; --sb-odometer-easing: linear">221180.4</sb-odometer>
+    <sb-odometer drum decimals="1" data-attr:value="$_odo" data-preserve-attr="value" style="font-size: 2rem; --sb-odometer-duration: 3.6s; --sb-odometer-easing: linear">221180.4</sb-odometer>
   </div>
 playground:
   props:
@@ -34,6 +34,19 @@ A tenth of a kilometre every 3.6 seconds is 100 km/h. Give the roll the same 3.6
   km
 </div>
 ```
+
+### Drum
+
+`drum` draws each wheel as a cylinder: you see the digit face-on and its neighbours curving away above and below, and as a wheel turns, the digit on it foreshortens like print on a real drum.
+
+```html preview
+<div data-signals="{_odo: 221180.4}" data-on-interval__duration.1200ms.leading="$_odo = Math.round(($_odo + 0.1) * 10) / 10" style="display: flex; gap: 0.5rem; align-items: center">
+  <sb-odometer drum decimals="1" data-attr:value="$_odo" data-preserve-attr="value" style="font-size: 3rem; --sb-odometer-duration: 1.2s; --sb-odometer-easing: linear">221180.4</sb-odometer>
+  <span>km</span>
+</div>
+```
+
+`--sb-odometer-window` sets how much of the drum shows (default `1.5em`, the digit plus a sliver of its neighbours), `--sb-odometer-perspective` how strongly it curves (default `5em`; smaller is rounder).
 
 ### Flight
 
@@ -86,6 +99,8 @@ Separators follow `lang`, or the page's language when it is not set. The digits 
 ## Styling
 
 The digits inherit the surrounding font; a monospaced or tabular face keeps the wheels evenly spaced. `::part(digit)` / `::part(separator)` reach the wheels and the static characters.
+
+For a wheel you can see is round, add `drum` (see above).
 
 The speed is yours: `--sb-odometer-duration` (default `0.55s`) is how long a wheel takes to reach its new digit, and `--sb-odometer-easing` how it gets there. A quick ease-out suits a counter that jumps; for a value that climbs steadily, set the duration to the interval between updates and the easing to `linear`, and the wheels move continuously. A wheel always turns the way the number moves: forward over the top when it climbs (9 → 0), back when it falls.
 
