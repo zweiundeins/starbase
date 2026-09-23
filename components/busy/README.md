@@ -109,6 +109,36 @@ A skeleton usually stands in for the content it is waiting for, so give it the s
 </div>
 ```
 
+### A spinner inside the button
+
+The most common loading state there is: the button that fired the request carries the spinner itself. `for` points at that button, and that is the whole wiring — no signal, no `data-indicator`, nothing for the page to keep track of.
+
+```html preview
+<div data-signals="{_sync: []}" style="display: flex; align-items: center; gap: 16px">
+  <sb-button id="sb-busy-sync" data-on:click="@get('/demo/data/children?into=_sync&delay=900')">
+    <span style="display: inline-flex; inline-size: 16px; justify-content: center">
+      <sb-busy size="sm" for="#sb-busy-sync" label="Syncing" style="--sb-brand: currentColor"></sb-busy>
+    </span>
+    Sync catalog
+  </sb-button>
+  <span style="color: var(--sb-text-2); font-size: 0.8125rem" data-text="$_sync.length ? 'synced ' + $_sync.length + ' galaxies' : 'not synced yet'"></span>
+</div>
+```
+
+The spinner lives in a fixed 16 px box, so the button is exactly as wide before, during and after the request: nothing jumps and the label never moves. `--sb-brand: currentColor` gives the dots the button's own text colour, so they stay readable on a filled button. The same wiring works for `@post('/cmd/…')` — `sb-busy` watches the element, not the method.
+
+Nested straight into the button, without that box, it needs no `for` at all: the default rule (any request from inside the host's parent element) already covers the button it sits in. The box is only there to reserve the space.
+
+### When a plain indicator is enough
+
+`sb-busy` earns its place when you want the spinner, the bar or the skeleton. If all the page needs is a dimmed or disabled control while a request is in flight, Datastar does that on its own, and it is lighter:
+
+```html
+<sb-button data-indicator:_saving data-attr:disabled="$_saving" data-on:click="@post('/cmd/save')">Save</sb-button>
+```
+
+`data-indicator` sets `$_saving` while that element's request is in flight; `data-attr:disabled` and a CSS class are the whole loading state. Reach for `sb-busy` when the wait needs a shape.
+
 ### No flash, no flicker
 
 `delay` is how long a request may take before anything appears, and `min` is how long the indicator stays once it did appear. A request that finishes inside `delay` never shows an indicator at all; one that finishes right after it keeps it up for `min`. The failure of a watched request skips `min` and drops the indicator at once.
