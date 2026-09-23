@@ -11,6 +11,14 @@ const peek = (fn) => {
 	}
 }
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
+const report = (err) => (typeof reportError === 'function' ? reportError(err) : console.error(err))
+
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -27,8 +35,9 @@ const MAX_DEPTH = 5
 const LEVELS = Array.from({ length: MAX_DEPTH + 1 }, (_, k) => k)
 
 // Items are strings, "-" for a divider, or {value, label?, description?, icon?,
-// disabled?, danger?, divider?, children?}. An item with children is a
+// disabled?, danger?, divider?, children?, type?}. An item with children is a
 // submenu: the children win, its own value is dropped and it never reports one.
+// type: "radio" on such an item makes its children the menu's radio group.
 const normalize = (list, depth = 0) =>
 	(Array.isArray(list) ? list : [])
 		.map((it) => {
@@ -47,6 +56,7 @@ const normalize = (list, depth = 0) =>
 				icon: it.icon ? String(it.icon) : '',
 				disabled: !!it.disabled,
 				danger: !!it.danger,
+				radio: it.type === 'radio',
 				children,
 			}
 		})
@@ -54,7 +64,7 @@ const normalize = (list, depth = 0) =>
 
 // What a row needs to render: never the children, which would put a whole tree
 // into a signal.
-const light = (r) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length })
+const light = (r) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, pending: false })
 
 const styles = /* css */ `
 :host {
@@ -159,7 +169,7 @@ ${LEVELS.filter((k) => k > 0)
 .anim:popover-open { animation: pop 110ms cubic-bezier(0.2, 0, 0, 1); }
 @keyframes pop { from { opacity: 0; translate: 0 -3px; } }
 
-[role="menuitem"] {
+[role^="menuitem"] {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -168,13 +178,24 @@ ${LEVELS.filter((k) => k > 0)
 	cursor: pointer;
 	outline: none;
 }
-[role="menuitem"]:hover { background: var(--_hover); }
-[role="menuitem"]:focus, .open-parent { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); }
-[role="menuitem"]:focus-visible { outline: 2px solid var(--_brand-light); outline-offset: -2px; }
-[role="menuitem"][aria-disabled="true"] { opacity: 0.45; cursor: default; }
-[role="menuitem"][aria-disabled="true"]:hover { background: none; }
+[role^="menuitem"]:hover { background: var(--_hover); }
+[role^="menuitem"]:focus, .open-parent { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); }
+[role^="menuitem"]:focus-visible { outline: 2px solid var(--_brand-light); outline-offset: -2px; }
+[role^="menuitem"][aria-disabled="true"] { opacity: 0.45; cursor: default; }
+[role^="menuitem"][aria-disabled="true"]:hover { background: none; }
 .danger { color: var(--_danger); }
 .danger:focus { box-shadow: inset 2px 0 0 var(--_danger); }
+/* The mark column is reserved for every row of a radio group, so the menu
+   does not jump when the value moves. */
+.check { flex: none; inline-size: 0.85rem; block-size: 0.85rem; }
+.check.on {
+	background: currentColor;
+	clip-path: polygon(10% 46%, 4% 60%, 40% 94%, 96% 26%, 84% 14%, 38% 70%);
+}
+/* A choice the server has not confirmed yet: the pixel board fades its
+   pending cells the same way. */
+.pending { opacity: 0.62; }
+.pending .check.on { opacity: 0.6; }
 .icon { flex: none; inline-size: 1.15rem; text-align: center; }
 .body { min-inline-size: 0; flex: 1; }
 .label { font-weight: 600; }
@@ -206,6 +227,9 @@ rocket('sb-dropdown', {
 		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, disabled?, danger?}, {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. Server data: a new array replaces the whole tree, open or not.' }),
 		label: string.trim.default('Actions').docs({ description: 'Text of the default trigger, and the accessible name of trigger and menu.' }),
 		placement: oneOf('bottom-start', 'bottom', 'bottom-end', 'top-start', 'top', 'top-end').default('bottom-start').docs({ description: 'Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start.' }),
+		type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes every leaf of the root menu one radio group, for a menu that shows a current choice. A group inside a submenu is type:"radio" on that item instead; a dropdown holds one group.' }),
+		value: string.docs({ description: 'Radio group: the checked value, owned by the server. A new value from the server wins (value="" clears it); the live value is the value property.' }),
+		confirm: bool.docs({ description: 'Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server\'s value attribute (see revert()).' }),
 		open: bool.docs({ description: 'Open on first render. A changed attribute from the server opens or closes the menu (open="false" closes); re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client.' }),
 		disabled: bool.docs({ description: 'Disable the trigger (and close the menu).' }),
 		name: string.trim.docs({ description: 'Name reported in sb-select (e.g. the field of a command).' }),
@@ -216,7 +240,9 @@ rocket('sb-dropdown', {
 			{ name: 'item', description: 'Menu items as markup instead of items: <button slot="item" value="x" disabled data-icon="🛰" data-description="…" data-danger>Label</button>, or <hr slot="item"> for a divider. A submenu is data-children=\'[…]\' (the same JSON as items). They are read as data; items wins when it is not empty.' },
 		],
 		events: [
-			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: 'A leaf item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value.' },
+			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: 'A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, and an item of a radio group reports sb-change instead.' },
+			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'Radio group: the value changed.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Radio group: an item of the group was chosen. detail: { name, value }: ready for a command.' },
 			{ name: 'sb-open', kind: 'custom-event', bubbles: true, composed: true, description: 'The menu opened (the root; submenus are view state and stay quiet).' },
 			{ name: 'sb-close', kind: 'custom-event', bubbles: true, composed: true, description: 'The menu closed. detail: { reason }: item, escape, outside, scroll, tab, trigger, server or api.' },
 		],
@@ -236,10 +262,12 @@ rocket('sb-dropdown', {
 		$$.inside = false // keyboard focus is in one of the menus
 		$$.label = props.label
 		$$.disabled = props.disabled
+		$$.value = props.value // radio group: the checked value
 		$$.anim = false // no opening animation for a menu that starts open
 		$$.icons = false
 		$$.rev = 0
 		for (const k of LEVELS) {
+			$$['checks' + k] = false // the level holding the radio group reserves a mark column
 			$$['rows' + k] = []
 			$$['parent' + k] = -1 // row index whose submenu is open, -1 for none
 			$$['lbl' + k] = k === 0 ? props.label : ''
@@ -257,6 +285,18 @@ rocket('sb-dropdown', {
 		let tree = []
 		let path = [] // index of the open parent per level: [2] means level 1 hangs off row 2
 		let rev = 0
+		// The one radio group, as the path of the item whose children it is
+		// ([] for the root menu). null when the menu is all actions.
+		let group = null
+		// The last value the server stated, for the server-wins rule and for
+		// the pending mark (see the open attribute below).
+		let servedV = props.value
+		const inGroup = (k, i) => {
+			if (!group || k !== group.length) return false
+			for (let j = 0; j < group.length; j++) if (path[j] !== group[j]) return false
+			const r = nodes(k)[i]
+			return !!r && !r.divider && !r.children?.length
+		}
 		const nodes = (k) => {
 			let list = tree
 			for (let j = 0; j < k; j++) list = list[path[j]]?.children ?? []
@@ -308,8 +348,21 @@ rocket('sb-dropdown', {
 		// what you assign to it).
 		const publish = () => {
 			let icons = false
+			const waiting = props.confirm && $$.value !== servedV
 			for (const k of LEVELS) {
 				const rows = k <= path.length ? nodes(k).map(light) : []
+				const list = nodes(k)
+				let checks = false
+				rows.forEach((r, i) => {
+					if (!inGroup(k, i)) return
+					checks = true
+					r.check = true
+					r.checked = list[i].value === $$.value
+					// The check the user clicked is a rendered result: it stays
+					// pending until the server's value says the same.
+					r.pending = waiting && r.checked
+				})
+				$$['checks' + k] = checks
 				$$['rows' + k] = rows
 				$$['parent' + k] = k < path.length ? path[k] : -1
 				// A submenu is named by the item that opens it.
@@ -356,6 +409,22 @@ rocket('sb-dropdown', {
 			const had = $$.inside
 			const was = { level: $$.level, active: $$.active }
 			tree = next
+			// One radio group per dropdown: the root menu (type="radio" on the
+			// host) or the children of one item (type: "radio"). Anything beyond
+			// the first is ignored and reported, never guessed at.
+			group = props.type === 'radio' ? [] : null
+			const extra = []
+			const scan = (list, at) =>
+				list.forEach((r, i) => {
+					// A divider carries nothing else, so every read stays optional.
+					if (r.radio && r.children?.length) {
+						if (group) extra.push(r.label || 'item ' + i)
+						else group = [...at, i]
+					}
+					if (r.children?.length) scan(r.children, [...at, i])
+				})
+			scan(tree, [])
+			if (extra.length) report(new Error(`<sb-dropdown> holds one radio group; ignoring ${extra.join(', ')}`))
 			// Submenus survive new items only while their parent is still a
 			// parent: otherwise the path is cut back to where it still holds.
 			let keep = 0
@@ -501,9 +570,18 @@ rocket('sb-dropdown', {
 			// only way back on a touch screen); its own value never counts.
 			if (opens(k, i)) return path[k] === i ? closeTo(k, true) : openSub(k, i, true)
 			if (!pickable(k, i)) return
-			// A menu holds no value, so nothing is pending: the command is an
-			// intent, and the page shows whatever the server renders next.
-			emit('sb-select', { name: props.name, value: node(k, i).value })
+			const value = node(k, i).value
+			// An item of the radio group changes a value; every other item is an
+			// intent the page turns into a command. Never both for one item.
+			if (inGroup(k, i)) {
+				$$.value = value
+				publish()
+				sync()
+				emit('change')
+				emit('sb-change', { name: props.name, value })
+			} else {
+				emit('sb-select', { name: props.name, value })
+			}
 			close('item')
 		}
 
@@ -515,6 +593,19 @@ rocket('sb-dropdown', {
 		// can never re-open a menu the user just closed.
 		// It is watched on the attribute, not through observeProps, which stays
 		// silent when the decoded value did not change (see CLAUDE.md).
+		// The value the server owns. observeProps would stay silent when the
+		// decoded value did not change (value="" on an element that never had the
+		// attribute), so this watches the attribute, like open.
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.value !== servedV ? states.add('pending') : states.delete('pending')))
+		const serverValue = () => {
+			const v = host.getAttribute('value')
+			if (v === null || v === servedV) return // a removed attribute is ignored
+			servedV = v
+			$$.value = v
+			publish()
+			sync()
+		}
 		let served = props.open
 		const serverOpen = () => {
 			const v = host.getAttribute('open')
@@ -528,23 +619,33 @@ rocket('sb-dropdown', {
 		// label or a flag: no attribute form for watching that either.
 		const watch = new MutationObserver((records) =>
 			peek(() => {
-				if (records.some((m) => m.type === 'attributes' && m.target === host && m.attributeName === 'open')) serverOpen()
+				const own = (name) => records.some((m) => m.type === 'attributes' && m.target === host && m.attributeName === name)
+				if (own('open')) serverOpen()
+				if (own('value')) serverValue()
 				rebuild()
 			}),
 		)
-		watch.observe(host, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'value', 'disabled', 'aria-disabled', 'slot', 'data-icon', 'data-description', 'data-danger', 'data-divider', 'data-children'] })
+		watch.observe(host, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'value', 'type', 'disabled', 'aria-disabled', 'slot', 'data-icon', 'data-description', 'data-danger', 'data-divider', 'data-children'] })
 
 		rebuild()
-		observeProps((p) =>
+		observeProps((p, changes) =>
 			peek(() => {
 				if (p.disabled && $$.open) setOpen(false, { reason: 'api', defer: true })
 				$$.label = p.label
 				$$.side0 = p.placement
 				$$.disabled = p.disabled
-				rebuild()
+				rebuild('type' in changes) // a new type moves the group
 				publish() // a new label also renames the menu
+				sync()
 			}),
 		)
+
+		// Radio group: the attribute is the server's value, $$.value the local
+		// one. With confirm, :state(pending) marks a choice the server has not
+		// confirmed yet; revert() goes back to the server's value.
+		effect(() => ($$.value, sync()))
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.value = v == null ? '' : String(v)), publish(), sync())))
+		defineHostProp('revert', { value: () => peek(() => (($$.value = servedV), publish(), sync())) })
 
 		// host.open / show() / hide(): the live state, never an attribute.
 		overrideProp('open', () => peek(() => $$.open), (v) => peek(() => setOpen(!!v && v !== 'false', { focus: v ? 'first' : null })))
@@ -733,19 +834,23 @@ rocket('sb-dropdown', {
 			data-on:pointerenter="@over()">
 			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
 			<template data-for="r, i in $$rows${k}">
-				<div part="item"
+				<div
 					data-show="!!r"
-					data-attr:role="!r ? null : r.divider ? 'separator' : 'menuitem'"
+					data-attr:part="'item' + (r?.checked ? ' checked' : '') + (r?.pending ? ' pending' : '')"
+					data-attr:role="!r ? null : r.divider ? 'separator' : r.check ? 'menuitemradio' : 'menuitem'"
 					data-attr:data-idx="r?.divider ? null : i"
 					data-attr:tabindex="r?.divider ? null : -1"
 					data-attr:aria-disabled="r?.disabled ? 'true' : null"
+					data-attr:aria-checked="r?.check ? String(!!r?.checked) : null"
 					data-attr:aria-haspopup="r?.parent ? 'menu' : null"
 					data-attr:aria-expanded="r?.parent ? String($$parent${k} === i) : null"
 					data-class:danger="r?.danger"
+					data-class:pending="r?.pending"
 					data-class:open-parent="r?.parent && $$parent${k} === i"
 					data-on:click="@click(${k}, i)"
 					data-on:pointerenter="@enter(${k}, i)"
 					data-on:pointerleave="@leave()">
+					<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider" data-class:on="r?.checked"></span>
 					<span class="icon" aria-hidden="true" data-show="$$icons && !r?.divider" data-text="r?.icon"></span>
 					<span class="body" data-show="!r?.divider">
 						<span class="label" data-text="r?.label"></span>
