@@ -98,7 +98,7 @@
       "name": "sb-theme-change",
       "bubbles": true,
       "composed": true,
-      "description": "After the user picks a theme. detail: { theme, cookie }."
+      "description": "After the user picks a theme. detail: { theme, cookie, scheme }, where scheme is \"light\" or \"dark\": what the page now paints in."
     }
   ]
 }

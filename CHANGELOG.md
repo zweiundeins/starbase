@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows
 
 - `sb-button` takes `loading`: an inline pixel spinner (the same one `sb-busy` draws), clicks and Enter blocked against double submits, `aria-busy`, and focus kept. It costs no space until it is loading; bind it to `data-indicator`.
 - `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
+- `sb-theme-change` carries `scheme` (`"light"` or `"dark"`): what the page now paints in, worked out from the theme's own `color-scheme`, so code that draws needs no list of theme names. The theme switch's docs gain a section on following the theme from a canvas.
 - `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
 
 ### Changed
@@ -19,6 +20,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-sparkline` and `sb-gauge` kept the old theme's colours after a pick on the theme switch (and after the system flipped under "auto") until their data next changed: they read colours at paint time but were never asked to paint. They now repaint on `sb-theme-change` and on `prefers-color-scheme` changes.
 - `sb-tree` lost the keyboard when the server dropped the focused row: the morph parks a row before removing it, so the focusout looked like the user leaving. Focus now moves to the neighbouring row, and is only given up when it really went somewhere else.
 - Two console errors when the gallery's search morph removed a card: `sb-nebula` freed its GPU context in cleanup, which fired `webglcontextlost` after Rocket had torn the element down (the context events are wired with `addEventListener` now), and `sb-select`'s computed label read its chips signal while it was already gone.
 

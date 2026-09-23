@@ -55,8 +55,10 @@ rocket('sb-sparkline', {
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals of the shown value.' }),
 	}),
 	renderOnPropChange: ({ changes }) => 'showValue' in changes,
-	setup: ({ $$, adoptStyles, defineHostProp, host, observeProps, props }) => {
+	setup: ({ $$, action, adoptStyles, defineHostProp, host, observeProps, props }) => {
 		adoptStyles(host, styles)
+		// Colours are read at paint time, so a new theme only needs a repaint.
+		action('repaint', () => buffers.get(host)?.onchange?.())
 		// The data buffer is instance state, not an attribute.
 		let data = [...props.values].slice(-props.length)
 		// In push mode the starting value is the first point.
@@ -91,7 +93,7 @@ rocket('sb-sparkline', {
 		defineHostProp('data', { get: () => [...data] })
 	},
 	render: ({ html, props: { showValue } }) => html`
-		<canvas part="line" height="${H}" role="img"></canvas>
+		<canvas part="line" height="${H}" role="img" data-on:sb-theme-change__window="@repaint()"></canvas>
 		${showValue ? html`<span class="value" part="value" data-text="$$latest"></span>` : null}
 	`,
 	onFirstRender: ({ cleanup, host, props }) => {
@@ -153,7 +155,12 @@ rocket('sb-sparkline', {
 		buffers.get(host).onchange = () => {
 			if (!raf) raf = requestAnimationFrame(paint)
 		}
+		// A pick on <sb-theme-switch> arrives as sb-theme-change (see the template);
+		// the system flipping under "auto" does not, so it is heard here.
+		const scheme = matchMedia('(prefers-color-scheme: dark)')
+		const repaint = () => buffers.get(host).onchange()
+		scheme.addEventListener('change', repaint)
 		paint()
-		cleanup(() => cancelAnimationFrame(raf))
+		cleanup(() => (cancelAnimationFrame(raf), scheme.removeEventListener('change', repaint)))
 	},
 })
