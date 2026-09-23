@@ -18,7 +18,8 @@ import (
 type Assets interface {
 	Static(name string) string // files under static/
 	Art(name string) string    // generated pixel art (internal/pixelart)
-	Components() string        // module that loads every community component
+	Components() string        // the autoloader: loads each component the page uses
+	AllComponents() string     // imports every component, listed or not (the dev manifest publisher)
 	Datastar() string          // the vendored datastar-rocket bundle
 	SiteCSS() string           // all the site's CSS in one file (see web/assets.go)
 	// ArtSVG is a pixel art illustration as inline SVG markup, so its
