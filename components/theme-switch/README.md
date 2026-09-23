@@ -88,6 +88,23 @@ Also set `<meta name="color-scheme" content="light dark">`, so the browser's own
 
 Only a domain the page itself belongs to is accepted, and every subdomain can then read and overwrite the value — fine for a preference, so keep anything else out of this cookie. A domain the browser refuses would otherwise drop the choice without a word, so the component reads the cookie back and falls back to this host, reporting the mismatch through `reportError`.
 
+## Following the theme from a canvas
+
+CSS follows a theme on its own. Code that draws (a canvas, WebGL, a chart library) resolved its colours once and has to be told to draw again, for two different reasons:
+
+- **Someone picks a theme.** The switch fires `sb-theme-change` on the window, with `detail.scheme` set to `"light"` or `"dark"`: what the page now paints in, worked out from the theme's own `color-scheme`, so you never need a list of theme names.
+- **The system flips while "auto" is chosen.** Nothing is clicked, so no event fires. Listen to `prefers-color-scheme` as well.
+
+Read your colours again when you repaint, and both cases are covered:
+
+```js
+const repaint = () => requestAnimationFrame(paint)
+addEventListener('sb-theme-change', repaint)
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repaint)
+```
+
+Inside a Rocket component, the first one has an attribute form in the template, `data-on:sb-theme-change__window="@repaint()"`; `sb-sparkline` and `sb-gauge` do exactly this.
+
 ## Why a cookie
 
 A cookie reaches the server with the request, so the server can render the theme straight away. Local storage would need a script on every page. The cookie holds only the theme name, for a year, on the whole site (`Path=/`, `SameSite=Lax`, `Secure` on https, and `Domain` when `domain` is set). Several switches on one page stay in sync.
