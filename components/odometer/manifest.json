@@ -1,0 +1,47 @@
+{
+  "tag": "sb-odometer",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "The number to show. Change it and the digits roll to the new value."
+      }
+    },
+    {
+      "name": "decimals",
+      "attribute": "decimals",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Fixed digits after the decimal mark, so a whole-number step still shows \".0\" and the layout does not jump."
+      }
+    },
+    {
+      "name": "grouping",
+      "attribute": "grouping",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Group thousands the way the locale does (221’180, 221,180, 221 180)."
+      }
+    },
+    {
+      "name": "lang",
+      "attribute": "lang",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Locale for the separators (default: the page's lang, then the browser's)."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
