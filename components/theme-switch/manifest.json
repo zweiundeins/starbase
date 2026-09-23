@@ -46,6 +46,16 @@
       }
     },
     {
+      "name": "domain",
+      "attribute": "domain",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Cookie domain, e.g. \".example.com\" to share the choice with every subdomain. Default: this host only."
+      }
+    },
+    {
       "name": "variant",
       "attribute": "variant",
       "type": "oneOf",

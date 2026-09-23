@@ -126,6 +126,7 @@ rocket('sb-theme-switch', {
 		labels: array(string.trim).default(() => []).docs({ description: 'Visible names, in the order of themes (default: from the names).' }),
 		attribute: string.trim.default('data-theme').docs({ description: 'Attribute set on <html> to the chosen theme. "auto" removes it.' }),
 		cookie: string.trim.default('sb-theme').docs({ description: 'Cookie that remembers the choice (a year, whole site). Servers can read it to render the theme, with no flash.' }),
+		domain: string.trim.docs({ description: 'Cookie domain, e.g. ".example.com" to share the choice with every subdomain. Default: this host only.' }),
 		variant: oneOf('segmented', 'select', 'menu').default('segmented').docs({ description: 'Radio buttons, a select, or an icon button with a menu (for headers).' }),
 		compact: bool.docs({ description: 'Segmented only: icons without text for auto, dark and light.' }),
 		label: string.trim.default('Theme').docs({ description: 'Accessible name of the control.' }),
@@ -155,7 +156,10 @@ rocket('sb-theme-switch', {
 			$$.theme = t
 			apply(t)
 			const secure = location.protocol === 'https:' ? '; Secure' : ''
-			document.cookie = `${props.cookie}=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+			// A domain widens the choice to every subdomain that shares it; without
+			// one the cookie stays on this host, which is the safe default.
+			const domain = props.domain ? `; Domain=${props.domain}` : ''
+			document.cookie = `${props.cookie}=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax${domain}${secure}`
 			emit('sb-theme-change', { theme: t, cookie: props.cookie })
 		})
 		// Other switches for the same cookie follow along.

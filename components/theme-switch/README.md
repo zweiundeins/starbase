@@ -9,7 +9,7 @@ since: 2026-09-22
 preview: |
   <sb-theme-switch cookie="sb-theme-demo" attribute="data-demo-theme"></sb-theme-switch>
 playground:
-  exclude: [themes, labels, cookie, attribute]
+  exclude: [themes, labels, cookie, attribute, domain]
   attrs: {cookie: sb-theme-demo, attribute: data-demo-theme}
 ---
 
@@ -78,9 +78,19 @@ Then style the themes, with "auto" as the absence of the attribute:
 
 Also set `<meta name="color-scheme" content="light dark">`, so the browser's own background matches before your CSS arrives.
 
+### Across subdomains
+
+`domain` writes the cookie for a whole domain, so one choice covers the marketing site, the app and anything else under it. Leave it out and the cookie stays on the host that set it.
+
+```html
+<sb-theme-switch domain=".example.com"></sb-theme-switch>
+```
+
+Only a domain the page itself belongs to is accepted, and every subdomain can then read and overwrite the value — fine for a preference, so keep anything else out of this cookie.
+
 ## Why a cookie
 
-A cookie reaches the server with the request, so the server can render the theme straight away. Local storage would need a script on every page. The cookie holds only the theme name, for a year, on the whole site (`Path=/`, `SameSite=Lax`, and `Secure` on https). Several switches on one page stay in sync.
+A cookie reaches the server with the request, so the server can render the theme straight away. Local storage would need a script on every page. The cookie holds only the theme name, for a year, on the whole site (`Path=/`, `SameSite=Lax`, `Secure` on https, and `Domain` when `domain` is set). Several switches on one page stay in sync.
 
 ## Accessibility
 
