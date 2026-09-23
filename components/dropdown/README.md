@@ -51,7 +51,7 @@ The `trigger` slot fills the trigger with your own content — text, an icon, an
 
 ```html preview
 <sb-dropdown label="More" placement="bottom-end" items='[{"value":"copy","label":"Copy link","icon":"🔗"},{"value":"share","label":"Share","icon":"📤"},{"divider":true},{"value":"remove","label":"Remove","danger":true}]'>
-  <span slot="trigger" style="font-size: 1.1rem; line-height: 1">⋯</span>
+  <svg slot="trigger" width="16" height="4" viewBox="0 0 16 4" fill="currentColor" aria-hidden="true"><rect x="0" y="0" width="4" height="4"/><rect x="6" y="0" width="4" height="4"/><rect x="12" y="0" width="4" height="4"/></svg>
 </sb-dropdown>
 ```
 
