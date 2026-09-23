@@ -7,15 +7,21 @@ author: zweiundeins
 tags: [dropdown, menu, actions, popover, keyboard, navigation]
 since: 2026-09-23
 preview: |
-  <sb-dropdown label="Ship actions" items='[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'></sb-dropdown>
+  <sb-dropdown data-signals:_sent="''" data-preserve-attr="label"
+    data-attr:label="$_sent ? 'Sent: ' + $_sent : 'Ship actions'"
+    data-on:sb-select="$_sent = evt.detail.value"
+    items='[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'></sb-dropdown>
 playground:
   attrs:
+    "data-on:sb-select": '$_pg.label = "Sent: " + evt.detail.value'
     items: '[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"},{"label":"Outer system","children":[{"value":"titan","label":"Titan"},{"value":"triton","label":"Triton"}]}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'
   values: {label: "Ship actions"}
   exclude: [items, name, open]
 ---
 
 An actions menu: a trigger opens a list of things the user can *do*, with submenus where a choice needs one. Choosing an item emits `sb-select` with `{ name, value }`, so a page posts it as a command and shows whatever the server renders next. A menu holds no value, so there is nothing pending and nothing to revert.
+
+**Nothing stays selected.** No checkmark, no highlighted row, and the trigger keeps its label: the menu hands over an intent and forgets it, so everything visible afterwards is the page reacting (the demos here write the value into a signal). If you want a value that sticks, reach for [sb-select](/components/select).
 
 The menu is a native `popover` in the top layer, positioned with CSS anchor positioning where the browser has it (and by hand, flipping and shifting, where it doesn't). No ancestor can clip it.
 
