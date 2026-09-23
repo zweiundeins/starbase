@@ -92,6 +92,16 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
 
 **No optimistic updates.** Never show a result the server hasn't produced: counts, lists, derived values and success messages come only from its render. The user's own input stays as they left it, marked pending (`:state(pending)`, or a faded item for operations) until the server confirms it, and goes back with `revert()` if the command is rejected. This is the [Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar#optimistic-updates) applied to components.
 
+### Lists that hold the keyboard
+
+A component whose rows can be replaced by the server (a tree, a menu, a group of choices) has to defend the focus, or a morph throws the user out of it:
+
+- The morph can **park a row before removing it**, so `focusout` fires while the row is still connected and `relatedTarget` is `null`. Treat that as "not leaving" and keep your "focus is inside" flag.
+- Restore the DOM focus after a re-render only when it **fell on the floor** — `document.activeElement` is the body or the host. If the user moved on to something else, leave it there; a component that grabs focus back is worse than one that loses it.
+- When the focused row is **gone from the new list**, focus its neighbour (the old index, clamped into the new list, skipping disabled rows), not the first row: jumping to the top turns one arrow key into a trip to the other end of the list.
+
+`sb-tree`, `sb-radio-group` and `sb-dropdown` all do this; copy from whichever is closest in shape.
+
 ### Components with several values
 
 - **One decision, one value.** Parts that change together (a range's start and end, a multi-select's picks, a colour's channels) are one structured `value`: a JSON attribute such as `value='{"start":20,"end":60}'`, one `sb-change` with the whole value, and one command the server accepts or rejects as a whole. Never one event per part: two commands could leave the server with half a change, or start after end.
