@@ -50,7 +50,7 @@
         "radio"
       ],
       "docs": {
-        "description": "radio makes every leaf of the root menu one radio group, for a menu that shows a current choice. A group inside a submenu is type:\"radio\" on that item instead; a dropdown holds one group."
+        "description": "radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:\"radio\" on that item instead. The group reaches into its submenus, and a dropdown holds one group."
       }
     },
     {
@@ -60,7 +60,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Radio group: the checked value, owned by the server. A new value from the server wins (value=\"\" clears it); the live value is the value property."
+        "description": "Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots (\"date.newest\"). A new value from the server wins (value=\"\" clears it); the live value is the value property."
       }
     },
     {
@@ -134,7 +134,7 @@
       "name": "sb-change",
       "bubbles": true,
       "composed": true,
-      "description": "Radio group: an item of the group was chosen. detail: { name, value }: ready for a command."
+      "description": "Radio group: an item of the group was chosen. detail: { name, value }, the value being the dotted path for a choice inside a submenu: ready for a command."
     },
     {
       "kind": "custom-event",

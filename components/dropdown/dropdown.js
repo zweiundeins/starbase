@@ -44,12 +44,13 @@ const normalize = (list, depth = 0) =>
 			if (it === null || it === undefined) return null
 			if (typeof it !== 'object') {
 				const s = String(it)
-				return s === '-' || s === '---' ? { divider: true } : { divider: false, value: s, label: s, description: '', icon: '', disabled: false, danger: false, children: [] }
+				return s === '-' || s === '---' ? { divider: true } : { divider: false, key: s, value: s, label: s, description: '', icon: '', disabled: false, danger: false, children: [] }
 			}
 			if (it.divider) return { divider: true }
 			const children = depth < MAX_DEPTH ? normalize(it.children, depth + 1) : []
 			return {
 				divider: false,
+				key: String(it.value ?? it.label ?? ''),
 				value: children.length ? '' : String(it.value ?? it.label ?? ''),
 				label: String(it.label ?? it.value ?? ''),
 				description: it.description ? String(it.description) : '',
@@ -64,7 +65,7 @@ const normalize = (list, depth = 0) =>
 
 // What a row needs to render: never the children, which would put a whole tree
 // into a signal.
-const light = (r) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, pending: false })
+const light = (r) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, onpath: false, pending: false })
 
 const styles = /* css */ `
 :host {
@@ -192,6 +193,13 @@ ${LEVELS.filter((k) => k > 0)
 	background: currentColor;
 	clip-path: polygon(10% 46%, 4% 60%, 40% 94%, 96% 26%, 84% 14%, 38% 70%);
 }
+/* A parent the choice sits under: a faint mark, and no ARIA — it is not
+   selectable, it only says the choice is in there. */
+.check.path {
+	background: currentColor;
+	opacity: 0.35;
+	clip-path: polygon(10% 46%, 4% 60%, 40% 94%, 96% 26%, 84% 14%, 38% 70%);
+}
 /* A choice the server has not confirmed yet: the pixel board fades its
    pending cells the same way. */
 .pending { opacity: 0.62; }
@@ -227,8 +235,8 @@ rocket('sb-dropdown', {
 		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, disabled?, danger?}, {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. Server data: a new array replaces the whole tree, open or not.' }),
 		label: string.trim.default('Actions').docs({ description: 'Text of the default trigger, and the accessible name of trigger and menu.' }),
 		placement: oneOf('bottom-start', 'bottom', 'bottom-end', 'top-start', 'top', 'top-end').default('bottom-start').docs({ description: 'Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start.' }),
-		type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes every leaf of the root menu one radio group, for a menu that shows a current choice. A group inside a submenu is type:"radio" on that item instead; a dropdown holds one group.' }),
-		value: string.docs({ description: 'Radio group: the checked value, owned by the server. A new value from the server wins (value="" clears it); the live value is the value property.' }),
+		type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:"radio" on that item instead. The group reaches into its submenus, and a dropdown holds one group.' }),
+		value: string.docs({ description: 'Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots ("date.newest"). A new value from the server wins (value="" clears it); the live value is the value property.' }),
 		confirm: bool.docs({ description: 'Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server\'s value attribute (see revert()).' }),
 		open: bool.docs({ description: 'Open on first render. A changed attribute from the server opens or closes the menu (open="false" closes); re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client.' }),
 		disabled: bool.docs({ description: 'Disable the trigger (and close the menu).' }),
@@ -242,7 +250,7 @@ rocket('sb-dropdown', {
 		events: [
 			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: 'A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, and an item of a radio group reports sb-change instead.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'Radio group: the value changed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Radio group: an item of the group was chosen. detail: { name, value }: ready for a command.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Radio group: an item of the group was chosen. detail: { name, value }, the value being the dotted path for a choice inside a submenu: ready for a command.' },
 			{ name: 'sb-open', kind: 'custom-event', bubbles: true, composed: true, description: 'The menu opened (the root; submenus are view state and stay quiet).' },
 			{ name: 'sb-close', kind: 'custom-event', bubbles: true, composed: true, description: 'The menu closed. detail: { reason }: item, escape, outside, scroll, tab, trigger, server or api.' },
 		],
@@ -263,6 +271,7 @@ rocket('sb-dropdown', {
 		$$.label = props.label
 		$$.disabled = props.disabled
 		$$.value = props.value // radio group: the checked value
+		$$.trigger = props.label // what the trigger reads: label, plus the choice
 		$$.anim = false // no opening animation for a menu that starts open
 		$$.icons = false
 		$$.rev = 0
@@ -291,11 +300,44 @@ rocket('sb-dropdown', {
 		// The last value the server stated, for the server-wins rule and for
 		// the pending mark (see the open attribute below).
 		let servedV = props.value
-		const inGroup = (k, i) => {
-			if (!group || k !== group.length) return false
+		// The group starts at its root level and runs through every submenu below
+		// it, so a nested leaf is part of the same group.
+		const onGroup = (k) => {
+			if (!group || k < group.length) return false
 			for (let j = 0; j < group.length; j++) if (path[j] !== group[j]) return false
+			return true
+		}
+		const inGroup = (k, i) => {
+			if (!onGroup(k)) return false
 			const r = nodes(k)[i]
 			return !!r && !r.divider && !r.children?.length
+		}
+		// What a row of the group reports: the item values from the group root
+		// down to it, joined with dots ("date.newest").
+		const pathValue = (k, i) => {
+			const segs = []
+			for (let j = group.length; j < k; j++) segs.push(nodes(j)[path[j]]?.key ?? '')
+			segs.push(nodes(k)[i]?.key ?? '')
+			return segs.join('.')
+		}
+		// The items of the group, whatever level they sit on.
+		const atPath = (p) => {
+			let list = tree
+			for (const i of p) list = list[i]?.children ?? []
+			return list
+		}
+		// The label of the chosen leaf, for the trigger: the value walked back
+		// through the tree. An unknown value is shown as it came.
+		const chosenLabel = () => {
+			if (!group || !$$.value) return ''
+			let list = atPath(group)
+			let hit = null
+			for (const seg of String($$.value).split('.')) {
+				hit = (list || []).find((r) => !r.divider && r.key === seg)
+				if (!hit) return String($$.value)
+				list = hit.children
+			}
+			return hit && !hit.children?.length ? hit.label : String($$.value)
 		}
 		const nodes = (k) => {
 			let list = tree
@@ -351,18 +393,23 @@ rocket('sb-dropdown', {
 			const waiting = props.confirm && $$.value !== servedV
 			for (const k of LEVELS) {
 				const rows = k <= path.length ? nodes(k).map(light) : []
-				const list = nodes(k)
-				let checks = false
+				const here = onGroup(k) // this level belongs to the radio group
 				rows.forEach((r, i) => {
-					if (!inGroup(k, i)) return
-					checks = true
+					if (!here || r.divider) return
+					const pv = pathValue(k, i)
+					if (r.parent) {
+						// A parent is never selectable; a faint mark only says the
+						// choice lives somewhere in there.
+						r.onpath = $$.value === pv || String($$.value).startsWith(pv + '.')
+						return
+					}
 					r.check = true
-					r.checked = list[i].value === $$.value
+					r.checked = pv === $$.value
 					// The check the user clicked is a rendered result: it stays
 					// pending until the server's value says the same.
 					r.pending = waiting && r.checked
 				})
-				$$['checks' + k] = checks
+				$$['checks' + k] = here
 				$$['rows' + k] = rows
 				$$['parent' + k] = k < path.length ? path[k] : -1
 				// A submenu is named by the item that opens it.
@@ -370,6 +417,10 @@ rocket('sb-dropdown', {
 				if (rows.some((r) => r.icon)) icons = true
 			}
 			$$.icons = icons
+			// A radio menu says what it is and what is chosen; a page that sets
+			// label still owns the first half, and an actions menu is untouched.
+			const chose = chosenLabel()
+			$$.trigger = chose ? (props.label ? props.label + ': ' + chose : chose) : props.label
 			$$.depth = $$.open ? path.length + 1 : 0
 			$$.rev = ++rev // any change to what is on screen re-runs the placement
 		}
@@ -574,11 +625,11 @@ rocket('sb-dropdown', {
 			// An item of the radio group changes a value; every other item is an
 			// intent the page turns into a command. Never both for one item.
 			if (inGroup(k, i)) {
-				$$.value = value
+				$$.value = pathValue(k, i)
 				publish()
 				sync()
 				emit('change')
-				emit('sb-change', { name: props.name, value })
+				emit('sb-change', { name: props.name, value: peek(() => $$.value) })
 			} else {
 				emit('sb-select', { name: props.name, value })
 			}
@@ -818,10 +869,10 @@ rocket('sb-dropdown', {
 	render: ({ html }) => html`
 		<button class="trigger" part="trigger" type="button" aria-haspopup="menu" aria-controls="menu0"
 			data-attr:aria-expanded="String($$open)"
-			data-attr:aria-label="$$label || null"
+			data-attr:aria-label="$$trigger || null"
 			data-attr:disabled="$$disabled"
 			data-on:click="@toggle()"
-			data-on:keydown="@triggerKey()"><slot name="trigger"><span data-text="$$label"></span></slot><span class="caret" aria-hidden="true"></span></button>
+			data-on:keydown="@triggerKey()"><slot name="trigger"><span data-text="$$trigger"></span></slot><span class="caret" aria-hidden="true"></span></button>
 		${LEVELS.map(
 			(k) => html`
 		<div id="menu${k}" class="menu lvl${k}" part="menu" role="menu" popover="manual"
@@ -836,7 +887,7 @@ rocket('sb-dropdown', {
 			<template data-for="r, i in $$rows${k}">
 				<div
 					data-show="!!r"
-					data-attr:part="'item' + (r?.checked ? ' checked' : '') + (r?.pending ? ' pending' : '')"
+					data-attr:part="'item' + (r?.checked ? ' checked' : '') + (r?.onpath ? ' onpath' : '') + (r?.pending ? ' pending' : '')"
 					data-attr:role="!r ? null : r.divider ? 'separator' : r.check ? 'menuitemradio' : 'menuitem'"
 					data-attr:data-idx="r?.divider ? null : i"
 					data-attr:tabindex="r?.divider ? null : -1"
@@ -850,7 +901,7 @@ rocket('sb-dropdown', {
 					data-on:click="@click(${k}, i)"
 					data-on:pointerenter="@enter(${k}, i)"
 					data-on:pointerleave="@leave()">
-					<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider" data-class:on="r?.checked"></span>
+					<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider" data-class:on="r?.checked" data-class:path="r?.onpath"></span>
 					<span class="icon" aria-hidden="true" data-show="$$icons && !r?.divider" data-text="r?.icon"></span>
 					<span class="body" data-show="!r?.divider">
 						<span class="label" data-text="r?.label"></span>
