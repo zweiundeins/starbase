@@ -48,6 +48,11 @@ templ Document(s Shell, body templ.Component) {
 			<script type="module" src={ s.Assets.Datastar() }></script>
 			<script type="module" src={ s.Assets.Components() }></script>
 			if s.Dev && len(s.ManifestTags) > 0 {
+				// The publisher waits for every tag to be defined, and the autoloader
+				// above only loads the tags on this page: an unlisted component
+				// (sb-code-playground) never appears, so without every module loaded
+				// the wait never ends and no manifest is ever published.
+				<script type="module" src={ s.Assets.AllComponents() }></script>
 				@templ.Raw(manifestScript(s))
 			}
 		</head>
