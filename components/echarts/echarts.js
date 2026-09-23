@@ -50,6 +50,14 @@ const optionCodec = createCodec({
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 
+// A value ECharts treats as absent: its '-' placeholder, null, undefined or NaN.
+const missing = (v) => v == null || v === '-' || Number.isNaN(v)
+// A data point's own value: the number itself, or the last dimension of an
+// [x, y] pair (time and value axes carry both).
+const valueOf = (p) => (Array.isArray(p.value) ? p.value.at(-1) : p.value)
+// Series names come from the server and a tooltip formatter returns HTML.
+const escapeHTML = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+
 // deepMerge lays the page's option over the themed defaults: objects merge,
 // everything else (arrays included) replaces.
 const deepMerge = (base, over) => {
@@ -188,6 +196,10 @@ class Chart {
 	}
 
 	formatNumber(n) {
+		// ECharts passes a missing value as null, undefined or its own '-'
+		// placeholder, and draws '-' for it when no formatter is set: say the same,
+		// never "undefined".
+		if (missing(n)) return '-'
 		if (typeof n !== 'number' || !Number.isFinite(n)) return String(n)
 		if (numberFormat) return numberFormat(n, this.lang)
 		return new Intl.NumberFormat(this.lang, { maximumFractionDigits: 20 }).format(n)
@@ -283,6 +295,20 @@ class Chart {
 		}
 		for (const [k, type] of [['xAxis', 'category'], ['yAxis', 'value']]) [o[k]].flat().forEach((a) => axis(a, type))
 		;[o.tooltip].flat().forEach((t) => isObj(t) && (t.valueFormatter ??= fmt))
+		// An axis tooltip lists every series at the hovered point, including those
+		// with no value there – a projection before it starts, costs in a month not
+		// yet lived – which would read as a row of "-". Leave them out, drawing the
+		// rest in ECharts' own layout. An option with its own formatter keeps it.
+		;[o.tooltip].flat().forEach((t) => isObj(t) && t.trigger === 'axis' && (t.formatter ??= (ps) => this.axisTooltip(ps, t.valueFormatter)))
+	}
+
+	axisTooltip(params, format) {
+		const rows = [params].flat().filter((p) => !missing(valueOf(p)))
+		if (!rows.length) return ''
+		const row = (p) =>
+			`<div style="margin:10px 0 0;line-height:1">${p.marker ?? ''}<span style="margin-left:2px">${escapeHTML(p.seriesName ?? '')}</span>` +
+			`<span style="float:right;margin-left:20px;font-weight:700">${escapeHTML(format(valueOf(p)))}</span><div style="clear:both"></div></div>`
+		return `<div style="line-height:1;opacity:.72">${escapeHTML(rows[0].axisValueLabel ?? '')}</div>${rows.map(row).join('')}`
 	}
 
 	// ECharts reserves no room for its legend: on a narrow box a horizontal legend
