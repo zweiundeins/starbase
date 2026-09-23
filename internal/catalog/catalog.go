@@ -34,6 +34,7 @@ type Meta struct {
 	Since    string   `yaml:"since"`
 	Preview  string   `yaml:"preview"`
 	Source   string   `yaml:"source"` // optional: upstream repository (pinned)
+	Unlisted bool     `yaml:"unlisted"` // part of the site, not the gallery: served and documented, but not browsed
 
 	Playground PlaygroundMeta `yaml:"playground"`
 }

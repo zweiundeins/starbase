@@ -115,10 +115,11 @@ type BrowseResult struct {
 	Total  int            // all categories, for the current search
 }
 
-// Browse lists active components matching the filter.
+// Browse lists active, listed components matching the filter (unlisted ones
+// belong to the site itself, e.g. the playground).
 func (r *Reader) Browse(ctx context.Context, b model.Browse, userID int64) (BrowseResult, error) {
 	res := BrowseResult{Counts: map[string]int{}}
-	where := []string{"c.active"}
+	where := []string{"c.active", "c.listed"}
 	var args []any
 	if fts := FTSQuery(b.Q); fts != "" {
 		where = append(where, "c.slug IN (SELECT slug FROM components_fts WHERE components_fts MATCH ?)")
@@ -190,7 +191,7 @@ type Stats struct {
 func (r *Reader) Stats(ctx context.Context) (Stats, error) {
 	var s Stats
 	err := r.tx.QueryRowContext(ctx, `
-		SELECT count(*), count(DISTINCT author), coalesce(sum(stars), 0) FROM components WHERE active`).
+		SELECT count(*), count(DISTINCT author), coalesce(sum(stars), 0) FROM components WHERE active AND listed`).
 		Scan(&s.Components, &s.Authors, &s.Stars)
 	return s, err
 }
@@ -315,7 +316,7 @@ type SitemapEntry struct {
 
 // SitemapComponents lists the active components, for the sitemap.
 func (r *Reader) SitemapComponents(ctx context.Context) ([]SitemapEntry, error) {
-	rows, err := r.tx.QueryContext(ctx, `SELECT slug, updated_at FROM components WHERE active = 1 ORDER BY slug`)
+	rows, err := r.tx.QueryContext(ctx, `SELECT slug, updated_at FROM components WHERE active = 1 AND listed = 1 ORDER BY slug`)
 	if err != nil {
 		return nil, err
 	}

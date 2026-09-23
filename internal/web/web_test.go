@@ -206,9 +206,15 @@ func TestRenderStream(t *testing.T) {
 	}
 
 	cat, _ := catalog.Load(components.FS)
+	listed := 0
+	for _, c := range cat.Components {
+		if !c.Unlisted {
+			listed++
+		}
+	}
 	first := next()
-	if n := strings.Count(first, `class="card"`); !strings.Contains(first, "event: datastar-patch-elements") || n != len(cat.Components) {
-		t.Fatalf("first frame should list all %d cards, got %d", len(cat.Components), n)
+	if n := strings.Count(first, `class="card"`); !strings.Contains(first, "event: datastar-patch-elements") || n != listed {
+		t.Fatalf("first frame should list all %d cards, got %d", listed, n)
 	}
 	if r := post(t, c, ts.URL+"/cmd/browse", `{"tabid":"tab12345","cat":"feedback","sort":"name"}`, "same-origin"); r.StatusCode != 204 {
 		t.Fatalf("command = %d", r.StatusCode)
@@ -607,5 +613,25 @@ func TestFlightCommand(t *testing.T) {
 		if res.StatusCode != tc.want {
 			t.Errorf("%s: %d, want %d", tc.body, res.StatusCode, tc.want)
 		}
+	}
+}
+
+// A component the site itself uses (sb-code-playground) is documented and
+// served, but not part of the gallery.
+func TestUnlistedComponent(t *testing.T) {
+	ts, c := newServer(t)
+	_, home := get(t, c, ts.URL+"/")
+	if strings.Contains(home, `data-slug="code-playground"`) {
+		t.Error("the gallery lists an unlisted component")
+	}
+	if res, _ := get(t, c, ts.URL+"/components/code-playground"); res.StatusCode != 200 {
+		t.Errorf("its page must stay reachable: %d", res.StatusCode)
+	}
+	if res, _ := get(t, c, ts.URL+"/c/code-playground/code-playground.js"); res.StatusCode != 200 {
+		t.Errorf("its module must stay served: %d", res.StatusCode)
+	}
+	_, sitemap := get(t, c, ts.URL+"/sitemap.xml")
+	if strings.Contains(sitemap, "/components/code-playground") {
+		t.Error("the sitemap lists an unlisted component")
 	}
 }

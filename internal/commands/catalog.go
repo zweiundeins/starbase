@@ -30,22 +30,24 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 	for _, comp := range c.Catalog.Components {
 		tags, _ := json.Marshal(comp.Tags)
 		_, err := tx.ExecContext(ctx, `
-			INSERT INTO components (slug, tag, name, category, summary, author, tags, since, content_hash, active, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+			INSERT INTO components (slug, tag, name, category, summary, author, tags, since, content_hash, active, listed, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
 			ON CONFLICT (slug) DO UPDATE SET
 				tag = excluded.tag, name = excluded.name, category = excluded.category,
 				summary = excluded.summary, author = excluded.author, tags = excluded.tags,
-				since = excluded.since, content_hash = excluded.content_hash, active = 1,
+				since = excluded.since, content_hash = excluded.content_hash, active = 1, listed = excluded.listed,
 				updated_at = CASE WHEN content_hash = excluded.content_hash THEN updated_at ELSE excluded.updated_at END`,
 			comp.Slug, comp.Tag, comp.Name, comp.Category, comp.Summary, comp.Author,
-			string(tags), comp.Since, comp.Hash, now)
+			string(tags), comp.Since, comp.Hash, boolInt(!comp.Unlisted), now)
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO components_fts (slug, name, summary, tags) VALUES (?, ?, ?, ?)`,
-			comp.Slug, comp.Name, comp.Summary, strings.Join(comp.Tags, " ")+" "+comp.Category+" "+comp.Tag)
-		if err != nil {
-			return err
+		if !comp.Unlisted { // out of the gallery means out of its search too
+			_, err = tx.ExecContext(ctx, `INSERT INTO components_fts (slug, name, summary, tags) VALUES (?, ?, ?, ?)`,
+				comp.Slug, comp.Name, comp.Summary, strings.Join(comp.Tags, " ")+" "+comp.Category+" "+comp.Tag)
+			if err != nil {
+				return err
+			}
 		}
 		// Keep this version's public files for good (pinned URLs).
 		files, err := c.Catalog.ModuleFiles(comp)
@@ -76,4 +78,11 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 	return nil
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

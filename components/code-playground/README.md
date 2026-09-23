@@ -2,6 +2,7 @@
 name: Code Playground
 tag: sb-code-playground
 category: utilities
+unlisted: true
 summary: Edit a component's code and HTML side by side, with a live sandboxed preview.
 author: zweiundeins
 tags: [code, playground, sandbox, editor, preview, repl]

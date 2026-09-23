@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `sb-code-playground` is no longer listed in the gallery: it is the machinery behind `/playground` rather than a community component. It stays served, versioned and documented, through a new `unlisted:` front-matter flag.
 - Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
 
 ### Fixed
