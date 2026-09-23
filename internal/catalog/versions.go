@@ -49,7 +49,7 @@ func AutoloaderJS(cat *Catalog, prefix string) string {
 	modules := map[string]string{}
 	requires := map[string][]string{}
 	for _, c := range cat.Components {
-		modules[c.Tag] = prefix + c.VersionedScript()
+		modules[c.Tag] = prefix + c.VersionedMinScript() // the minified module (see min.go)
 	}
 	for _, c := range cat.Components {
 		for _, u := range cat.Uses(c) {

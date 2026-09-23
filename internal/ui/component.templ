@@ -38,8 +38,8 @@ templ ComponentPage(s Shell, v ComponentView) {
 					<span class="tag-chip">{ t }</span>
 				}
 				<span class="muted">Since { v.Card.Since }</span>
-				if v.Component.Sizes.Total.Brotli > 0 {
-					<a class="muted" href="#size" title="Download size, brotli">{ fmtBytes(v.Component.Sizes.Total.Brotli) }</a>
+				if v.Component.Sizes.Total.Min > 0 {
+					<a class="muted" href="#size" title="Download size: minified, brotli">{ fmtBytes(v.Component.Sizes.Total.Min) }</a>
 				}
 				@StarButton(s, v.Card, true)
 				<a class="btn btn--outline btn--sm" href={ safe("/playground?component=" + v.Card.Slug) }>
@@ -97,10 +97,10 @@ templ ComponentPage(s Shell, v ComponentView) {
 templ SizeTable(sz catalog.Sizes) {
 	if len(sz.Files) > 0 {
 		<h2 id="size">Size</h2>
-		<p>Each file compressed on its own, the way it is served (gzip -9, brotli -11). Datastar and Rocket are shared by every component and not counted.</p>
+		<p>Each file compressed on its own, the way it is served (gzip -9, brotli -11). The autoloader loads the minified files (esbuild), so that last column is what a page downloads; the readable source is always there too. Datastar and Rocket are shared by every component and not counted.</p>
 		<div class="table-scroll">
 			<table class="api-table size-table">
-				<thead><tr><th>File</th><th>Original</th><th>gzip</th><th>brotli</th></tr></thead>
+				<thead><tr><th>File</th><th>Original</th><th>gzip</th><th>brotli</th><th>minified</th></tr></thead>
 				<tbody>
 					for _, f := range sz.Files {
 						@sizeRow(f.Name, f.Size, false)
@@ -115,7 +115,8 @@ templ SizeTable(sz catalog.Sizes) {
 							<th scope="row">Total</th>
 							<td>{ fmtBytes(sz.Total.Raw) }</td>
 							<td>{ fmtBytes(sz.Total.Gzip) }</td>
-							<td><strong>{ fmtBytes(sz.Total.Brotli) }</strong></td>
+							<td>{ fmtBytes(sz.Total.Brotli) }</td>
+							<td><strong>{ fmtBytes(sz.Total.Min) }</strong></td>
 						</tr>
 					</tfoot>
 				}
@@ -135,6 +136,7 @@ templ sizeRow(name string, s catalog.Size, uses bool) {
 		<td>{ fmtBytes(s.Raw) }</td>
 		<td>{ fmtBytes(s.Gzip) }</td>
 		<td>{ fmtBytes(s.Brotli) }</td>
+		<td>{ fmtBytes(s.Min) }</td>
 	</tr>
 }
 

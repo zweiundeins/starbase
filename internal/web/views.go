@@ -72,7 +72,13 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	if err != nil {
 		return view{}, err
 	}
-	install := s.installSnippet(comp, snapshotSRI)
+	// The minified module's integrity is the frozen one, from when this
+	// version was first published (see catalog/min.go).
+	_, minSRI, _, err := rc.r.ComponentFile(rc.ctx, comp.Slug, comp.Hash, catalog.MinPath(strings.TrimPrefix(comp.Script, comp.Slug+"/")))
+	if err != nil {
+		return view{}, err
+	}
+	install := s.installSnippet(comp, snapshotSRI, minSRI)
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
 	repo := strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug
 	schema := map[string]any{
@@ -111,8 +117,12 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 // byte-identical to static/vendor/datastar-rocket.js (so its SRI is ours).
 const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js"
 
-func (s *Server) installSnippet(c *catalog.Component, snapshotSRI string) string {
+func (s *Server) installSnippet(c *catalog.Component, snapshotSRI, minSRI string) string {
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
+	script, sri := c.VersionedMinScript(), minSRI
+	if sri == "" { // this version isn't stored yet: offer the readable file
+		script, sri = c.VersionedScript(), c.Integrity
+	}
 	pinned := ""
 	if snapshotSRI != "" {
 		pinned = fmt.Sprintf(`
@@ -139,9 +149,10 @@ func (s *Server) installSnippet(c *catalog.Component, snapshotSRI string) string
 
 %[2]s%[6]s
 
-<!-- Or load just this component, pinned to this version: -->
+<!-- Or load just this component, pinned to this version. The minified module
+     is what the autoloader uses; the readable source is the same URL without .min. -->
 <!-- <script type="module" src="%[1]s/c/%[3]s" integrity="%[4]s"></script> -->`,
-		base, strings.TrimSpace(c.Preview), c.VersionedScript(), c.Integrity, datastarCDN, pinned)
+		base, strings.TrimSpace(c.Preview), script, sri, datastarCDN, pinned)
 }
 
 func (s *Server) themesPage(rc *renderCtx) (view, error) {

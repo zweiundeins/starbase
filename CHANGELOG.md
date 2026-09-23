@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Component modules are minified (esbuild) next to the readable source: every `x.js` has an `x.min.js`, and the autoloader and the site load those — about 23% less over the wire across the catalog. The readable file stays the default URL for the docs and the playground. Minified bytes are frozen per version, so an esbuild upgrade can never change a pinned URL. Size tables add a minified column, and gallery cards show the minified size.
 - `sb-code-playground` is no longer listed in the gallery: it is the machinery behind `/playground` rather than a community component. It stays served, versioned and documented, through a new `unlisted:` front-matter flag.
 - Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
 

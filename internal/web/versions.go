@@ -46,13 +46,24 @@ func (s *Server) serveVersioned(w http.ResponseWriter, r *http.Request, slug, ha
 		return
 	}
 	var body []byte
-	if c, ok := s.catalog.Get(slug); ok && c.Hash == hash {
+	c, current := s.catalog.Get(slug)
+	current = current && c.Hash == hash
+	switch {
+	case current && !catalog.IsMinPath(file):
 		body, _ = fs.ReadFile(s.catalog.FS, slug+"/"+file) // the current version
-	} else {
+	default:
+		// Older versions, and every minified file: the stored copy is the one
+		// that was first published, so an esbuild upgrade can't change the
+		// bytes behind a URL someone pinned.
 		s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
 			body, _, _, err = rd.ComponentFile(r.Context(), slug, hash, file)
 			return
 		})
+		if body == nil && current { // not synced yet (tests, first start)
+			if mins, err := s.catalog.MinFiles(c); err == nil {
+				body = mins[file]
+			}
+		}
 	}
 	if body == nil {
 		http.NotFound(w, r)

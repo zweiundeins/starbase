@@ -12,13 +12,14 @@ import (
 	"github.com/andybalholm/brotli"
 )
 
-// Size is what a file (or a group of files) weighs over the wire.
+// Size is what a file (or a group of files) weighs over the wire. Min is
+// the minified file under brotli: what the autoloader actually ships.
 type Size struct {
-	Raw, Gzip, Brotli int
+	Raw, Gzip, Brotli, Min int
 }
 
 func (s Size) Add(o Size) Size {
-	return Size{s.Raw + o.Raw, s.Gzip + o.Gzip, s.Brotli + o.Brotli}
+	return Size{s.Raw + o.Raw, s.Gzip + o.Gzip, s.Brotli + o.Brotli, s.Min + o.Min}
 }
 
 // NamedSize is one line of a size table: a file, or a component it renders.
@@ -39,17 +40,22 @@ type Sizes struct {
 }
 
 func compressed(b []byte) Size {
-	var gz, br bytes.Buffer
+	var gz bytes.Buffer
 	zw, _ := gzip.NewWriterLevel(&gz, gzip.BestCompression)
 	zw.Write(b)
 	zw.Close()
+	return Size{Raw: len(b), Gzip: gz.Len(), Brotli: brotliLen(b)}
+}
+
+func brotliLen(b []byte) int {
+	var br bytes.Buffer
 	// A window just larger than the file compresses the same and keeps the
 	// encoder's memory small (the default window is 4 MB).
 	win := max(10, min(24, bits.Len(uint(len(b)))+1))
 	bw := brotli.NewWriterOptions(&br, brotli.WriterOptions{Quality: brotli.BestCompression, LGWin: win})
 	bw.Write(b)
 	bw.Close()
-	return Size{Raw: len(b), Gzip: gz.Len(), Brotli: br.Len()}
+	return br.Len()
 }
 
 // Uses returns the catalog components c renders itself (found as <sb-… in
@@ -94,9 +100,17 @@ func (cat *Catalog) ownSizes(c *Component) (Sizes, error) {
 		}
 		return strings.Compare(a, b)
 	})
+	mins, err := cat.MinFiles(c)
+	if err != nil {
+		return Sizes{}, err
+	}
 	var s Sizes
 	for _, n := range names {
 		sz := compressed(files[n])
+		sz.Min = sz.Brotli // an already-minified file ships as it is
+		if m, ok := mins[MinPath(n)]; ok {
+			sz.Min = brotliLen(m)
+		}
 		s.Files = append(s.Files, NamedSize{n, sz})
 		s.Own = s.Own.Add(sz)
 	}

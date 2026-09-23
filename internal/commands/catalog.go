@@ -49,10 +49,19 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 				return err
 			}
 		}
-		// Keep this version's public files for good (pinned URLs).
+		// Keep this version's public files for good (pinned URLs). The
+		// minified ones too: stored once, their bytes never change even if a
+		// later esbuild would minify differently (INSERT OR IGNORE).
 		files, err := c.Catalog.ModuleFiles(comp)
 		if err != nil {
 			return err
+		}
+		mins, err := c.Catalog.MinFiles(comp)
+		if err != nil {
+			return err
+		}
+		for p, body := range mins {
+			files[p] = body
 		}
 		for p, body := range files {
 			_, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,

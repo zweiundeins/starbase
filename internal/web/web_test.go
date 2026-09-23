@@ -504,8 +504,22 @@ func TestVersionedURLs(t *testing.T) {
 	// The snapshot: its autoloader loads versioned modules, and every file
 	// in its import map serves exactly the bytes its hash says.
 	res, auto := get(t, c, ts.URL+"/c/@"+cat.Hash+"/autoloader.js")
-	if res.StatusCode != 200 || !strings.Contains(auto, `"sb-button":"../`+button.VersionedScript()+`"`) {
-		t.Fatalf("snapshot autoloader: %d", res.StatusCode)
+	if res.StatusCode != 200 || !strings.Contains(auto, `"sb-button":"../`+button.VersionedMinScript()+`"`) {
+		t.Fatalf("snapshot autoloader: %d (it should load the minified modules)", res.StatusCode)
+	}
+
+	// The minified module: served, immutable, smaller, and its relative
+	// imports point at the minified siblings (code-editor imports Prism).
+	res, minJS := get(t, c, ts.URL+"/c/"+button.VersionedMinScript())
+	if res.StatusCode != 200 || !strings.Contains(res.Header.Get("Cache-Control"), "immutable") || len(minJS) >= len(js) {
+		t.Fatalf("minified module: %d, %d bytes vs %d readable", res.StatusCode, len(minJS), len(js))
+	}
+	editor, _ := cat.Get("code-editor")
+	if _, ed := get(t, c, ts.URL+"/c/"+editor.VersionedMinScript()); !strings.Contains(ed, `"./vendor/prism.min.js"`) || strings.Contains(ed, `"./vendor/prism.js"`) {
+		t.Error("the minified code-editor should import the minified Prism")
+	}
+	if r, _ := get(t, c, ts.URL+"/c/"+editor.Slug+"@"+editor.Hash+"/vendor/prism.min.js"); r.StatusCode != 200 {
+		t.Errorf("minified vendored file: %d", r.StatusCode)
 	}
 	_, mapJSON := get(t, c, ts.URL+"/c/@"+cat.Hash+"/importmap.json")
 	var im struct{ Integrity map[string]string }

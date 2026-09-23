@@ -170,9 +170,10 @@ func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
 }
 
-// ComponentScript is the component's versioned (immutable) module URL.
+// ComponentScript is the component's versioned (immutable) module URL, the
+// minified one: what the site itself loads.
 func (a *assets) ComponentScript(c *catalog.Component) string {
-	return "/c/" + c.VersionedScript()
+	return "/c/" + c.VersionedMinScript()
 }
 
 const immutable = "public, max-age=31536000, immutable"
@@ -255,6 +256,13 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b, err := fs.ReadFile(a.catalog.FS, p)
+	if catalog.IsMinPath(file) { // the unversioned route follows the current version's minified file
+		mins, merr := a.catalog.MinFiles(c)
+		b, err = mins[file], merr
+		if b == nil && err == nil {
+			err = fs.ErrNotExist
+		}
+	}
 	if err != nil {
 		http.NotFound(w, r)
 		return
