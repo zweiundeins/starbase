@@ -1,0 +1,67 @@
+{
+  "tag": "sb-count-up",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "The number to arrive at."
+      }
+    },
+    {
+      "name": "from",
+      "attribute": "from",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Where the count starts the first time it is seen."
+      }
+    },
+    {
+      "name": "decimals",
+      "attribute": "decimals",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Fixed digits after the decimal mark, kept for every frame so the width stays put."
+      }
+    },
+    {
+      "name": "duration",
+      "attribute": "duration",
+      "type": "number",
+      "default": 1400,
+      "required": false,
+      "docs": {
+        "description": "Length of the count in milliseconds."
+      }
+    },
+    {
+      "name": "grouping",
+      "attribute": "grouping",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "docs": {
+        "description": "Group thousands the way the locale does."
+      }
+    },
+    {
+      "name": "lang",
+      "attribute": "lang",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Locale for the separators (default: the page's lang, then the browser's)."
+      }
+    }
+  ],
+  "slots": [],
+  "events": []
+}
