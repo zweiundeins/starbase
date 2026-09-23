@@ -1,0 +1,106 @@
+{
+  "tag": "sb-dropdown",
+  "props": [
+    {
+      "name": "items",
+      "attribute": "items",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. Items are {value, label?, description?, icon?, disabled?, danger?} or {\"divider\":true} (\"-\" works too). Server data: a new array from the server replaces the menu, open or not."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Actions",
+      "required": false,
+      "docs": {
+        "description": "Text of the default trigger, and the accessible name of trigger and menu."
+      }
+    },
+    {
+      "name": "placement",
+      "attribute": "placement",
+      "type": "oneOf",
+      "default": "bottom-start",
+      "required": false,
+      "values": [
+        "bottom-start",
+        "bottom",
+        "bottom-end",
+        "top-start",
+        "top",
+        "top-end"
+      ],
+      "docs": {
+        "description": "Preferred side and alignment of the menu; it flips and shifts when there is no room."
+      }
+    },
+    {
+      "name": "open",
+      "attribute": "open",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Open on first render. A changed attribute from the server opens or closes the menu (open=\"false\" closes); re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable the trigger (and close the menu)."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-select (e.g. the field of a command)."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "trigger",
+      "description": "Content of the trigger button (text, an icon). The component provides the button itself, with all the ARIA on it."
+    },
+    {
+      "name": "item",
+      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, or <hr slot=\"item\"> for a divider. They are read as data; items wins when it is not empty."
+    }
+  ],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-select",
+      "bubbles": true,
+      "composed": true,
+      "description": "An item was chosen. detail: { name, value }: ready for a command."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-open",
+      "bubbles": true,
+      "composed": true,
+      "description": "The menu opened."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-close",
+      "bubbles": true,
+      "composed": true,
+      "description": "The menu closed. detail: { reason }: item, escape, outside, scroll, tab, trigger, server or api."
+    }
+  ]
+}
