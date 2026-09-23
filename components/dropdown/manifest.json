@@ -40,6 +40,40 @@
       }
     },
     {
+      "name": "type",
+      "attribute": "type",
+      "type": "oneOf",
+      "default": "actions",
+      "required": false,
+      "values": [
+        "actions",
+        "radio"
+      ],
+      "docs": {
+        "description": "radio makes every leaf of the root menu one radio group, for a menu that shows a current choice. A group inside a submenu is type:\"radio\" on that item instead; a dropdown holds one group."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Radio group: the checked value, owned by the server. A new value from the server wins (value=\"\" clears it); the live value is the value property."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server's value attribute (see revert())."
+      }
+    },
+    {
       "name": "open",
       "attribute": "open",
       "type": "boolean",
@@ -86,7 +120,21 @@
       "name": "sb-select",
       "bubbles": true,
       "composed": true,
-      "description": "A leaf item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value."
+      "description": "A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, and an item of a radio group reports sb-change instead."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Radio group: the value changed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Radio group: an item of the group was chosen. detail: { name, value }: ready for a command."
     },
     {
       "kind": "custom-event",

@@ -2,7 +2,7 @@
 name: Dropdown
 tag: sb-dropdown
 category: navigation
-summary: An actions menu with submenus, whose items are commands you can post.
+summary: An actions menu with submenus, commands to post and a current choice.
 author: zweiundeins
 tags: [dropdown, menu, actions, popover, keyboard, navigation]
 since: 2026-09-23
@@ -13,15 +13,16 @@ preview: |
     items='[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'></sb-dropdown>
 playground:
   attrs:
+    "data-on:sb-change": '$_pg.label = "Chose: " + evt.detail.value'
     "data-on:sb-select": '$_pg.label = "Sent: " + evt.detail.value'
     items: '[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"},{"label":"Outer system","children":[{"value":"titan","label":"Titan"},{"value":"triton","label":"Triton"}]}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'
   values: {label: "Ship actions"}
-  exclude: [items, name, open]
+  exclude: [items, name, open, confirm]
 ---
 
 An actions menu: a trigger opens a list of things the user can *do*, with submenus where a choice needs one. Choosing an item emits `sb-select` with `{ name, value }`, so a page posts it as a command and shows whatever the server renders next. A menu holds no value, so there is nothing pending and nothing to revert.
 
-**Nothing stays selected.** No checkmark, no highlighted row, and the trigger keeps its label: the menu hands over an intent and forgets it, so everything visible afterwards is the page reacting (the demos here write the value into a signal). If you want a value that sticks, reach for [sb-select](/components/select).
+**Nothing stays selected.** No checkmark, no highlighted row, and the trigger keeps its label: the menu hands over an intent and forgets it, so everything visible afterwards is the page reacting (the demos here write the value into a signal). The exception is a menu that answers a question rather than doing something — give that one [a current choice](#a-current-choice). For a value in a form, reach for [sb-select](/components/select).
 
 The menu is a native `popover` in the top layer, positioned with CSS anchor positioning where the browser has it (and by hand, flipping and shifting, where it doesn't). No ancestor can clip it.
 
@@ -61,6 +62,56 @@ An item with `children` opens a submenu instead of reporting a value: the childr
 ```
 
 A submenu opens to the inline end of its parent item and flips to the start when there is no room. Only one submenu per level is open at a time, and choosing a leaf closes every level at once. Submenus are view state: they raise no events and the server never hears about them.
+
+### A current choice
+
+Some menus answer a question instead of doing something — *Sort by*, *Density*, *Theme*. Make the root menu one radio group with `type="radio"`, or a single submenu into one with `type: "radio"` on its parent item.
+
+**An item of the group changes a value, so it emits `sb-change` with `{ name, value }`; every other item stays an intent and emits `sb-select`. A menu may mix both kinds, and no item ever sends both.**
+
+The checked value is `value`, and the server owns it like every other value here: a changed attribute wins, `value=""` clears it, a removed one is ignored, and the live value is the `value` property. The demo plays the server with a signal — the menu reports the choice, the "server" sends the value back, and the check follows it.
+
+```html preview
+<div data-signals="{_sort: 'name'}" style="display: grid; gap: 12px; justify-items: start">
+  <sb-dropdown name="sort" label="Sort by" type="radio" data-preserve-attr="value"
+    data-attr:value="$_sort"
+    items='[{"value":"name","label":"Name"},{"value":"size","label":"Size"},{"value":"modified","label":"Last modified"}]'
+    data-on:sb-change="$_sort = evt.detail.value"></sb-dropdown>
+  <code data-text="'Sorted by ' + $_sort"></code>
+</div>
+```
+
+A group inside a submenu is the same thing one level down, and the rest of the menu goes on being actions:
+
+```html preview
+<div data-signals="{_by: 'name', _did: ''}" style="display: grid; gap: 12px; justify-items: start">
+  <sb-dropdown name="file" label="File" data-preserve-attr="value" data-attr:value="$_by"
+    items='[{"value":"rename","label":"Rename","icon":"✏️"},
+            {"label":"Sort by","icon":"↕️","type":"radio","children":[
+              {"value":"name","label":"Name"},{"value":"size","label":"Size"},{"value":"modified","label":"Last modified"}]},
+            {"divider":true},
+            {"value":"delete","label":"Delete","icon":"💥","danger":true}]'
+    data-on:sb-change="$_by = evt.detail.value; $_did = ''"
+    data-on:sb-select="$_did = evt.detail.value"></sb-dropdown>
+  <code data-text="$_did ? 'Command: ' + $_did : 'Sorted by ' + $_by"></code>
+</div>
+```
+
+**One group per dropdown.** A second `type: "radio"` is ignored and reported to the console instead of guessed at; two questions want two dropdowns. Checkbox groups, with several items checked at once, can follow if anyone needs them.
+
+With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command is rejected — the same contract every value component follows:
+
+```html
+<sb-dropdown name="sort" label="Sort by" type="radio" confirm value="name"
+  items='[{"value":"name","label":"Name"},{"value":"size","label":"Size"}]'
+  data-on:sb-change="@post('/cmd/sort', {payload: {tabid: $tabid, ...evt.detail}})"
+  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-dropdown>
+```
+
+```css
+sb-dropdown::part(pending) { outline: 1px dashed var(--sb-border-strong); }
+sb-dropdown:state(pending) { opacity: 0.85; }
+```
 
 ### Placement
 
@@ -129,7 +180,7 @@ Give it a `name` and post the detail as it is:
   data-on:sb-select="@post('/cmd/ship', {payload: {tabid: $tabid, ...evt.detail}})"></sb-dropdown>
 ```
 
-An item is an intent, not a value: there is no `confirm` and no `revert()`, and the component shows no result of its own. The server decides, and the page re-renders — see [Commands and components](/contribute#commands-and-components). When an item starts something slow, let the server render the pending state (a disabled item, a spinner in the page), never the menu.
+A plain item is an intent, not a value: nothing is pending and there is nothing to revert, and the component shows no result of its own (a radio group is the exception, and has both). The server decides, and the page re-renders — see [Commands and components](/contribute#commands-and-components). When an item starts something slow, let the server render the pending state (a disabled item, a spinner in the page), never the menu.
 
 ## Open and closed
 
@@ -163,7 +214,7 @@ el.hide()        // close, and leave the focus where it is
 
 ## Styling
 
-Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu. Parts: `trigger`, `menu` (every level) and `item`.
+Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu. Parts: `trigger`, `menu` (every level) and `item`, which also carries `checked` and `pending` in a radio group.
 
 ```css
 sb-dropdown::part(trigger) { font-weight: 700; }
@@ -175,6 +226,7 @@ sb-dropdown::part(menu) { --sb-surface-raised: #1B1030; }
 It follows the WAI-ARIA menu button pattern:
 
 - **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s, dividers are `separator`s and disabled items are `aria-disabled`.
+- **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in — the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves.
 - **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
 - **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.
 - **Pointer:** hovering a parent opens its submenu after a moment and leaving closes it a little later, so a diagonal path from the item into the submenu keeps it. Tapping a parent opens its submenu and tapping it again closes it, which is the only way back on a touch screen.
