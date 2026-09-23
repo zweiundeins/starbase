@@ -1,0 +1,125 @@
+{
+  "tag": "sb-busy",
+  "props": [
+    {
+      "name": "busy",
+      "attribute": "busy",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The server forces the indicator on. It wins: while this is true the indicator stays up whatever the watched requests do (busy=\"false\" to clear it)."
+      }
+    },
+    {
+      "name": "variant",
+      "attribute": "variant",
+      "type": "oneOf",
+      "default": "spinner",
+      "required": false,
+      "values": [
+        "spinner",
+        "bar",
+        "skeleton"
+      ],
+      "docs": {
+        "description": "Shape: a spinner, a progress bar or skeleton lines. Set it as an attribute (it also picks the host display)."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Bar only: 0-100 for a determinate bar. Empty means indeterminate."
+      }
+    },
+    {
+      "name": "lines",
+      "attribute": "lines",
+      "type": "number",
+      "default": 3,
+      "required": false,
+      "docs": {
+        "description": "Skeleton only: how many placeholder lines."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Loading",
+      "required": false,
+      "docs": {
+        "description": "What is being waited for, e.g. \"Loading flight plan\". Read out by the status region; visible with show-label."
+      }
+    },
+    {
+      "name": "showLabel",
+      "attribute": "show-label",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show the label next to the indicator instead of only reading it out."
+      }
+    },
+    {
+      "name": "size",
+      "attribute": "size",
+      "type": "oneOf",
+      "default": "md",
+      "required": false,
+      "values": [
+        "sm",
+        "md",
+        "lg"
+      ],
+      "docs": {
+        "description": "Spinner box, bar height and skeleton line height."
+      }
+    },
+    {
+      "name": "for",
+      "attribute": "for",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Which requests to watch: a CSS selector matching the element that triggers them (or one of its ancestors), \"*\" for every request on the page, empty for any request from inside the host's parent element."
+      }
+    },
+    {
+      "name": "delay",
+      "attribute": "delay",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Milliseconds to wait before showing, so a fast request never flashes. Try 200."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Milliseconds to stay up once shown, so it does not flicker. Try 400."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-busy-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the visible state flips, after delay and min. detail: { busy }: e.g. to disable a form while it is up."
+    }
+  ]
+}
