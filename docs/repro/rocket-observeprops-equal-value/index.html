@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket × attribute writes with an unchanged decoded value</title>
+<style>
+	body { font: 15px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem }
+	pre { background: #f4f4f6; padding: .75rem; white-space: pre-wrap }
+	.row { display: flex; gap: .75rem; align-items: center; margin: .5rem 0 }
+	.pass { color: #0a7d32 } .fail { color: #b3261e; font-weight: 600 }
+</style>
+
+<script type="module">
+	import { rocket } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+
+	const out = document.getElementById('log')
+	const log = (m, cls) => {
+		const line = document.createElement('div')
+		line.textContent = m
+		if (cls) line.className = cls
+		out.append(line)
+	}
+
+	// A boolean the server owns, plus local state the user can change: the
+	// usual shape of a disclosure, a switch or a menu. The server's attribute
+	// wins whenever it is written, through observeProps.
+	rocket('x-flag', {
+		props: ({ bool }) => ({ open: bool }),
+		setup: ({ $$, action, host, observeProps, props }) => {
+			$$.on = props.open
+			observeProps((p) => {
+				host.dispatchEvent(new CustomEvent('observed'))
+				$$.on = p.open
+			}, 'open')
+			action('flip', () => ($$.on = !$$.on))
+		},
+		render: ({ html }) => html`<button data-on:click="@flip()" data-text="$$on ? 'ON' : 'off'"></button>`,
+	})
+
+	// The same with a string: clearing a value the server never set.
+	rocket('x-text', {
+		props: ({ string }) => ({ value: string }),
+		setup: ({ host, observeProps }) => observeProps(() => host.dispatchEvent(new CustomEvent('observed')), 'value'),
+		render: ({ html }) => html``,
+	})
+
+	// Self-test on load: write an attribute, and report whether observeProps ran.
+	const probe = async (tag, attrs, name, value) => {
+		const el = document.createElement(tag)
+		for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v)
+		document.body.append(el)
+		await customElements.whenDefined(tag)
+		await new Promise((r) => setTimeout(r, 50))
+		let fired = false
+		el.addEventListener('observed', () => (fired = true))
+		const before = el.getAttribute(name)
+		el.setAttribute(name, value)
+		await new Promise((r) => setTimeout(r, 50))
+		el.remove()
+		return { fired, changed: before !== value, before }
+	}
+	const cases = [
+		['x-flag', { open: 'true' }, 'open', 'false', 'open="true" → open="false"'],
+		['x-flag', {}, 'open', 'true', 'no attribute → open="true"'],
+		['x-flag', {}, 'open', 'false', 'no attribute → open="false"'],
+		['x-flag', { open: 'false' }, 'open', 'false', 'open="false" → open="false" again'],
+		['x-text', {}, 'value', '', 'no attribute → value=""'],
+		['x-text', { value: 'abc' }, 'value', '', 'value="abc" → value=""'],
+	]
+	log('Self-test: does observeProps run when the attribute is written?')
+	for (const [tag, attrs, name, value, label] of cases) {
+		const { fired, changed } = await probe(tag, attrs, name, value)
+		// Only an attribute that actually changed is expected to notify: a
+		// re-sent identical value staying quiet is correct.
+		const verdict = fired ? 'runs           ' : changed ? 'SILENT (bug)   ' : 'silent (fine)  '
+		log(`${verdict} <${tag}> ${label}`, !fired && changed ? 'fail' : 'pass')
+	}
+	log('"SILENT (bug)": the attribute changed, but its decoded value equals the current prop, so #setProp returns early on Object.is and no observer runs.')
+
+	// The consequence, by hand: see the buttons below.
+	for (const el of document.querySelectorAll('x-flag[id]')) {
+		new MutationObserver((records) => {
+			for (const r of records) log(`#${el.id}: attribute open ${JSON.stringify(r.oldValue)} → ${JSON.stringify(el.getAttribute('open'))} written`)
+		}).observe(el, { attributes: true, attributeFilter: ['open'], attributeOldValue: true })
+		el.addEventListener('observed', () => log(`#${el.id}: observeProps ran, local state follows the server`))
+	}
+</script>
+
+<h1>observeProps ignores an attribute write whose decoded value is unchanged</h1>
+
+<p>Datastar v1.0.4 + Rocket. A component that lets the server own a boolean (or clear a string) cannot tell when the server writes the attribute, if the decoded value happens to equal the prop's current value — even though the component's <em>local</em> state has moved on since.</p>
+
+<h2>The consequence</h2>
+<ol>
+	<li>Click <b>A</b>'s button to switch it ON (local state, the user's doing). A has no <code>open</code> attribute.</li>
+	<li>Click <b>server: A open="false"</b>. The attribute is written, but <code>observeProps</code> never runs, so A stays ON.</li>
+	<li>Now click <b>server: B open="false"</b>. B started with <code>open="true"</code>, so the decoded value changes, <code>observeProps</code> runs, and B turns off.</li>
+</ol>
+
+<div class="row"><b>A</b> <x-flag id="a"></x-flag> <button onclick="a.setAttribute('open', 'false')">server: A open="false"</button></div>
+<div class="row"><b>B</b> <x-flag id="b" open="true"></x-flag> <button onclick="b.setAttribute('open', 'false')">server: B open="false"</button></div>
+
+<h2>Log</h2>
+<pre id="log"></pre>
