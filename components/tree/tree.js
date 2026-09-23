@@ -104,6 +104,11 @@ rocket('sb-tree', {
 		const refocus = () =>
 			requestAnimationFrame(() => {
 				if (!$$.hasFocus) return
+				// Only pick the focus back up when it fell on the floor (the row was
+				// replaced or dropped): if the user moved on to something else, leave
+				// it alone.
+				const active = document.activeElement
+				if (active && active !== document.body && active !== host) return
 				const el = host.shadowRoot?.querySelector(`[data-id="${CSS.escape($$.focus)}"]`)
 				if (el && host.shadowRoot.activeElement !== el) el.focus()
 			})
@@ -132,8 +137,11 @@ rocket('sb-tree', {
 				})
 			}
 			walk(props.items || [], 0, '')
+			// A row the server dropped hands the focus to its neighbour, so the
+			// keyboard stays in the tree instead of falling out to the document.
+			const was = $$.rows.findIndex((r) => r.id === $$.focus)
 			$$.rows = rows
-			if (!rows.some((r) => r.id === $$.focus)) $$.focus = rows[0]?.id ?? ''
+			if (!rows.some((r) => r.id === $$.focus)) $$.focus = rows[Math.min(Math.max(was, 0), rows.length - 1)]?.id ?? ''
 			refocus()
 		}
 		rebuild()
@@ -189,8 +197,11 @@ rocket('sb-tree', {
 			if (id) $$.focus = id
 		})
 		action('focusout', ({ el, evt }) => {
-			// A row re-rendered away also "loses" focus: that's not leaving.
-			if (!evt.target.isConnected) return
+			// A row re-rendered away also "loses" focus: that's not leaving. The
+			// morph can park a row before removing it, so the row is still
+			// connected and only the empty relatedTarget gives it away; refocus()
+			// decides whether the focus really went somewhere else.
+			if (!evt.target.isConnected || evt.relatedTarget === null) return
 			if (!el.contains(evt.relatedTarget)) $$.hasFocus = false
 		})
 		action('click', ({ evt }, id) => {

@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-tree` lost the keyboard when the server dropped the focused row: the morph parks a row before removing it, so the focusout looked like the user leaving. Focus now moves to the neighbouring row, and is only given up when it really went somewhere else.
 - Two console errors when the gallery's search morph removed a card: `sb-nebula` freed its GPU context in cleanup, which fired `webglcontextlost` after Rocket had torn the element down (the context events are wired with `addEventListener` now), and `sb-select`'s computed label read its chips signal while it was already gone.
 
 ### Security
