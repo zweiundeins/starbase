@@ -2,20 +2,20 @@
 name: Dropdown
 tag: sb-dropdown
 category: navigation
-summary: An actions menu whose items are commands, on a trigger you can style.
+summary: An actions menu with submenus, whose items are commands you can post.
 author: zweiundeins
 tags: [dropdown, menu, actions, popover, keyboard, navigation]
 since: 2026-09-23
 preview: |
-  <sb-dropdown label="Ship actions" items='[{"value":"refuel","label":"Refuel","icon":"⛽"},{"value":"scan","label":"Long-range scan","icon":"📡","description":"Takes a while"},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'></sb-dropdown>
+  <sb-dropdown label="Ship actions" items='[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'></sb-dropdown>
 playground:
   attrs:
-    items: '[{"value":"refuel","label":"Refuel","icon":"⛽"},{"value":"scan","label":"Long-range scan","icon":"📡","description":"Takes a while"},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'
+    items: '[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"},{"label":"Outer system","children":[{"value":"titan","label":"Titan"},{"value":"triton","label":"Triton"}]}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'
   values: {label: "Ship actions"}
   exclude: [items, name, open]
 ---
 
-An actions menu: a trigger opens a list of things the user can *do*. Choosing one emits `sb-select` with `{ name, value }`, so a page posts it as a command and shows whatever the server renders next. A menu holds no value, so there is nothing pending and nothing to revert.
+An actions menu: a trigger opens a list of things the user can *do*, with submenus where a choice needs one. Choosing an item emits `sb-select` with `{ name, value }`, so a page posts it as a command and shows whatever the server renders next. A menu holds no value, so there is nothing pending and nothing to revert.
 
 The menu is a native `popover` in the top layer, positioned with CSS anchor positioning where the browser has it (and by hand, flipping and shifting, where it doesn't). No ancestor can clip it.
 
@@ -33,6 +33,28 @@ The menu is a native `popover` in the top layer, positioned with CSS anchor posi
   <code data-text="$_log || 'Pick something…'"></code>
 </div>
 ```
+
+### Submenus
+
+An item with `children` opens a submenu instead of reporting a value: the children win, so a parent never emits `sb-select` even when it carries a `value`. Nest up to five levels; anything deeper is dropped, so a runaway tree cannot build a menu nobody can reach.
+
+```html preview
+<div data-signals:_log="''" style="display: grid; gap: 12px; justify-items: start">
+  <sb-dropdown name="doc" label="Document"
+    items='[{"value":"rename","label":"Rename","icon":"✏️"},
+            {"label":"Export","icon":"📦","children":[
+              {"value":"csv","label":"CSV"},
+              {"value":"json","label":"JSON","description":"Pretty printed"},
+              {"label":"Archive","children":[{"value":"zip","label":"ZIP"},{"value":"tar","label":"TAR"}]}]},
+            {"label":"Move to","icon":"🗂","children":[{"value":"drafts","label":"Drafts"},{"value":"sent","label":"Sent"},{"value":"trash","label":"Trash","danger":true}]},
+            {"divider":true},
+            {"value":"delete","label":"Delete","icon":"💥","danger":true}]'
+    data-on:sb-select="$_log = evt.detail.value"></sb-dropdown>
+  <code data-text="$_log || 'Nothing chosen yet'"></code>
+</div>
+```
+
+A submenu opens to the inline end of its parent item and flips to the start when there is no room. Only one submenu per level is open at a time, and choosing a leaf closes every level at once. Submenus are view state: they raise no events and the server never hears about them.
 
 ### Placement
 
@@ -59,6 +81,7 @@ The `trigger` slot fills the trigger with your own content — text, an icon, an
 
 Instead of `items`, write the menu as light DOM. The items are read **as data** (label, `value`, `disabled`, `data-icon`, `data-description`, `data-danger`, and `<hr>` for a divider) and rendered inside the menu, so the component never writes roles or `tabindex` into your markup, where the next morph would strip them. `items` wins whenever it is not empty.
 
+
 ```html preview
 <div data-signals:_picked="''" style="display: grid; gap: 12px; justify-items: start">
   <sb-dropdown label="Crew" data-on:sb-select="$_picked = evt.detail.value">
@@ -71,9 +94,15 @@ Instead of `items`, write the menu as light DOM. The items are read **as data** 
 </div>
 ```
 
+A slotted item opens a submenu with `data-children='[…]'`, the same JSON as `items`. Markup stops being the clearer form once a menu nests, so a deep tree belongs in `items`:
+
+```html
+<button slot="item" data-children='[{"value":"csv","label":"CSV"},{"value":"json","label":"JSON"}]'>Export</button>
+```
+
 ### Server data
 
-The menu is server data: a new `items` array replaces it whenever the server likes, and an open menu stays open — the open state is local and lives in a signal, so nothing about it is reset by a morph.
+The menu is server data: a new `items` array replaces the whole tree whenever the server likes, and an open menu stays open — the open state is local and lives in a signal, so nothing about it is reset by a morph.
 
 ```html preview
 <div data-signals="{_alt: false}" style="display: grid; gap: 12px; justify-items: start">
@@ -128,7 +157,7 @@ el.hide()        // close, and leave the focus where it is
 
 ## Styling
 
-Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu. Parts: `trigger`, `menu` and `item`.
+Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu. Parts: `trigger`, `menu` (every level) and `item`.
 
 ```css
 sb-dropdown::part(trigger) { font-weight: 700; }
@@ -140,7 +169,9 @@ sb-dropdown::part(menu) { --sb-surface-raised: #1B1030; }
 It follows the WAI-ARIA menu button pattern:
 
 - **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s, dividers are `separator`s and disabled items are `aria-disabled`.
-- **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item. Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
-- **Focus:** real DOM focus moves onto the row inside the shadow root, so screen readers announce it and nothing in your markup is touched. When the server replaces the items while the menu is open, the focus returns to the equivalent row.
+- **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
+- **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.
+- **Pointer:** hovering a parent opens its submenu after a moment and leaving closes it a little later, so a diagonal path from the item into the submenu keeps it. Tapping a parent opens its submenu and tapping it again closes it, which is the only way back on a touch screen.
+- **Focus:** real DOM focus moves onto the row inside the shadow root, so screen readers announce it and nothing in your markup is touched. When the server replaces the items while the menu is open, a row that is gone hands the focus to its neighbour, and the focus is only picked back up when it fell on the floor — see [Lists that hold the keyboard](/contribute#lists-that-hold-the-keyboard). A submenu whose parent is no longer a parent closes itself.
 - **Pointer:** an outside click closes the menu, disabled items ignore clicks.
 - **Motion:** the opening animation is skipped under `prefers-reduced-motion`, and for a menu that is already open on the first render.
