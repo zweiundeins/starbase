@@ -156,9 +156,23 @@ rocket('sb-radio-group', {
 			const kids = fromChildren()
 			const items = normalize(kids.length ? kids : props.options).filter((o) => o.value !== '')
 			const json = JSON.stringify(items)
+			// Where the focus sat before the new list: a choice the server drops
+			// hands the focus to its neighbour, so the keyboard stays in the group
+			// instead of jumping back to the top or falling out to the document.
+			const was = $$.items.findIndex((o) => o.value === $$.focus)
 			if (json !== shown) (shown = json), ($$.items = items)
 			const list = $$.items
-			const next = (list.find((o) => o.value === $$.value && !o.disabled) ?? list.find((o) => !o.disabled))?.value ?? ''
+			const live = (o) => !!o && !o.disabled
+			const neighbour = () => {
+				const at = Math.min(Math.max(was, 0), list.length - 1)
+				for (let i = 0; i < list.length; i++) {
+					if (live(list[at + i])) return list[at + i]
+					if (live(list[at - i])) return list[at - i]
+				}
+			}
+			const checked = list.find((o) => o.value === $$.value && live(o))
+			const stays = list.find((o) => o.value === $$.focus && live(o))
+			const next = (checked ?? stays ?? neighbour() ?? list.find(live))?.value ?? ''
 			if (next !== $$.focus) $$.focus = next
 			refocus()
 		}
@@ -167,6 +181,11 @@ rocket('sb-radio-group', {
 		const refocus = () =>
 			requestAnimationFrame(() => {
 				if (!$$.hasFocus) return
+				// Only pick the focus back up when it fell on the floor (the item was
+				// replaced or dropped): if the user moved on to something else, leave
+				// it alone.
+				const active = document.activeElement
+				if (active && active !== document.body && active !== host) return
 				const el = host.shadowRoot?.querySelector(`[data-value="${CSS.escape($$.focus)}"]`)
 				if (el && host.shadowRoot.activeElement !== el) el.focus()
 			})
@@ -241,8 +260,11 @@ rocket('sb-radio-group', {
 			if (v) $$.focus = v
 		})
 		action('focusout', ({ el, evt }) => {
-			// An item re-rendered away also "loses" focus: that's not leaving.
-			if (!evt.target.isConnected) return
+			// An item re-rendered away also "loses" focus: that's not leaving. The
+			// morph can park an item before removing it, so the item is still
+			// connected and only the empty relatedTarget gives it away; refocus()
+			// decides whether the focus really went somewhere else.
+			if (!evt.target.isConnected || evt.relatedTarget === null) return
 			if (!el.contains(evt.relatedTarget)) $$.hasFocus = false
 		})
 		action('pick', (_, v) => pick(v))
