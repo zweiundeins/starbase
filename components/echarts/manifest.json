@@ -1,0 +1,54 @@
+{
+  "tag": "sb-echarts",
+  "props": [
+    {
+      "name": "option",
+      "attribute": "option",
+      "type": "custom",
+      "default": null,
+      "required": false,
+      "docs": {
+        "description": "The ECharts option, as JSON. Strings that are exactly var(--token) become that colour. { \"kind\": \"name\", ... } is expanded by a builder the page defined with defineChartKind()."
+      }
+    },
+    {
+      "name": "renderer",
+      "attribute": "renderer",
+      "type": "oneOf",
+      "default": "canvas",
+      "required": false,
+      "values": [
+        "canvas",
+        "svg"
+      ],
+      "docs": {
+        "description": "Draw on a canvas, or as SVG (sharper when printed, slower with many points)."
+      }
+    },
+    {
+      "name": "lang",
+      "attribute": "lang",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Locale for numbers, months and weekdays (default: the page's lang, then the browser's)."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "",
+      "description": "A fallback for readers without the chart: shown until ECharts has drawn, kept for screen readers after that. A table of the same data is ideal."
+    }
+  ],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-chart-click",
+      "bubbles": true,
+      "composed": true,
+      "description": "A click on a data item. detail: { seriesName, seriesIndex, name, value, dataIndex }."
+    }
+  ]
+}
