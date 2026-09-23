@@ -109,14 +109,17 @@ That last row is also why the playground above has no `open` switch: its boolean
 
 One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host), not the decoded prop. Rocket's `observeProps` only fires when the decoded value changes, so a server adding `open="false"` to an element that never carried the attribute — a real change of mind — would otherwise go unnoticed.
 
-## Why not a native `<details>`?
+## A native `<details>` in the shadow root
 
-Because the two things this component is for are exactly the two things a native `<details>` makes hard:
+The panel is a real `<details>` and `<summary>`, inside the component's shadow root. That is the whole design:
 
-- **The server owning `open`.** A native `<details>` *reflects* its own state into the `open` attribute. Inside a morphed region that attribute is then both the server's instruction and the browser's scratch space, and the two are indistinguishable — the reason `<details>` in a Starbase page needs `data-preserve-attr="open"` at all. Here the state lives in a `$$` signal, the attribute is only ever read, and a morph has nothing to clobber.
-- **The animation.** `<details>` flips its content between rendered and not, and the interoperable ways to animate that (`::details-content`, `content-visibility` transitions) are newer than the component would like. Intercepting the native `toggle` event to animate means holding the element open while it says it is closed — a second source of truth.
+- **Native semantics for free.** The disclosure role and expanded state, Enter and Space on the summary, the browser's own find-in-page reaching closed content and opening the panel — none of it is re-implemented, so none of it can drift from what the platform does.
+- **The shadow root keeps the server-owned attribute clean.** A `<details>` reflects its state into its own `open` attribute, which is exactly why a `<details>` in a morphed page needs `data-preserve-attr="open"`: the attribute is both the server's instruction and the browser's scratch space. Here the reflected attribute is *inside the shadow root*, where a morph never goes, while the **host's** `open` attribute is only ever read. The two never meet.
+- **The animation is the browser's box.** `::details-content` is the box the browser already wraps the revealed content in, so it grows from `block-size: 0` to `auto` (with `interpolate-size: allow-keywords`) and lands on the content's own height — nothing is measured, and `content-visibility` flips discretely at the ends, which is what keeps closed content out of the layout, out of the tab order and still findable.
 
-What the native element gives you is kept: a real `<button>` for the summary (Enter and Space for free), and `hidden="until-found"` on the panel so the browser's find-in-page can still reach closed content and open it.
+Where `::details-content` is not supported the animation rules are simply dropped and the panel opens and closes at once; everything else is unchanged.
+
+Only one thing is not native: `group`. `<details name="…">` groups exclusively within a single tree scope, and each host has its own shadow root, so no two panels are ever in the same one. A small module-level registry does it instead, which is also what lets a closing sibling emit its own `sb-toggle`.
 
 ## Props
 
@@ -140,7 +143,7 @@ What the native element gives you is kept: a real `<button>` for the summary (En
 
 ## Styling
 
-Parts: `details` (the box), `summary`, `icon`, `label`, `marker` (the pixel triangle), `panel` and `content`.
+Parts: `details` (the `<details>` box), `summary`, `icon`, `label`, `marker` (the pixel triangle) and `content` (the body inside the panel). The animated box itself is the browser's `::details-content`, which no part can name; its speed is `--sb-details-duration`.
 
 It styles against the semantic tokens — `--sb-surface-card`, `--sb-surface-hover`, `--sb-border`, `--sb-text-1`, `--sb-text-2`, `--sb-text-muted`, `--sb-brand-light`, `--sb-radius` — and notches its corners by `--sb-notch` (at `0` the radius takes over). `--sb-details-duration` (220 ms) sets the animation, and `prefers-reduced-motion: reduce` turns it off, opening and closing at once.
 
@@ -149,16 +152,16 @@ It styles against the semantic tokens — `--sb-surface-card`, `--sb-surface-hov
   <sb-details open summary="Slow and smooth" style="--sb-notch: 0; --sb-details-duration: 600ms">
     No notches, and a long animation.
   </sb-details>
-  <sb-details open summary="Custom panel" style="--sb-surface-card: #1B1030">
-    <span style="color: var(--sb-accent)">Anything inside the default slot.</span>
+  <sb-details open summary="Tinted panel" style="--sb-surface-card: var(--sb-brand-subtle); --sb-border: var(--sb-brand)">
+    Re-map the tokens rather than hard-coding colours, and it still works on every theme.
   </sb-details>
 </div>
 ```
 
 ## Accessibility
 
-- **Summary:** a real `<button>` with `aria-expanded` and `aria-controls`, so Enter, Space and every assistive technology's "expand" work without extra code.
+- **Summary:** a real `<summary>`, so the disclosure role, Enter and Space and every assistive technology's "expand" come from the browser. `aria-expanded` is kept in sync with it for the engines that do not expose the native state.
 - **Panel:** `role="region"` named by the summary (`aria-labelledby`), which puts it in the landmark and rotor lists while it is open.
-- **Closed content:** `hidden="until-found"` keeps it out of the accessibility tree and out of the tab order, while the browser's find-in-page can still find it — and the `beforematch` event opens the panel, without an animation, before the browser scrolls to the match.
+- **Closed content:** the browser's own `content-visibility: hidden` on `::details-content` keeps it out of the accessibility tree and out of the tab order, and find-in-page still reaches it and opens the panel.
 - **Motion:** `prefers-reduced-motion: reduce` removes the height transition and the marker's rotation; the panel still opens and closes.
-- **Disabled:** the summary carries the real `disabled` attribute, so it leaves the tab order instead of being a button that silently does nothing.
+- **Disabled:** `<summary>` has no disabled state, so the component sets `aria-disabled` and `tabindex="-1"` (out of the tab order) and cancels the default action of the click — which is also what Enter and Space trigger.
