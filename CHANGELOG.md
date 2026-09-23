@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `sb-odometer`: a number that rolls its digit wheels to each new value. Only the digits that change turn, a gained digit (9.9 → 10.0) snaps to the new layout instead of rolling from the old one, and separators follow the locale while the digits stay 0–9. Screen readers get the value once, as text. From Libretto, where it runs the live-drive distance readout.
 - `sb-button` takes `loading`: an inline pixel spinner (the same one `sb-busy` draws), clicks and Enter blocked against double submits, `aria-busy`, and focus kept. It costs no space until it is loading; bind it to `data-indicator`.
 - `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
 - `sb-theme-change` carries `scheme` (`"light"` or `"dark"`): what the page now paints in, worked out from the theme's own `color-scheme`, so code that draws needs no list of theme names. The theme switch's docs gain a section on following the theme from a canvas.
