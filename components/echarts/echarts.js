@@ -86,6 +86,25 @@ const localeFor = (ec, lang) => {
 	return code
 }
 
+// ---- colours ------------------------------------------------------------------
+
+// Every colour handed to ECharts is plain rgb()/rgba(). getComputedStyle returns
+// modern syntax (oklch(), color(srgb …)) for tokens built with oklch or
+// color-mix, which a canvas paints but ECharts' own colour parser does not – and
+// ECharts parses an item's colour to lighten it for the hover state. With one it
+// cannot read, the hovered bar is drawn with no colour at all and flickers in
+// and out under the pointer. A 1×1 canvas turns anything the browser understands
+// into sRGB.
+const pixel = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+const rgba = (css) => {
+	pixel.clearRect(0, 0, 1, 1)
+	pixel.fillStyle = '#000'
+	pixel.fillStyle = css
+	pixel.fillRect(0, 0, 1, 1)
+	const [r, g, b, a] = pixel.getImageData(0, 0, 1, 1).data
+	return a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${+(a / 255).toFixed(3)})`
+}
+
 // ---- styles -------------------------------------------------------------------
 
 const PALETTE = [
@@ -165,7 +184,7 @@ class Chart {
 		this.host.shadowRoot.append(probe)
 		const c = getComputedStyle(probe).color
 		probe.remove()
-		return c
+		return rgba(c)
 	}
 
 	formatNumber(n) {
