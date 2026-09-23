@@ -185,8 +185,24 @@ rocket('sb-nebula', {
 		const kick = () => {
 			if (!raf && visible && gl) raf = requestAnimationFrame(tick)
 		}
+		// A lost context (GPU reset, too many contexts) comes back on its own.
+		// These two are addEventListener, not data-on: cleanup() below frees the
+		// GPU slot with loseContext(), which fires webglcontextlost on an element
+		// Rocket has already torn down, and the declarative binding would then
+		// resolve an action that no longer exists (Datastar logs UndefinedAction).
+		const onLost = (evt) => {
+			evt.preventDefault()
+			cancelAnimationFrame(raf)
+			raf = 0
+		}
+		const onRestored = () => {
+			compile()
+			kick()
+		}
 		const start = (el) => {
 			canvas = el
+			canvas.addEventListener('webglcontextlost', onLost)
+			canvas.addEventListener('webglcontextrestored', onRestored)
 			gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'low-power' })
 			if (!gl) return void ($$.nogl = true)
 			compile()
@@ -194,17 +210,6 @@ rocket('sb-nebula', {
 			kick()
 		}
 		renderers.set(host, start)
-
-		// A lost context (GPU reset, too many contexts) comes back on its own.
-		action('lost', ({ evt }) => {
-			evt.preventDefault()
-			cancelAnimationFrame(raf)
-			raf = 0
-		})
-		action('restored', () => {
-			compile()
-			kick()
-		})
 		action('point', ({ el, evt }) => {
 			const r = el.getBoundingClientRect()
 			$$.tx = ((evt.clientX - r.left) / r.width) * 2 - 1
@@ -230,6 +235,8 @@ rocket('sb-nebula', {
 			ro.disconnect()
 			io.disconnect()
 			reduced.removeEventListener('change', kick)
+			canvas?.removeEventListener('webglcontextlost', onLost)
+			canvas?.removeEventListener('webglcontextrestored', onRestored)
 			gl?.getExtension('WEBGL_lose_context')?.loseContext() // free the slot
 		})
 	},
@@ -242,8 +249,6 @@ rocket('sb-nebula', {
 			data-class:nogl="$$nogl"
 			data-on:pointermove="@point()"
 			data-on:pointerleave="@leave()"
-			data-on:webglcontextlost="@lost()"
-			data-on:webglcontextrestored="@restored()"
 		></canvas>
 	`,
 	onFirstRender: ({ host, refs }) => renderers.get(host)(refs.canvas),

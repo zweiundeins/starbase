@@ -56,6 +56,11 @@ tasks:
     cmds:
       - go run ./cmd/newcomponent {{.CLI_ARGS}}
 
+  visits:
+    desc: "Build the visits report from the web host's Caddy logs (tmp/visits-<date>.html)"
+    cmds:
+      - bash scripts/visits/report.sh {{.CLI_ARGS}}
+
   vendor-prism:
     desc: Rebuild the vendored Prism ES module used by sb-code-editor
     cmds:

@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Two console errors when the gallery's search morph removed a card: `sb-nebula` freed its GPU context in cleanup, which fired `webglcontextlost` after Rocket had torn the element down (the context events are wired with `addEventListener` now), and `sb-select`'s computed label read its chips signal while it was already gone.
+
 ### Security
 
 - Dependencies updated (brotli 1.2.4, x/text 0.42), the container base image moved to distroless Debian 13, and Dependabot now watches the Dockerfile as well as the actions and Go modules.

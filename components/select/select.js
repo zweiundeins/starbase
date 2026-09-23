@@ -208,7 +208,7 @@ rocket('sb-select', {
 		const chipsOf = () => $$.selected.map((v) => ({ value: v, label: labels.get(v) ?? v }))
 		$$.chips = chipsOf()
 		// What the input shows: the query while typing, else (single) the label.
-		$$.text = () => ($$.typing && ($$.open || $$.multiple) ? $$.query : $$.multiple ? '' : ($$.chips[0]?.label ?? ''))
+		$$.text = () => ($$.typing && ($$.open || $$.multiple) ? $$.query : $$.multiple ? '' : ($$.chips?.[0]?.label ?? ''))
 
 		const refresh = () => {
 			const q = fold($$.query.trim())
@@ -390,14 +390,14 @@ rocket('sb-select', {
 					data-attr:aria-activedescendant="$$open && $$view[$$active] ? $$view[$$active].id : null"
 					data-attr:aria-busy="$$loading ? 'true' : null"
 					data-attr:readonly="!$$typing"
-					data-attr:placeholder="$$multiple && $$chips.length ? null : $$placeholder"
+					data-attr:placeholder="$$multiple && $$chips?.length ? null : $$placeholder"
 					data-effect="el.value !== $$text && (el.value = $$text)"
 					data-on:input="@type()"
 					data-on:keydown="@key()"
 					data-on:blur="@blur()"/>
 				<span class="spin" aria-hidden="true" data-show="$$loading || $$pending"></span>
 				<button type="button" class="clear" part="clear" aria-label="Clear" tabindex="-1"
-					data-show="$$clearable && $$chips.length && !$$loading && !$$pending" data-on:click="@clear()">×</button>
+					data-show="$$clearable && $$chips?.length && !$$loading && !$$pending" data-on:click="@clear()">×</button>
 			</div>
 			<div id="list" part="listbox" popover="manual" role="listbox"
 				data-attr:aria-multiselectable="$$multiple ? 'true' : null"
