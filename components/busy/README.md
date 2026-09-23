@@ -111,34 +111,53 @@ A skeleton usually stands in for the content it is waiting for, so give it the s
 
 ### A spinner inside the button
 
-The most common loading state there is: the button that fired the request carries the spinner itself. Drop an `sb-busy` into the button and that is the whole wiring — no signal, no `data-indicator`, nothing for the page to keep track of.
+The most common loading state there is. For a button, reach for [`sb-button`](/components/button)'s own `loading` prop first: it draws the same eight blinking dots as `sb-busy`, sized from the button's own text and colour, and it blocks clicks and Enter in the capture phase — which is what stops a double submit, and which a spinner sitting inside the button cannot do.
 
 ```html preview
-<div data-signals="{_sync: []}" style="display: flex; align-items: center; gap: 16px">
-  <sb-button data-on:click="@get('/demo/data/children?into=_sync&delay=900')">
-    <sb-busy size="sm" label="Syncing" style="display: contents; --sb-brand: currentColor"></sb-busy>
-    Sync catalog
-  </sb-button>
-  <span style="color: var(--sb-text-2); font-size: 0.8125rem" data-text="$_sync.length ? 'synced ' + $_sync.length + ' galaxies' : 'not synced yet'"></span>
+<div data-signals="{_synced: []}" style="display: flex; align-items: center; gap: 16px">
+  <sb-button
+    data-indicator:_syncing
+    data-attr:loading="$_syncing"
+    data-preserve-attr="loading"
+    data-on:click="@get('/demo/data/children?into=_synced&delay=900')"
+  >Sync catalog</sb-button>
+  <span style="color: var(--sb-text-2); font-size: 0.8125rem" data-text="$_synced.length ? 'synced ' + $_synced.length + ' galaxies' : 'not synced yet'"></span>
 </div>
 ```
 
-It needs no `for`: the default rule watches any request from inside the host's parent element, and here that parent *is* the button it sits in. Point `for` at the button (`for="#save"`) only when the spinner lives somewhere else on the page. The same wiring works for `@post('/cmd/…')` — `sb-busy` watches the element, not the method.
+`data-indicator` sets the signal while that element's request is in flight, and `data-preserve-attr` keeps the attribute through a server morph. That is one signal, and in exchange the button cannot be clicked twice.
 
-Two details make it behave inside a button:
+**Or with no signal at all.** Drop an `sb-busy` into the button instead and it wires itself: it watches the request the button fires and shows itself for exactly as long as it is in flight.
+
+```html preview
+<div data-signals="{_counted: []}" style="display: flex; align-items: center; gap: 16px">
+  <sb-button variant="outline" data-on:click="@get('/demo/data/children?into=_counted&delay=900')">
+    <sb-busy size="sm" label="Counting" style="display: contents; --sb-brand: currentColor"></sb-busy>
+    Count galaxies
+  </sb-button>
+  <span style="color: var(--sb-text-2); font-size: 0.8125rem" data-text="$_counted.length ? 'counted ' + $_counted.length + ' galaxies' : 'not counted yet'"></span>
+</div>
+```
+
+Which one: `sb-button loading` when a click starts a command, because only the button itself can swallow the second click; the composed `sb-busy` when you want no page state at all, or a shape `sb-button` does not draw — a bar, a skeleton — or the `delay` and `min` timings the button prop deliberately leaves out.
+
+The composed version needs no `for`: the default rule watches any request from inside the host's parent element, and here that parent *is* the button it sits in. Point `for` at the button (`for="#save"`) only when the spinner lives somewhere else on the page. The same wiring works for `@post('/cmd/…')` — `sb-busy` watches the element, not the method.
+
+Two details make the composed spinner behave inside a button:
 
 - **`display: contents`** so the idle spinner costs nothing. The host is an `inline-block`, and a zero-width child still takes the button's flex `gap`, which would leave a blank notch in an idle button forever. With `display: contents` the host generates no box at all: while idle the button is exactly as wide as a button without it, and when the request starts the spinner and its gap appear and the button grows. Nothing is reserved for a state the button is not in. It arrives at once, undecorated; `sb-busy::part(spinner)` is there if you want to animate it in.
 - **`--sb-brand: currentColor`** so the dots take the button's own text colour instead of the brand purple they would be invisible in on a filled button.
 
 ### When a plain indicator is enough
 
-`sb-busy` earns its place when you want the spinner, the bar or the skeleton. If all the page needs is a dimmed or disabled control while a request is in flight, Datastar does that on its own, and it is lighter:
+`sb-busy` earns its place when you want the spinner, the bar or the skeleton, with `delay` and `min` around them. If all the page needs is a control that shows it is working while a request is in flight, `data-indicator` already does that on its own, and it is lighter:
 
 ```html
-<sb-button data-indicator:_saving data-attr:disabled="$_saving" data-on:click="@post('/cmd/save')">Save</sb-button>
+<sb-button data-indicator:_saving data-attr:loading="$_saving" data-preserve-attr="loading"
+  data-on:click="@post('/cmd/save')">Save</sb-button>
 ```
 
-`data-indicator` sets `$_saving` while that element's request is in flight; `data-attr:disabled` and a CSS class are the whole loading state. Reach for `sb-busy` when the wait needs a shape.
+`data-indicator` sets `$_saving` while that element's request is in flight; the same signal drives `data-attr:disabled` or a CSS class on anything that has no `loading` of its own. Reach for `sb-busy` when the wait needs a shape, a delay, a minimum, or a place of its own.
 
 ### No flash, no flicker
 
