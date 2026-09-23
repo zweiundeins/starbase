@@ -54,6 +54,24 @@ Talking to the backend works the same way: `data-on:click="@post('/launch')"`.
 <sb-button href="https://data-star.dev" variant="outline" caret>Read the Datastar docs</sb-button>
 ```
 
+### While the action runs
+
+`loading` shows an inline spinner in the button, blocks clicks and Enter, and sets `aria-busy`. The button keeps its focus, so nobody is thrown out of the page mid-action, and it takes no extra space until it is loading.
+
+```html preview
+<div data-signals="{_sync: []}" style="display: flex; align-items: center; gap: 16px">
+  <sb-button
+    data-indicator:_syncing
+    data-attr:loading="$_syncing"
+    data-preserve-attr="loading"
+    data-on:click="@get('/demo/data/children?into=_sync&delay=900')"
+  >Sync catalog</sb-button>
+  <span class="muted" data-text="$_sync.length ? 'synced ' + $_sync.length + ' galaxies' : 'not synced yet'"></span>
+</div>
+```
+
+`data-indicator` sets the signal while that element's request is in flight, and `data-preserve-attr` keeps the attribute through a server morph. For a wait that is not a button — a panel, a table, a whole region — use [`sb-busy`](/components/busy), which also knows `delay`, `min` and progress shapes.
+
 ## Accessibility
 
 A native `<button>` (or `<a>`) inside the shadow root does the work: keyboard focus, Enter and Space, and screen reader semantics. Disabled buttons are removed from the tab order.

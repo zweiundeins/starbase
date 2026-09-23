@@ -20,6 +20,28 @@ const styles = /* css */ `
 	vertical-align: middle;
 }
 :host([disabled]) { pointer-events: none; opacity: 0.5; }
+:host([loading]) .btn { cursor: progress; }
+/* The same pixel spinner as sb-busy, sized to the button's own text so it
+   follows the label at every size. It only exists while loading, so an idle
+   button is exactly as wide as it would be without it. */
+.spin { position: relative; flex: none; inline-size: 1em; block-size: 1em; }
+.spin i {
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	inline-size: 0.22em;
+	block-size: 0.22em;
+	background: currentColor;
+	opacity: 0.22;
+	transform: rotate(calc(var(--i) * 45deg)) translateY(-0.39em);
+	animation: sb-button-blink 720ms steps(1, end) infinite;
+	animation-delay: calc(var(--i) * 90ms);
+}
+@keyframes sb-button-blink { 0% { opacity: 1; } 12.5%, 100% { opacity: 0.22; } }
+@media (prefers-reduced-motion: reduce) {
+	.spin i { animation: none; opacity: 0.3; }
+	.spin i:first-child { opacity: 1; }
+}
 .btn {
 	all: unset;
 	box-sizing: border-box;
@@ -90,6 +112,7 @@ rocket('sb-button', {
 		href: string.trim.docs({ description: 'Render as a link to this URL.' }),
 		caret: bool.docs({ description: 'Show a trailing chevron.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
+		loading: bool.docs({ description: 'The button\'s action is running: an inline spinner, clicks and Enter blocked, aria-busy. Bind it to data-indicator (and add data-preserve-attr="loading").' }),
 	}),
 	manifest: {
 		slots: [
@@ -98,16 +121,32 @@ rocket('sb-button', {
 			{ name: 'suffix', description: 'An icon after the label.' },
 		],
 	},
-	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
-	render: ({ html, props: { variant, size, href, caret, disabled } }) => {
+	setup: ({ adoptStyles, cleanup, host, props }) => {
+		adoptStyles(host, styles)
+		// While loading the button stays focusable (a disabled button would drop
+		// the focus mid-action) but does nothing: the capture phase runs before
+		// the page's own data-on:click on this same element.
+		const block = (evt) => {
+			if (!props.loading) return
+			evt.preventDefault()
+			evt.stopImmediatePropagation()
+		}
+		for (const type of ['click', 'keydown']) host.addEventListener(type, block, true)
+		cleanup(() => {
+			for (const type of ['click', 'keydown']) host.removeEventListener(type, block, true)
+		})
+	},
+	render: ({ html, props: { variant, size, href, caret, disabled, loading } }) => {
 		const inner = html`
+			${loading ? html`<span class="spin" part="spinner" aria-hidden="true">${Array.from({ length: 8 }, (_, i) => html`<i style="--i: ${i}"></i>`)}</span>` : null}
 			<slot name="prefix"></slot>
 			<slot></slot>
 			<slot name="suffix"></slot>
 			${caret ? html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>` : null}
 		`
+		const busy = loading ? 'true' : null
 		return href && !disabled
-			? html`<a class="btn ${variant} ${size}" part="button" href="${href}">${inner}</a>`
-			: html`<button class="btn ${variant} ${size}" part="button" type="button" disabled="${disabled}">${inner}</button>`
+			? html`<a class="btn ${variant} ${size}" part="button" href="${href}" aria-busy="${busy}" aria-disabled="${busy}">${inner}</a>`
+			: html`<button class="btn ${variant} ${size}" part="button" type="button" disabled="${disabled}" aria-busy="${busy}" aria-disabled="${busy}">${inner}</button>`
 	},
 })
