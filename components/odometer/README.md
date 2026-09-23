@@ -35,6 +35,18 @@ A tenth of a kilometre every 3.6 seconds is 100 km/h. Give the roll the same 3.6
 </div>
 ```
 
+### Flight
+
+An altimeter moves fast, and both ways. Updating every 150 ms with a 150 ms linear roll, the lower wheels blur, the hundreds tick past steadily, and on the way down every wheel turns back under.
+
+```html preview
+<div data-signals="{_alt: 10000, _vs: 1}" data-on-interval__duration.150ms="$_vs = $_alt >= 35000 ? -1 : $_alt <= 10000 ? 1 : $_vs; $_alt += $_vs * 61" style="display: flex; gap: 1rem; align-items: baseline">
+  <sb-odometer data-attr:value="$_alt" data-preserve-attr="value" style="font-size: 2.5rem; --sb-odometer-duration: 150ms; --sb-odometer-easing: linear">10000</sb-odometer>
+  <span>ft</span>
+  <span data-text="$_vs > 0 ? '▲ climbing' : '▼ descending'"></span>
+</div>
+```
+
 ### Rolling
 
 ```html preview
