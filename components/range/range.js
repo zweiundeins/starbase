@@ -22,10 +22,6 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 const probe = document.createElement('input')
 probe.type = 'range'
 
-// Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
-// border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
-
 // The thumb, for WebKit and Gecko. Its focus ring (--_ring) is drawn inside:
 // the clip-path cuts off anything outside.
 const thumb = /* css */ `
@@ -35,7 +31,7 @@ const thumb = /* css */ `
 	border: 0;
 	background: var(--_thumb);
 	box-shadow: inset 0 -3px 0 var(--_thumb-edge);
-	clip-path: ${notch('var(--_n)')};
+	clip-path: var(--_clip);
 	border-radius: calc(7px * (1 - var(--_notch)));
 	cursor: grab;
 	outline: var(--_ring, 0);
@@ -54,6 +50,9 @@ const styles = /* css */ `
 	--_value: var(--sb-text-1, #F3F4FA);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
+	/* Pixel corners for the track and the thumbs: every corner notched by
+	   --_n (at --sb-notch: 0 their border-radius takes over). */
+	--_clip: polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n));
 	display: block;
 	inline-size: 100%;
 	min-inline-size: 8rem;
@@ -66,19 +65,18 @@ const styles = /* css */ `
 .value { color: var(--_value); font-variant-numeric: tabular-nums; font-weight: 700; }
 /* Two native range inputs on one rail: only their thumbs take the pointer.
    The fill runs between the thumbs' centres (--_a, --_b are 0..1), which
-   sit 7px (half a thumb) inside the ends. */
+   sit 7px (half a thumb) inside the ends; a stop at 0 starts where the one
+   before it ends. */
 .rail { position: relative; block-size: 20px; }
 .rail::before {
-	--_x: calc(7px + (100% - 14px) * var(--_a));
-	--_y: calc(7px + (100% - 14px) * var(--_b));
 	content: "";
 	position: absolute;
 	inset-inline: 0;
 	inset-block-start: 6px;
 	block-size: 8px;
-	background: linear-gradient(to right, var(--_track) var(--_x), var(--_fill) var(--_x), var(--_fill) var(--_y), var(--_track) var(--_y));
+	background: linear-gradient(to right, var(--_track) calc(7px + (100% - 14px) * var(--_a)), var(--_fill) 0 calc(7px + (100% - 14px) * var(--_b)), var(--_track) 0);
 	box-shadow: 0 0 0 2px var(--_border);
-	clip-path: ${notch('var(--_n)')};
+	clip-path: var(--_clip);
 	border-radius: calc(4px * (1 - var(--_notch)));
 }
 .rail:dir(rtl)::before { scale: -1 1; }
@@ -146,16 +144,11 @@ rocket('sb-range', {
 		const cur = () => peek(() => ({ start: $$.start, end: $$.end }))
 		const set = (v) => peek(() => ({ start: $$.start, end: $$.end } = norm(v)))
 		set(props.value)
-		// The server's value attribute wins when it changes; a removed attribute
-		// changes nothing (morphs also strip reflected ones). New bounds or step
-		// re-clamp a local edit, and re-apply the server's range otherwise: a
-		// morph sets attributes one by one, so the value can come before its
-		// bounds.
-		let mine
-		observeProps((p, changes) => set(host.hasAttribute('value') && ('value' in changes || !mine) ? p.value : cur()), 'value', 'min', 'max', 'step')
 		overrideProp('value', cur, set)
 		// Commands: the attribute is the server's range, $$ the local one. Both
-		// ends are one value: pending while either differs, revert() restores both.
+		// ends are one value: pending (mine) while either differs, revert()
+		// restores both.
+		let mine
 		const states = internalsOf(host).states
 		// Also keeps the shown texts current: props (unit, step) aren't signals.
 		const sync = () =>
@@ -163,7 +156,7 @@ rocket('sb-range', {
 				const s = norm(props.value)
 				const fmt = (n) => n.toFixed(places()) + props.unit
 				mine = s.start !== $$.start || s.end !== $$.end
-				props.confirm && mine ? states.add('pending') : states.delete('pending')
+				states[props.confirm && mine ? 'add' : 'delete']('pending')
 				const a = ($$.startText = fmt($$.start))
 				const b = ($$.endText = fmt($$.end))
 				$$.shown = a === b ? a : `${a} – ${b}`
@@ -171,7 +164,13 @@ rocket('sb-range', {
 		// (No start: the element is being removed and its signals are gone;
 		// writing the texts would bring them back.)
 		effect(() => $$.start != null && ($$.end, sync()))
-		observeProps(sync)
+		// Every prop change, then sync. The server's value attribute wins when
+		// it changes; a removed attribute changes nothing (morphs also strip
+		// reflected ones). New bounds or step re-clamp a local edit, and
+		// re-apply the server's range otherwise: a morph sets attributes one by
+		// one, so the value can come before its bounds. (Any other prop leaves
+		// the range as it is: it is already in bounds and on the grid.)
+		observeProps((p, changes) => (set(host.hasAttribute('value') && ('value' in changes || !mine) ? p.value : cur()), sync()))
 		defineHostProp('revert', { value: () => set(props.value) })
 		// Both inputs report here. A pointer that grabs the thumbs where they
 		// meet ($$tie) picks the part with its first move: down moves the start,
@@ -229,7 +228,7 @@ rocket('sb-range', {
 					min="${min}"
 					max="${max}"
 					step="${step || 'any'}"
-					aria-label="${(label || 'Range') + ' start'}"
+					aria-label="${label || 'Range'} start"
 					disabled="${disabled}"
 					data-class:top="$$start >= ${(min + max) / 2}"
 					data-attr:aria-valuetext="$$startText"
@@ -242,7 +241,7 @@ rocket('sb-range', {
 					min="${min}"
 					max="${max}"
 					step="${step || 'any'}"
-					aria-label="${(label || 'Range') + ' end'}"
+					aria-label="${label || 'Range'} end"
 					disabled="${disabled}"
 					data-attr:aria-valuetext="$$endText"
 					data-effect="${min}, ${max}, ${step}, el.value = $$swap ? $$start : $$end"
