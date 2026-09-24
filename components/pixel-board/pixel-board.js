@@ -97,7 +97,7 @@ rocket('sb-pixel-board', {
 		const pending = new Map() // idx → { color }
 		const queue = new Set()
 		let ctx = null, img = null, raf = 0, flushTimer = 0
-		let drawing = false, pid, last = -1, hover = -1
+		let pid, last = -1, hover = -1
 
 		const decode = () => {
 			const size = n() * n()
@@ -176,27 +176,28 @@ rocket('sb-pixel-board', {
 			return `Pixel board, cell ${(i % size) + 1},${((i / size) | 0) + 1}, colour ${buf[i] + 1}; painting colour ${$$.color + 1}`
 		}
 
-		// One gesture: the primary button of one pointer, from down until its capture ends (up or cancel).
+		// One gesture: the primary button of one pointer, while the canvas holds its capture (until up or cancel).
+		// Asked of the capture, not kept in a flag: a capture another element takes before it starts sends no
+		// lostpointercapture here, and a flag would stay set (hover would paint, and no stroke could start again).
 		action('stroke', ({ el, evt }) => {
 			const i = cellAt(el, evt)
 			switch (evt.type) {
 				case 'pointerdown':
-					if (props.readonly || i < 0 || evt.button || drawing) return
+					if (props.readonly || i < 0 || evt.button || el.hasPointerCapture(pid)) return
 					el.setPointerCapture((pid = evt.pointerId))
-					drawing = true
 					put((last = i))
 					break
 				case 'pointermove':
 					if (hover !== i && !props.readonly) (hover = i), redraw()
 					// Leaving the board ends the segment: coming back starts a new one, not a line across.
-					if (drawing && evt.pointerId === pid && i !== last) i < 0 ? (last = -1) : (last < 0 ? put(i) : line(last, i), (last = i))
+					if (evt.pointerId === pid && i !== last && el.hasPointerCapture(pid)) i < 0 ? (last = -1) : (last < 0 ? put(i) : line(last, i), (last = i))
 					break
 				case 'pointerleave':
 					hover = -1
 					redraw()
 					break
 				default: // lostpointercapture
-					if (evt.pointerId === pid) (drawing = false), flush()
+					if (evt.pointerId === pid) flush()
 			}
 		})
 		action('key', ({ evt }) => {
