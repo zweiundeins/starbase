@@ -9,6 +9,8 @@ since: 2026-09-23
 preview: |
   <sb-autoloader modules='{"demo-badge": "/c/autoloader/demo-badge.js"}'></sb-autoloader>
   <demo-badge>loaded on demand</demo-badge>
+usage: |
+  <sb-autoloader pattern="/components/{tag}/{tag}.js" match="^x-"></sb-autoloader>
 playground:
   attrs: {modules: '{"demo-badge": "/c/autoloader/demo-badge.js"}'}
   content: <demo-badge>loaded on demand</demo-badge>

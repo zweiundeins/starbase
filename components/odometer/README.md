@@ -10,6 +10,8 @@ preview: |
   <div data-signals="{_odo: 221180.4}" data-on-interval__duration.3600ms.leading="$_odo = Math.round(($_odo + 0.1) * 10) / 10">
     <sb-odometer drum decimals="1" data-attr:value="$_odo" data-preserve-attr="value" style="font-size: 2rem; --sb-odometer-duration: 3.6s; --sb-odometer-easing: linear">221180.4</sb-odometer>
   </div>
+usage: |
+  <sb-odometer value="221180.4" decimals="1">221180.4</sb-odometer>
 playground:
   props:
     value: {min: 0, max: 999999}

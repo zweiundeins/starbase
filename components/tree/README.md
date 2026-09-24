@@ -8,6 +8,8 @@ tags: [tree, hierarchy, lazy, navigation, file browser]
 since: 2026-09-22
 preview: |
   <sb-tree style="inline-size: 13rem" value="earth" items='[{"id":"sol","label":"Sol","icon":"☀️","children":[{"id":"venus","label":"Venus","icon":"🟠"},{"id":"earth","label":"Earth","icon":"🌍","children":[{"id":"moon","label":"Moon","icon":"🌕"}]},{"id":"mars","label":"Mars","icon":"🔴"}]}]'></sb-tree>
+usage: |
+  <sb-tree label="Files" items='[{"id":"src","label":"src","children":[{"id":"main","label":"main.go"},{"id":"util","label":"util.go"}]},{"id":"readme","label":"README.md"}]'></sb-tree>
 playground:
   attrs:
     items: '[{"id":"sol","label":"Sol","icon":"☀️","children":[{"id":"venus","label":"Venus"},{"id":"earth","label":"Earth","icon":"🌍","children":[{"id":"moon","label":"Moon"}]}]}]'

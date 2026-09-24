@@ -50,8 +50,12 @@ tags: [keywords, for, search]
 since: 2026-09-21
 preview: |
   <sb-my-widget></sb-my-widget>
+usage: |                   # optional
+  <sb-my-widget label="Volume"></sb-my-widget>
 ---
 ```
+
+`preview:` is the gallery card's live demo, so tune it to look good in a card. `usage:` is the smallest markup that shows how you'd use the component in your own page; the installation snippets use it, and fall back to `preview:`. Keep it free of card sizing, demo-only signals and state, and assets that only exist on Starbase.
 
 A fenced block tagged `html preview` renders twice: live on the page and as copyable source.
 

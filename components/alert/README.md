@@ -8,6 +8,8 @@ tags: [notice, callout, status, message]
 since: 2026-09-21
 preview: |
   <sb-alert variant="success" heading="Launch successful!" closable style="inline-size: 100%">Your component is live.</sb-alert>
+usage: |
+  <sb-alert variant="success" heading="Saved" closable>Your changes are live.</sb-alert>
 playground:
   content: Your component is live.
   values: {variant: success, heading: "Launch successful!", closable: true}

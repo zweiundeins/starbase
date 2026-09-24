@@ -8,6 +8,8 @@ tags: [range, input, number, control]
 since: 2026-09-21
 preview: |
   <sb-slider label="Thrust" value="72" unit="%" style="inline-size: 13rem"></sb-slider>
+usage: |
+  <sb-slider label="Volume" value="60" unit="%"></sb-slider>
 playground:
   props:
     value: {min: 0, max: 100}

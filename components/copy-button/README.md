@@ -8,6 +8,8 @@ tags: [clipboard, copy, code]
 since: 2026-09-21
 preview: |
   <div style="display: flex; align-items: center; gap: 8px"><code>go run .</code><sb-copy-button value="go run ."></sb-copy-button></div>
+usage: |
+  <sb-copy-button value="npm install"></sb-copy-button>
 playground:
   values: {value: go run .}
 ---

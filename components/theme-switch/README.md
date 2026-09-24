@@ -8,6 +8,8 @@ tags: [theme, dark mode, color scheme, preferences]
 since: 2026-09-22
 preview: |
   <sb-theme-switch cookie="sb-theme-demo" attribute="data-demo-theme"></sb-theme-switch>
+usage: |
+  <sb-theme-switch></sb-theme-switch>
 playground:
   exclude: [themes, labels, cookie, attribute, domain]
   attrs: {cookie: sb-theme-demo, attribute: data-demo-theme}

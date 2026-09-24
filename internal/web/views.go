@@ -113,7 +113,7 @@ const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/
 // Every snippet is exactly what to paste: the explanations are the page's.
 func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, error) {
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
-	preview := strings.TrimSpace(c.Preview)
+	usage := c.InstallMarkup()
 	deps := s.catalog.Deps(c)
 	all := append([]*catalog.Component{c}, deps...)
 	v := ui.InstallView{Tab: rc.prefs.InstallTabOrDefault(), Datastar: datastarCDN}
@@ -126,7 +126,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	}
 
 	v.Autoloader = snippet(importMap(datastarCDN) +
-		fmt.Sprintf("<script type=\"module\" src=\"%s/c/autoloader.js\"></script>\n\n%s", base, preview))
+		fmt.Sprintf("<script type=\"module\" src=\"%s/c/autoloader.js\"></script>\n\n%s", base, usage))
 
 	// Integrity for everything the page will load: Datastar, and every file
 	// these components ship (the module, plus what it imports itself, like
@@ -165,7 +165,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 		}
 		fmt.Fprintf(&scripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, script, sri)
 	}
-	v.Component = snippet(pinnedMap + scripts.String() + "\n" + preview)
+	v.Component = snippet(pinnedMap + scripts.String() + "\n" + usage)
 
 	// Today's catalog snapshot: its autoloader, and integrity for Datastar
 	// and every file this component loads (importmap.json has them all).
@@ -177,7 +177,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	if snapshotSRI != "" {
 		v.Pinned = snippet(pinnedMap + fmt.Sprintf(`<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
 
-%s`, base, s.catalog.Hash, snapshotSRI, preview))
+%s`, base, s.catalog.Hash, snapshotSRI, usage))
 	}
 
 	// Self-host: the files, and an import map at your own Datastar.
@@ -191,7 +191,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 		v.Files = append(v.Files, g)
 		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))
 	}
-	v.SelfHost = snippet(importMap("/js/datastar-rocket.js") + own.String() + "\n" + preview)
+	v.SelfHost = snippet(importMap("/js/datastar-rocket.js") + own.String() + "\n" + usage)
 	return v, nil
 }
 

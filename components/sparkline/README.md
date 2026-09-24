@@ -8,6 +8,8 @@ tags: [chart, trend, telemetry, dashboard]
 since: 2026-09-21
 preview: |
   <sb-sparkline values="[12,18,15,22,30,26,34,41,38,47,52,49,58,64,61,70]" length="16" tone="ok" show-value unit="%" style="--sb-sparkline-width: 12rem"></sb-sparkline>
+usage: |
+  <sb-sparkline values="[12,18,15,22,30,26,34,41]" show-value unit="%"></sb-sparkline>
 playground:
   props:
     value: {min: 0, max: 100}

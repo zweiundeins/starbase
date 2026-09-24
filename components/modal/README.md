@@ -8,6 +8,13 @@ tags: [dialog, overlay, popup, confirm]
 since: 2026-09-21
 preview: |
   <sb-modal inline heading="Mission Control" style="--sb-radius-lg: 8px"><span>Are you ready to launch?</span><sb-button slot="footer" size="sm" variant="outline" data-sb-close>Cancel</sb-button><sb-button slot="footer" size="sm" data-sb-close>Launch</sb-button></sb-modal>
+usage: |
+  <button data-on:click="$_confirm.show()">Delete…</button>
+  <sb-modal data-ref:_confirm heading="Delete this file?">
+    This cannot be undone.
+    <button slot="footer" data-sb-close="cancel">Cancel</button>
+    <button slot="footer" data-sb-close="delete">Delete</button>
+  </sb-modal>
 playground:
   content: Are you ready to launch?<sb-button slot="footer" size="sm" variant="outline" data-sb-close>Cancel</sb-button><sb-button slot="footer" size="sm" data-sb-close>Launch</sb-button>
   values: {heading: Mission Control, inline: true}

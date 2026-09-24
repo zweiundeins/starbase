@@ -8,6 +8,8 @@ tags: [number, counter, animation, statistics, intl]
 since: 2026-09-23
 preview: |
   <sb-count-up value="4681" style="font-size: 2rem">4681</sb-count-up>
+usage: |
+  <sb-count-up value="4681">4681</sb-count-up>
 playground:
   props:
     value: {min: 0, max: 10000}

@@ -8,6 +8,8 @@ tags: [notification, snackbar, feedback, live-region]
 since: 2026-09-23
 preview: |
   <sb-toast placement="inline" duration="0" label="Flight deck" style="inline-size: 100%" toasts='[{"id":"a","variant":"ok","title":"Docking complete","text":"All systems nominal."},{"id":"b","variant":"warn","text":"Fuel at 18%."}]'></sb-toast>
+usage: |
+  <sb-toast toasts='[{"id":"saved","variant":"ok","title":"Saved","text":"Your changes are live."}]'></sb-toast>
 playground:
   values: {placement: inline, duration: 0, max: 3}
   attrs: {toasts: '[{"id":"a","variant":"ok","title":"Docking complete","text":"Welcome aboard, commander."},{"id":"b","variant":"warn","text":"Fuel at 18%."},{"id":"c","text":"Telemetry resumes in 30 seconds."}]'}

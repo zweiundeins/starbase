@@ -111,6 +111,10 @@ tags: []
 since: [[.Today]]
 preview: |
   <[[.Tag]] label="Hello"></[[.Tag]]>
+# usage (optional): the smallest markup that shows how you'd use the component
+# in your own page; the installation snippets use it, and fall back to preview.
+# usage: |
+#   <[[.Tag]] label="Volume"></[[.Tag]]>
 ---
 
 Describe the component in a sentence or two: what it is for and when to reach for it.

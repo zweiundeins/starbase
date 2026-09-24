@@ -8,6 +8,8 @@ tags: [details, disclosure, accordion, collapse, expand, summary, faq]
 since: 2026-09-23
 preview: |
   <sb-details open summary="Flight plan" icon="🛰️" style="inline-size: 16rem">Burn 4.2 s at T+38, then coast to the transfer orbit.</sb-details>
+usage: |
+  <sb-details summary="Flight plan">Burn 4.2 s at T+38, then coast to the transfer orbit.</sb-details>
 playground:
   content: Burn 4.2 s at T+38, then coast to the transfer orbit.
   values: {summary: Flight plan, icon: "🛰️"}

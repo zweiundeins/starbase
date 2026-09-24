@@ -8,6 +8,8 @@ tags: [hint, popover, help]
 since: 2026-09-21
 preview: |
   <sb-tooltip content="More info" open><img src="/art/info.svg" alt="Info" width="32" height="32" style="image-rendering: pixelated"></sb-tooltip>
+usage: |
+  <sb-tooltip content="More info"><button type="button">?</button></sb-tooltip>
 playground:
   content: <sb-button variant="outline" size="sm">Hover me</sb-button>
   values: {content: More info, open: true}

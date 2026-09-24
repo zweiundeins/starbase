@@ -8,6 +8,8 @@ tags: [qr, code, share, url, svg]
 since: 2026-09-22
 preview: |
   <sb-qr-code value="https://data-star.dev" accent style="inline-size: 7rem"></sb-qr-code>
+usage: |
+  <sb-qr-code value="https://data-star.dev"></sb-qr-code>
 playground:
   props:
     border: {min: 0, max: 8}

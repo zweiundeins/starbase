@@ -8,6 +8,8 @@ tags: [canvas, pixel, paint, multiplayer, realtime]
 since: 2026-09-21
 preview: |
   <sb-pixel-board local readonly size="16" cells="0000000000000000000000055000000000000055550000000000005775000000000005579550000000000559955000000000055775500000000005555550000000000566665000000000f555555f0000000ff555555ff000000f05333350f0000000003333000000000000eddd0000000000000ee00000000000000000000000" style="--sb-pixel-board-size: 7.5rem"></sb-pixel-board>
+usage: |
+  <sb-pixel-board local grid size="24"></sb-pixel-board>
 playground:
   props:
     size: {min: 8, max: 64}

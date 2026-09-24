@@ -8,6 +8,8 @@ tags: [3d, canvas, animation, pixel, model]
 since: 2026-09-21
 preview: |
   <sb-voxel spin="40" pitch="18" style="--sb-voxel-size: 8.5rem"></sb-voxel>
+usage: |
+  <sb-voxel spin="40"></sb-voxel>
 playground:
   props:
     yaw: {min: -180, max: 180}

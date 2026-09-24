@@ -11,6 +11,9 @@ preview: |
     data-attr:label="$_cardPick ? 'Sent: ' + $_cardPick : 'Ship actions'"
     data-on:sb-select="$_cardPick = evt.detail.value"
     items='[{"value":"refuel","label":"Refuel","icon":"⛽"},{"label":"Set course","icon":"🧭","children":[{"value":"mars","label":"Mars"},{"value":"europa","label":"Europa"}]},{"divider":true},{"value":"scuttle","label":"Scuttle","icon":"💥","danger":true}]'></sb-dropdown>
+usage: |
+  <sb-dropdown label="Actions" data-on:sb-select="@post('/actions/' + evt.detail.value)"
+    items='[{"value":"edit","label":"Edit"},{"value":"duplicate","label":"Duplicate"},{"divider":true},{"value":"delete","label":"Delete","danger":true}]'></sb-dropdown>
 playground:
   attrs:
     "data-on:sb-select": '$_pg.label = "Sent: " + evt.detail.value'

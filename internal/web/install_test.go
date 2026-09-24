@@ -60,12 +60,16 @@ func TestInstallSnippets(t *testing.T) {
 	if len(p) != 4 {
 		t.Fatalf("want 4 panels with a copy button, got %v", len(p))
 	}
-	preview := strings.TrimSpace(slider.Preview)
+	// The snippets end with the usage, not the gallery card's preview.
+	usage := strings.TrimSpace(slider.Usage)
+	if usage == "" || usage == strings.TrimSpace(slider.Preview) {
+		t.Fatalf("the slider needs a usage: that differs from its preview for this test, got %q", usage)
+	}
 	for slot, snip := range p {
 		if strings.Contains(snip, "<!--") {
 			t.Errorf("%s: snippets carry no comments:\n%s", slot, snip)
 		}
-		if !strings.HasSuffix(snip, preview) {
+		if !strings.HasSuffix(snip, usage) {
 			t.Errorf("%s: should end with the component's markup:\n%s", slot, snip)
 		}
 	}

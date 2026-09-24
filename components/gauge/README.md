@@ -8,6 +8,8 @@ tags: [meter, dial, dashboard, telemetry]
 since: 2026-09-21
 preview: |
   <sb-gauge value="72" label="Thrust" unit="%" style="--sb-gauge-size: 9.5rem"></sb-gauge>
+usage: |
+  <sb-gauge value="72" label="Thrust" unit="%"></sb-gauge>
 playground:
   props:
     value: {min: 0, max: 100}

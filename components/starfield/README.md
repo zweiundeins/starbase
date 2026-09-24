@@ -8,6 +8,8 @@ tags: [canvas, animation, background, space]
 since: 2026-09-21
 preview: |
   <sb-starfield speed="35" density="260" tint="violet" warp style="--sb-starfield-height: 7.5rem"></sb-starfield>
+usage: |
+  <sb-starfield></sb-starfield>
 playground:
   props:
     speed: {min: 0, max: 100}

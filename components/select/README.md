@@ -8,6 +8,8 @@ tags: [select, dropdown, combobox, autocomplete, search, form]
 since: 2026-09-22
 preview: |
   <sb-select label="Destination" placeholder="Pick a planet" value="Mars" options='["Mercury","Venus","Earth","Mars","Jupiter","Saturn"]' style="inline-size: 14rem"></sb-select>
+usage: |
+  <sb-select label="Destination" placeholder="Pick a planet" options='["Mercury","Venus","Earth","Mars"]'></sb-select>
 playground:
   attrs:
     options: '["Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune"]'

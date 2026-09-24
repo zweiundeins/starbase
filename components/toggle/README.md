@@ -8,6 +8,8 @@ tags: [switch, checkbox, boolean]
 since: 2026-09-21
 preview: |
   <sb-toggle checked size="lg"></sb-toggle>
+usage: |
+  <sb-toggle label="Notifications"></sb-toggle>
 playground:
   values: {label: Warp drive, checked: true}
 ---

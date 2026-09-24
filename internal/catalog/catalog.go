@@ -32,11 +32,21 @@ type Meta struct {
 	Author   string   `yaml:"author"`
 	Tags     []string `yaml:"tags"`
 	Since    string   `yaml:"since"`
-	Preview  string   `yaml:"preview"`
+	Preview  string   `yaml:"preview"`  // the gallery card's live demo
+	Usage    string   `yaml:"usage"`    // optional: the smallest markup to paste into a page; installation snippets fall back to Preview
 	Source   string   `yaml:"source"`   // optional: upstream repository (pinned)
 	Unlisted bool     `yaml:"unlisted"` // part of the site, not the gallery: served and documented, but not browsed
 
 	Playground PlaygroundMeta `yaml:"playground"`
+}
+
+// InstallMarkup is the markup the installation snippets end with: the
+// component's usage, or its gallery preview when it has none.
+func (m Meta) InstallMarkup() string {
+	if u := strings.TrimSpace(m.Usage); u != "" {
+		return u
+	}
+	return strings.TrimSpace(m.Preview)
 }
 
 type Component struct {

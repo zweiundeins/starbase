@@ -8,6 +8,9 @@ tags: [loading, spinner, skeleton, progress, indicator, fetch]
 since: 2026-09-23
 preview: |
   <sb-busy busy show-label label="Plotting course"></sb-busy>
+usage: |
+  <button data-on:click="@post('/save')">Save</button>
+  <sb-busy label="Saving" show-label></sb-busy>
 playground:
   props:
     lines: {min: 1, max: 8}

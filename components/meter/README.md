@@ -8,6 +8,8 @@ tags: [progress, level, bar, battery, fuel]
 since: 2026-09-21
 preview: |
   <sb-meter label="Shields" value="75" unit="%" style="--sb-meter-width: 13rem"></sb-meter>
+usage: |
+  <sb-meter label="Shields" value="75" unit="%"></sb-meter>
 playground:
   props:
     value: {min: 0, max: 100}

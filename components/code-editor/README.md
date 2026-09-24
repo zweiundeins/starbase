@@ -12,6 +12,8 @@ preview: |
     render: ({ html }) => html`<b>hi</b>`,
   })
   </script></sb-code-editor>
+usage: |
+  <sb-code-editor language="js" label="script.js" value="const answer = 42"></sb-code-editor>
 playground:
   props:
     tabSize: {min: 1, max: 8}

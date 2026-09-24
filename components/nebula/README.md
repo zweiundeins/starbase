@@ -8,6 +8,8 @@ tags: [webgl, shader, background, space, animation]
 since: "2026-09-22"
 preview: |
     <sb-nebula speed="1.2" density="0.6" style="--sb-nebula-height: 7.5rem"></sb-nebula>
+usage: |
+  <sb-nebula></sb-nebula>
 playground:
     props:
         density:

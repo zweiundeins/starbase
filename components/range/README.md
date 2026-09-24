@@ -8,6 +8,8 @@ tags: [range, slider, interval, input, form]
 since: 2026-09-22
 preview: |
   <sb-range label="Orbit" value='{"start":300,"end":800}' min="160" max="2000" step="10" unit=" km" style="inline-size: 13rem"></sb-range>
+usage: |
+  <sb-range label="Price" value='{"start":20,"end":80}' min="0" max="100" unit=" €"></sb-range>
 playground:
   props:
     min: {min: -100, max: 0}
