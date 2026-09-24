@@ -34,6 +34,8 @@ const styles = /* css */ `
 	background: var(--_track);
 	box-shadow: 0 0 0 2px var(--_edge);
 }
+/* The tone is a class and the delay its own longhand: where a CSP blocks
+   inline styles, only the --i cascade is lost. */
 .bar.warn { --_c: var(--_warn); }
 .bar.danger { --_c: var(--_danger); }
 .bar > * {
