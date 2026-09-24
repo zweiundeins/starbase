@@ -30,7 +30,7 @@ const styles = /* css */ `
 	font-size: 0.875rem;
 }
 :host([hidden]) { display: none; }
-[role="tree"] { display: grid; gap: 1px; }
+[role="tree"] { display: grid; gap: 1px; outline: none; }
 [role="treeitem"] {
 	display: flex;
 	align-items: center;
