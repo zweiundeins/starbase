@@ -15,6 +15,8 @@ playground:
 
 Shows a moment relative to now, like "3 minutes ago" or "in 2 days", with the browser's `Intl.RelativeTimeFormat`. It keeps itself current (one timer for every instance on the page, each updated only when its text changes). Hovering shows the full date.
 
+Days count calendar dates in the viewer's time zone, like the date on hover: "yesterday" is the date before today, whatever the hour.
+
 Put a server-formatted date inside it: that is what shows before the component loads, for search engines, and without JavaScript.
 
 ## Examples

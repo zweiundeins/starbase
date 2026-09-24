@@ -39,10 +39,13 @@ const parse = (v) => {
 	return Date.parse(s)
 }
 
+const midnight = (t, h = 0) => new Date(t).setHours(h, 0, 0, 0)
+
 // relative picks the largest unit that fits, and the moment the text next
 // changes. That is an edge of the unit abs is in (before rounding up to the
 // next one): the rounded count moves (abs crosses k + ½ units), or abs grows
-// into the next unit (past) or shrinks below this one (future).
+// into the next unit (past) or shrinks below this one (future). Days count
+// calendar dates, so they also change at midnight.
 const relative = (then, now, fmt) => {
 	const diff = then - now
 	const abs = Math.abs(diff)
@@ -55,7 +58,13 @@ const relative = (then, now, fmt) => {
 	]
 	// "60 minutes ago" reads better as "1 hour ago".
 	if (i && Math.abs(Math.round(diff / ms)) * ms >= UNITS[i - 1][1]) [unit, ms] = UNITS[i - 1]
-	return { text: fmt.format(Math.round(diff / ms), unit), next: now + Math.min(...edges.filter((e) => e > 0)) }
+	let n = Math.round(diff / ms)
+	if (unit == 'day') {
+		// "yesterday" is the date before today, not 24 hours ago
+		n = Math.round((midnight(then) - midnight(now)) / DAY) || diff * 0
+		edges.push(midnight(now, 24) - now)
+	}
+	return { text: fmt.format(n, unit), next: now + Math.min(...edges.filter((e) => e > 0)) }
 }
 
 rocket('sb-relative-time', {
