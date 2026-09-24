@@ -8,13 +8,18 @@ import (
 
 type GalleryView struct {
 	Browse   model.Browse
+	// DefaultSort is the session's default sort (links leave out only a
+	// sort everyone gets by default, see Browse.QueryFor).
+	DefaultSort model.Sort
 	Result   queries.BrowseResult
 	Previews map[string]string       // slug → preview snippet
 	Sizes    map[string]catalog.Size // slug → total download size
 }
 
-func browseHref(b model.Browse) templ.SafeURL {
-	q := b.Query().Encode()
+func browseHref(b model.Browse) templ.SafeURL { return browseHrefFor(b, model.SortPopular) }
+
+func browseHrefFor(b model.Browse, def model.Sort) templ.SafeURL {
+	q := b.QueryFor(def).Encode()
 	if q == "" {
 		return "/#components"
 	}
@@ -76,9 +81,9 @@ templ Sidebar(s Shell, v GalleryView) {
 	<aside class="sidebar" aria-label="Browse">
 		<div class="sidebar__inner">
 		<nav class="cat-nav" aria-label="Categories">
-			@categoryLink(v.Browse, "", "All Components", "all", v.Result.Total)
+			@categoryLink(v, "", "All Components", "all", v.Result.Total)
 			for _, c := range catalog.Categories {
-				@categoryLink(v.Browse, c.Slug, c.Label, c.Icon, v.Result.Counts[c.Slug])
+				@categoryLink(v, c.Slug, c.Label, c.Icon, v.Result.Counts[c.Slug])
 			}
 		</nav>
 		<hr/>
@@ -110,11 +115,11 @@ templ Sidebar(s Shell, v GalleryView) {
 	</aside>
 }
 
-templ categoryLink(b model.Browse, slug, label, icon string, count int) {
+templ categoryLink(v GalleryView, slug, label, icon string, count int) {
 	<a
 		class={ "cat-nav__item", templ.KV("is-empty", count == 0) }
-		href={ browseHref(model.Browse{Q: b.Q, Category: slug, Sort: b.Sort}) }
-		if b.Category == slug {
+		href={ browseHrefFor(model.Browse{Q: v.Browse.Q, Category: slug, Sort: v.Browse.Sort}, v.DefaultSort) }
+		if v.Browse.Category == slug {
 			aria-current="true"
 		}
 		data-on:click__prevent={ categoryClick(slug) }
@@ -147,7 +152,7 @@ templ Collection(s Shell, v GalleryView) {
 			</div>
 			<label class="select-field">
 				Sort by
-				<select name="sort" data-bind:sort data-on:change="@post('/cmd/browse')">
+				<select name="sort" data-bind:sort data-on:change="@post('/cmd/sort')">
 					for _, o := range model.Sorts {
 						<option value={ string(o.Value) } selected?={ v.Browse.Sort == o.Value }>{ o.Label }</option>
 					}

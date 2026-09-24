@@ -92,6 +92,7 @@ func (s *Server) Handler() http.Handler {
 
 	// Commands.
 	mux.HandleFunc("POST /cmd/browse", s.cmdBrowse)
+	mux.HandleFunc("POST /cmd/sort", s.cmdSort)
 	mux.HandleFunc("POST /cmd/star/{slug}", s.cmdStar(true))
 	mux.HandleFunc("POST /cmd/unstar/{slug}", s.cmdStar(false))
 	mux.HandleFunc("POST /cmd/theme/{theme}", s.cmdTheme)

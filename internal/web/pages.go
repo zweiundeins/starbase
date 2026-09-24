@@ -67,16 +67,16 @@ func (s *Server) load(ctx context.Context, req *http.Request, tabID string, fn p
 		if user, err = r.SessionUser(ctx, sid); err != nil {
 			return err
 		}
+		prefs, err := r.Prefs(ctx, sid)
+		if err != nil {
+			return err
+		}
 		tab, ok, err := r.Tab(ctx, sid, tabID)
 		if err != nil {
 			return err
 		}
-		if !ok {
-			tab = model.TabState{Browse: model.BrowseFromQuery(req.URL.Query())}
-		}
-		prefs, err := r.Prefs(ctx, sid)
-		if err != nil {
-			return err
+		if !ok { // a new page: its URL, and the session's default sort
+			tab = model.TabState{Browse: model.BrowseFromQuery(req.URL.Query(), prefs.DefaultSort())}
 		}
 		v, err = fn(&renderCtx{ctx: ctx, r: r, req: req, sid: sid, tabID: tabID, user: user, tab: tab, prefs: prefs})
 		return err

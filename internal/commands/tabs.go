@@ -62,41 +62,6 @@ func (c SetBrowseFilter) Apply(ctx context.Context, tx *sql.Tx) error {
 	})
 }
 
-// SetPreviewTheme selects the token set shown on the Themes page.
-type SetPreviewTheme struct {
-	SID, TabID string
-	Theme      string
-}
-
-func (c SetPreviewTheme) Validate() error {
-	if !model.ValidPreviewTheme(c.Theme) {
-		return errors.New("unknown theme")
-	}
-	return validTab(c.SID, c.TabID)
-}
-func (c SetPreviewTheme) Scope() string { return c.SID }
-
-func (c SetPreviewTheme) Apply(ctx context.Context, tx *sql.Tx) error {
-	return updateTab(ctx, tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
-		st.PreviewTheme = c.Theme
-	})
-}
-
-// SetPreviewStyle turns the 8-bit details of the Themes page previews on or off.
-type SetPreviewStyle struct {
-	SID, TabID string
-	Smooth     bool
-}
-
-func (c SetPreviewStyle) Validate() error { return validTab(c.SID, c.TabID) }
-func (c SetPreviewStyle) Scope() string   { return c.SID }
-
-func (c SetPreviewStyle) Apply(ctx context.Context, tx *sql.Tx) error {
-	return updateTab(ctx, tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
-		st.PreviewSmooth = c.Smooth
-	})
-}
-
 // PruneTabs forgets tab state that has not been touched for a while.
 type PruneTabs struct{ OlderThan time.Duration }
 

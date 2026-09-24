@@ -56,12 +56,25 @@ func (b Browse) Normalize() Browse {
 	return b
 }
 
-func BrowseFromQuery(v url.Values) Browse {
-	return Browse{Q: v.Get("q"), Category: v.Get("cat"), Sort: Sort(v.Get("sort"))}.Normalize()
+// BrowseFromQuery reads the gallery's state from its URL. A URL without a
+// valid sort gets def, the session's default sort (SessionPrefs.DefaultSort):
+// a sort in the URL always wins, so shared links show what was shared.
+func BrowseFromQuery(v url.Values, def Sort) Browse {
+	s := Sort(v.Get("sort"))
+	if !s.Valid() {
+		s = def
+	}
+	return Browse{Q: v.Get("q"), Category: v.Get("cat"), Sort: s}.Normalize()
 }
 
 // Query encodes the non-default fields as a query string.
-func (b Browse) Query() url.Values {
+func (b Browse) Query() url.Values { return b.QueryFor(SortPopular) }
+
+// QueryFor encodes b for a session whose default sort is def. The sort is
+// left out only when it and def are both the most popular: then the URL
+// means the same thing to everyone, and a sort that differs from the
+// session's default survives a reload.
+func (b Browse) QueryFor(def Sort) url.Values {
 	v := url.Values{}
 	if b.Q != "" {
 		v.Set("q", b.Q)
@@ -69,18 +82,16 @@ func (b Browse) Query() url.Values {
 	if b.Category != "" {
 		v.Set("cat", b.Category)
 	}
-	if b.Sort != "" && b.Sort != SortPopular {
+	if b.Sort.Valid() && (b.Sort != SortPopular || def.Valid() && def != SortPopular) {
 		v.Set("sort", string(b.Sort))
 	}
 	return v
 }
 
-// TabState is everything the server remembers about one browser tab.
+// TabState is everything the server remembers about one loaded page (its
+// tabid is new on every document); SessionPrefs outlive it.
 type TabState struct {
-	Browse       Browse `json:"browse"`
-	PreviewTheme string `json:"previewTheme,omitempty"`
-	// PreviewSmooth shows the Themes page previews without 8-bit details.
-	PreviewSmooth bool `json:"smooth,omitempty"`
+	Browse Browse `json:"browse"`
 	// PlaygroundShare is the id of the snippet this tab saved last.
 	PlaygroundShare string `json:"share,omitempty"`
 	// Flight is the Showcase's commands demo (FlightPlan.OrDefault).

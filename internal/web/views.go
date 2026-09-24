@@ -11,7 +11,6 @@ import (
 
 	"starbase/internal/catalog"
 	"starbase/internal/commands"
-	"starbase/internal/model"
 	"starbase/internal/ui"
 )
 
@@ -33,8 +32,9 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 			sizes[c.Slug] = comp.Sizes.Total
 		}
 	}
+	def := rc.prefs.DefaultSort()
 	u := "/"
-	if q := b.Query().Encode(); q != "" {
+	if q := b.QueryFor(def).Encode(); q != "" {
 		u += "?" + q
 	}
 	return view{
@@ -42,7 +42,7 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 		Description: "Community-built Rocket web components for the Datastar ecosystem. Copy, use, remix, and launch something great.",
 		Nav:         "components",
 		Body: func(sh ui.Shell) templ.Component {
-			return ui.Gallery(sh, ui.GalleryView{Browse: b, Result: res, Previews: previews, Sizes: sizes})
+			return ui.Gallery(sh, ui.GalleryView{Browse: b, DefaultSort: def, Result: res, Previews: previews, Sizes: sizes})
 		},
 		URL:        u,
 		SearchLive: true,
@@ -208,16 +208,13 @@ func (s *Server) pinnedScript(rc *renderCtx, c *catalog.Component) (script, sri 
 }
 
 func (s *Server) themesPage(rc *renderCtx) (view, error) {
-	theme := rc.tab.PreviewTheme
-	if !model.ValidPreviewTheme(theme) {
-		theme = "deep-space"
-	}
+	theme := rc.prefs.PreviewThemeOrDefault()
 	return view{
 		Title:       "Themes · Starbase",
 		Description: "Every component is styled with semantic design tokens. Swap the token set, restyle everything.",
 		Nav:         "themes",
 		Body: func(ui.Shell) templ.Component {
-			return ui.ThemesPage(ui.ThemesView{Theme: theme, Smooth: rc.tab.PreviewSmooth, CSS: s.themeCSS(theme), CSSHTML: catalog.Highlight(s.themeCSS(theme), "css"), Previews: s.themePreviews()})
+			return ui.ThemesPage(ui.ThemesView{Theme: theme, Smooth: rc.prefs.PreviewSmooth, CSS: s.themeCSS(theme), CSSHTML: catalog.Highlight(s.themeCSS(theme), "css"), Previews: s.themePreviews()})
 		},
 	}, nil
 }

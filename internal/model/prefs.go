@@ -7,6 +7,29 @@ package model
 type SessionPrefs struct {
 	// InstallTab is the component pages' installation tab (InstallTabs).
 	InstallTab string `json:"installTab,omitempty"`
+	// PreviewTheme is the token set the Themes page previews (PreviewThemes).
+	PreviewTheme string `json:"previewTheme,omitempty"`
+	// PreviewSmooth shows the Themes page previews without 8-bit details.
+	PreviewSmooth bool `json:"smooth,omitempty"`
+	// GallerySort is the gallery's default sort, used when the URL has none.
+	GallerySort Sort `json:"sort,omitempty"`
+}
+
+// PreviewThemeOrDefault is the stored preview theme, or Deep Space.
+func (p SessionPrefs) PreviewThemeOrDefault() string {
+	if ValidPreviewTheme(p.PreviewTheme) {
+		return p.PreviewTheme
+	}
+	return "deep-space"
+}
+
+// DefaultSort is the gallery's sort when the URL names none: the session's
+// last choice, or the most popular first.
+func (p SessionPrefs) DefaultSort() Sort {
+	if p.GallerySort.Valid() {
+		return p.GallerySort
+	}
+	return SortPopular
 }
 
 // InstallTabs are the installation tabs, in display order, by stable key:

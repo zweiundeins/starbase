@@ -29,22 +29,36 @@ func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd cqrs.Command) 
 	}
 }
 
-func (s *Server) cmdBrowse(w http.ResponseWriter, r *http.Request) {
+// browseSignals reads the gallery's signals: the tab and its Browse.
+func browseSignals(r *http.Request) (tabID string, b model.Browse, err error) {
 	var sig struct {
 		TabID string `json:"tabid"`
 		Q     string `json:"q"`
 		Cat   string `json:"cat"`
 		Sort  string `json:"sort"`
 	}
-	if err := datastar.ReadSignals(r, &sig); err != nil {
+	err = datastar.ReadSignals(r, &sig)
+	return sig.TabID, model.Browse{Q: sig.Q, Category: sig.Cat, Sort: model.Sort(sig.Sort)}, err
+}
+
+// cmdBrowse is a search or a category: this page only.
+func (s *Server) cmdBrowse(w http.ResponseWriter, r *http.Request) {
+	tabID, b, err := browseSignals(r)
+	if err != nil {
 		http.Error(w, "bad signals", http.StatusBadRequest)
 		return
 	}
-	s.send(w, r, commands.SetBrowseFilter{
-		SID:    sessionID(r),
-		TabID:  sig.TabID,
-		Browse: model.Browse{Q: sig.Q, Category: sig.Cat, Sort: model.Sort(sig.Sort)},
-	})
+	s.send(w, r, commands.SetBrowseFilter{SID: sessionID(r), TabID: tabID, Browse: b})
+}
+
+// cmdSort is a chosen sort: this page, and the session's default sort.
+func (s *Server) cmdSort(w http.ResponseWriter, r *http.Request) {
+	tabID, b, err := browseSignals(r)
+	if err != nil {
+		http.Error(w, "bad signals", http.StatusBadRequest)
+		return
+	}
+	s.send(w, r, commands.SetGallerySort{SID: sessionID(r), TabID: tabID, Browse: b})
 }
 
 func (s *Server) cmdStar(star bool) http.HandlerFunc {
@@ -77,26 +91,14 @@ func (s *Server) cmdStar(star bool) http.HandlerFunc {
 	}
 }
 
+// cmdTheme and cmdThemeStyle set the Themes page preview, a session
+// preference: it carries across pages and browser tabs.
 func (s *Server) cmdTheme(w http.ResponseWriter, r *http.Request) {
-	var sig struct {
-		TabID string `json:"tabid"`
-	}
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		http.Error(w, "bad signals", http.StatusBadRequest)
-		return
-	}
-	s.send(w, r, commands.SetPreviewTheme{SID: sessionID(r), TabID: sig.TabID, Theme: r.PathValue("theme")})
+	s.send(w, r, commands.SetPreviewTheme{SID: sessionID(r), Theme: r.PathValue("theme")})
 }
 
 func (s *Server) cmdThemeStyle(w http.ResponseWriter, r *http.Request) {
-	var sig struct {
-		TabID string `json:"tabid"`
-	}
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		http.Error(w, "bad signals", http.StatusBadRequest)
-		return
-	}
-	s.send(w, r, commands.SetPreviewStyle{SID: sessionID(r), TabID: sig.TabID, Smooth: r.PathValue("style") == "smooth"})
+	s.send(w, r, commands.SetPreviewStyle{SID: sessionID(r), Smooth: r.PathValue("style") == "smooth"})
 }
 
 // cmdInstallTab remembers the component pages' installation tab for the

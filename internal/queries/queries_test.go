@@ -176,20 +176,64 @@ func TestTabState(t *testing.T) {
 	if err := e.bus.Exec(ctx, cmd); err != nil {
 		t.Fatal(err)
 	}
-	e.bus.Exec(ctx, commands.SetPreviewTheme{SID: "s", TabID: "tab12345", Theme: "nebula"})
-	e.bus.Exec(ctx, commands.SetPreviewStyle{SID: "s", TabID: "tab12345", Smooth: true})
 	var st model.TabState
 	var ok bool
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, ok, err = r.Tab(ctx, "s", "tab12345"); return })
-	want := model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}, PreviewTheme: "nebula", PreviewSmooth: true}
-	if !ok || st != want {
+	if want := (model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}}); !ok || st != want {
 		t.Fatalf("tab = %+v, want %+v", st, want)
-	}
-	if err := e.bus.Exec(ctx, commands.SetPreviewTheme{SID: "s", TabID: "tab12345", Theme: "hacker"}); err == nil {
-		t.Fatal("unknown theme must be rejected")
 	}
 	if err := e.bus.Exec(ctx, commands.SetBrowseFilter{SID: "s", TabID: "X"}); err == nil {
 		t.Fatal("bad tab id must be rejected")
+	}
+}
+
+// Session preferences carry across the session's pages; another session
+// has none.
+func TestSessionPrefs(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	for _, cmd := range []cqrs.Command{
+		commands.SetPreviewTheme{SID: "s", Theme: "nebula"},
+		commands.SetPreviewStyle{SID: "s", Smooth: true},
+		commands.SetInstallTab{SID: "s", Tab: "pinned"},
+		commands.SetGallerySort{SID: "s", TabID: "tab12345", Browse: model.Browse{Q: "hi", Sort: model.SortNewest}},
+	} {
+		if err := e.bus.Exec(ctx, cmd); err != nil {
+			t.Fatalf("%T: %v", cmd, err)
+		}
+	}
+	prefs := func(sid string) (p model.SessionPrefs) {
+		e.q.View(ctx, func(r *queries.Reader) (err error) { p, err = r.Prefs(ctx, sid); return })
+		return p
+	}
+	want := model.SessionPrefs{InstallTab: "pinned", PreviewTheme: "nebula", PreviewSmooth: true, GallerySort: model.SortNewest}
+	if got := prefs("s"); got != want {
+		t.Fatalf("prefs = %+v, want %+v", got, want)
+	}
+	// The sort is also the tab's (the page shows what was chosen).
+	var st model.TabState
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.Browse != (model.Browse{Q: "hi", Sort: model.SortNewest}) {
+		t.Errorf("tab browse = %+v", st.Browse)
+	}
+	// A search or category change leaves the default sort alone.
+	e.bus.Exec(ctx, commands.SetBrowseFilter{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: model.SortName}})
+	if got := prefs("s").GallerySort; got != model.SortNewest {
+		t.Errorf("a browse filter changed the default sort to %q", got)
+	}
+	if got := prefs("other"); got != (model.SessionPrefs{}) || got.PreviewThemeOrDefault() != "deep-space" || got.DefaultSort() != model.SortPopular {
+		t.Errorf("another session: %+v", got)
+	}
+	for _, bad := range []cqrs.Command{
+		commands.SetPreviewTheme{SID: "s", Theme: "hacker"},
+		commands.SetPreviewTheme{SID: "", Theme: "nebula"},
+		commands.SetPreviewStyle{SID: ""},
+		commands.SetGallerySort{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: "weird"}},
+		commands.SetGallerySort{SID: "s", TabID: "X", Browse: model.Browse{Sort: model.SortName}},
+	} {
+		if err := e.bus.Exec(ctx, bad); err == nil {
+			t.Errorf("%+v must be rejected", bad)
+		}
 	}
 }
 

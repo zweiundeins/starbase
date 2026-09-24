@@ -59,6 +59,72 @@ func (c SetInstallTab) Apply(ctx context.Context, tx *sql.Tx) error {
 	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.InstallTab = c.Tab })
 }
 
+// SetPreviewTheme selects the token set the Themes page previews.
+type SetPreviewTheme struct {
+	SID, Theme string
+}
+
+func (c SetPreviewTheme) Validate() error {
+	if c.SID == "" {
+		return errors.New("no session")
+	}
+	if !model.ValidPreviewTheme(c.Theme) {
+		return errors.New("unknown theme")
+	}
+	return nil
+}
+
+func (c SetPreviewTheme) Scope() string { return c.SID }
+
+func (c SetPreviewTheme) Apply(ctx context.Context, tx *sql.Tx) error {
+	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.PreviewTheme = c.Theme })
+}
+
+// SetPreviewStyle turns the 8-bit details of the Themes page previews on or off.
+type SetPreviewStyle struct {
+	SID    string
+	Smooth bool
+}
+
+func (c SetPreviewStyle) Validate() error {
+	if c.SID == "" {
+		return errors.New("no session")
+	}
+	return nil
+}
+
+func (c SetPreviewStyle) Scope() string { return c.SID }
+
+func (c SetPreviewStyle) Apply(ctx context.Context, tx *sql.Tx) error {
+	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.PreviewSmooth = c.Smooth })
+}
+
+// SetGallerySort is a sort chosen in the gallery: the tab shows it (its
+// Browse, like SetBrowseFilter) and it becomes the session's default sort,
+// for gallery URLs that name none. Search and category changes go through
+// SetBrowseFilter and leave the default alone.
+type SetGallerySort struct {
+	SID, TabID string
+	Browse     model.Browse
+}
+
+func (c SetGallerySort) Validate() error {
+	if !c.Browse.Sort.Valid() {
+		return errors.New("unknown sort")
+	}
+	return validTab(c.SID, c.TabID)
+}
+
+func (c SetGallerySort) Scope() string { return c.SID }
+
+func (c SetGallerySort) Apply(ctx context.Context, tx *sql.Tx) error {
+	b := c.Browse.Normalize()
+	if err := updateTab(ctx, tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) { st.Browse = b }); err != nil {
+		return err
+	}
+	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.GallerySort = b.Sort })
+}
+
 // PruneSessionPrefs forgets the preferences of sessions idle for a while
 // (the session cookie itself lasts 400 days).
 type PruneSessionPrefs struct{ OlderThan time.Duration }

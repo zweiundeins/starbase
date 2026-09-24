@@ -66,7 +66,7 @@ templ ThemesPage(v ThemesView) {
 			<div class="theme-style">
 				<sb-toggle
 					label="8-bit details"
-					checked?={ !v.Smooth }
+					checked={ boolString(!v.Smooth) }
 					data-on:change="@post('/cmd/theme-style/' + (el.checked ? 'pixel' : 'smooth'))"
 				></sb-toggle>
 				<span class="muted">Pixel corners, notched frames and the pixel display font. Turn them off with <code>data-sb-style="smooth"</code>, or set only <code>--sb-notch: 0</code> to keep everything but the corners.</span>
