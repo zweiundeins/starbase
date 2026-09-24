@@ -62,6 +62,7 @@ input:hover { border-color: var(--_border-hover); }
 input:focus-visible { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); }
 .invalid input { border-color: var(--_danger); }
 .invalid input:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--_danger) 20%, transparent); }
+.field:has(:disabled) { opacity: 0.5; pointer-events: none; }
 button {
 	all: unset;
 	display: grid;
@@ -99,13 +100,14 @@ rocket('sb-input', {
 		label: string.trim.docs({ description: 'Visible label.' }),
 		placeholder: string.docs({ description: 'Placeholder text.' }),
 		type: oneOf('text', 'email', 'search', 'url', 'tel', 'password').docs({ description: 'Input type.' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change and sb-submit (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change and sb-submit (e.g. the field of a command), and the name its value is submitted under in a form.' }),
 		required: bool.docs({ description: 'Value must not be empty.' }),
 		minlength: number.min(0).docs({ description: 'Minimum length.' }),
 		pattern: string.docs({ description: 'Regular expression the value must match.' }),
 		hint: string.docs({ description: 'Help text below the field.' }),
 		error: string.docs({ description: 'Message shown when invalid (defaults to the browser message).' }),
 		action: bool.docs({ description: 'Show a submit arrow button.' }),
+		disabled: bool.docs({ description: 'Disable the field (and the arrow). A form leaves it out.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 	}),
 	manifest: {
@@ -175,6 +177,18 @@ rocket('sb-input', {
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => set(props.value)) })
 
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// A reset starts afresh, like a native one: the server's value, no error
+		// (validation starts again with the next commit), and no events.
+		const form = host.closest('form')
+		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
+		const onReset = () => peek(() => ([$$.value, $$.touched, $$.invalid, $$.message] = [props.value, false, false, '']))
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', onReset)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
+
 		action('input', ({ el }) => set(el.value))
 		action('commit', () => {
 			validate()
@@ -190,7 +204,7 @@ rocket('sb-input', {
 	},
 	// The label names the input, the hint (or the error) describes it. The
 	// error is a polite live region: it can change on every keystroke.
-	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
+	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action, disabled } }) => html`
 		<div class="field">
 			${label ? html`<label part="label" for="i">${label}</label>` : null}
 			<span class="control" data-class:invalid="$$invalid">
@@ -204,13 +218,14 @@ rocket('sb-input', {
 					required="${required}"
 					minlength="${minlength || null}"
 					pattern="${pattern || null}"
+					disabled="${disabled}"
 					data-attr:aria-invalid="String($$invalid)"
 					data-effect="el.value !== $$value && (el.value = $$value)"
 					data-on:input="@input()"
 					data-on:change="@commit()"
 					data-on:keydown="evt.keyCode == 13 && !evt.isComposing && @submit()"
 				/>
-				${action ? html`<button type="button" part="button" aria-label="Submit" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
+				${action ? html`<button type="button" part="button" aria-label="Submit" disabled="${disabled}" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
 			</span>
 			<span class="error" id="e" aria-live="polite" data-text="$$message"></span>
 			${hint ? html`<span class="hint" id="h" data-show="!$$invalid">${hint}</span>` : null}

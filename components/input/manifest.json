@@ -66,7 +66,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in sb-change and sb-submit (e.g. the field of a command)."
+        "description": "Name reported in sb-change and sb-submit (e.g. the field of a command), and the name its value is submitted under in a form."
       }
     },
     {
@@ -127,6 +127,16 @@
       "required": false,
       "docs": {
         "description": "Show a submit arrow button."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable the field (and the arrow). A form leaves it out."
       }
     },
     {

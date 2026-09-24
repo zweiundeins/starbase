@@ -73,7 +73,9 @@ See [Commands and components](/contribute#commands-and-components) and the [Show
 
 ## Forms
 
-`sb-input` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-input` submits its value under its `name` (`name=…`, also when it is empty), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears the error, without firing `input`, `change` or `sb-change`. A `disabled` field is left out, like a native one.
+
+It is not a form-associated element yet (Rocket can't declare one), so the form's own validation (`checkValidity()`, `:invalid`) doesn't see `required`, `minlength` or `pattern`, Enter emits `sb-submit` instead of submitting the form, and `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -95,4 +97,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-`label` is a `<label>` for the native `<input>`; without one, the element's `aria-label` or the placeholder names it. The hint and the error describe it (`aria-describedby`). The error is a polite live region, announced after what the screen reader is saying, and `aria-invalid` follows the validation state. Right to left, the submit arrow points the other way. In forced colors, focus shows as an outline.
+`label` is a `<label>` for the native `<input>`; without one, the element's `aria-label` or the placeholder names it. The hint and the error describe it (`aria-describedby`). The error is a polite live region, announced after what the screen reader is saying, and `aria-invalid` follows the validation state. `disabled` disables the native input (and the arrow), which takes it out of the tab order. Right to left, the submit arrow points the other way. In forced colors, focus shows as an outline.
