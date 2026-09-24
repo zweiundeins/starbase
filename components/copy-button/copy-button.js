@@ -1,23 +1,27 @@
 import { rocket } from 'datastar'
 
 // Tokens with fallbacks, so the component also works outside Starbase.
+// Forced colors drop the focus ring (a box-shadow): the transparent outline
+// shows there instead. The tip is centred with a physical left, like its
+// translate: a logical inset would put it off-centre in RTL.
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border, #283552);
+	--_border-strong: var(--sb-border-strong, #3A4868);
 	--_text: var(--sb-text-2, #AEBBDD);
 	--_text-hover: var(--sb-text-1, #F3F4FA);
 	--_ok: var(--sb-ok, #6EF59A);
-	--_danger: var(--sb-danger, #FF6B81);
+	--_danger: var(--sb-danger, #F2777A);
 	--_on-danger: var(--sb-text-on-danger, #1B0A0C);
 	--_tip-bg: var(--sb-surface-raised, #10182B);
-	--_tip-border: var(--sb-border-strong, #3A4868);
 	--_radius: var(--sb-radius-sm, 6px);
 	--_focus: var(--sb-focus-ring, 0 0 0 2px #080D1D, 0 0 0 4px #B09AFF);
 	display: inline-block;
 	position: relative;
 	vertical-align: middle;
 }
+:host([hidden]) { display: none; }
 button {
 	all: unset;
 	position: relative;
@@ -34,17 +38,17 @@ button {
 	cursor: pointer;
 	transition: color 120ms, border-color 120ms, background 120ms;
 }
-button:hover { color: var(--_text-hover); border-color: color-mix(in oklch, var(--_border), white 15%); }
-button:focus-visible { box-shadow: var(--_focus); }
+button:hover { color: var(--_text-hover); border-color: var(--_border-strong); }
+button:focus-visible { box-shadow: var(--_focus); outline: 2px solid transparent; outline-offset: 2px; }
 button.copied { color: var(--_ok); border-color: color-mix(in oklch, var(--_ok) 50%, transparent); }
 button.failed { color: var(--_danger); border-color: color-mix(in oklch, var(--_danger) 50%, transparent); }
 svg { inline-size: 50cqi; block-size: 50cqi; } /* half the button (the 2rem box inside its border) */
 .tip {
 	position: absolute;
 	inset-block-end: calc(100% + 6px);
-	inset-inline-start: 50%;
+	left: 50%;
 	padding: 2px 8px;
-	border: 1px solid var(--_tip-border);
+	border: 1px solid var(--_border-strong);
 	border-radius: 4px;
 	background: var(--_tip-bg);
 	color: var(--_text-hover);
@@ -66,12 +70,12 @@ rocket('sb-copy-button', {
 		label: string.default('Copy to clipboard').docs({ description: 'Accessible label of the button.' }),
 		copiedLabel: string.default('Copied!').docs({ description: 'Shown and announced after copying.' }),
 		failedLabel: string.default('Copy failed').docs({ description: 'Shown and announced when the browser refuses the clipboard (no secure context, permissions policy…).' }),
-		resetMs: number.min(300).default(1600).docs({ description: 'How long the copied or failed state lasts, in ms.' }),
+		resetMs: number.min(300).default(1600).docs({ description: 'How long the copied or failed state lasts, in ms (at least 300).' }),
 	}),
 	manifest: {
 		events: [
 			{ name: 'sb-copy', kind: 'custom-event', bubbles: true, composed: true, description: 'After copying. detail: { value }.' },
-			{ name: 'sb-copy-error', kind: 'custom-event', bubbles: true, composed: true, description: 'When the browser refuses the clipboard write. detail: { value, error } (the error\'s name, e.g. "NotAllowedError").' },
+			{ name: 'sb-copy-error', kind: 'custom-event', bubbles: true, composed: true, description: 'When the browser refuses the clipboard write. detail: { value, error } (the error\'s name: "NotAllowedError" when refused, "TypeError" where there is no Clipboard API, e.g. on plain http://).' },
 		],
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, emit, host, props }) => {
@@ -82,11 +86,14 @@ rocket('sb-copy-button', {
 		let timer = 0
 		action('copy', async () => {
 			const value = props.value
+			// Removed while the browser was writing: its signals are gone, don't bring them back.
 			try {
 				await navigator.clipboard.writeText(value)
+				if (!host.isConnected) return
 				$$.state = 'copied'
 				emit('sb-copy', { value })
 			} catch (err) {
+				if (!host.isConnected) return
 				$$.state = 'failed'
 				emit('sb-copy-error', { value, error: err?.name || String(err) })
 			}
@@ -95,6 +102,9 @@ rocket('sb-copy-button', {
 		})
 		cleanup(() => clearTimeout(timer))
 	},
+	// The template reads only label: a new value (e.g. data-attr'd on every
+	// keystroke) needn't re-render and morph the shadow root.
+	renderOnPropChange: ({ changes }) => 'label' in changes,
 	// The status region sits outside the button: a button's children are
 	// presentational, so a live region inside it may never be announced.
 	render: ({ html, props: { label } }) => html`

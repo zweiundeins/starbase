@@ -49,7 +49,7 @@ The `sb-copy` event bubbles out of the shadow root, so `data-on` works on any an
 
 ### When copying fails
 
-Browsers can refuse the clipboard: outside a secure context (plain `http://`), in an iframe without the `clipboard-write` permission, or when the document isn't focused. The button then shows a cross and `failed-label`, and emits `sb-copy-error` with `{ value, error }` (e.g. `"NotAllowedError"`), so a page can offer another way, like selecting the text:
+Browsers can refuse the clipboard: in an iframe without the `clipboard-write` permission, or when the document isn't focused (`error` is `"NotAllowedError"`). Outside a secure context (plain `http://`) there is no Clipboard API at all (`"TypeError"`). The button then shows a cross and `failed-label`, and emits `sb-copy-error` with `{ value, error }`, so a page can offer another way, like selecting the text:
 
 ```html
 <sb-copy-button value="go run ." data-on:sb-copy-error="console.warn('copy refused:', evt.detail.error)"></sb-copy-button>
@@ -59,9 +59,9 @@ Browsers can refuse the clipboard: outside a secure context (plain `http://`), i
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** the button is a `2rem` square; set `inline-size` and `block-size` on `::part(button)` for another, and the icon stays half its size.
+- **Size:** the button is a `2rem` square inside a 1px border; set `inline-size` and `block-size` on `::part(button)` for another (the border comes on top), and the icon stays half of it.
 - **Fonts:** the "Copied!" tip uses your page's font.
-- **Colours:** the button is `--sb-surface-raised` with a `--sb-border` edge and a `--sb-text-2` icon (`--sb-text-1` on hover). After copying it turns `--sb-ok`, after a refusal `--sb-danger`. The tip is `--sb-surface-raised` with a `--sb-border-strong` edge and `--sb-text-1` text; a failure fills it with `--sb-danger` and `--sb-text-on-danger`. Corners are `--sb-radius-sm`, the focus ring `--sb-focus-ring`.
+- **Colours:** the button is `--sb-surface-raised` with a `--sb-border` edge and a `--sb-text-2` icon (on hover `--sb-text-1`, with a `--sb-border-strong` edge). After copying it turns `--sb-ok`, after a refusal `--sb-danger`. The tip is `--sb-surface-raised` with a `--sb-border-strong` edge and `--sb-text-1` text; a failure fills it with `--sb-danger` and `--sb-text-on-danger`. Corners are `--sb-radius-sm`, the focus ring `--sb-focus-ring`.
 - **Parts:** `button` and `tip`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -74,4 +74,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The button's accessible name is `label`. The result ("Copied!" or "Copy failed") goes to a `role="status"` region next to the button, so screen readers announce it without moving focus. It sits outside the button on purpose: a button's children are presentational, so a live region inside one may never be read out. The same element is the visual tip (`::part(tip)`).
+The button's accessible name is `label`. The result ("Copied!" or "Copy failed") goes to a `role="status"` region next to the button, so screen readers announce it without moving focus. It sits outside the button on purpose: a button's children are presentational, so a live region inside one may never be read out. The same element is the visual tip (`::part(tip)`). Keyboard focus shows `--sb-focus-ring`, and in forced colors (Windows High Contrast), which drop that shadow, a system-colour outline.
