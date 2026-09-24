@@ -17,7 +17,9 @@ const kept = new WeakMap()
 // the newest line, or where the reader scrolled to; the inner div's auto margin
 // keeps short output at the top. .run::before draws the Run triangle (the ▶
 // character is a colour emoji where the font lacks it) as a clipped border,
-// which forced colours keep visible.
+// which forced colours keep visible. Run is border-box because it is a part: a
+// page's ::part(run) size includes its padding and border (nothing sizes the
+// file tabs or the theme picker, so their box-sizing makes no difference).
 const styles = /* css */ `
 :host {
 	--_inset: var(--sb-surface-inset, #0B1224);
@@ -45,7 +47,7 @@ const styles = /* css */ `
 [role="tab"]:hover { color: var(--_text); background: color-mix(in oklch, var(--_text) 6%, transparent); }
 [role="tab"][aria-selected="true"], select { color: var(--_text); border-color: var(--_border); background: var(--_inset); }
 :is([role="tab"], .run, select):focus-visible { outline: 2px solid var(--sb-brand-light, #B09AFF); outline-offset: 2px; }
-.run { border-color: var(--_brand); background: var(--_brand); color: var(--sb-text-on-brand, #F3F4FA); font-weight: 700; }
+.run { box-sizing: border-box; border-color: var(--_brand); background: var(--_brand); color: var(--sb-text-on-brand, #F3F4FA); font-weight: 700; }
 .run::before { content: ""; display: inline-block; block-size: 0.7em; margin-inline-end: 0.45em; border-left: 0.6em solid; clip-path: polygon(0 0, 100% 50%, 0 100%); }
 .run:hover { background: var(--sb-brand-hover, #A58BFF); }
 .auto { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--_text-2); cursor: pointer; }
