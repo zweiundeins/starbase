@@ -30,6 +30,9 @@ const normalize = (list) =>
 			: { value: String(o), label: String(o), description: '', disabled: false },
 	)
 
+// :state(disabled) comes from the decoded prop, so disabled="false" is not
+// disabled. Forced colours paint every background Canvas: the checked dot is
+// filled with Highlight there.
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-control-bg, #0B1224);
@@ -47,7 +50,8 @@ const styles = /* css */ `
 	--_n: calc(2px * var(--_notch));
 	display: block;
 }
-:host([disabled]) { opacity: 0.5; pointer-events: none; }
+:host([hidden]) { display: none; }
+:host(:state(disabled)) { opacity: 0.5; pointer-events: none; }
 .group { display: grid; gap: 0.5rem; }
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 /* flex-start: an item is as wide as its own text, so the checked tint and the
@@ -97,6 +101,7 @@ const styles = /* css */ `
 .text { display: grid; gap: 0.1rem; }
 .desc { color: var(--_muted); font-size: 0.75rem; }
 @media (prefers-reduced-motion: reduce) { .item, .dot { transition: none; } }
+@media (forced-colors: active) { .item.checked .dot::after { forced-color-adjust: none; background: Highlight; } }
 `
 
 rocket('sb-radio-group', {
@@ -143,9 +148,23 @@ rocket('sb-radio-group', {
 		$$.hover = '' // the item under the pointer
 		$$.hasFocus = false // whether the keyboard focus is inside the group
 		$$.items = []
-		$$.label = props.label
-		$$.row = props.orientation === 'horizontal'
-		$$.disabled = props.disabled
+		// The props the template and the host's ARIA follow. The host is the
+		// radiogroup, so a page's own aria-label or aria-labelledby on it names
+		// the group (they win over the internals). Internals, like :state(),
+		// survive morphs.
+		const int = internalsOf(host)
+		const states = int.states
+		int.role = 'radiogroup'
+		const take = (p) => {
+			$$.label = p.label
+			$$.row = p.orientation === 'horizontal'
+			$$.disabled = p.disabled
+			int.ariaLabel = p.label || null
+			int.ariaOrientation = p.orientation
+			int.ariaDisabled = String(p.disabled)
+			states[p.disabled ? 'add' : 'delete']('disabled')
+		}
+		take(props)
 
 		// Only the checked item is tabbable; with nothing checked, the first
 		// enabled one is, so the group is always reachable with one Tab.
@@ -193,36 +212,34 @@ rocket('sb-radio-group', {
 
 		// Children can arrive after the upgrade (the parser is still in the
 		// element, or a morph brings other choices): no attribute form for that.
-		const mo = new MutationObserver(() => peek(rebuild))
-		mo.observe(host, { childList: true, subtree: true, attributes: true, characterData: true })
-		cleanup(() => mo.disconnect())
-
-		// peek: attribute changes arrive inside the effect of whoever set them
-		// (e.g. data-attr:options); reading signals here must not subscribe it.
-		observeProps((p, changes) =>
+		// The same observer watches the value attribute: the server's value wins
+		// when it changes (a morph with a new value); re-sending the same markup
+		// changes nothing, so edits survive re-renders. A *removed* attribute
+		// changes nothing either: morphs also remove attributes that were only
+		// reflected (e.g. from a data-bind write before the upgrade). To clear
+		// it, the server sends value="", which observeProps misses when there was
+		// no attribute before (both decode to "").
+		let served = host.getAttribute('value')
+		const mo = new MutationObserver(() =>
 			peek(() => {
-				// A value attribute sent by the server wins when it changes (a morph
-				// with a new value); re-sending the same markup changes nothing, so
-				// edits survive re-renders. A *removed* attribute changes nothing
-				// either: morphs also remove attributes that were only reflected
-				// (e.g. from a data-bind write before the upgrade). To clear it, the
-				// server sends value="".
-				if ('value' in changes && host.hasAttribute('value')) $$.value = str(p.value)
-				$$.label = p.label
-				$$.row = p.orientation === 'horizontal'
-				$$.disabled = p.disabled
+				const a = host.getAttribute('value')
+				if (a !== null && a !== served) $$.value = a
+				served = a
 				rebuild()
 			}),
 		)
+		mo.observe(host, { childList: true, subtree: true, attributes: true, characterData: true })
+		cleanup(() => mo.disconnect())
 
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.value = str(v)), rebuild())))
 		// Commands: the attribute is the server's value, $$.value the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
-		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.value !== str(props.value) ? states.add('pending') : states.delete('pending')))
+		const sync = () => peek(() => states[props.confirm && $$.value !== str(props.value) ? 'add' : 'delete']('pending'))
 		effect(() => ($$.value, sync()))
-		observeProps(sync)
+		// peek: attribute changes arrive inside the effect of whoever set them
+		// (e.g. data-attr:options); reading signals here must not subscribe it.
+		observeProps((p) => peek(() => (take(p), rebuild(), sync())))
 		defineHostProp('revert', { value: () => peek(() => (($$.value = str(props.value)), rebuild(), sync())) })
 
 		const item = (v) => $$.items.find((o) => o.value === v)
@@ -260,24 +277,33 @@ rocket('sb-radio-group', {
 			if (v) $$.focus = v
 		})
 		action('focusout', ({ el, evt }) => {
-			// An item re-rendered away also "loses" focus: that's not leaving. The
-			// morph can park an item before removing it, so the item is still
-			// connected and only the empty relatedTarget gives it away; refocus()
-			// decides whether the focus really went somewhere else.
-			if (!evt.target.isConnected || evt.relatedTarget === null) return
-			if (!el.contains(evt.relatedTarget)) $$.hasFocus = false
+			// An item re-rendered away (or disabled, so it lost its tabindex) also
+			// "loses" focus: that's not leaving, and refocus() hands the focus to
+			// a neighbour. data-for fires focusout while it removes the row, which
+			// is still connected then, so an empty relatedTarget is decided a
+			// microtask later: a row that is still there and focusable means the
+			// focus went to the page (a click on text), the browser or another
+			// window, and the group must not pull it back.
+			const t = evt.target
+			if (evt.relatedTarget === null) queueMicrotask(() => t.isConnected && t.hasAttribute('tabindex') && ($$.hasFocus = false))
+			else if (!el.contains(evt.relatedTarget)) $$.hasFocus = false
 		})
 		action('pick', (_, v) => pick(v))
 		action('key', ({ evt }) => {
-			if (props.disabled || !$$.items.length) return
+			// Modified arrows belong to the browser (Alt+Left is Back).
+			if (props.disabled || !$$.items.length || evt.altKey || evt.ctrlKey || evt.metaKey) return
 			switch (evt.key) {
 				case 'ArrowDown':
-				case 'ArrowRight':
 					pick(step($$.focus, 1))
 					break
 				case 'ArrowUp':
-				case 'ArrowLeft':
 					pick(step($$.focus, -1))
+					break
+				// Left and Right follow the reading direction, like native radios:
+				// Left goes on in right-to-left text.
+				case 'ArrowRight':
+				case 'ArrowLeft':
+					pick(step($$.focus, (evt.key === 'ArrowLeft') === (getComputedStyle(host).direction === 'rtl') ? 1 : -1))
 					break
 				case 'Home':
 					pick(edge(1))
@@ -297,13 +323,9 @@ rocket('sb-radio-group', {
 	},
 	render: ({ html }) => html`
 		<div class="group" part="base">
-			<span class="label" part="label" id="group-label" data-show="$$label" data-text="$$label"></span>
-			<div class="items" part="items" role="radiogroup"
+			<span class="label" part="label" aria-hidden="true" data-show="$$label" data-text="$$label"></span>
+			<div class="items" part="items"
 				data-class:row="$$row"
-				data-attr:aria-orientation="$$row ? 'horizontal' : 'vertical'"
-				data-attr:aria-labelledby="$$label ? 'group-label' : null"
-				data-attr:aria-label="$$label ? null : 'Choice'"
-				data-attr:aria-disabled="$$disabled ? 'true' : null"
 				data-on:keydown="@key()" data-on:focusin="@focusin()" data-on:focusout="@focusout()">
 				<!-- o?.: when the list shrinks, data-for can re-evaluate a removed row once with o undefined.
 				     No ids on these repeated elements: the morph would park and move them. -->
@@ -312,7 +334,7 @@ rocket('sb-radio-group', {
 						data-attr:data-value="o?.value"
 						data-attr:aria-checked="String(o?.value === $$value)"
 						data-attr:aria-disabled="o?.disabled || $$disabled ? 'true' : null"
-						data-attr:tabindex="!$$disabled && o?.value === $$focus ? 0 : -1"
+						data-attr:tabindex="o?.disabled ? null : !$$disabled && o?.value === $$focus ? 0 : -1"
 						data-class:checked="o?.value === $$value"
 						data-class:off="o?.disabled"
 						data-class:hot="o?.value === $$hover && !o?.disabled && !$$disabled"
