@@ -35,14 +35,15 @@ export const setNumberFormat = (fn) => void (reg.format = fn)
 
 // ECharts itself (1.1 MB) is loaded the first time a chart comes near the
 // screen, once per page.
-let lib = null
+let lib
 const load = () => (lib ??= import('./vendor/echarts.esm.min.js'))
 
 // ---- option JSON ------------------------------------------------------------
 
 const optionCodec = createCodec({
+	// v is the attribute's text, or undefined for the default (no attribute).
 	decode(v) {
-		if (typeof v !== 'string' || !v.trim()) return null
+		if (!v?.trim()) return null
 		try {
 			const o = JSON.parse(v)
 			return isObj(o) && Object.keys(o).length ? o : null
@@ -101,9 +102,9 @@ const locales = new Set()
 const localeFor = (ec, lang) => {
 	const code = 'sb-' + lang
 	if (locales.has(code)) return code
-	const fmt = (opt) => (d) => new Intl.DateTimeFormat(lang, { ...opt, timeZone: 'UTC' }).format(d)
-	const months = Array.from({ length: 12 }, (_, m) => new Date(Date.UTC(2024, m, 1)))
-	const days = Array.from({ length: 7 }, (_, d) => new Date(Date.UTC(2024, 0, 7 + d))) // a Sunday first
+	const fmt = (opt) => new Intl.DateTimeFormat(lang, { ...opt, timeZone: 'UTC' }).format
+	const months = Array.from({ length: 12 }, (_, m) => Date.UTC(2024, m, 1))
+	const days = Array.from({ length: 7 }, (_, d) => Date.UTC(2024, 0, 7 + d)) // a Sunday first
 	ec.registerLocale(code, {
 		time: { month: months.map(fmt({ month: 'long' })), monthAbbr: months.map(fmt({ month: 'short' })), dayOfWeek: days.map(fmt({ weekday: 'long' })), dayOfWeekAbbr: days.map(fmt({ weekday: 'short' })) },
 	})
@@ -165,15 +166,16 @@ const styles = /* css */ `
 	block-size: 18rem;
 }
 .plot { position: absolute; inset: 0; }
-.fallback { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-:host(:not(:state(ready))) .fallback { position: static; inline-size: auto; block-size: auto; clip-path: none; white-space: normal; }
+.fallback { overflow: hidden; white-space: normal; }
+:host(:state(ready)) .fallback { position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); white-space: nowrap; }
 `
 
 // ---- the chart ----------------------------------------------------------------
 
 // One ElementInternals per element: attachInternals() works once, and
-// onFirstRender runs again when the element is re-attached. The ready state lives there rather
-// than in an attribute, which the next server morph would strip.
+// onFirstRender runs again when the element is re-attached. The ready state
+// lives there rather than in an attribute, which the next server morph would
+// strip.
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
@@ -205,11 +207,11 @@ rocket('sb-echarts', {
 		// get, keyboard users included.
 		if (host.firstElementChild) plot.setAttribute('aria-hidden', 'true')
 		else plot.tabIndex = 0
-		let alive = true, visible = false, starting = false
-		let ec = null, chart = null, lang = ''
+		let alive = true, visible, starting
+		let ec, chart, lang
 		// The last built option before its grid was fitted (for a resize to fit
 		// again), and the margins it got; sized: its kind read the plot's size.
-		let unfitted = null, fitted = '', sized = false
+		let unfitted, fitted, sized
 		let si = 0, at = -1 // the series and item the keyboard is on
 
 		const langOf = () => locale(props.lang || host.closest('[lang]')?.lang) ?? navigator.language
@@ -243,7 +245,7 @@ rocket('sb-echarts', {
 		// Strings that are exactly var(--token) become the colour they resolve to, so
 		// a server can colour a series with the page's own tokens.
 		const resolveVars = (v) =>
-			typeof v === 'string' ? (/^var\(--[\w-]+\)$/.test(v) ? color(v.slice(4, -1)) : v)
+			typeof v === 'string' ? (/^var\(--[\w-]+\)$/.test(v) ? color(v) : v)
 			: Array.isArray(v) ? v.map(resolveVars)
 			: isObj(v) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, resolveVars(x)]))
 			: v
