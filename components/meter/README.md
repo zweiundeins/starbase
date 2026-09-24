@@ -73,7 +73,7 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The element itself is the meter: `role="meter"` with `min`, `max`, the value (held within the range) and the shown text, such as `75%`, as its value text. They are set through `ElementInternals`, so page morphs can't strip them. Its name is `label`; without one, give the element an `aria-label`. The caption and number above the bar are hidden from assistive technology, so nothing is read twice.
+The element itself is the meter: `role="meter"` with `min`, `max`, the value (held within the range) and the shown text, such as `75%`, as its value text. They are set through `ElementInternals`, so page morphs can't strip them. Its name is `label`; an `aria-label` on the element wins over it, and without either the name is "Meter". The caption and number above the bar are hidden from assistive technology, so nothing is read twice.
 
 The fill and the number show the level; the tone is colour only, and assistive technology gets the value, not whether it is past `warn` or `danger`. Where that matters, say it in the label or next to the meter. In forced-colours mode (Windows High Contrast), the lit blocks are drawn in the text colour inside an outlined frame.
 

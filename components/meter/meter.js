@@ -20,6 +20,7 @@ const styles = /* css */ `
 	inline-size: 100%;
 	max-inline-size: var(--sb-meter-width, 22rem);
 }
+:host([hidden]) { display: none; }
 .head { display: flex; justify-content: space-between; gap: 1rem; margin-block-end: 0.4rem; font-size: 0.8125rem; }
 .label { color: var(--_label); font-weight: 600; }
 .value { color: var(--_text); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -80,7 +81,7 @@ rocket('sb-meter', {
 		const tone = s * (value - danger) >= 0 ? 'danger' : s * (value - warn) >= 0 ? 'warn' : 'ok'
 		const shown = Number(value).toFixed(decimals) + unit
 		const x = internalsOf(host)
-		Object.assign(x, { role: 'meter', ariaLabel: label, ariaValueMin: min, ariaValueMax: max, ariaValueNow: Math.min(max, Math.max(min, value)), ariaValueText: shown })
+		Object.assign(x, { role: 'meter', ariaLabel: label || 'Meter', ariaValueMin: min, ariaValueMax: max, ariaValueNow: Math.min(max, Math.max(min, value)), ariaValueText: shown })
 		x.states.clear()
 		x.states.add(tone)
 		return html`
