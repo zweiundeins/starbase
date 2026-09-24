@@ -97,7 +97,7 @@ A custom series draws through a `renderItem` function, which no server can send 
 ```js
 import { defineChartKind } from '/c/echarts/echarts.js'
 
-defineChartKind('timeline', (option, { echarts, color, css, formatNumber, lang, width, height }) => ({
+defineChartKind('timeline', (option, { echarts, color, css, formatNumber, lang }) => ({
   xAxis: { type: 'time' },
   yAxis: { type: 'category', data: option.rows },
   series: [{ type: 'custom', data: option.bars, renderItem: (params, api) => { /* … */ } }],
@@ -108,7 +108,7 @@ defineChartKind('timeline', (option, { echarts, color, css, formatNumber, lang, 
 <sb-echarts option='{"kind": "timeline", "rows": ["Apollo 11"], "bars": [[0, -14182940000, -13402140000]]}'></sb-echarts>
 ```
 
-The builder gets the ECharts module (for `echarts.graphic` and friends), `color()` to resolve a token or CSS colour, `css()` to read a token such as a font, the element's number format, language and size; it runs again when the element changes size. What it returns is themed like any other option. A chart whose kind the page hasn't defined yet shows its fallback, and draws as soon as the kind is defined.
+The builder gets the ECharts module (for `echarts.graphic` and friends), `color()` to resolve a token or CSS colour, `css()` to read a token such as a font, the element's number format and language, and its size as `width` and `height`: a builder that reads them runs again when the element changes size. What it returns is themed like any other option. A chart whose kind the page hasn't defined yet shows its fallback, and draws as soon as the kind is defined.
 
 Every copy of the module shares the kinds and the number format a page sets, so import it from whichever URL suits the page: the one your `<script>` already loads (no second download), or `/c/echarts/echarts.js` next to the autoloader.
 

@@ -202,8 +202,8 @@ rocket('sb-echarts', {
 		let alive = true, visible = false, starting = false
 		let ec = null, chart = null, lang = ''
 		// The last built option before its grid was fitted (for a resize to fit
-		// again), and the margins it got.
-		let unfitted = null, fitted = '', measure = null
+		// again), and the margins it got; sized: its kind read the plot's size.
+		let unfitted = null, fitted = '', measure = null, sized = false
 		let si = 0, at = -1 // the series and item the keyboard is on
 		plots.set(host, (p) => ((plot = p), start()))
 
@@ -249,8 +249,9 @@ rocket('sb-echarts', {
 				const kind = reg.kinds.get(option.kind)
 				if (!kind) return void console.error(`<sb-echarts>: no chart kind "${option.kind}"; register it with defineChartKind()`)
 				// The context a kind builds with: everything it needs to draw in the
-				// page's theme and language, without reaching into the element.
-				option = kind(option, { echarts: ec, color, css, formatNumber, lang, width: plot.clientWidth, height: plot.clientHeight })
+				// page's theme and language, without reaching into the element. A kind
+				// that reads the size is built again when the size changes.
+				option = kind(option, { echarts: ec, color, css, formatNumber, lang, get width() { return (sized = true), plot.clientWidth }, get height() { return (sized = true), plot.clientHeight } })
 			}
 			const text = color('--_text'), muted = color('--_muted'), line = color('--_line'), f = font(), numbers = css('--_numbers') || f
 			const axis = {
@@ -371,11 +372,13 @@ rocket('sb-echarts', {
 		// difference, so a server push reads as the chart moving to its new state.
 		const draw = (quiet) => {
 			if (!chart) return
-			if (!props.option) return void chart.clear()
-			const option = build(props.option)
-			if (!option) return
-			if (quiet) option.animationDurationUpdate = 0
 			unfitted = null
+			sized = false
+			// Nothing to draw (no option, or a kind the page hasn't defined yet):
+			// the fallback shows until there is.
+			const option = props.option && build(props.option)
+			if (!option) return void (chart.clear(), internalsOf(host).states.delete('ready'))
+			if (quiet) option.animationDurationUpdate = 0
 			if (option.xAxis && isObj(option.grid)) {
 				unfitted = { ...option }
 				const m = margins(option)
@@ -400,9 +403,8 @@ rocket('sb-echarts', {
 		const resize = () => {
 			if (!chart) return
 			chart.resize()
-			// A kind may shape the chart to its size (the context has width and
-			// height): build it again.
-			if (props.option?.kind) return draw(true)
+			// A kind that shaped the chart to its size: build it again.
+			if (sized) return draw(true)
 			// A width change can change how many rows the legend wraps into: fit
 			// just the grid margins again, without resolving every colour again.
 			if (!unfitted) return
