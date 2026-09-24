@@ -112,7 +112,7 @@ Every part is styleable from the page: `::part(region)`, `::part(toast)`, `::par
 - `--sb-toast-width`: width of the stack (default `22rem`; it never exceeds the viewport).
 - `--sb-toast-inset`: distance from the edges (default `1rem`).
 
-Corners notch with `--sb-notch`, so the 8-bit look can be turned off per theme, and the entrance, exit and countdown animations are dropped for `prefers-reduced-motion: reduce` (the bar then jumps rather than slides).
+Corners notch with `--sb-notch`, so the 8-bit look can be turned off per theme. For `prefers-reduced-motion: reduce` the entrance and exit animations are dropped, and the bar jumps down in fifths rather than slides.
 
 ## Accessibility
 

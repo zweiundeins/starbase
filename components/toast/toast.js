@@ -57,16 +57,19 @@ const styles = /* css */ `
 	display: flex;
 	flex-direction: column;
 	gap: var(--_gap);
-	inline-size: min(var(--_width), calc(100dvw - 2 * var(--_inset)));
+	/* % of the viewport without its scrollbar (dvw would include it). */
+	inline-size: min(var(--_width), calc(100% - 2 * var(--_inset)));
 	/* The region itself is never a click target; the toasts in it are. */
 	pointer-events: none;
+	/* Here, not on .toast: a toast's own clip-path would cut its shadow off. */
+	filter: drop-shadow(0 10px 20px rgb(0 0 0 / 0.45));
 }
 .region > * { pointer-events: auto; }
 [data-placement^="top"] { inset-block-start: var(--_inset); }
 [data-placement^="bottom"] { inset-block-end: var(--_inset); }
 [data-placement$="-start"] { inset-inline-start: var(--_inset); }
 [data-placement$="-end"] { inset-inline-end: var(--_inset); }
-[data-placement$="-center"] { inset-inline-start: 50%; translate: -50% 0; }
+[data-placement$="-center"] { inset-inline: 0; margin-inline: auto; }
 /* For the docs and for pages that want the stack in the flow. */
 [data-placement="inline"] { position: static; inline-size: 100%; }
 .toast {
@@ -82,8 +85,6 @@ const styles = /* css */ `
 	clip-path: ${notch('var(--_n)')};
 	background: linear-gradient(color-mix(in oklch, var(--_tone) 8%, transparent), transparent), var(--_bg);
 	color: var(--_body);
-	/* drop-shadow, not box-shadow: it follows the notched clip path. */
-	filter: drop-shadow(0 10px 20px rgb(0 0 0 / 0.45));
 	/* The negative --in (elapsed since it appeared) keeps the entrance from
 	   replaying when the list re-renders: the animation is already over. */
 	animation: sb-toast-in 180ms cubic-bezier(0.2, 0, 0, 1) var(--in, 0ms) both;
@@ -112,7 +113,8 @@ const styles = /* css */ `
 	place-items: center;
 	inline-size: 1.75rem;
 	block-size: 1.75rem;
-	margin: -0.25rem -0.375rem 0 0;
+	margin: -0.25rem 0 0;
+	margin-inline-end: -0.375rem;
 	border-radius: calc(4px * (1 - var(--_notch)));
 	color: var(--_muted);
 	cursor: pointer;
@@ -128,9 +130,10 @@ const styles = /* css */ `
 	block-size: 3px;
 	background: var(--_tone);
 	opacity: 0.55;
-	transform-origin: 0 50%;
+	transform-origin: 0;
 	animation: sb-toast-bar var(--dur, 5000ms) linear var(--bd, 0ms) forwards;
 }
+:host(:dir(rtl)) .bar { transform-origin: 100%; }
 .paused .bar { animation-play-state: paused; }
 .sr {
 	position: absolute;
@@ -148,6 +151,7 @@ const styles = /* css */ `
 @keyframes sb-toast-bar { to { scale: 0 1; } }
 @media (prefers-reduced-motion: reduce) {
 	.toast, .leaving { animation: none; }
+	.bar { animation-timing-function: steps(5); }
 }
 `
 
