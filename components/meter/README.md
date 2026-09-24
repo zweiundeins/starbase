@@ -20,7 +20,9 @@ playground:
   values: {value: 58, label: Shields, unit: "%"}
 ---
 
-A row of pixel blocks lit up to `value`. The whole bar changes colour at the `warn` and `danger` thresholds, and blocks light up in a quick cascade from the edge that moves. When `danger` is below `warn`, low values are the bad ones, as with fuel or batteries.
+A row of pixel blocks lit up to `value`, from `min` to `max`. Any value above `min` lights at least one block, and only `max` lights them all. When the value changes, blocks light up in a quick cascade from the edge that moves.
+
+The whole bar changes colour at the `warn` and `danger` thresholds, given in value units. Left unset, they sit at 70% and 90% of the range (70 and 90 on 0–100). When `danger` is below `warn`, low values are the bad ones, as with fuel or batteries. To keep the bar in its normal colour, set both above `max`.
 
 ## Examples
 

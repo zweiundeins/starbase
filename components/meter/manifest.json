@@ -48,7 +48,7 @@
       "default": 70,
       "required": false,
       "docs": {
-        "description": "Warning threshold. Below danger means low values are bad (like fuel)."
+        "description": "Warning threshold, in value units. Unset, it sits at 70% of the range (70 on 0–100). Below danger means low values are bad (like fuel)."
       }
     },
     {
@@ -58,7 +58,7 @@
       "default": 90,
       "required": false,
       "docs": {
-        "description": "Danger threshold."
+        "description": "Danger threshold, in value units. Unset, it sits at 90% of the range (90 on 0–100)."
       }
     },
     {

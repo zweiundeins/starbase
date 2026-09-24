@@ -44,8 +44,8 @@ rocket('sb-meter', {
 		min: number.docs({ description: 'Minimum.' }),
 		max: number.default(100).docs({ description: 'Maximum.' }),
 		segments: number.clamp(2, 40).step(1).default(12).docs({ description: 'Number of blocks.' }),
-		warn: number.default(70).docs({ description: 'Warning threshold. Below danger means low values are bad (like fuel).' }),
-		danger: number.default(90).docs({ description: 'Danger threshold.' }),
+		warn: number.default(70).docs({ description: 'Warning threshold, in value units. Unset, it sits at 70% of the range (70 on 0–100). Below danger means low values are bad (like fuel).' }),
+		danger: number.default(90).docs({ description: 'Danger threshold, in value units. Unset, it sits at 90% of the range (90 on 0–100).' }),
 		label: string.trim.docs({ description: 'Caption.' }),
 		unit: string.docs({ description: 'Unit after the value.' }),
 		showValue: bool.default(true).docs({ description: 'Show the value.' }),
@@ -54,14 +54,19 @@ rocket('sb-meter', {
 	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
 	render: ({ html, host, props: { value, min, max, segments, warn, danger, label, unit, showValue, decimals } }) => {
 		const f = Math.max(0, Math.min(1, (value - min) / (max - min || 1)))
-		const lit = Math.round(f * segments)
+		// The nearest block, but any value above min lights one, and only max lights them all.
+		const lit = Math.min(segments - (f < 1), Math.max(f > 0, Math.round(f * segments)))
 		// The cascade runs from the edge that moves: blocks light up outwards
 		// from the last fill and go dark from the far end. Blocks below a
 		// rising fill get a negative delay, so a new tone reaches them at once.
 		const from = host._lit ?? lit
 		host._lit = lit
-		const bad = danger >= warn ? [value >= danger, value >= warn] : [value <= danger, value <= warn]
-		const tone = bad[0] ? 'danger' : bad[1] ? 'warn' : 'ok'
+		// Unset thresholds sit at 70% and 90% of the range (property writes
+		// reflect, so el.warn = x counts as set).
+		if (!host.hasAttribute('warn')) warn = min + (max - min) * 0.7
+		if (!host.hasAttribute('danger')) danger = min + (max - min) * 0.9
+		const s = danger < warn ? -1 : 1
+		const tone = s * (value - danger) >= 0 ? 'danger' : s * (value - warn) >= 0 ? 'warn' : 'ok'
 		const shown = Number(value).toFixed(decimals) + unit
 		return html`
 			${label || showValue ? html`
