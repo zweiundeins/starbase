@@ -214,8 +214,7 @@ rocket('sb-theme-switch', {
 			document.cookie = `${value}; Domain=${props.domain}`
 			if (readCookie(props.cookie) === t) return
 			document.cookie = value
-			const err = new Error(`<sb-theme-switch> domain="${props.domain}" was refused by the browser (this page is ${location.hostname}); the theme is remembered for this host only`)
-			typeof reportError === 'function' ? reportError(err) : console.error(err)
+			reportError(new Error(`<sb-theme-switch> domain="${props.domain}" was refused by the browser (this page is ${location.hostname}); the theme is remembered for this host only`))
 		}
 
 		action('pick', ({ el }) => {
