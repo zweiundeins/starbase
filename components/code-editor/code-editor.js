@@ -1,5 +1,4 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
-import Prism from './vendor/prism.js'
 
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signal, or that effect writes the stale bound value back.
@@ -17,6 +16,8 @@ const peek = (fn) => {
 // (:state(pending)) are styleable from the page and morph-proof.
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+// The live code outlives a re-attach (setup runs again), like a moved <textarea>'s.
+const live = new WeakMap()
 
 // Initial code can come from a child <script type="text/plain">: its text
 // is never parsed as HTML and never executed. Common indentation is removed.
@@ -28,13 +29,25 @@ const dedent = (text) => {
 
 // Highlighting by Prism (vendored with the js-templates plugin), so the
 // HTML and CSS inside Rocket's html`…` and /* css */ `…` templates light up.
-const GRAMMARS = { js: 'javascript', html: 'markup', css: 'css' }
-const highlight = (src, lang) => {
-	const name = GRAMMARS[lang] || 'javascript'
-	// A trailing newline keeps the last (empty) line's height in the <pre>.
-	return Prism.highlight(src, Prism.languages[name], name) + '\n'
-}
+// It loads with the first editor, so pages without one never download it;
+// until it arrives, the code shows uncoloured. js, html and css are Prism's own
+// names (aliases). A trailing newline keeps the last (empty) line's height.
+let Prism
+const highlight = (src, lang) => (Prism ? Prism.highlight(src, Prism.languages[lang], lang) : src.replace(/&/g, '&amp;').replace(/</g, '&lt;')) + '\n'
 
+// The styles ship as written, so their notes live here:
+// - The scroller is a grid: its one child fills --sb-code-editor-min-height.
+// - Gutter | code. The grid is at least the viewport and grows with the
+//   longest line, so the textarea and <pre> always line up. The gutter is at
+//   least 3rem whatever the lines' length, so the code never shifts sideways
+//   (and the textarea has cols="1": its default 20 columns set a minimum width).
+// - One font, size and line height for the textarea, the highlighted <pre> and
+//   the gutter: the caret and the colours must line up. The browser gives
+//   <code> its own monospace font; a second font on every line makes each line
+//   box taller, and the highlighting drifts away from the caret and the line
+//   numbers. So <code> takes the <pre>'s font, size and line height.
+// - Prism tokens are coloured from theme tokens. Code inside attributes and
+//   templates keeps the base text colour.
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-inset, #0B1224);
@@ -49,8 +62,10 @@ const styles = /* css */ `
 	display: block;
 	inline-size: 100%;
 }
+:host([hidden]) { display: none; }
 .label { display: block; margin-block-end: 0.4rem; color: var(--sb-text-2, #AEBBDD); font-size: 0.8125rem; font-weight: 600; }
 .scroller {
+	display: grid;
 	overflow: auto;
 	min-block-size: var(--sb-code-editor-min-height, 0);
 	max-block-size: var(--sb-code-editor-height, 28rem);
@@ -60,10 +75,8 @@ const styles = /* css */ `
 	scrollbar-width: thin;
 }
 .scroller:focus-within { border-color: var(--_brand); }
-/* Gutter | code. The code column is at least the viewport and grows with
-   the longest line, so the textarea and <pre> always line up. */
-.grid { display: grid; grid-template-columns: auto minmax(calc(100% - 3rem), max-content); min-block-size: 100%; }
-.no-gutter .grid { grid-template-columns: minmax(100%, max-content); }
+.grid { display: grid; grid-template-columns: minmax(3rem, auto) 1fr; inline-size: max-content; min-inline-size: 100%; }
+.no-gutter .grid { grid-template-columns: 1fr; }
 .no-gutter .gutter { display: none; }
 .gutter {
 	position: sticky;
@@ -81,16 +94,12 @@ const styles = /* css */ `
 pre, textarea, .gutter {
 	margin: 0;
 	font-family: var(--_font);
-	/* One size for the textarea, the highlighted <pre> and the gutter: the caret and the colours must line up. */
 	font-size: var(--_code-size);
 	line-height: 1.6;
 	white-space: pre;
 	tab-size: inherit;
 	font-variant-ligatures: none;
 }
-/* The browser gives <code> its own monospace font: a second font on every
-   line makes each line box taller, and the highlighting drifts away from the
-   caret and the line numbers. It takes the <pre>'s font, size and line height. */
 pre code { font: inherit; }
 pre, textarea { padding: 0.75rem 1rem; border: 0; }
 pre { color: var(--_text); pointer-events: none; }
@@ -107,17 +116,13 @@ textarea {
 	-webkit-text-fill-color: transparent;
 }
 textarea::selection { background: var(--_sel); -webkit-text-fill-color: transparent; }
-:host([readonly]) textarea { caret-color: transparent; }
-/* Prism tokens, coloured from theme tokens. */
 .token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--_muted); font-style: italic; }
-.token.string, .token.char, .token.attr-value, .token.template-punctuation, .token.url { color: var(--sb-code-string, #6EF59A); }
-.token.number, .token.boolean, .token.constant, .token.unit, .token.hexcode { color: var(--sb-code-number, #F5C451); }
+.token.string, .token.attr-value, .token.url { color: var(--sb-code-string, #6EF59A); }
+.token.number, .token.boolean, .token.constant { color: var(--sb-code-number, #F5C451); }
 .token.keyword, .token.atrule, .token.important, .token.rule { color: var(--sb-code-keyword, #B09AFF); }
 .token.function, .token.class-name, .token.attr-name, .token.property { color: var(--sb-code-function, #CBBEFF); }
-.token.tag, .token.selector, .token.builtin { color: var(--sb-code-tag, #65BFFF); }
-.token.punctuation, .token.operator, .token.interpolation-punctuation { color: var(--_muted); }
-/* Code inside attributes and templates keeps the base text colour. */
-.token.attr-value .token.punctuation.attr-equals, .token.attr-value > .token.punctuation:first-child { color: var(--_muted); }
+.token.tag, .token.selector { color: var(--sb-code-tag, #65BFFF); }
+.token.punctuation, .token.operator { color: var(--_muted); }
 .token.embedded-code, .token.script, .token.style, .token.interpolation, .token.value.javascript { color: var(--_text); }
 `
 
@@ -141,46 +146,56 @@ rocket('sb-code-editor', {
 		],
 	},
 	renderOnPropChange: ({ changes }) => 'label' in changes,
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props, render }) => {
 		adoptStyles(host, styles)
 		const child = host.querySelector(':scope > script[type="text/plain"]')
-		const initial = host.hasAttribute('value') || !child ? props.value : dedent(child.textContent)
+		const script = child && dedent(child.textContent)
+		// The server's value: the value attribute, else the child script's code.
+		const server = () => (host.hasAttribute('value') || !child ? props.value : script)
 
 		// Local signals the markup renders from.
-		$$.code = initial
-		$$.lang = props.language
-		$$.gutter = props.lineNumbers
-		$$.tab = props.tabSize
-		$$.readonly = props.readonly
+		$$.code = live.get(host) ?? server()
+		effect(() => $$.code != null && live.set(host, $$.code))
+		const mirror = () => Object.assign($$, { lang: props.language, gutter: props.lineNumbers, tab: props.tabSize, readonly: props.readonly })
+		mirror()
+		observeProps(mirror, 'language', 'lineNumbers', 'tabSize', 'readonly')
+		Prism || import('./vendor/prism.js').then((m) => ((Prism = m.default), host.isConnected && ($$.ready = 1)))
 		// Rocket clears local signals when the element is removed, and computeds
 		// may run once more: treat missing code as empty.
-		$$.html = () => highlight($$.code ?? '', $$.lang)
+		$$.html = () => ($$.ready, highlight($$.code ?? '', $$.lang || 'js'))
 		$$.numbers = () => Array.from({ length: ($$.code ?? '').split('\n').length }, (_, i) => i + 1).join('\n')
-
-		observeProps(() => {
-			$$.lang = props.language
-			$$.gutter = props.lineNumbers
-			$$.tab = props.tabSize
-			$$.readonly = props.readonly
-		}, 'language', 'lineNumbers', 'tabSize', 'readonly')
 
 		// Typing updates $$code; the textarea's data-effect only writes back
 		// external changes (the values differ), so the caret never jumps.
-		// A value attribute sent by the server wins when it changes (a morph
-		// with a new value); re-sending the same markup changes nothing, so edits
-		// survive re-renders. A *removed* attribute changes nothing either: morphs
-		// also remove attributes that were only reflected (e.g. from a data-bind
-		// write before the upgrade). To clear it, the server sends value="".
-		observeProps(() => peek(() => host.hasAttribute('value') && ($$.code = props.value)), 'value')
+		// A value attribute sent by the server wins when it differs from the last
+		// one (a morph with a new value); re-sending the same markup changes
+		// nothing, so edits survive re-renders. A *removed* attribute is ignored:
+		// morphs also remove attributes that were only reflected (e.g. from a
+		// data-bind write before the upgrade). To clear it, the server sends
+		// value="". Not observeProps: it only fires when the decoded value
+		// changes, and value="" on an editor without the attribute is "" again.
+		// The host's aria-label names the textarea (without a label), so a new
+		// one renders again.
+		let served = host.hasAttribute('value') ? props.value : null
+		const watch = new MutationObserver((records) => peek(() => {
+			if (records.some((r) => r.attributeName !== 'value')) render({})
+			if (!host.hasAttribute('value')) return void (served = null)
+			if (props.value !== served) $$.code = served = props.value
+			sync()
+		}))
+		watch.observe(host, { attributeFilter: ['value', 'aria-label'] })
+		cleanup(() => watch.disconnect())
 		overrideProp('value', () => peek(() => $$.code), (v) => peek(() => ($$.code = String(v ?? ''))))
-		// Commands: the attribute is the server's value, $$.code the local one.
+		// Commands: server() is the server's value, $$.code the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.code !== props.value ? states.add('pending') : states.delete('pending')))
+		const sync = () => peek(() => (props.confirm && $$.code !== server() ? states.add('pending') : states.delete('pending')))
 		effect(() => ($$.code, sync()))
 		observeProps(sync)
-		defineHostProp('revert', { value: () => peek(() => (($$.code = props.value), sync())) })
+		defineHostProp('revert', { value: () => peek(() => (($$.code = server()), sync())) })
+		// The host isn't focusable: focus() goes to the textarea.
+		defineHostProp('focus', { value: (o) => host.shadowRoot.querySelector('textarea').focus(o) })
 
 		const insert = (area, text) => {
 			// execCommand keeps the browser's undo stack; setRangeText is the fallback.
@@ -191,7 +206,10 @@ rocket('sb-code-editor', {
 		}
 		let escaped = false
 		action('change', () => (emit('change'), emit('sb-change', { name: props.name, value: $$.code })))
+		action('blur', () => (escaped = false))
 		action('key', ({ el: area, evt: e }) => {
+			// Enter and Tab also confirm IME input (Safari: keyCode 229 after it).
+			if (e.isComposing || e.keyCode === 229) return
 			if (e.key === 'Escape') {
 				escaped = true // the next Tab moves focus instead of indenting
 				return
@@ -204,15 +222,21 @@ rocket('sb-code-editor', {
 			if (area.readOnly) return
 			if (e.key === 'Tab' && !escaped) {
 				e.preventDefault()
-				const { selectionStart: s, selectionEnd: t, value: v } = area
-				const lineStart = v.lastIndexOf('\n', s - 1) + 1
+				const { selectionStart: s, value: v } = area
+				let t = area.selectionEnd
 				if (!e.shiftKey && s === t) return insert(area, '\t')
-				// Block (de)indent of every selected line.
-				const block = v.slice(lineStart, t)
+				// (De)indent the selected lines, whole, but not a line the selection
+				// only reaches at its column 0. Shift+Tab alone outdents the caret's
+				// line and keeps the caret where it was in the text.
+				if (t > s && v[t - 1] === '\n') t--
+				const a = v.lastIndexOf('\n', s - 1) + 1
+				const b = (v.indexOf('\n', t) + 1 || v.length + 1) - 1
+				const block = v.slice(a, b)
 				const next = e.shiftKey ? block.replace(/^(\t| {1,2})/gm, '') : block.replace(/^/gm, '\t')
-				area.setSelectionRange(lineStart, t)
+				area.setSelectionRange(a, b)
 				insert(area, next)
-				area.setSelectionRange(lineStart, lineStart + next.length)
+				const c = Math.max(a, s + next.length - block.length)
+				s === t ? area.setSelectionRange(c, c) : area.setSelectionRange(a, a + next.length)
 				return
 			}
 			escaped = false
@@ -226,8 +250,8 @@ rocket('sb-code-editor', {
 			}
 		})
 	},
-	render: ({ html, props: { label } }) => html`
-		${label ? html`<span class="label" part="label">${label}</span>` : null}
+	render: ({ html, host, props: { label } }) => html`
+		${label ? html`<label class="label" part="label" for="ta">${label}</label>` : null}
 		<div class="scroller" part="editor" data-class:no-gutter="!$$gutter" data-style:tab-size="$$tab">
 			<div class="grid">
 				<pre class="gutter" aria-hidden="true" data-text="$$numbers"></pre>
@@ -241,11 +265,14 @@ rocket('sb-code-editor', {
 						autocorrect="off"
 						wrap="off"
 						rows="1"
-						aria-label="${label || 'Code'}"
+						id="ta"
+						cols="1"
+						aria-label="${label || host.getAttribute('aria-label') || 'Code'}"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"
 						data-on:input="$$code = el.value"
 						data-on:change="@change()"
+						data-on:blur="@blur()"
 						data-on:keydown="@key()"
 					></textarea>
 				</div>

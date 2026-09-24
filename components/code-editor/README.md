@@ -23,11 +23,13 @@ playground:
 
 A real `<textarea>` layered over a highlighted `<pre>`. You get native editing (undo, IME, mobile keyboards, screen readers) with syntax colours from the theme tokens. It understands JavaScript, HTML and CSS, keeps indentation on Enter, indents and outdents selections with Tab and Shift+Tab, and emits `sb-run` on Ctrl/Cmd+Enter.
 
+The highlighter (Prism) loads with the first editor on a page, so pages without one never download it. Until it arrives, the code shows uncoloured.
+
 ## Examples
 
 ### Initial code
 
-Put the code in a child `<script type="text/plain">`. Its text is never parsed as HTML and never executed, and common indentation is removed.
+Put the code in a child `<script type="text/plain">`. Its text is never parsed as HTML and never executed, and common indentation is removed. It counts as the server's value (for `confirm` and `revert()`), and it is read once: to change the code later, the server sends a `value` attribute.
 
 ```html preview
 <sb-code-editor language="html" label="index.html" style="inline-size: 100%">
@@ -62,7 +64,7 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 
 | Keys | Action |
 |---|---|
-| Tab / Shift+Tab | Indent / outdent (the selected lines) |
+| Tab / Shift+Tab | Indent / outdent the selected lines (without a selection, Tab inserts a tab and Shift+Tab outdents the line) |
 | Enter | New line, keeping the indentation (plus one after `{`, `(` or `[`) |
 | Ctrl/Cmd+Enter | Emit `sb-run` |
 | Esc, then Tab | Leave the editor, so Tab is never a focus trap |
@@ -70,6 +72,12 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 ## With commands
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
+A new `value` from the server replaces the code; the same markup sent again leaves the user's edits alone. To clear it, the server sends `value=""` (a removed attribute changes nothing). Moving the editor elsewhere in the page keeps its edits, like a `<textarea>`.
+
+## Forms
+
+`sb-code-editor` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -96,4 +104,4 @@ A font you load yourself works inside the component too: load it in the page (a 
 
 ## Accessibility
 
-The editable element is a native textarea with an accessible name (`label`, or "Code"). The highlighted layer and the gutter are `aria-hidden`.
+The editable element is a native textarea with an accessible name: `label`, else the host's `aria-label`, else "Code". The visible label is a `<label>` for it, and `focus()` on the element focuses the textarea. The highlighted layer and the gutter are `aria-hidden`.

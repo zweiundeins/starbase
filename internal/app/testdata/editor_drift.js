@@ -38,9 +38,10 @@ globalThis.sbEditorDrift = async (sizes = ['', '1.25rem'], minLines = 8) => {
 		return NaN
 	}
 
-	// Wait for the components and the highlighting.
+	// Wait for the components and the highlighting (Prism loads on demand:
+	// until then the code shows as plain text, without tokens).
 	for (let i = 0; i < 100; i++) {
-		const ready = editors().filter((e) => e.shadowRoot?.querySelector('pre code')?.textContent.trim())
+		const ready = editors().filter((e) => e.shadowRoot?.querySelector('pre code .token'))
 		if (ready.length) break
 		await sleep(100)
 	}
