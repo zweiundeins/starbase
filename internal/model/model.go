@@ -105,6 +105,9 @@ type FlightPlan struct {
 	Thrust   int    `json:"thrust"`
 	Shields  bool   `json:"shields"`
 	Callsign string `json:"callsign"`
+	// CallsignRev counts the applied call sign commands: sb-input's rev, so
+	// a sign the server normalizes back to the stored one still confirms it.
+	CallsignRev int `json:"callsignRev,omitempty"`
 }
 
 // OrDefault is the plan, or the starting plan when nothing is stored yet.

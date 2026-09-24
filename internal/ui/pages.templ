@@ -341,7 +341,7 @@ templ FlightDemo(f model.FlightPlan) {
 					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-slider>
 				<sb-toggle name="shields" label="Shields" confirm checked={ strconv.FormatBool(f.Shields) }
 					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-toggle>
-				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } hint="Letters, digits and dashes; press Enter or leave the field."
+				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } rev={ strconv.Itoa(f.CallsignRev) } hint="Letters, digits and dashes; press Enter or leave the field."
 					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-input>
 			</div>
 			<dl class="flight__state" aria-label="The server's state">

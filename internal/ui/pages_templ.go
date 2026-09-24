@@ -1052,72 +1052,85 @@ func FlightDemo(f model.FlightPlan) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "\" hint=\"Letters, digits and dashes; press Enter or leave the field.\" data-on:sb-change=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "\" rev=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var50 string
-		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue(flightCommand)
+		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(f.CallsignRev))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 345, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 344, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" data-on:datastar-fetch=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" hint=\"Letters, digits and dashes; press Enter or leave the field.\" data-on:sb-change=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var51 string
-		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.ResolveAttributeValue(flightRejected)
+		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.ResolveAttributeValue(flightCommand)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 345, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 345, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var51)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\"></sb-input></div><dl class=\"flight__state\" aria-label=\"The server's state\"><div><dt>Thrust</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" data-on:datastar-fetch=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var52 string
-		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(f.Thrust))
+		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.ResolveAttributeValue(flightRejected)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 348, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 345, Col: 80}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var52)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "%</dd></div><div><dt>Shields</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "\"></sb-input></div><dl class=\"flight__state\" aria-label=\"The server's state\"><div><dt>Thrust</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var53 string
-		templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(onOff(f.Shields))
+		templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(f.Thrust))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 349, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 348, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</dd></div><div><dt>Call sign</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "%</dd></div><div><dt>Shields</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var54 string
-		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(f.Callsign)
+		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(onOff(f.Shields))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 350, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 349, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</dd></div></dl></div><p class=\"flight__error\" role=\"alert\" data-show=\"$_flightErr\" data-text=\"$_flightErr\"></p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</dd></div><div><dt>Call sign</dt><dd>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var55 string
+		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(f.Callsign)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 350, Col: 43}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "</dd></div></dl></div><p class=\"flight__error\" role=\"alert\" data-show=\"$_flightErr\" data-text=\"$_flightErr\"></p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1143,77 +1156,77 @@ func PixelBoard(v BoardView) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var55 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var55 == nil {
-			templ_7745c5c3_Var55 = templ.NopComponent
+		templ_7745c5c3_Var56 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var56 == nil {
+			templ_7745c5c3_Var56 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<section class=\"board-section\" aria-labelledby=\"board-title\"><header class=\"mission__head\"><h2 id=\"board-title\" class=\"section-title\">Pixel Board</h2><span class=\"board-stats\" aria-live=\"polite\"><span class=\"board-stats__dot\" aria-hidden=\"true\"></span> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var56 string
-		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(v.Viewers))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 365, Col: 21}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, " watching · ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<section class=\"board-section\" aria-labelledby=\"board-title\"><header class=\"mission__head\"><h2 id=\"board-title\" class=\"section-title\">Pixel Board</h2><span class=\"board-stats\" aria-live=\"polite\"><span class=\"board-stats__dot\" aria-hidden=\"true\"></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var57 string
-		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(int(v.Pixels)))
+		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(v.Viewers))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 365, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 365, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, " pixels painted</span></header><div class=\"board-section__grid\"><sb-pixel-board id=\"board\" size=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, " watching · ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var58 string
-		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(v.Size))
+		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(int(v.Pixels)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 369, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 365, Col: 57}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var58)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" cells=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, " pixels painted</span></header><div class=\"board-section__grid\"><sb-pixel-board id=\"board\" size=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var59 string
-		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Cells)
+		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(v.Size))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 369, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 369, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var59)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "\" data-on:sb-paint=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "\" cells=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var60 string
-		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue(paintExpr)
+		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Cells)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 369, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 369, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var60)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "\"></sb-pixel-board><div class=\"board-section__about\"><p><strong>Paint together.</strong> Everyone on this page shares one 48×48 board. Pick a colour and drag.</p><p class=\"muted\">Faded pixels are still in flight. About 20 pixels per second each, so everybody gets a turn.</p></div></div><details class=\"howto\" data-preserve-attr=\"open\"><summary>How it works</summary><div class=\"howto__body\"><p>This is the \"one billion checkboxes\" idea from Anders Murphy's hyperlith, done the way this whole site works: CQRS over one SQLite database, and the server re-rendering the entire page for every change.</p><h3>1. The board is one attribute</h3><p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded.</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "\" data-on:sb-paint=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var61 string
+		templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.ResolveAttributeValue(paintExpr)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/pages.templ`, Line: 369, Col: 98}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var61)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\"></sb-pixel-board><div class=\"board-section__about\"><p><strong>Paint together.</strong> Everyone on this page shares one 48×48 board. Pick a colour and drag.</p><p class=\"muted\">Faded pixels are still in flight. About 20 pixels per second each, so everybody gets a turn.</p></div></div><details class=\"howto\" data-preserve-attr=\"open\"><summary>How it works</summary><div class=\"howto__body\"><p>This is the \"one billion checkboxes\" idea from Anders Murphy's hyperlith, done the way this whole site works: CQRS over one SQLite database, and the server re-rendering the entire page for every change.</p><h3>1. The board is one attribute</h3><p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1221,7 +1234,7 @@ func PixelBoard(v BoardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<h3>2. Painting is a command</h3><p>A stroke emits <code>sb-paint</code> every 80 ms, with the cells it crossed; fast drags are interpolated so there are no gaps. Each batch is a short <code>POST</code> that answers <code>204 No Content</code> and returns no HTML. <code>requestCancellation: 'disabled'</code> matters here: by default Datastar cancels an in-flight request when a new one goes to the same URL, which would drop pixels mid-stroke. A per-session token bucket (20 pixels per second, bursts up to 60) keeps any one painter from flooding the board.</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<h3>2. Painting is a command</h3><p>A stroke emits <code>sb-paint</code> every 80 ms, with the cells it crossed; fast drags are interpolated so there are no gaps. Each batch is a short <code>POST</code> that answers <code>204 No Content</code> and returns no HTML. <code>requestCancellation: 'disabled'</code> matters here: by default Datastar cancels an in-flight request when a new one goes to the same URL, which would drop pixels mid-stroke. A per-session token bucket (20 pixels per second, bursts up to 60) keeps any one painter from flooding the board.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1229,7 +1242,7 @@ func PixelBoard(v BoardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<p>A single writer goroutine drains the command queue. Everyone's strokes that arrive together are applied in one SQLite transaction, each in its own savepoint, and committed once.</p><h3>3. Every tab re-renders the whole page</h3><p>After the commit, the hub wakes every open render stream. Each re-renders its page from a fresh read snapshot and sends the entire page again. The encoded board is cached per version, so a thousand viewers cost one query. Pages whose output didn't change send nothing.</p><p>Sending the whole page sounds wasteful until you look at the wire. The stream is compressed with Brotli, and the compressor keeps its window across frames. A full frame of this page is <strong>about 9.7 KB</strong>; the first one compresses to about 3.4 KB, and after a paint each complete re-render costs <strong>about 17 bytes</strong>. There is no diffing code anywhere: Datastar morphs the DOM, and compression takes care of the network.</p><h3>4. Presence</h3><p>\"Watching\" counts the open render streams on this page. The hub wakes the other viewers when someone joins or leaves, so the number is live too.</p></div></details></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<p>A single writer goroutine drains the command queue. Everyone's strokes that arrive together are applied in one SQLite transaction, each in its own savepoint, and committed once.</p><h3>3. Every tab re-renders the whole page</h3><p>After the commit, the hub wakes every open render stream. Each re-renders its page from a fresh read snapshot and sends the entire page again. The encoded board is cached per version, so a thousand viewers cost one query. Pages whose output didn't change send nothing.</p><p>Sending the whole page sounds wasteful until you look at the wire. The stream is compressed with Brotli, and the compressor keeps its window across frames. A full frame of this page is <strong>about 9.7 KB</strong>; the first one compresses to about 3.4 KB, and after a paint each complete re-render costs <strong>about 17 bytes</strong>. There is no diffing code anywhere: Datastar morphs the DOM, and compression takes care of the network.</p><h3>4. Presence</h3><p>\"Watching\" counts the open render streams on this page. The hub wakes the other viewers when someone joins or leaves, so the number is live too.</p></div></details></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

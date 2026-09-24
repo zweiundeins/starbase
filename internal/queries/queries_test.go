@@ -424,7 +424,7 @@ func TestSetFlight(t *testing.T) {
 	}
 	var st model.TabState
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
-	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11"}
+	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11", CallsignRev: 1}
 	if st.Flight != want {
 		t.Errorf("flight = %+v, want %+v (normalized, the rejected thrust not applied)", st.Flight, want)
 	}

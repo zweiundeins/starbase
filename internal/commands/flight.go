@@ -63,6 +63,7 @@ func (c SetFlight) Apply(ctx context.Context, tx *sql.Tx) error {
 			f.Shields = c.Value == "true"
 		case "callsign":
 			f.Callsign = strings.ToUpper(strings.TrimSpace(c.Value)) // the server normalizes
+			f.CallsignRev++                                          // answered, even when nothing changed
 		}
 		st.Flight = f
 	})
