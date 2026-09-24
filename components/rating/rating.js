@@ -27,6 +27,14 @@ const path = (rows, ch) => {
 	return d
 }
 
+// (Notes here, not in the CSS: the minifier keeps comments inside the string.)
+// - Disabled is styled from the rendered row (aria-disabled), not
+//   :host([disabled]), which disabled="false" matches too.
+// - touch-action pan-y: a vertical swipe still scrolls the page, a sideways
+//   drag rates.
+// - The filled layer is cut to the unit's share of the value (--fill, 0…1)
+//   from the start side. Clip and filter stay on an <svg>: Safari applies CSS
+//   filters to root <svg> elements only.
 const styles = /* css */ `
 :host {
 	--_full: var(--sb-rating-color, var(--sb-danger, #F2777A));
@@ -39,23 +47,22 @@ const styles = /* css */ `
 	flex-direction: column;
 	gap: 0.35rem;
 }
+:host([hidden]) { display: none; }
 :host([icon="star"]) { --_full: var(--sb-rating-color, var(--sb-warn, #F5C451)); }
-:host([disabled]) { opacity: 0.5; pointer-events: none; }
+.label:has(+ [aria-disabled]), [aria-disabled] { opacity: 0.5; pointer-events: none; }
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
-.row { display: inline-flex; gap: calc(var(--_size) / 7); inline-size: max-content; border-radius: 4px; cursor: pointer; touch-action: none; }
-.row.readonly { cursor: default; }
+.row { display: inline-flex; gap: calc(var(--_size) / 7); inline-size: max-content; border-radius: 4px; cursor: pointer; touch-action: pan-y; }
+[aria-readonly] { cursor: default; }
 .row:focus-visible { outline: 2px solid var(--_focus); outline-offset: 4px; }
 .sm { --_size: 1rem; }
 .lg { --_size: 2.25rem; }
 .unit { position: relative; display: block; inline-size: var(--_size); block-size: var(--_size); }
-svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
-.empty .body { fill: var(--_empty); }
-.empty .shine { fill: var(--_empty); }
-.full .body { fill: var(--_full); }
-.full .shine { fill: var(--_shine); }
-/* The filled layer is cut to the unit's share of the value (--fill, 0…1). */
+svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; fill: var(--_empty); }
+.full { fill: var(--_full); }
+.shine { fill: var(--_shine); }
 .full { clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0); }
-.row:not(.readonly) .unit.hot .full { filter: brightness(1.15); }
+:host(:dir(rtl)) .full { clip-path: inset(0 0 0 calc((1 - var(--fill, 0)) * 100%)); }
+.hot .full { filter: brightness(1.15); }
 `
 
 rocket('sb-rating', {
@@ -78,16 +85,30 @@ rocket('sb-rating', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value }: ready for a command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const step = () => Number(props.precision)
 		const clamp = (v) => Math.min(props.max, Math.max(0, Math.round((Number(v) || 0) / step()) * step()))
 		$$.value = clamp(props.value)
 		$$.hover = -1 // preview while pointing, -1 when not
-		// A value attribute sent by the server wins when it changes; removed
-		// attributes are ignored (see sb-slider). A new max or precision
-		// re-clamps the current value.
-		observeProps((p, changes) => peek(() => ($$.value = clamp('value' in changes && host.hasAttribute('value') ? p.value : $$.value))), 'value', 'max', 'precision')
+		// A value attribute sent by the server wins when it changes; a removed
+		// attribute is ignored (see sb-details). Watched as an attribute, not
+		// with observeProps: that only fires when the decoded value changes, so
+		// value="0" on an element rendered without one (a server clear) would
+		// go unnoticed.
+		let served = host.hasAttribute('value') ? props.value : null
+		const watch = new MutationObserver(() =>
+			peek(() => {
+				if (!host.hasAttribute('value')) return void (served = null)
+				if (props.value === served) return
+				served = props.value
+				$$.value = clamp(served)
+			}),
+		)
+		watch.observe(host, { attributeFilter: ['value'] })
+		cleanup(() => watch.disconnect())
+		// A new max or precision re-clamps the current value.
+		observeProps(() => peek(() => ($$.value = clamp($$.value))), 'max', 'precision')
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(v))))
 		// Commands: the attribute is the server's value, $$.value the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
@@ -101,69 +122,76 @@ rocket('sb-rating', {
 
 		const commit = (v) => {
 			v = clamp(v)
-			if (props.clearable && v === $$.value) v = 0
 			if (v === $$.value) return
 			$$.value = v
 			emit('change')
 			emit('sb-change', { name: props.name, value: v })
 		}
-		// Which value the pointer is on: the unit under it, and for half steps
-		// which half.
-		const at = (evt) => {
-			const unit = evt.target.closest?.('.unit')
-			if (!unit) return -1
-			const i = Number(unit.dataset.i)
-			const r = unit.getBoundingClientRect()
-			const half = step() < 1 && evt.clientX - r.left < r.width / 2
-			return i + (half ? 0.5 : 1)
-		}
+		const rtl = () => getComputedStyle(host).direction === 'rtl'
+		// Which value the pointer is on, from its position (a touch drag keeps
+		// its first target): the last unit whose start it has passed, so a gap
+		// belongs to the unit before it, and for half steps which half. -1
+		// before the first unit.
+		const at = ({ clientX, currentTarget }, back = rtl()) =>
+			[...currentTarget.children].reduce((v, unit, i) => {
+				const r = unit.getBoundingClientRect()
+				const f = (back ? r.right - clientX : clientX - r.left) / r.width
+				return f < 0 ? v : i + (f < 0.5 ? step() : 1)
+			}, -1)
 		const live = () => !props.readonly && !props.disabled
 		action('point', ({ evt }) => live() && ($$.hover = at(evt)))
 		action('leave', () => ($$.hover = -1))
+		// On pointerup, not click: a touch drag ends without a click.
 		action('pick', ({ evt }) => {
-			if (!live()) return
 			const v = at(evt)
-			if (v >= 0) commit(v)
+			if (!live() || evt.button || v < 0) return
+			$$.hover = -1 // show the result, not the preview
+			// clearable is for picking: a key at the maximum stays there.
+			commit(props.clearable && v === $$.value ? 0 : v)
 		})
 		action('key', ({ evt }) => {
 			if (!live()) return
-			const keys = { ArrowRight: step(), ArrowUp: step(), ArrowLeft: -step(), ArrowDown: -step() }
+			const s = rtl() ? -step() : step() // Left and Right follow the row
+			const keys = { ArrowRight: s, ArrowUp: step(), ArrowLeft: -s, ArrowDown: -step() }
 			if (evt.key in keys) commit($$.value + keys[evt.key])
 			else if (evt.key === 'Home') commit(0)
 			else if (evt.key === 'End') commit(props.max)
 			else return
+			$$.hover = -1
 			evt.preventDefault()
 		})
 	},
 	render: ({ html, svg, props: { max, icon, size, label, readonly, disabled } }) => {
-		const units = Array.from({ length: max }, (_, i) => i)
 		const body = path(SPRITES[icon], '#+'), shine = path(SPRITES[icon], '+')
-		// d via data-attr: a template placeholder in a raw d="" is an invalid path
-		// for a moment, which browsers log. The paths are letters and digits.
-		const sprite = (cls) => svg`<svg class="${cls}" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path class="body" data-attr:d="'${body}'"></path><path class="shine" data-attr:d="'${shine}'"></path></svg>`
 		return html`
 			${label ? html`<span class="label" part="label" id="label">${label}</span>` : null}
 			<div
-				class="row ${size} ${readonly ? 'readonly' : ''}"
+				class="row ${size}"
 				part="base"
-				role="${readonly ? 'img' : 'slider'}"
+				role="slider"
 				tabindex="${readonly || disabled ? null : '0'}"
 				aria-labelledby="${label ? 'label' : null}"
 				aria-label="${label ? null : 'Rating'}"
-				aria-valuemin="${readonly ? null : '0'}"
-				aria-valuemax="${readonly ? null : max}"
+				aria-valuemin="0"
+				aria-valuemax="${max}"
+				aria-readonly="${readonly ? 'true' : null}"
 				aria-disabled="${disabled ? 'true' : null}"
-				data-attr:aria-valuenow="${readonly ? 'null' : '$$value'}"
+				data-attr:aria-valuenow="$$value"
 				data-attr:aria-valuetext="$$value + ' of ${max}'"
 				data-on:pointermove="@point()"
 				data-on:pointerleave="@leave()"
-				data-on:click="@pick()"
+				data-on:pointerup="@pick()"
 				data-on:keydown="@key()"
 			>
-				${units.map(
-					(i) => html`<span class="unit" part="unit" data-i="${i}"
+				${Array.from(
+					{ length: max },
+					// Two layers: the empty body, and the full body with its highlight.
+					// d via data-attr: a template placeholder in a raw d="" is an
+					// invalid path for a moment, which browsers log. The paths are
+					// letters and digits.
+					(_, i) => html`<span class="unit" part="unit"
 						data-class:hot="$$hover > ${i}"
-						data-style:--fill="Math.max(0, Math.min(1, $$shown - ${i}))">${sprite('empty')}${sprite('full')}</span>`,
+						data-style:--fill="Math.max(0, Math.min(1, $$shown - ${i}))">${svg`<svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path data-attr:d="'${body}'"></path></svg><svg class="full" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path data-attr:d="'${body}'"></path><path class="shine" data-attr:d="'${shine}'"></path></svg>`}</span>`,
 				)}
 			</div>
 		`

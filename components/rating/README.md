@@ -15,7 +15,7 @@ playground:
   values: {value: 3, max: 5}
 ---
 
-A row of pixel hearts (or stars) for a score. Point to preview, click to pick, or use the arrow keys. The live value is the `value` property, so `data-bind` works, and a new `value` attribute from the server replaces it.
+A row of pixel hearts (or stars) for a score. Point to preview, click to pick (on touch, tap or drag along the row), or use the arrow keys. The live value is the `value` property, so `data-bind` works, and a new `value` attribute from the server replaces it, including `value="0"` to clear it.
 
 ## Examples
 
@@ -39,7 +39,7 @@ A row of pixel hearts (or stars) for a score. Point to preview, click to pick, o
 
 ### Read only
 
-For showing a score, e.g. an average: `readonly` turns it into an image with a text alternative ("4.5 of 5").
+For showing a score, e.g. an average: `readonly` keeps the value ("4.5 of 5") for screen readers, and takes it out of the tab order.
 
 ```html preview
 <sb-rating readonly value="4.5" precision="0.5" size="sm"></sb-rating>
@@ -47,7 +47,7 @@ For showing a score, e.g. an average: `readonly` turns it into an image with a t
 
 ### Clearable
 
-With `clearable`, picking the current value again resets it to 0.
+With `clearable`, picking the current value again resets it to 0. Only picking clears: an arrow key or End at the maximum leaves it there.
 
 ```html preview
 <sb-rating clearable value="2"></sb-rating>
@@ -57,9 +57,9 @@ With `clearable`, picking the current value again resets it to 0.
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is picked: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
 
-## Theming
+## Forms
 
-The filled colour is `--sb-rating-color` (hearts default to `--sb-danger`, stars to `--sb-warn`); empty units use `--sb-border-strong`.
+`sb-rating` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -80,4 +80,6 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The row is a `slider` (Arrow keys change the value by one step, Home clears it, End fills it), named by `label` or "Rating", with `aria-valuetext` like "3 of 5". Read-only ratings are an `img` with the same text.
+The row is a `slider` (Arrow keys change the value by one step, Home clears it, End fills it), named by `label` or "Rating", with `aria-valuetext` like "3 of 5". Read-only ratings are a slider with `aria-readonly`, outside the tab order, with the same value and text.
+
+Right to left (`dir="rtl"`), the row starts at the right: half units fill from the right, and Left and Right follow the row (Left raises the value), like a native range input.
