@@ -60,9 +60,8 @@ input {
 input::placeholder { color: var(--_placeholder); }
 input:hover { border-color: var(--_border-hover); }
 input:focus-visible { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); }
-/* Invalid: aria-invalid follows the validation state. */
-input[aria-invalid=true] { border-color: var(--_danger); }
-input[aria-invalid=true]:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--_danger) 20%, transparent); }
+.invalid input { border-color: var(--_danger); }
+.invalid input:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--_danger) 20%, transparent); }
 button {
 	all: unset;
 	display: grid;
@@ -194,7 +193,7 @@ rocket('sb-input', {
 	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
 		<div class="field">
 			${label ? html`<label part="label" for="i">${label}</label>` : null}
-			<span class="control">
+			<span class="control" data-class:invalid="$$invalid">
 				<input
 					id="i"
 					part="input"
