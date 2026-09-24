@@ -19,7 +19,7 @@ playground:
   attrs: {value: '{"start":20,"end":60}'}
 ---
 
-A slider with two thumbs, for a start and an end: a price band, a time window, an altitude range. It is the sibling of [`sb-slider`](/components/slider), and is built on two native range inputs, so arrow keys, Page Up/Down, Home/End and touch work on each thumb. The thumbs can meet but not cross.
+A slider with two thumbs, for a start and an end: a price band, a time window, an altitude range. It is the sibling of [`sb-slider`](/components/slider), and is built on two native range inputs, so arrow keys, Page Up/Down, Home/End and touch work on each thumb. The thumbs can meet but not cross. Where they meet, the direction you drag picks the thumb: left moves the start, right the end.
 
 The range is **one value**: `value='{"start":20,"end":60}'` in, `{ start, end }` out. Both ends change together in one `sb-change` and one command. See [Components with several values](/contribute#components-with-several-values).
 
@@ -35,11 +35,11 @@ The range is **one value**: `value='{"start":20,"end":60}'` in, `{ start, end }`
 </div>
 ```
 
-A missing part is the bound: `value='{"end":40}'` starts at `min`, and without a `value` the whole range is selected.
+A missing (or `null`) part is the bound: `value='{"end":40}'` starts at `min`, and without a `value` the whole range is selected. Values snap to `step` as the thumbs do, so the text, the fill and `sb-change` always match the thumbs; when `max` is off the step grid, the end stops at the last step below it. With `step="0"` (continuous) the text shows two decimals.
 
 ### The whole range in one event
 
-`sb-change` fires once per committed drag, with both ends:
+`sb-change` fires once per committed drag or key press, with both ends. A key press that can't move a thumb (the other one is in the way) sends nothing:
 
 ```html preview
 <div data-signals="{_window: ''}" style="display: grid; gap: 12px; inline-size: min(100%, 22rem)">
@@ -67,10 +67,27 @@ With `confirm`, the host has `:state(pending)` while either end differs from the
 sb-range:state(pending) { opacity: 0.7; }
 ```
 
+## Forms
+
+`sb-range` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+
 ## Styling
 
-The thumbs and the fill follow `--sb-text-1`, `--sb-brand-light` and `--sb-brand`; `--sb-notch: 0` gives rounded corners. Parts: `label`, `value`, `rail`, and `input` (plus `start` / `end`) for each native input.
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
+- **Fonts:** the label, the range and the tick labels use your page's font.
+- **Colours:** the part of the track between the thumbs is `--sb-brand`, the rest `--sb-surface-inset` with a `--sb-border` edge. The thumbs are `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. They are the same properties as [`sb-slider`](/components/slider)'s, so one rule styles both. The label is `--sb-text-2`, the range `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumbs instead of notching them.
+- **Parts:** `label`, `value` (the shown range), `rail` (the track) and `input` for both range inputs, plus `start` or `end` for one of them (`::part(input end)`). The thumbs are drawn inside the inputs and have no part: colour them with `--sb-slider-thumb` and `--sb-slider-thumb-edge`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-range { max-inline-size: 20rem; --sb-brand: #F97316; --sb-brand-light: #FDBA74; --sb-notch: 0; --sb-slider-thumb: #FFFFFF; --sb-slider-thumb-edge: #F97316; }
+  .my-range::part(value) { color: #F97316; }
+</style>
+<sb-range class="my-range" label="Burn window" value='{"start":20,"end":45}' max="60" unit=" s"></sb-range>
+```
 
 ## Accessibility
 
-The field is a group named by its `label`. Each thumb is a native slider, announced as "<label> start" and "<label> end" with its value and unit (`aria-valuetext`). Without a `label` they are "Range start" and "Range end".
+The field is a group named by its `label`. Each thumb is a native slider, announced as "<label> start" and "<label> end" with its value and unit (`aria-valuetext`). Without a `label` they are "Range start" and "Range end". The range shown next to the label is plain text, not a live region, so a step is announced once, by the thumb that moved. The focused thumb gets a ring inside its edge.

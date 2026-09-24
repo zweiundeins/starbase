@@ -4,14 +4,11 @@
     {
       "name": "value",
       "attribute": "value",
-      "type": "object",
-      "default": {
-        "start": null,
-        "end": null
-      },
+      "type": "json",
+      "default": {},
       "required": false,
       "docs": {
-        "description": "The range, as JSON: {\"start\": 20, \"end\": 60}; a missing part is min or max. A new value from the server replaces it; the live value is the value property."
+        "description": "The range, as JSON: {\"start\": 20, \"end\": 60}; a missing or null part is min or max. A new value from the server replaces it; the live value is the value property."
       }
     },
     {
