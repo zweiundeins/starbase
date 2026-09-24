@@ -97,7 +97,6 @@ const styles = /* css */ `
 	min-block-size: 2.5rem;
 	padding-inline: 0.9rem;
 	background: var(--_bg);
-	font: inherit;
 	font-weight: 600;
 	line-height: 1;
 	white-space: nowrap;
@@ -176,7 +175,6 @@ ${LEVELS.slice(1)
 	padding: 0.4rem 0.6rem;
 	border-radius: calc((var(--_radius) - 2px) * (1 - var(--_notch)));
 	cursor: pointer;
-	outline: none;
 }
 [role^="menuitem"]:hover { background: var(--_hover); }
 /* The focused row, and the row whose submenu is open. */
@@ -216,7 +214,7 @@ ${LEVELS.slice(1)
 	scale: var(--_dir) 1;
 }
 
-[role="separator"] { block-size: 1px; margin: 4px 2px; padding: 0; background: var(--_border); }
+[role="separator"] { block-size: 1px; margin: 4px 2px; background: var(--_border); }
 .empty { padding: 0.4rem 0.6rem; color: var(--_muted); }
 /* Slotted items are read as data and re-rendered inside the menu. */
 slot[name="item"] { display: none; }
@@ -437,7 +435,8 @@ rocket('sb-dropdown', {
 			// the morph can park a row before removing it, so focusout fires
 			// while it is still connected and only the empty relatedTarget shows.
 			const had = inside
-			const was = { level: focusLevel, active: focusIndex }
+			const wasLevel = focusLevel
+			const wasIndex = focusIndex
 			tree = next
 			// One radio group per dropdown: the root menu (type="radio" on the
 			// host) or the children of one item (type: "radio"). Anything beyond
@@ -464,11 +463,11 @@ rocket('sb-dropdown', {
 			// The focused row is gone: take its neighbour (the old index clamped
 			// into the level that is left, skipping rows nobody can focus), never
 			// the first row — that would send one arrow key to the other end.
-			const level = Math.min(was.level, path.length)
-			if (!focusable(level, was.active) || level !== was.level) {
+			const level = Math.min(wasLevel, path.length)
+			if (!focusable(level, wasIndex) || level !== wasLevel) {
 				focusLevel = level
 				// step() from the row before tries the clamped index itself first.
-				focusIndex = step(level, Math.min(Math.max(was.active, 0), nodes(level).length - 1) - 1, 1)
+				focusIndex = step(level, Math.min(Math.max(wasIndex, 0), nodes(level).length - 1) - 1, 1)
 			}
 			inside = had
 			refocus(false)
