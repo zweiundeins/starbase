@@ -66,19 +66,18 @@ rocket('sb-modal', {
 		adoptStyles(host, styles)
 		$$.open = props.open
 		$$.footer = false
-		// The server's last word on open (the attribute as written), or null
-		// while it has none. Only a *different* word wins, so re-sending the same
-		// markup never reopens a dialog the user dismissed. A removed attribute
-		// is ignored (morphs also strip reflected ones): to close, the server
-		// sends open="false".
+		// The server's last word on open, or null while it has none. Only a
+		// *different* word wins, so re-sending the same markup never reopens a
+		// dialog the user dismissed. A removed attribute is ignored (morphs also
+		// strip reflected ones): to close, the server sends open="false".
 		// Why not observeProps: it only fires when the decoded value changes, so
 		// open="false" after show() (the prop is still false) would go unnoticed.
-		// The callback is a microtask, outside any effect: nothing subscribes.
-		let served = host.getAttribute('open')
+		// No peek(): the callback is a microtask, outside any effect.
+		let served = host.hasAttribute('open') ? props.open : null
 		const watch = new MutationObserver(() => {
-			const word = host.getAttribute('open')
-			if (word != null && word != served) $$.open = props.open
-			served = word
+			const was = served
+			served = host.hasAttribute('open') ? props.open : null
+			if (served != null && served !== was) $$.open = served
 		})
 		watch.observe(host, { attributeFilter: ['open'] })
 		cleanup(() => watch.disconnect())

@@ -78,7 +78,7 @@ The command clears the flag, and the next render sends `open="false"`. Without i
 | The server sends | What happens |
 | --- | --- |
 | `open` on the first render | Open, as a modal, on the first paint |
-| a **changed** `open` attribute | It wins: `open` opens the dialog, `open="false"` closes it, also one opened with `show()`. No `sb-open` or `sb-close`: the server already knows |
+| a **changed** `open` value | It wins: `open` opens the dialog, `open="false"` closes it, also one opened with `show()`. No `sb-open` or `sb-close`: the server already knows |
 | the **same** markup again | Nothing. A morph never reopens a dialog the user dismissed |
 | **no** `open` attribute any more | Nothing. Morphs also strip attributes that were only reflected, so a removal is not an instruction: send `open="false"` |
 
