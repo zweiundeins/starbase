@@ -679,6 +679,9 @@ rocket('sb-dropdown', {
 			watch.disconnect()
 			clearTimeout(typer)
 			timers()
+			// A refocus() still pending must not focus a row of the menu that the
+			// next setup renders (a re-attach starts with the focus outside).
+			inside = false
 			for (const k of LEVELS) {
 				try {
 					menuEl(k)?.hidePopover()
