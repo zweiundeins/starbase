@@ -144,11 +144,18 @@ rocket('sb-range', {
 		const cur = () => peek(() => ({ start: $$.start, end: $$.end }))
 		const set = (v) => peek(() => ({ start: $$.start, end: $$.end } = norm(v)))
 		set(props.value)
+		// The server's value attribute wins when it changes; a removed attribute
+		// changes nothing (morphs also strip reflected ones). New bounds or step
+		// re-clamp a local edit, and re-apply the server's range otherwise: a
+		// morph sets attributes one by one, so the value can come before its
+		// bounds. (Only for these props, not merged with sync's observer: inside
+		// a Datastar batch, e.g. el.value = …; el.unit = … in one handler, mine
+		// is still stale, and the server's range would replace the edit.)
+		let mine
+		observeProps((p, changes) => set(host.hasAttribute('value') && ('value' in changes || !mine) ? p.value : cur()), 'value', 'min', 'max', 'step')
 		overrideProp('value', cur, set)
 		// Commands: the attribute is the server's range, $$ the local one. Both
-		// ends are one value: pending (mine) while either differs, revert()
-		// restores both.
-		let mine
+		// ends are one value: pending while either differs, revert() restores both.
 		const states = internalsOf(host).states
 		// Also keeps the shown texts current: props (unit, step) aren't signals.
 		const sync = () =>
@@ -164,13 +171,7 @@ rocket('sb-range', {
 		// (No start: the element is being removed and its signals are gone;
 		// writing the texts would bring them back.)
 		effect(() => $$.start != null && ($$.end, sync()))
-		// Every prop change, then sync. The server's value attribute wins when
-		// it changes; a removed attribute changes nothing (morphs also strip
-		// reflected ones). New bounds or step re-clamp a local edit, and
-		// re-apply the server's range otherwise: a morph sets attributes one by
-		// one, so the value can come before its bounds. (Any other prop leaves
-		// the range as it is: it is already in bounds and on the grid.)
-		observeProps((p, changes) => (set(host.hasAttribute('value') && ('value' in changes || !mine) ? p.value : cur()), sync()))
+		observeProps(sync)
 		defineHostProp('revert', { value: () => set(props.value) })
 		// Both inputs report here. A pointer that grabs the thumbs where they
 		// meet ($$tie) picks the part with its first move: down moves the start,
