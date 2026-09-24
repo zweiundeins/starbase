@@ -74,19 +74,20 @@ const styles = /* css */ `
 	--_border-hover: var(--sb-control-border-hover, #3A4868);
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_muted: var(--sb-text-muted, #7785A8);
-	--_panel: var(--sb-surface-raised, #141D32);
+	--_panel: var(--sb-surface-raised, #10182B);
 	--_hover: var(--sb-surface-hover, #1A2540);
 	--_brand: var(--sb-brand, #8C6BFF);
 	--_brand-light: var(--sb-brand-light, #B09AFF);
-	--_brand-subtle: var(--sb-brand-subtle, rgb(140 107 255 / 0.14));
 	--_danger: var(--sb-danger, #F2777A);
 	--_radius: var(--sb-control-radius, 6px);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
+	--_dir: 1;
 	display: inline-block;
 	vertical-align: middle;
 }
-:host([disabled]) { opacity: 0.5; }
+:host([hidden]) { display: none; }
+:host(:dir(rtl)) { --_dir: -1; }
 
 /* Trigger: a notched plate with a pixel caret. */
 .trigger {
@@ -112,38 +113,42 @@ const styles = /* css */ `
 	transition: box-shadow 120ms, background 120ms;
 }
 .trigger:hover { box-shadow: inset 0 0 0 1px var(--_border-hover); background: var(--_hover); }
-.trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--_brand-light); }
+.trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--_brand-light); outline: 2px solid transparent; outline-offset: -2px; }
 .trigger[aria-expanded="true"] { box-shadow: inset 0 0 0 1px var(--_brand-light); background: var(--_hover); }
-.trigger[disabled] { cursor: default; }
+.trigger:disabled { opacity: 0.5; cursor: default; }
 .caret {
 	inline-size: 8px;
 	block-size: 6px;
 	flex: none;
 	background: currentColor;
 	opacity: 0.7;
-	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 4px 4px, 4px 6px, 2px 6px, 2px 4px, 0 4px, 0 2px);
+	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 5px 4px, 5px 6px, 3px 6px, 3px 4px, 2px 4px, 2px 2px, 0 2px);
 	transition: rotate 120ms steps(2, end);
 }
 .trigger[aria-expanded="true"] .caret { rotate: 180deg; }
 
-/* Every level is a top-layer popover, so nothing can clip a menu. */
+/* Every level is a top-layer popover, so nothing can clip a menu. It casts
+   the shadow: the notched panel inside would clip its own. */
 [popover] {
 	position: fixed;
 	inset: auto;
 	margin: 0;
-	box-sizing: border-box;
 	min-inline-size: 10rem;
 	max-inline-size: min(22rem, 100vw - 1rem);
+	padding: 0;
+	border: 0;
+	background: none;
+	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
+}
+.menu {
+	box-sizing: border-box;
 	max-block-size: min(20rem, 60dvh);
 	overflow: auto;
 	padding: 4px;
-	border: 0;
 	background: var(--_panel);
 	box-shadow: inset 0 0 0 1px var(--_border);
 	clip-path: ${notch('var(--_n)')};
 	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
-	/* A filter shadow follows the notched silhouette; box-shadow would be clipped. */
-	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
 	color: var(--_text);
 	font-size: 0.875rem;
 }
@@ -180,26 +185,22 @@ ${LEVELS.filter((k) => k > 0)
 	outline: none;
 }
 [role^="menuitem"]:hover { background: var(--_hover); }
-[role^="menuitem"]:focus, .open-parent { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); }
+[role^="menuitem"]:focus, .open-parent { background: var(--_hover); box-shadow: inset calc(2px * var(--_dir)) 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
 [role^="menuitem"]:focus-visible { outline: 2px solid var(--_brand-light); outline-offset: -2px; }
 [role^="menuitem"][aria-disabled="true"] { opacity: 0.45; cursor: default; }
 [role^="menuitem"][aria-disabled="true"]:hover { background: none; }
 .danger { color: var(--_danger); }
-.danger:focus { box-shadow: inset 2px 0 0 var(--_danger); }
+.danger:focus { box-shadow: inset calc(2px * var(--_dir)) 0 0 var(--_danger); }
 /* The mark column is reserved for every row of a radio group, so the menu
    does not jump when the value moves. */
 .check { flex: none; inline-size: 0.85rem; block-size: 0.85rem; }
-.check.on {
+.check.on, .check.path {
 	background: currentColor;
 	clip-path: polygon(10% 46%, 4% 60%, 40% 94%, 96% 26%, 84% 14%, 38% 70%);
 }
 /* A parent the choice sits under: a faint mark, and no ARIA — it is not
    selectable, it only says the choice is in there. */
-.check.path {
-	background: currentColor;
-	opacity: 0.35;
-	clip-path: polygon(10% 46%, 4% 60%, 40% 94%, 96% 26%, 84% 14%, 38% 70%);
-}
+.check.path { opacity: 0.35; }
 /* A choice the server has not confirmed yet: the pixel board fades its
    pending cells the same way. */
 .pending { opacity: 0.62; }
@@ -217,8 +218,8 @@ ${LEVELS.filter((k) => k > 0)
 	background: currentColor;
 	opacity: 0.6;
 	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
+	scale: var(--_dir) 1;
 }
-:host(:dir(rtl)) .more { scale: -1 1; }
 
 [role="separator"] { block-size: 1px; margin: 4px 2px; padding: 0; background: var(--_border); }
 .empty { padding: 0.4rem 0.6rem; color: var(--_muted); }
@@ -227,6 +228,13 @@ slot[name="item"] { display: none; }
 @media (prefers-reduced-motion: reduce) {
 	.anim:popover-open { animation: none; }
 	.caret, .trigger { transition: none; }
+}
+/* Forced colours drop shadows and backgrounds: glyphs and edges come back in
+   system colours, focus in the transparent outlines above. */
+@media (forced-colors: active) {
+	.caret, .check.on, .check.path, .more, [role="separator"] { forced-color-adjust: none; background: CanvasText; }
+	.trigger { outline: 1px solid ButtonBorder; outline-offset: -1px; }
+	.menu { outline: 1px solid CanvasText; outline-offset: -1px; }
 }
 `
 
@@ -240,7 +248,7 @@ rocket('sb-dropdown', {
 		confirm: bool.docs({ description: 'Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server\'s value attribute (see revert()).' }),
 		open: bool.docs({ description: 'Open on first render. A changed attribute from the server opens or closes the menu (open="false" closes); re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client.' }),
 		disabled: bool.docs({ description: 'Disable the trigger (and close the menu).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-select (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-select and sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		slots: [
@@ -263,8 +271,9 @@ rocket('sb-dropdown', {
 		// Open/closed, which submenus are open, the focused row and the
 		// type-ahead buffer are local: none of it is ever written to an
 		// attribute, which a morph would reset anyway.
-		$$.open = props.open
-		$$.depth = props.open ? 1 : 0 // how many levels are on screen
+		let isOpen = props.open // plain too: cleanup runs after the signals are cleared
+		$$.open = isOpen
+		$$.depth = isOpen ? 1 : 0 // how many levels are on screen
 		$$.level = 0 // level with the keyboard focus
 		$$.active = -1 // row index inside that level, -1 for none
 		$$.inside = false // keyboard focus is in one of the menus
@@ -297,8 +306,8 @@ rocket('sb-dropdown', {
 		// The one radio group, as the path of the item whose children it is
 		// ([] for the root menu). null when the menu is all actions.
 		let group = null
-		// The last value the server stated, for the server-wins rule and for
-		// the pending mark (see the open attribute below).
+		// The server's value, for the pending mark and revert() (see the value
+		// attribute below).
 		let servedV = props.value
 		// The group starts at its root level and runs through every submenu below
 		// it, so a nested leaf is part of the same group.
@@ -540,6 +549,7 @@ rocket('sb-dropdown', {
 		// No attribute form for these: a click anywhere in the document, and the
 		// scrolling of any ancestor while we position by hand.
 		const onDown = (evt) => {
+			tap = evt.pointerType === 'touch'
 			if (!evt.composedPath().includes(host)) close('outside', false)
 		}
 		const onMove = () => {
@@ -564,6 +574,7 @@ rocket('sb-dropdown', {
 			}
 		}
 
+		let tap = false // the last press was a touch
 		let type = '' // type-ahead buffer, per level
 		let typer = 0
 		let hoverIn = 0 // pointer: open a submenu after a moment
@@ -583,7 +594,7 @@ rocket('sb-dropdown', {
 			// not (the class has to be there before the popover shows, or adding
 			// it later would start the animation a frame too late).
 			if (next) $$.anim = true
-			$$.open = !!next
+			$$.open = isOpen = !!next
 			$$.level = 0
 			$$.inside = !!(next && focus)
 			$$.active = next ? (focus ? edge(0, focus === 'last' ? -1 : 1) : -1) : -1
@@ -616,10 +627,11 @@ rocket('sb-dropdown', {
 			publish()
 			if (focus || had) focusRow(level, parent)
 		}
-		const choose = (k, i) => {
-			// A parent opens its submenu (and closes it again on a second tap, the
-			// only way back on a touch screen); its own value never counts.
-			if (opens(k, i)) return path[k] === i ? closeTo(k, true) : openSub(k, i, true)
+		const choose = (k, i, touch) => {
+			// A parent opens its submenu and moves the focus into it, also when
+			// hovering opened it already. A second tap closes it again, the only
+			// way back on a touch screen. Its own value never counts.
+			if (opens(k, i)) return touch && path[k] === i ? closeTo(k, true) : openSub(k, i, true)
 			if (!pickable(k, i)) return
 			const value = node(k, i).value
 			// An item of the radio group changes a value; every other item is an
@@ -636,43 +648,38 @@ rocket('sb-dropdown', {
 			close('item')
 		}
 
-		// The open attribute: the first one sets the initial state, a changed one
-		// from the server wins over the local state (open="false" closes). A
-		// *removed* attribute is ignored: morphs also strip attributes that were
-		// only reflected. served is the last value the server stated, so a
-		// re-written identical attribute leaves the local state alone: a morph
-		// can never re-open a menu the user just closed.
-		// It is watched on the attribute, not through observeProps, which stays
-		// silent when the decoded value did not change (see CLAUDE.md).
-		// The value the server owns. observeProps would stay silent when the
-		// decoded value did not change (value="" on an element that never had the
-		// attribute), so this watches the attribute, like open.
+		// The open and value attributes: the first one sets the initial state, a
+		// changed one from the server wins over the local state (open="false"
+		// closes, value="" clears). A *removed* attribute is ignored: morphs also
+		// strip attributes that were only reflected. served and said are the
+		// server's last word (null without one), so a re-written identical
+		// attribute leaves the local state alone: a morph can never re-open a
+		// menu the user just closed. They are watched on the attribute, not
+		// through observeProps, which stays silent when the decoded value did
+		// not change (open="false" on an element that never had the attribute).
 		const states = internalsOf(host).states
 		const sync = () => peek(() => (props.confirm && $$.value !== servedV ? states.add('pending') : states.delete('pending')))
+		let said = host.hasAttribute('value') ? props.value : null
 		const serverValue = () => {
-			const v = host.getAttribute('value')
-			if (v === null || v === servedV) return // a removed attribute is ignored
-			servedV = v
-			$$.value = v
+			if (!host.hasAttribute('value')) return void (said = null)
+			if (props.value === said) return
+			$$.value = servedV = said = props.value
 			publish()
 			sync()
 		}
-		let served = props.open
+		let served = host.hasAttribute('open') ? props.open : null
 		const serverOpen = () => {
-			const v = host.getAttribute('open')
-			if (v === null) return // a removed attribute is ignored
-			const want = v !== 'false'
-			if (want === served) return
-			served = want
-			setOpen(want, { reason: 'server', defer: true })
+			if (!host.hasAttribute('open')) return void (served = null)
+			if (props.open === served) return
+			setOpen((served = props.open), { reason: 'server', defer: true })
 		}
 		// Slotted items change without a slotchange when a morph only rewrites a
-		// label or a flag: no attribute form for watching that either.
-		const watch = new MutationObserver((records) =>
+		// label or a flag: no attribute form for watching that either. Both
+		// checks above are idempotent, so every batch runs them.
+		const watch = new MutationObserver(() =>
 			peek(() => {
-				const own = (name) => records.some((m) => m.type === 'attributes' && m.target === host && m.attributeName === name)
-				if (own('open')) serverOpen()
-				if (own('value')) serverValue()
+				serverOpen()
+				serverValue()
 				rebuild()
 			}),
 		)
@@ -704,6 +711,10 @@ rocket('sb-dropdown', {
 		defineHostProp('hide', { value: () => peek(() => close('api', false)) })
 
 		cleanup(() => {
+			// Moved (a morph re-attaches it) or removed while open: the menu
+			// closes, and says so, unless the server's open attribute brings it
+			// straight back.
+			if (isOpen && !served) setTimeout(() => emit('sb-close', { reason: 'api' }))
 			bind(false)
 			watch.disconnect()
 			clearTimeout(typer)
@@ -751,7 +762,7 @@ rocket('sb-dropdown', {
 		action('click', ({ evt }, k, i) =>
 			peek(() => {
 				evt.stopPropagation()
-				choose(k, i)
+				choose(k, i, tap)
 			}),
 		)
 		action('focusin', ({ evt }, k) =>
@@ -797,6 +808,15 @@ rocket('sb-dropdown', {
 		)
 		// The pointer reached a menu: whatever close was pending is off.
 		action('over', () => peek(timers))
+		// One current row: while the menu has the focus, it follows the pointer
+		// as it moves. Not on pointerenter, and without scrolling: a row that
+		// scrolls under a resting pointer must not take the keyboard's focus.
+		action('move', ({ evt }) =>
+			peek(() => {
+				const r = evt.target.closest('[data-idx]:not([aria-disabled])')
+				if (r && $$.inside && evt.pointerType !== 'touch') r.focus({ preventScroll: true })
+			}),
+		)
 		action('triggerKey', ({ evt }) =>
 			peek(() => {
 				if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') setOpen(true, { focus: evt.key === 'ArrowUp' ? 'last' : 'first' })
@@ -849,10 +869,13 @@ rocket('sb-dropdown', {
 						if (evt.key.length !== 1 || evt.altKey || evt.ctrlKey || evt.metaKey) return
 						clearTimeout(typer)
 						typer = setTimeout(() => (type = ''), 700)
-						type += fold(evt.key)
+						// A letter searches from the row after the focused one, so
+						// repeating it cycles through the rows it starts; a longer word
+						// searches from the focused row, which may still match. Both wrap.
+						const c = fold(evt.key)
+						if (type !== c) type += c
 						const n = nodes(k).length
-						// Search from the row after the focused one, and wrap.
-						for (let s = 1; s <= n; s++) {
+						for (let s = type[1] ? 0 : 1; s <= n; s++) {
 							const j = (i + s + n) % n
 							if (focusable(k, j) && fold(nodes(k)[j].label).startsWith(type)) {
 								focusRow(k, j)
@@ -875,42 +898,43 @@ rocket('sb-dropdown', {
 			data-on:keydown="@triggerKey()"><slot name="trigger"><span data-text="$$trigger"></span></slot><span class="caret" aria-hidden="true"></span></button>
 		${LEVELS.map(
 			(k) => html`
-		<div id="menu${k}" class="menu lvl${k}" part="menu" role="menu" popover="manual"
-			data-attr:data-place="$$side${k}"
-			data-attr:aria-label="$$lbl${k} || null"
-			data-class:anim="$$anim"
-			data-on:keydown="@key(${k})"
-			data-on:focusin="@focusin(${k})"
-			data-on:focusout="@focusout()"
-			data-on:pointerenter="@over()">
-			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
-			<template data-for="r, i in $$rows${k}">
-				<div
-					data-show="!!r"
-					data-attr:part="'item' + (r?.checked ? ' checked' : '') + (r?.onpath ? ' onpath' : '') + (r?.pending ? ' pending' : '')"
-					data-attr:role="!r ? null : r.divider ? 'separator' : r.check ? 'menuitemradio' : 'menuitem'"
-					data-attr:data-idx="r?.divider ? null : i"
-					data-attr:tabindex="r?.divider ? null : -1"
-					data-attr:aria-disabled="r?.disabled ? 'true' : null"
-					data-attr:aria-checked="r?.check ? String(!!r?.checked) : null"
-					data-attr:aria-haspopup="r?.parent ? 'menu' : null"
-					data-attr:aria-expanded="r?.parent ? String($$parent${k} === i) : null"
-					data-class:danger="r?.danger"
-					data-class:pending="r?.pending"
-					data-class:open-parent="r?.parent && $$parent${k} === i"
-					data-on:click="@click(${k}, i)"
-					data-on:pointerenter="@enter(${k}, i)"
-					data-on:pointerleave="@leave()">
-					<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider" data-class:on="r?.checked" data-class:path="r?.onpath"></span>
-					<span class="icon" aria-hidden="true" data-show="$$icons && !r?.divider" data-text="r?.icon"></span>
-					<span class="body" data-show="!r?.divider">
-						<span class="label" data-text="r?.label"></span>
-						<span class="desc" data-show="r?.description" data-text="r?.description"></span>
-					</span>
-					<span class="more" aria-hidden="true" data-show="r?.parent"></span>
-				</div>
-			</template>
-			<div class="empty" aria-disabled="true" data-attr:role="${k} < $$depth && !$$rows${k}.length ? 'menuitem' : null" data-show="${k} < $$depth && !$$rows${k}.length">Nothing here</div>
+		<div class="lvl${k}" popover="manual" data-attr:data-place="$$side${k}" data-class:anim="$$anim">
+			<div id="menu${k}" class="menu" part="menu" role="menu"
+				data-attr:aria-label="$$lbl${k} || null"
+				data-on:keydown="@key(${k})"
+				data-on:focusin="@focusin(${k})"
+				data-on:focusout="@focusout()"
+				data-on:pointerenter="@over()"
+				data-on:pointermove="@move()">
+				<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
+				<template data-for="r, i in $$rows${k}">
+					<div
+						data-show="!!r"
+						data-attr:part="'item' + (r?.checked ? ' checked' : '') + (r?.onpath ? ' onpath' : '') + (r?.pending ? ' pending' : '')"
+						data-attr:role="!r ? null : r.divider ? 'separator' : r.check ? 'menuitemradio' : 'menuitem'"
+						data-attr:data-idx="r?.divider ? null : i"
+						data-attr:tabindex="r?.divider ? null : -1"
+						data-attr:aria-disabled="r?.disabled ? 'true' : null"
+						data-attr:aria-checked="r?.check ? String(!!r?.checked) : null"
+						data-attr:aria-haspopup="r?.parent ? 'menu' : null"
+						data-attr:aria-expanded="r?.parent ? String($$parent${k} === i) : null"
+						data-class:danger="r?.danger"
+						data-class:pending="r?.pending"
+						data-class:open-parent="r?.parent && $$parent${k} === i"
+						data-on:click="@click(${k}, i)"
+						data-on:pointerenter="@enter(${k}, i)"
+						data-on:pointerleave="@leave()">
+						<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider" data-class:on="r?.checked" data-class:path="r?.onpath"></span>
+						<span class="icon" aria-hidden="true" data-show="$$icons && !r?.divider" data-text="r?.icon"></span>
+						<span class="body" data-show="!r?.divider">
+							<span class="label" data-text="r?.label"></span>
+							<span class="desc" data-show="r?.description" data-text="r?.description"></span>
+						</span>
+						<span class="more" aria-hidden="true" data-show="r?.parent"></span>
+					</div>
+				</template>
+				<div class="empty" aria-disabled="true" data-attr:role="${k} < $$depth && !$$rows${k}.length ? 'menuitem' : null" data-show="${k} < $$depth && !$$rows${k}.length">Nothing here</div>
+			</div>
 		</div>`,
 		)}
 		<slot name="item" data-on:slotchange="@items()"></slot>

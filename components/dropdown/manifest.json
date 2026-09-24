@@ -100,7 +100,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in sb-select (e.g. the field of a command)."
+        "description": "Name reported in sb-select and sb-change (e.g. the field of a command)."
       }
     }
   ],

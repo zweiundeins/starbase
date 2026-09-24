@@ -214,7 +214,7 @@ The server still gets a say through the `open` attribute, with the usual rule:
 - The first `open` sets the initial state — `<sb-dropdown open items='…'>` is open on the first paint, without the opening animation.
 - A **changed** attribute wins over the local state: `open="false"` closes the menu, `open` re-opens it.
 - Re-sent identical markup changes nothing, because the morph never touches an attribute it already agrees with. That is what makes the attribute safe to render on every frame.
-- A **removed** attribute is ignored, like every other reflected attribute (morphs strip those). To close from the server, send `open="false"`.
+- A **removed** attribute is ignored, like every other reflected attribute (morphs strip those). To close from the server, send `open="false"`: it closes a menu the user opened even when the element was rendered without `open`.
 
 From the client, use the property and the methods instead — they never touch the attribute:
 
@@ -224,7 +224,7 @@ el.show()        // open, and move the focus to the first item
 el.hide()        // close, and leave the focus where it is
 ```
 
-`sb-open` fires when it opens, `sb-close` with `{ reason }` (`item`, `escape`, `outside`, `scroll`, `tab`, `trigger`, `server` or `api`) when it closes.
+`sb-open` fires when it opens, `sb-close` with `{ reason }` (`item`, `escape`, `outside`, `scroll`, `tab`, `trigger`, `server` or `api`) when it closes. `api` also covers a menu that closes because it was moved or removed while open (a morph that re-attaches it), unless the server's `open` attribute opens it again right away.
 
 ```html preview
 <div data-signals="{_openState: 'closed'}" style="display: grid; gap: 12px; justify-items: start">
@@ -237,11 +237,13 @@ el.hide()        // close, and leave the focus where it is
 
 ## Styling
 
-Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu. Parts: `trigger`, `menu` (every level) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group.
+Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`. Parts: `trigger`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group.
+
+Set the tokens on the element (or any ancestor), not on a part: the component reads them once, on its host.
 
 ```css
+sb-dropdown { --sb-surface-raised: #1B1030; }
 sb-dropdown::part(trigger) { font-weight: 700; }
-sb-dropdown::part(menu) { --sb-surface-raised: #1B1030; }
 ```
 
 ## Accessibility
@@ -250,9 +252,10 @@ It follows the WAI-ARIA menu button pattern:
 
 - **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s, dividers are `separator`s and disabled items are `aria-disabled`.
 - **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in — the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves. A parent that only leads to the choice stays a `menuitem` with `aria-haspopup`: its faint mark is decoration (`aria-hidden`), never a checked state. The trigger names what the menu is *and* what is chosen ("Sort by: Newest first"), so the visible text and the accessible name stay the same string.
-- **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
-- **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.
-- **Pointer:** hovering a parent opens its submenu after a moment and leaving closes it a little later, so a diagonal path from the item into the submenu keeps it. Tapping a parent opens its submenu and tapping it again closes it, which is the only way back on a touch screen.
+- **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item, and the same letter again cycles through the items it starts (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
+- **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item, also when hovering opened it already; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.
+- **Pointer:** hovering a parent opens its submenu after a moment and leaving closes it a little later, so a diagonal path from the item into the submenu keeps it; a click on the parent keeps it open and moves the focus into it. Tapping a parent opens its submenu and tapping it again closes it, which is the only way back on a touch screen. While the menu has the focus, the focus follows the moving pointer, so one row is current and Enter chooses the row under the pointer.
 - **Focus:** real DOM focus moves onto the row inside the shadow root, so screen readers announce it and nothing in your markup is touched. When the server replaces the items while the menu is open, a row that is gone hands the focus to its neighbour, and the focus is only picked back up when it fell on the floor — see [Lists that hold the keyboard](/contribute#lists-that-hold-the-keyboard). A submenu whose parent is no longer a parent closes itself.
 - **Pointer:** an outside click closes the menu, disabled items ignore clicks.
 - **Motion:** the opening animation is skipped under `prefers-reduced-motion`, and for a menu that is already open on the first render.
+- **Forced colours:** the caret, the checks, the submenu arrows, the dividers and the edges of trigger and menu come back in system colours, and the focused row and trigger get an outline.
