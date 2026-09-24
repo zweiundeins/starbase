@@ -17,6 +17,11 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// What an element keeps when it is moved: Rocket drops $$ on disconnect and
+// setup runs again on re-attach. { on: the live state, served: the server's
+// last word }.
+const kept = new WeakMap()
+
 // Pixel corners: a polygon that notches every corner by one "pixel"
 // (times --sb-notch; 0 leaves the rectangle, rounded by border-radius).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -86,23 +91,39 @@ rocket('sb-toggle', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value, checked } (value is the checked state): ready for a command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
+		const keep = kept.get(host) ?? kept.set(host, {}).get(host)
 		// Interaction state lives in a local signal, never reflected.
-		$$.on = props.checked
-		// A checked attribute sent by the server wins when it changes (a morph
-		// with a new value); re-sending the same markup changes nothing, so edits
-		// survive re-renders. A *removed* attribute changes nothing either: morphs
-		// also remove attributes that were only reflected (e.g. from a data-bind
-		// write before the upgrade). To clear it, the server sends checked="false".
-		observeProps(() => peek(() => host.hasAttribute('checked') && ($$.on = props.checked)), 'checked')
+		$$.on = keep.on ?? props.checked
+		// A checked attribute sent by the server wins when it says something new
+		// (a morph with a new value); re-sending the same markup changes nothing,
+		// so edits survive re-renders. A *removed* attribute is ignored (morphs
+		// also remove attributes that were only reflected, e.g. from a data-bind
+		// write before the upgrade), but it clears the server's last word, so
+		// sending the attribute again counts. To switch it off, the server sends
+		// checked="false". Not observeProps: it only fires when the decoded value
+		// changes, and checked="false" onto an element without the attribute
+		// decodes to the same false. The same observer hands the host's
+		// aria-label to the switch (a host label doesn't reach inside).
+		const attrs = () =>
+			peek(() => {
+				$$.aria = host.getAttribute('aria-label') || 'Toggle'
+				if (!host.hasAttribute('checked')) return void (keep.served = null)
+				if (props.checked !== keep.served) $$.on = keep.served = props.checked
+			})
+		attrs() // also catches what the server said while the element was detached
+		const watch = new MutationObserver(attrs)
+		watch.observe(host, { attributeFilter: ['checked', 'aria-label'] })
+		cleanup(() => watch.disconnect())
 		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
 		// Commands: the attribute is the server's value, $$.on the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = internalsOf(host).states
 		const sync = () => peek(() => (props.confirm && $$.on !== props.checked ? states.add('pending') : states.delete('pending')))
-		effect(() => ($$.on, sync()))
+		// Rocket's disconnect wipes $$ (re-running this) before a move re-attaches.
+		effect(() => ((keep.on = $$.on ?? keep.on), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.on = props.checked), sync())) })
 		action('toggle', () => {
@@ -119,7 +140,7 @@ rocket('sb-toggle', {
 				role="switch"
 				part="switch"
 				class="${size}"
-				aria-label="${label ? null : 'Toggle'}"
+				data-attr:aria-label="${label ? null : '$$aria'}"
 				disabled="${disabled}"
 				data-class:on="$$on"
 				data-attr:aria-checked="String($$on)"

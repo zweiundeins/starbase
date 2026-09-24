@@ -7,7 +7,7 @@ author: zweiundeins
 tags: [switch, checkbox, boolean]
 since: 2026-09-21
 preview: |
-  <sb-toggle checked size="lg"></sb-toggle>
+  <sb-toggle checked size="lg" aria-label="Warp drive"></sb-toggle>
 usage: |
   <sb-toggle label="Notifications"></sb-toggle>
 playground:
@@ -29,9 +29,9 @@ An on/off switch with chunky pixel corners and stepped motion. It exposes a `che
 ### Sizes
 
 ```html preview
-<sb-toggle size="sm" checked></sb-toggle>
-<sb-toggle size="md" checked></sb-toggle>
-<sb-toggle size="lg" checked></sb-toggle>
+<sb-toggle size="sm" checked aria-label="Small"></sb-toggle>
+<sb-toggle size="md" checked aria-label="Medium"></sb-toggle>
+<sb-toggle size="lg" checked aria-label="Large"></sb-toggle>
 ```
 
 ### Two-way binding
@@ -48,6 +48,12 @@ Bind the `checked` property with `data-bind` and the `__prop` and `__event` modi
 ## With commands
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
+The server's `checked` wins when it sends a new one, even onto a toggle rendered without it; the same markup again leaves the user's switch alone. A removed attribute changes nothing, so send `checked="false"` to switch it off. Write it as `checked`, `checked="true"` or `checked="false"`: `checked="checked"` (like `disabled="disabled"`) reads as false.
+
+## Forms
+
+`sb-toggle` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -68,4 +74,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The switch is a `<button role="switch">` with `aria-checked`, so it is focusable and toggles with Space and Enter. Give it a `label`. Without one it is announced as "Toggle". In forced colours (Windows High Contrast) the track is outlined and the on state uses the system highlight colours.
+The switch is a `<button role="switch">` with `aria-checked`, so it is focusable and toggles with Space and Enter. Give it a `label`, or an `aria-label` on `<sb-toggle>` when the name shouldn't show: the switch takes it over (`aria-labelledby` doesn't reach inside). Without either it is announced as "Toggle". In forced colours (Windows High Contrast) the track is outlined and the on state uses the system highlight colours.
