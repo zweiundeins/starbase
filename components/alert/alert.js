@@ -18,6 +18,7 @@ const styles = /* css */ `
 /* No gap left in a stack; !important beats a page's display rule. */
 :host(:state(closed)) { display: none !important; }
 .alert {
+	/* info's tone; the other variants set theirs below. */
 	--_tone: var(--sb-info, #65BFFF);
 	display: grid;
 	grid-template-columns: auto 1fr auto;
@@ -33,7 +34,6 @@ const styles = /* css */ `
 	animation: in 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 .success { --_tone: var(--sb-ok, #6EF59A); }
-.info { --_tone: var(--sb-info, #65BFFF); }
 .warning { --_tone: var(--sb-warn, #F5C451); }
 .danger { --_tone: var(--sb-danger, #F2777A); }
 /* A pixel "status light": corners notched by --sb-notch, a dot at 0. */
@@ -74,7 +74,8 @@ const styles = /* css */ `
 
 rocket('sb-alert', {
 	props: ({ bool, oneOf, string }) => ({
-		variant: oneOf('info', 'success', 'warning', 'danger').default('info').docs({ description: 'Tone of the message.' }),
+		// oneOf defaults to its first value, info.
+		variant: oneOf('info', 'success', 'warning', 'danger').docs({ description: 'Tone of the message.' }),
 		heading: string.trim.docs({ description: 'Bold first line.' }),
 		closable: bool.docs({ description: 'Show a dismiss button.' }),
 		open: bool.default(true).docs({
@@ -114,6 +115,7 @@ rocket('sb-alert', {
 			emit('sb-close')
 		})
 	},
+	// The close icon's paths are bare lines, so there is nothing to fill.
 	render: ({ html, props: { variant, heading, closable } }) => html`
 		<div class="alert ${variant}" part="alert" role="${variant === 'danger' || variant === 'warning' ? 'alert' : 'status'}">
 			<slot name="icon"><span class="light" aria-hidden="true"></span></slot>
@@ -121,7 +123,7 @@ rocket('sb-alert', {
 				${heading ? html`<strong class="heading" part="heading">${heading}</strong>` : null}
 				<div class="msg" part="message"><slot></slot></div>
 			</div>
-			${closable ? html`<button class="close" type="button" aria-label="Dismiss" data-on:click="@close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
+			${closable ? html`<button class="close" type="button" aria-label="Dismiss" data-on:click="@close()"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
 		</div>
 	`,
 })
