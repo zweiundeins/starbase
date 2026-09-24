@@ -136,11 +136,18 @@ rocket('sb-toggle', {
 		// a value: name=on when on, nothing when off. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
 		const form = host.closest('form')
+		const root = host.getRootNode()
 		const onData = (evt) => peek(() => props.name && !props.disabled && $$.on && evt.formData.append(props.name, 'on'))
-		// A reset is revert(): the server's value, no change events (like a native reset).
+		// A reset is revert() (the server's value, no change events), unless the
+		// page cancelled it (e.g. a confirm() in data-on:reset), like a native
+		// reset. Heard once it has bubbled up to the document (or shadow root),
+		// so every listener on the form has run, whichever was bound first (a
+		// form patched in binds its data-on:reset after this); a listener that
+		// stops the reset's propagation hides it.
+		const onReset = (evt) => evt.target == form && !evt.defaultPrevented && revert()
 		form?.addEventListener('formdata', onData)
-		form?.addEventListener('reset', revert)
-		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
+		root.addEventListener('reset', onReset)
+		cleanup(() => (form?.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 	},
 	render: ({ html, props: { label, size, disabled } }) => html`
 		<label>
