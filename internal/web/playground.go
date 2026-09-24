@@ -37,6 +37,10 @@ import (
 // against: the folder the component's other files are served from.
 //
 //	runner → parent  {type: "console", level, args: [string]} | {type: "error", message, line} | {type: "done"}
+//
+// The runner stops endless loops in component.js (see guardLoops in the
+// script): a hung frame can't be stopped from outside, and in Chrome it also
+// hangs every other preview frame of the site.
 func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 	scheme := "http"
 	if s.secure {
@@ -84,8 +88,108 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 		const orig = console[level]
 		console[level] = (...args) => { send({ type: 'console', level, args: args.map(fmt) }); orig.apply(console, args) }
 	}
-	addEventListener('error', (e) => send({ type: 'error', message: e.message, line: e.lineno }))
+	addEventListener('error', (e) => send({ type: 'error', message: e.message, line: e.error && e.error.line || e.lineno }))
 	addEventListener('unhandledrejection', (e) => send({ type: 'error', message: String(e.reason && e.reason.message || e.reason) }))
+
+	// Loop guard. An endless loop would hang this frame for good (the host
+	// can only replace it). Every while (…) and for (…; …; …) condition in
+	// component.js first calls __sbLoop(line), which throws once one task has
+	// spent a second in loops; it stays tripped until the task ends, so a
+	// catch inside an outer loop can't keep it going. It reads the clock on
+	// every 1024th call only: a tight loop must stay tight.
+	let loopStart = 0, calls = 0
+	self.__sbLoop = (line) => {
+		if (++calls & 1023) return true
+		const now = performance.now()
+		if (!loopStart) loopStart = now, setTimeout(() => (loopStart = 0))
+		else if (now - loopStart > 1000) throw Object.assign(new RangeError('Endless loop? Stopped after 1 s'), { line })
+		return true
+	}
+	// The scanner skips strings, comments, regular expressions and template
+	// text, and only ever inserts text into a loop header. Where it guesses
+	// wrong, the code no longer parses and runs as written instead.
+	const BT = '\x60' // a backtick (this script lives in a Go raw string)
+	const guardLoops = (src) => {
+		const toks = [], tpl = [], n = src.length
+		let i = 0, depth = 0
+		// Template text from i to the closing backtick, or to a ${ (then code).
+		const text = () => {
+			for (; i < n; i++) {
+				if (src[i] === '\\') i++
+				else if (src[i] === BT) return void i++
+				else if (src[i] === '$' && src[i + 1] === '{') return void (i += 2, tpl.push(depth++))
+			}
+		}
+		// A slash starts a regular expression unless it follows a value.
+		const regexOK = () => {
+			const t = toks[toks.length - 1]
+			return !t || (t.p ? !')]'.includes(t.v) : /^(return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/.test(t.v))
+		}
+		while (i < n) {
+			const c = src[i], d = src[i + 1]
+			if (/\s/.test(c)) i++
+			else if (c === '/' && d === '/') i = (src.indexOf('\n', i) + 1 || n + 1) - 1
+			else if (c === '/' && d === '*') i = (src.indexOf('*/', i + 2) + 1 || n - 1) + 1
+			else if (c === '"' || c === "'") {
+				let j = i + 1
+				while (j < n && src[j] !== c && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1
+				i = j + 1
+				toks.push({ v: '"' })
+			} else if (c === BT) {
+				i++
+				text()
+				toks.push({ v: '"' })
+			} else if (c === '/' && regexOK()) {
+				let j = i + 1, cls = false
+				for (; j < n && src[j] !== '\n'; j++) {
+					if (src[j] === '\\') j++
+					else if (src[j] === '[') cls = true
+					else if (src[j] === ']') cls = false
+					else if (src[j] === '/' && !cls) break
+				}
+				if (src[j] === '/') i = j + 1, toks.push({ v: '"' })
+				else toks.push({ v: c, p: 1, at: i++ }) // no closing slash on the line: a division
+			} else if (/[\p{L}\p{N}_$\\]/u.test(c)) {
+				const w = /^[\p{L}\p{N}_$\\\u200c\u200d]+/u.exec(src.slice(i, i + 256))[0]
+				toks.push({ v: w, at: i })
+				i += w.length
+			} else if (c === '}' && tpl[tpl.length - 1] === depth - 1) {
+				depth--, tpl.pop(), i++
+				text()
+				toks.push({ v: '"' })
+			} else {
+				if (c === '{') depth++
+				else if (c === '}') depth--
+				toks.push({ v: c, p: 1, at: i++ })
+			}
+		}
+		const ins = []
+		for (let k = 0; k < toks.length; k++) {
+			const w = toks[k].v, prev = toks[k - 1] && toks[k - 1].v
+			if ((w !== 'while' && w !== 'for') || prev === '.' || prev === '#' || !toks[k + 1] || toks[k + 1].v !== '(') continue
+			// The header: up to the matching parenthesis, and its top-level semicolons.
+			let open = 0, m = k + 1
+			const semis = []
+			for (; m < toks.length; m++) {
+				const t = toks[m]
+				if (!t.p) continue
+				if ('([{'.includes(t.v)) open++
+				else if (')]}'.includes(t.v) && !--open) break
+				else if (t.v === ';' && open === 1) semis.push(t.at)
+			}
+			if (m === toks.length || (w === 'for' && semis.length !== 2)) continue // for…of, for…in
+			let a = w === 'for' ? semis[0] + 1 : toks[k + 1].at + 1, b = w === 'for' ? semis[1] : toks[m].at
+			while (a < b && /\s/.test(src[a])) a++
+			while (b > a && /\s/.test(src[b - 1])) b--
+			const call = '__sbLoop(' + src.slice(0, toks[k].at).split('\n').length + ')'
+			if (a < b) ins.push([b, ')'], [a, call + ' && ('])
+			else if (w === 'for') ins.push([a, call]) // for (;;)
+		}
+		let out = src
+		for (const [at, str] of ins.sort((x, y) => y[0] - x[0])) out = out.slice(0, at) + str + out.slice(at)
+		return out
+	}
+
 	let ran = false
 	addEventListener('message', async (e) => {
 		const m = e.data
@@ -104,11 +208,22 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 			let js = files['component.js'] || ''
 			// A blob has no folder: resolve relative imports (vendored files) against base.
 			if (m.base) js = js.replace(/(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"\n]*)\2/g, (_, pre, q, spec) => pre + q + new URL(spec, m.base).href + q)
-			if (js.trim()) await import(URL.createObjectURL(new Blob([js], { type: 'text/javascript' })))
+			if (js.trim()) {
+				const load = (code) => import(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })))
+				const guarded = guardLoops(js)
+				self.__sbStarted = 0
+				try {
+					await load(guarded === js ? js : '__sbStarted = 1;' + guarded)
+				} catch (err) {
+					// A SyntaxError before the code started: the guard broke it, so run it as written.
+					if (guarded === js || self.__sbStarted || !(err instanceof SyntaxError)) throw err
+					await load(js)
+				}
+			}
 			for (const url of m.deps || []) await import(url)
 			await import('datastar')
 		} catch (err) {
-			send({ type: 'error', message: String(err && err.message || err) })
+			send({ type: 'error', message: String(err && err.message || err), line: err && err.line })
 		}
 		send({ type: 'done' })
 	})

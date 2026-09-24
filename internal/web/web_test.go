@@ -313,6 +313,9 @@ func TestPlaygroundRunner(t *testing.T) {
 	if !strings.Contains(body, `<script type="importmap">{"imports":{"datastar":"`+ts.URL+`/static/vendor/datastar-rocket-`) {
 		t.Error("runner lacks the absolute import map")
 	}
+	if !strings.Contains(body, "self.__sbLoop = ") || !strings.Contains(body, "guardLoops(js)") || strings.Contains(body, "%!") {
+		t.Error("runner lacks its loop guard (or the format string broke it)")
+	}
 	// Assets must be loadable from the sandbox's opaque origin.
 	for _, p := range []string{"/c/index.js", "/c/button/button.js", "/static/vendor/datastar-rocket.js"} {
 		res, _ := get(t, c, ts.URL+p)
