@@ -320,11 +320,12 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b, err := fs.ReadFile(a.catalog.FS, p)
-	if catalog.IsMinPath(file) { // the unversioned route follows the current version's minified file
-		mins, merr := a.catalog.MinFiles(c)
-		b, err = mins[file], merr
-		if b == nil && err == nil {
-			err = fs.ErrNotExist
+	// The unversioned route follows the current version's minified file. A
+	// vendored file that is already minified (echarts.esm.min.js) has none: it
+	// is its own, which the readable module imports from here.
+	if catalog.IsMinPath(file) {
+		if mins, merr := a.catalog.MinFiles(c); merr != nil || mins[file] != nil {
+			b, err = mins[file], merr
 		}
 	}
 	if err != nil {

@@ -116,7 +116,12 @@ func TestPages(t *testing.T) {
 		"/c/button/README.md":            404, // only a component's .js files are public
 		"/c/code-editor/vendor/prism.js": 200,
 		"/c/code-editor/manifest.json":   404,
-		"/art/hero.svg":                  200,
+		"/c/button/button.min.js":        200,
+		"/c/button/missing.min.js":       404,
+		// Already minified when vendored: its own .min, which the readable
+		// /c/echarts/echarts.js imports from this route.
+		"/c/echarts/vendor/echarts.esm.min.js": 200,
+		"/art/hero.svg":                        200,
 	} {
 		res, _ := get(t, c, ts.URL+path)
 		if res.StatusCode != want {
