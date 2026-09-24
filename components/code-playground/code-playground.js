@@ -20,23 +20,17 @@ const kept = new WeakMap()
 // which forced colours keep visible.
 const styles = /* css */ `
 :host {
-	--_bg: var(--sb-surface-card, #141D32);
 	--_inset: var(--sb-surface-inset, #0B1224);
 	--_border: var(--sb-border, #283552);
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_text-2: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
 	--_brand: var(--sb-brand, #8C6BFF);
-	--_brand-light: var(--sb-brand-light, #B09AFF);
-	--_danger: var(--sb-danger, #F2777A);
-	--_warn: var(--sb-warn, #F5C451);
-	--_radius: var(--sb-radius-lg, 10px);
-	--_h: var(--sb-code-playground-height, 34rem);
 	display: block;
 	container-type: inline-size;
 }
 :host([hidden]) { display: none; }
-.pg { display: grid; grid-template-rows: auto 1fr; block-size: var(--_h); border: 1px solid var(--_border); border-radius: var(--_radius); background: var(--_bg); overflow: hidden; }
+.pg { display: grid; grid-template-rows: auto 1fr; block-size: var(--sb-code-playground-height, 34rem); border: 1px solid var(--_border); border-radius: var(--sb-radius-lg, 10px); background: var(--sb-surface-card, #141D32); overflow: hidden; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-block-end: 1px solid var(--_border); font-size: 0.8125rem; }
 [role="tablist"] { display: flex; gap: 0.25rem; margin-inline-end: auto; overflow-x: auto; }
 [role="tab"], .run, select {
@@ -50,14 +44,14 @@ const styles = /* css */ `
 }
 [role="tab"]:hover { color: var(--_text); background: color-mix(in oklch, var(--_text) 6%, transparent); }
 [role="tab"][aria-selected="true"], select { color: var(--_text); border-color: var(--_border); background: var(--_inset); }
-:is([role="tab"], .run, select):focus-visible { outline: 2px solid var(--_brand-light); outline-offset: 2px; }
+:is([role="tab"], .run, select):focus-visible { outline: 2px solid var(--sb-brand-light, #B09AFF); outline-offset: 2px; }
 .run { border-color: var(--_brand); background: var(--_brand); color: var(--sb-text-on-brand, #F3F4FA); font-weight: 700; }
 .run::before { content: ""; display: inline-block; block-size: 0.7em; margin-inline-end: 0.45em; border-left: 0.6em solid; clip-path: polygon(0 0, 100% 50%, 0 100%); }
 .run:hover { background: var(--sb-brand-hover, #A58BFF); }
 .auto { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--_text-2); cursor: pointer; }
 .auto input { accent-color: var(--_brand); }
 .panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-block-size: 0; }
-.editors { min-block-size: 0; border-inline-end: 1px solid var(--_border); overflow: hidden; }
+.editors { border-inline-end: 1px solid var(--_border); overflow: hidden; }
 @container (width < 48rem) {
 	.panes { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
 	.editors { border-inline-end: 0; border-block-end: 1px solid var(--_border); }
@@ -66,11 +60,11 @@ const styles = /* css */ `
 .editors sb-code-editor::part(editor) { border: 0; border-radius: 0; }
 .preview { display: grid; grid-template-rows: minmax(0, 1fr) minmax(4.5rem, 30%); min-block-size: 0; }
 iframe { inline-size: 100%; block-size: 100%; border: 0; background: var(--sb-bg, #080D1D); }
-.console { display: flex; flex-direction: column-reverse; min-block-size: 0; overflow: auto; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
+.console { display: flex; flex-direction: column-reverse; overflow: auto; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
 .console > div { margin-block-end: auto; }
 .console > div:not(:has(div))::before { content: "Console"; color: var(--_muted); }
-.console .error { color: var(--_danger); }
-.console .warn { color: var(--_warn); }
+.console .error { color: var(--sb-danger, #F2777A); }
+.console .warn { color: var(--sb-warn, #F5C451); }
 .status { color: var(--_muted); font-size: 0.75rem; }
 `
 
