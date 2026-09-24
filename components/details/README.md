@@ -41,7 +41,7 @@ Click the row, or focus it and press Enter or Space.
 
 ### An accordion
 
-Panels that share a `group` close each other. Every panel that closes emits its own `sb-toggle`, so the page (or the server) can keep the whole group's state.
+Panels that share a `group` close each other. Every panel that closes emits its own `sb-toggle`, so the page (or the server) can keep the whole group's state. Render at most one of them `open`: as with `<details name>`, a panel that arrives open while another one in its group is open starts closed.
 
 ```html preview
 <div data-signals="{_last: '—'}" style="display: grid; gap: 8px; inline-size: min(100%, 26rem)">
@@ -105,7 +105,7 @@ A value is what the user *decides*; view state is what they *look at*. `sb-detai
 | **no** `open` attribute any more | Nothing. Morphs also strip attributes that were only reflected, so a removal is not an instruction |
 | `open="false"` | Closed. This is how the server closes a panel |
 
-Local toggling never writes the attribute back, which is what makes the table above consistent.
+Local toggling never writes the attribute back, which is what makes the table above consistent. A panel that app code moves (a sortable list, a portal, `moveBefore`) keeps its open state, like a native `<details>`, and an `open` attribute changed while it was detached still wins when it comes back.
 
 That last row is also why the playground above has no `open` switch: its boolean switches *remove* the attribute for `false`, and removal is exactly the case `sb-details` ignores. Click the summary, or use the example below.
 

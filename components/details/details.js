@@ -25,6 +25,13 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // one. The registry is what makes the group work across hosts.
 const groups = new Map()
 
+// Each host's open state and the server's last word on it: { open, served }.
+// Rocket drops a component's $$ when it is disconnected and reruns setup when
+// it comes back, so a panel that app code moves (append, moveBefore, a portal)
+// would otherwise fall back to its attribute, silently. A native <details>
+// keeps its state when moved, and so does this.
+const states = new WeakMap()
+
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-card, #141D32);
@@ -145,15 +152,17 @@ rocket('sb-details', {
 		$$.summary = props.summary
 		$$.icon = props.icon
 		$$.disabled = props.disabled
-		// The open state lives here, and data-effect writes it to the inner
-		// <details> (the template renders it closed, so that effect is its one
-		// writer). It is never written to the *host* attribute: that one belongs
-		// to the server. The <details> reflects its own state into its own open
-		// attribute, but that one is inside the shadow root, where no morph can
-		// see it. The first paint never animates: Rocket renders and applies in
-		// connectedCallback, before any style is computed, and CSS transitions
-		// don't run on an element's first style.
-		$$.open = props.open
+		// The open state lives in `st` (see `states`) and in $$.open, which
+		// data-effect writes to the inner <details> (the template renders it
+		// closed, so that effect is its one writer). It is never written to the
+		// *host* attribute: that one belongs to the server. The <details>
+		// reflects its own state into its own open attribute, but that one is
+		// inside the shadow root, where no morph can see it. The first paint
+		// never animates: Rocket renders and applies in connectedCallback,
+		// before any style is computed, and CSS transitions don't run on an
+		// element's first style.
+		let st = states.get(host)
+		if (!st) states.set(host, (st = { open: props.open, served: host.hasAttribute('open') ? props.open : null }))
 
 		// The one place the open state changes, whoever asked: the native
 		// element's own toggle, host.open, show()/hide(), a sibling, the server.
@@ -161,9 +170,9 @@ rocket('sb-details', {
 		// peek(): no effect is running, so a sibling's sb-toggle handler (and a
 		// @post it starts) can't be tracked by one.
 		const set = (want, announce = true) => {
-			if (want === $$.open) return
-			$$.open = want
-			if (want) closeSiblings()
+			if (want === st.open) return
+			$$.open = st.open = want
+			if (want) for (const other of others()) other.close()
 			if (announce) emit('sb-toggle', { name: props.name, open: want })
 		}
 
@@ -184,16 +193,15 @@ rocket('sb-details', {
 			if (!groups.has(group)) groups.set(group, new Set())
 			groups.get(group).add(rec)
 		}
-		const closeSiblings = () => {
-			if (!group) return
-			for (const other of [...(groups.get(group) ?? [])]) {
-				// Same document only: two previews on one page shouldn't fight over
-				// a group name, and a runner iframe is its own world.
-				if (other !== rec && other.host.isConnected && other.host.ownerDocument === host.ownerDocument) other.close()
-			}
-		}
+		// The rest of the group. Same document only: a host moved into another
+		// document (a same-origin iframe) stays out of this one's accordions.
+		const others = () => [...(groups.get(group) ?? [])].filter((other) => other !== rec && other.host.isConnected && other.host.ownerDocument === host.ownerDocument)
 		join(props.group)
 		cleanup(leave)
+		// Exclusive from the first paint, like <details name>: a panel that
+		// arrives open while another one in its group is open starts closed.
+		if (st.open && others().some((other) => other.host.open)) st.open = false
+		$$.open = st.open
 
 		// --- the server owns open when it says so ---------------------------
 		observeProps((p) =>
@@ -205,19 +213,19 @@ rocket('sb-details', {
 			}),
 		)
 
-		// The server's last word on open, or null while it has no opinion. Only a
-		// *different* one wins, so re-rendering the same markup can never re-open
-		// a panel the user just closed, however often the attribute is written.
-		let served = host.hasAttribute('open') ? props.open : null
+		// st.served is the server's last word on open, or null while it has no
+		// opinion. Only a *different* one wins, so re-rendering the same markup
+		// can never re-open a panel the user just closed, however often the
+		// attribute is written.
 		const serverSays = () =>
 			peek(() => {
 				// A *removed* attribute is ignored: morphs also strip attributes that
 				// were only reflected (see sb-slider). To close, the server sends
 				// open="false". A removal does clear the server's last word, so
 				// sending the attribute again later counts as a change.
-				if (!host.hasAttribute('open')) return void (served = null)
-				if (props.open === served) return
-				set((served = props.open), false)
+				if (!host.hasAttribute('open')) return void (st.served = null)
+				if (props.open === st.served) return
+				set((st.served = props.open), false)
 			})
 		// Why not observeProps: it only fires when the decoded value changes, so
 		// adding open="false" to an element that had no open attribute at all
@@ -227,8 +235,11 @@ rocket('sb-details', {
 		const watch = new MutationObserver(serverSays)
 		watch.observe(host, { attributes: true, attributeFilter: ['open'] })
 		cleanup(() => watch.disconnect())
+		// Back from a move: an attribute changed while the panel was detached
+		// (nothing was watching then) still wins. A no-op on the first setup.
+		serverSays()
 
-		overrideProp('open', () => peek(() => $$.open), (v) => peek(() => set(!!v)))
+		overrideProp('open', () => st.open, (v) => peek(() => set(!!v)))
 		defineHostProp('show', { value: () => peek(() => set(true)) })
 		defineHostProp('hide', { value: () => peek(() => set(false)) })
 
