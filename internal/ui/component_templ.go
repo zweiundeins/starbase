@@ -209,7 +209,7 @@ func ComponentPage(s Shell, v ComponentView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(v.Component.Sizes.Total.Min))
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(v.Component.Sizes.Total.Min))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 41, Col: 114}
 			}
@@ -429,7 +429,7 @@ func SizeTable(sz catalog.Sizes) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var20 string
-				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(sz.Total.Raw))
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(sz.Total.Raw))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 110, Col: 35}
 				}
@@ -442,7 +442,7 @@ func SizeTable(sz catalog.Sizes) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var21 string
-				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(sz.Total.Gzip))
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(sz.Total.Gzip))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 111, Col: 36}
 				}
@@ -455,7 +455,7 @@ func SizeTable(sz catalog.Sizes) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var22 string
-				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(sz.Total.Brotli))
+				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(sz.Total.Brotli))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 112, Col: 38}
 				}
@@ -468,7 +468,7 @@ func SizeTable(sz catalog.Sizes) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var23 string
-				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(sz.Total.Min))
+				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(sz.Total.Min))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 113, Col: 43}
 				}
@@ -539,7 +539,7 @@ func sizeRow(name string, s catalog.Size, uses bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
-		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(s.Raw))
+		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(s.Raw))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 130, Col: 23}
 		}
@@ -552,7 +552,7 @@ func sizeRow(name string, s catalog.Size, uses bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(s.Gzip))
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(s.Gzip))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 131, Col: 24}
 		}
@@ -565,7 +565,7 @@ func sizeRow(name string, s catalog.Size, uses bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(s.Brotli))
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(s.Brotli))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 132, Col: 26}
 		}
@@ -578,7 +578,7 @@ func sizeRow(name string, s catalog.Size, uses bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 string
-		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(s.Min))
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(s.Min))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/component.templ`, Line: 133, Col: 23}
 		}
@@ -594,8 +594,8 @@ func sizeRow(name string, s catalog.Size, uses bool) templ.Component {
 	})
 }
 
-// fmtBytes formats a byte count in SI units: 870 B, 4.2 kB.
-func fmtBytes(n int) string {
+// FmtBytes formats a byte count in SI units: 870 B, 4.2 kB.
+func FmtBytes(n int) string {
 	if n < 1000 {
 		return strconv.Itoa(n) + " B"
 	}

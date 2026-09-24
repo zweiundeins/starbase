@@ -46,9 +46,9 @@ templ Installation(v InstallView) {
 							for _, f := range g.Files {
 								<li>
 									<code>{ f.Name }</code>
-									<a href={ safe(f.Min) }>minified</a> <span class="muted">{ fmtBytes(f.Size.Min) } brotli</span>
+									<a href={ safe(f.Min) }>minified</a> <span class="muted">{ FmtBytes(f.Size.Min) } brotli</span>
 									·
-									<a href={ safe(f.Readable) }>readable</a> <span class="muted">{ fmtBytes(f.Size.Raw) }, { fmtBytes(f.Size.Brotli) } brotli</span>
+									<a href={ safe(f.Readable) }>readable</a> <span class="muted">{ FmtBytes(f.Size.Raw) }, { FmtBytes(f.Size.Brotli) } brotli</span>
 								</li>
 							}
 						</ul>

@@ -81,7 +81,10 @@ rocket('sb-code-playground', {
 		initial: json.default(() => ({})).docs({ description: 'Initial files as JSON {"component.js": "…"}; handy for server-rendered pages. Child scripts are used when empty.' }),
 	}),
 	manifest: {
-		slots: [{ name: '(files)', description: 'Child <script type="text/plain" data-file="component.js|index.html|style.css"> elements with the initial files.' }],
+		slots: [
+			{ name: '(files)', description: 'Child <script type="text/plain" data-file="component.js|index.html|style.css"> elements with the initial files.' },
+			{ name: 'bar', description: 'Extra content for the top bar, between the file tabs and the run status (Starbase puts its live size line there).' },
+		],
 		events: [
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'After an edit. detail: { files }.' },
 			{ name: 'sb-run', kind: 'custom-event', bubbles: true, composed: true, description: 'When the preview is (re)started. detail: { files }.' },
@@ -173,6 +176,7 @@ rocket('sb-code-playground', {
 								data-attr:aria-selected="String($$active === ${i})"
 								data-on:click="$$active = ${i}">${n}</button>`)}
 					</div>
+					<slot name="bar"></slot>
 					<span class="status" role="status" data-text="$$status"></span>
 					<label class="auto"><input type="checkbox" data-bind:auto> Auto</label>
 					<!-- The handler takes the theme from el: data-bind's own change listener

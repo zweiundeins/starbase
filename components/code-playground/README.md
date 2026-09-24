@@ -51,6 +51,16 @@ Give it child `<script type="text/plain" data-file="…">` elements: `component.
 
 `deps` maps tags to module URLs to load in the preview. Tags that the edited code defines itself are skipped, so you can edit a component that its own demo also uses.
 
+### Your own things in the bar
+
+Elements with `slot="bar"` go into the top bar, between the file tabs and the run status. `sb-change` (`detail.files`) tells you when the code changed. Starbase's `/playground` puts a live size line there: every edit (debounced) posts `component.js` to the server, which minifies and compresses it like the catalog's own modules.
+
+```html
+<sb-code-playground data-on:sb-change__debounce.400ms="@post('/size', {payload: {code: evt.detail.files['component.js']}})">
+  <span slot="bar" data-text="$_size"></span>
+</sb-code-playground>
+```
+
 ## Runner protocol
 
 The iframe (`sandbox="allow-scripts"`) loads `runner` and exchanges `postMessage`s. Every message carries `source: "sb-runner"`.

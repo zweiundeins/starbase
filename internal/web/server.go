@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"starbase/internal/catalog"
@@ -37,6 +38,10 @@ type Server struct {
 	paintLimitIP *limiter
 	saveLimit    *limiter // snippets, per session
 	saveLimitIP  *limiter
+	sizeLimit    *limiter // playground size line, per session
+	sizeLimitIP  *limiter
+	sizeMu       sync.Mutex
+	sizes        map[[32]byte]map[string]any // playground code → $_size (playground_size.go)
 }
 
 type Deps struct {
@@ -68,6 +73,9 @@ func New(ctx context.Context, d Deps) *Server {
 		paintLimitIP: newLimiter(60, 180),
 		saveLimit:    newLimiter(0.1, 10), // snippet saves: 6 a minute
 		saveLimitIP:  newLimiter(0.5, 30),
+		sizeLimit:    newLimiter(3, 20), // size measurements: the client debounces edits
+		sizeLimitIP:  newLimiter(10, 60),
+		sizes:        map[[32]byte]map[string]any{},
 		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
 	}
 	s.oauth = newOAuth(d.Config)
@@ -121,6 +129,7 @@ func (s *Server) Handler() http.Handler {
 	// Code playground runner (sandboxed iframe page).
 	mux.HandleFunc("GET /playground/run", s.playgroundRun)
 	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)
+	mux.HandleFunc("POST /playground/size", s.playgroundSize)
 	mux.HandleFunc("GET /playground/preview/{commit}/{slug}/{file...}", s.servePreviewFile)
 
 	// Demo data: a read-only signal stream for the live examples.

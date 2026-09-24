@@ -686,7 +686,7 @@ func Card(s Shell, c queries.Card, preview string, size catalog.Size) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
-			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmtBytes(size.Min) + " minified and brotli, with the components it uses")
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(FmtBytes(size.Min) + " minified and brotli, with the components it uses")
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/gallery.templ`, Line: 197, Col: 111}
 			}
@@ -699,7 +699,7 @@ func Card(s Shell, c queries.Card, preview string, size catalog.Size) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(size.Min))
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(size.Min))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/gallery.templ`, Line: 197, Col: 134}
 			}

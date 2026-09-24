@@ -302,7 +302,7 @@ func Installation(v InstallView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var18 string
-				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(f.Size.Min))
+				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(f.Size.Min))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/install.templ`, Line: 49, Col: 88}
 				}
@@ -328,7 +328,7 @@ func Installation(v InstallView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var20 string
-				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(f.Size.Raw))
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(f.Size.Raw))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/install.templ`, Line: 51, Col: 93}
 				}
@@ -341,7 +341,7 @@ func Installation(v InstallView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var21 string
-				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmtBytes(f.Size.Brotli))
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(f.Size.Brotli))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/install.templ`, Line: 51, Col: 122}
 				}

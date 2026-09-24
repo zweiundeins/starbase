@@ -219,6 +219,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		v.Component, v.ComponentName = comp.Slug, comp.Name
 		v.Base = "/c/" + comp.Slug + "@" + comp.Hash + "/"
 	}
+	v.Size = s.measure(v.Component, files["component.js"])
 	initial, _ := json.Marshal(files)
 	v.Initial = string(initial)
 	title := "Playground · Starbase"

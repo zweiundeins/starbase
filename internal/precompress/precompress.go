@@ -40,17 +40,29 @@ func Get(b []byte) (br, gz []byte) {
 }
 
 func compress(b []byte) (br, gz []byte) {
-	var bb, gb bytes.Buffer
+	var gb bytes.Buffer
+	gw, _ := gzip.NewWriterLevel(&gb, gzip.BestCompression)
+	gw.Write(b)
+	gw.Close()
+	return brotliBytes(b), gb.Bytes()
+}
+
+// BrotliLen is the size of b under brotli -11, like Get's, but measured
+// fresh and not kept: for bytes that are only measured, never served (the
+// playground's live size line).
+func BrotliLen(b []byte) int {
+	return len(brotliBytes(b))
+}
+
+func brotliBytes(b []byte) []byte {
+	var bb bytes.Buffer
 	// A window just larger than the input compresses the same and keeps the
 	// encoder's memory small (the default window is 4 MB).
 	win := max(10, min(24, bits.Len(uint(len(b)))+1))
 	bw := brotli.NewWriterOptions(&bb, brotli.WriterOptions{Quality: brotli.BestCompression, LGWin: win})
 	bw.Write(b)
 	bw.Close()
-	gw, _ := gzip.NewWriterLevel(&gb, gzip.BestCompression)
-	gw.Write(b)
-	gw.Close()
-	return bb.Bytes(), gb.Bytes()
+	return bb.Bytes()
 }
 
 // Write sends body in the best encoding the request accepts (brotli, then

@@ -60,10 +60,16 @@ func (cat *Catalog) Uses(c *Component) []*Component {
 			src = m
 		}
 	}
+	return cat.rendered(src, map[string]bool{c.Tag: true})
+}
+
+// rendered returns the catalog components src renders (<sb-… in it), in
+// order of first appearance, except the tags in own.
+func (cat *Catalog) rendered(src []byte, own map[string]bool) []*Component {
 	var out []*Component
 	for _, m := range usesTagRe.FindAllStringSubmatch(string(src), -1) {
 		for _, d := range cat.Components {
-			if d.Tag == m[1] && d != c && !slices.Contains(out, d) {
+			if d.Tag == m[1] && !own[d.Tag] && !slices.Contains(out, d) {
 				out = append(out, d)
 			}
 		}

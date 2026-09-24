@@ -179,7 +179,32 @@ templ MissionControl() {
 	</section>
 }
 
+// PlaygroundSize is the size line in the playground's top bar, from the
+// $_size signal (web/playground_size.go measures every edit). The server
+// renders the first numbers, so they show before any edit.
+templ PlaygroundSize(size map[string]any) {
+	<span
+		slot="bar"
+		class="pg-size"
+		data-signals:_size={ templ.JSONString(size) }
+		data-class:is-stale="$_size.stale"
+		data-attr:title="$_size.title"
+		title={ sizeText(size, "title") }
+	>
+		<span class="visually-hidden">Size: </span>
+		<strong data-text="$_size.own">{ sizeText(size, "own") }</strong> min+br
+		<span class="pg-size__total" data-show="$_size.total" style={ sizeHidden(size) }>
+			· <span data-text="$_size.total">{ sizeText(size, "total") }</span> with deps
+		</span>
+		<span class="pg-size__more">
+			· <span data-text="$_size.min">{ sizeText(size, "min") }</span> min
+			· <span data-text="$_size.raw">{ sizeText(size, "raw") }</span> raw
+		</span>
+	</span>
+}
+
 type CodePlaygroundView struct {
+	Size          map[string]any // $_size, measured from the initial component.js
 	Initial       string // JSON files
 	Deps          string // JSON {tag: module URL}
 	Component     string // slug, when opened from a component page
@@ -190,6 +215,29 @@ type CodePlaygroundView struct {
 	Author        string // snippet author (GitHub login), if any
 	Share         string // snippet id to offer as a link
 	ShareURL      string
+}
+
+// sizeText is a text of $_size for the first render ("–" when the initial
+// code didn't parse and there is no number yet).
+func sizeText(size map[string]any, key string) string {
+	if t, ok := size[key].(string); ok && t != "" {
+		return t
+	}
+	return "–"
+}
+
+// sizeHidden hides the "with deps" part until data-show takes over.
+func sizeHidden(size map[string]any) templ.SafeCSS {
+	if t, _ := size["total"].(string); t == "" {
+		return "display: none"
+	}
+	return ""
+}
+
+// sizeExpr measures component.js after edits (debounced; a newer request
+// cancels the one in flight).
+func sizeExpr(component string) string {
+	return "@post('/playground/size', {payload: {component: " + jsString(component) + ", code: evt.detail.files['component.js'] ?? ''}})"
 }
 
 func shareExpr(component string) string {
@@ -221,7 +269,14 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 			</p>
 		</header>
 		<div class="code-page__island" data-ignore-morph>
-			<sb-code-playground initial={ v.Initial } deps={ v.Deps } base={ v.Base }></sb-code-playground>
+			<sb-code-playground
+				initial={ v.Initial }
+				deps={ v.Deps }
+				base={ v.Base }
+				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) }
+			>
+				@PlaygroundSize(v.Size)
+			</sb-code-playground>
 		</div>
 		<div class="code-page__actions">
 			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) }>

@@ -91,6 +91,10 @@
     {
       "name": "(files)",
       "description": "Child <script type=\"text/plain\" data-file=\"component.js|index.html|style.css\"> elements with the initial files."
+    },
+    {
+      "name": "bar",
+      "description": "Extra content for the top bar, between the file tabs and the run status (Starbase puts its live size line there)."
     }
   ],
   "events": [

@@ -1484,6 +1484,7 @@
 
 	.code-page__island {
 		padding-block-start: var(--sb-space-6);
+		container: playground / inline-size;
 
 		& sb-code-playground {
 			--sb-code-playground-height: max(28rem, calc(100dvh - 18rem));
@@ -1493,6 +1494,40 @@
 		& sb-code-playground:not(:defined) {
 			display: block;
 			block-size: var(--sb-code-playground-height);
+		}
+	}
+
+	/* The size line in the playground's top bar (slot="bar"). It gives up
+	   detail as the playground narrows: the minified and raw sizes first,
+	   then the total with dependencies. */
+	.pg-size {
+		color: var(--sb-text-muted);
+		font-size: 0.75rem;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+		transition: opacity 0.2s;
+		padding-inline-end: 0.75rem;
+		border-inline-end: 1px solid var(--sb-border);
+
+		& strong {
+			color: var(--sb-text-2);
+			font-weight: 600;
+		}
+
+		&.is-stale {
+			opacity: 0.5;
+		}
+
+		@container playground (width < 52rem) {
+			& .pg-size__more {
+				display: none;
+			}
+		}
+
+		@container playground (width < 30rem) {
+			& .pg-size__total {
+				display: none !important; /* over data-show */
+			}
 		}
 	}
 

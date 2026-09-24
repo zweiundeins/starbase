@@ -118,7 +118,7 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/dev/"):
 				limit = 4 << 20
-			case r.URL.Path == "/cmd/snippet":
+			case r.URL.Path == "/cmd/snippet", r.URL.Path == "/playground/size":
 				limit = 512 << 10 // 64 KB of code, JSON-escaped
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, limit)

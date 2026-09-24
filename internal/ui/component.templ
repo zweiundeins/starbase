@@ -38,7 +38,7 @@ templ ComponentPage(s Shell, v ComponentView) {
 				}
 				<span class="muted">Since { v.Card.Since }</span>
 				if v.Component.Sizes.Total.Min > 0 {
-					<a class="muted" href="#size" title="Download size: minified, brotli">{ fmtBytes(v.Component.Sizes.Total.Min) }</a>
+					<a class="muted" href="#size" title="Download size: minified, brotli">{ FmtBytes(v.Component.Sizes.Total.Min) }</a>
 				}
 				@StarButton(s, v.Card, true)
 				<a class="btn btn--outline btn--sm" href={ safe("/playground?component=" + v.Card.Slug) }>
@@ -107,10 +107,10 @@ templ SizeTable(sz catalog.Sizes) {
 					<tfoot>
 						<tr>
 							<th scope="row">Total</th>
-							<td>{ fmtBytes(sz.Total.Raw) }</td>
-							<td>{ fmtBytes(sz.Total.Gzip) }</td>
-							<td>{ fmtBytes(sz.Total.Brotli) }</td>
-							<td><strong>{ fmtBytes(sz.Total.Min) }</strong></td>
+							<td>{ FmtBytes(sz.Total.Raw) }</td>
+							<td>{ FmtBytes(sz.Total.Gzip) }</td>
+							<td>{ FmtBytes(sz.Total.Brotli) }</td>
+							<td><strong>{ FmtBytes(sz.Total.Min) }</strong></td>
 						</tr>
 					</tfoot>
 				}
@@ -127,15 +127,15 @@ templ sizeRow(name string, s catalog.Size, uses bool) {
 				<span class="muted">renders it</span>
 			}
 		</td>
-		<td>{ fmtBytes(s.Raw) }</td>
-		<td>{ fmtBytes(s.Gzip) }</td>
-		<td>{ fmtBytes(s.Brotli) }</td>
-		<td>{ fmtBytes(s.Min) }</td>
+		<td>{ FmtBytes(s.Raw) }</td>
+		<td>{ FmtBytes(s.Gzip) }</td>
+		<td>{ FmtBytes(s.Brotli) }</td>
+		<td>{ FmtBytes(s.Min) }</td>
 	</tr>
 }
 
-// fmtBytes formats a byte count in SI units: 870 B, 4.2 kB.
-func fmtBytes(n int) string {
+// FmtBytes formats a byte count in SI units: 870 B, 4.2 kB.
+func FmtBytes(n int) string {
 	if n < 1000 {
 		return strconv.Itoa(n) + " B"
 	}

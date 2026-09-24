@@ -194,7 +194,7 @@ templ Card(s Shell, c queries.Card, preview string, size catalog.Size) {
 				</span>
 				<span class="card__stats">
 					if size.Min > 0 {
-						<span class="card__size" title={ fmtBytes(size.Min) + " minified and brotli, with the components it uses" }>{ fmtBytes(size.Min) }</span>
+						<span class="card__size" title={ FmtBytes(size.Min) + " minified and brotli, with the components it uses" }>{ FmtBytes(size.Min) }</span>
 					}
 					@StarButton(s, c, false)
 				</span>
