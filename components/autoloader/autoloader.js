@@ -6,8 +6,10 @@ import { rocket } from 'datastar'
 // them.
 const loads = new Map()
 // The browser's module map remembers a failed import by URL, so a retry
-// imports it under a new #fragment (which the HTTP cache ignores).
-let retries = 0
+// imports it under a new #fragment (which the HTTP cache ignores). The
+// fragment counts failures, not retries: tags that share a module and
+// come back together still share one fetch and one evaluation.
+let failures = 0
 // Per host, what outlives a re-attach (Rocket reruns setup on every
 // connect): sb-ready fires once, and el.ready stays the same promise.
 const hosts = new WeakMap()
@@ -91,7 +93,7 @@ rocket('sb-autoloader', {
 				if (!url) return
 				loads.set(
 					tag,
-					(p = import(loads.has(tag) ? `${url}#${++retries}` : url)
+					(p = import(loads.has(tag) ? `${url}#${failures}` : url)
 						.then(() => {
 							// sb-autoloader runs once Datastar is ready, so a Rocket module, like
 							// any other, defines its tag while it runs.
@@ -101,6 +103,7 @@ rocket('sb-autoloader', {
 						})
 						.catch((cause) => {
 							loads.set(tag, 0) // failed: a later attempt may succeed
+							failures++
 							emit('sb-load-error', { tag, url, error: String(cause?.message ?? cause) })
 							reportError(new Error(`<sb-autoloader> could not load <${tag}> from ${url}`, { cause }))
 							throw cause
