@@ -83,7 +83,7 @@
       "default": {},
       "required": false,
       "docs": {
-        "description": "Initial files as JSON {\"component.js\": \"…\"}; handy for server-rendered pages. Child scripts are used when empty."
+        "description": "Initial files as JSON {\"component.js\": \"…\"}, merged over the child scripts (a file here wins); handy for server-rendered pages."
       }
     }
   ],
