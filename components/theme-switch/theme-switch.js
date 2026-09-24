@@ -216,8 +216,7 @@ rocket('sb-theme-switch', {
 			reportError(new Error(`<sb-theme-switch> domain="${props.domain}" was refused by the browser (this page is ${location.hostname}); the theme is remembered for this host only`))
 		}
 
-		action('pick', ({ el }) => {
-			const t = el.value
+		action('pick', ({ el: { value: t } }) => {
 			if (!valid(t) || t === $$.theme) return
 			$$.theme = t
 			apply(t)
