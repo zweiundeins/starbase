@@ -29,6 +29,9 @@ const fold = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCas
 
 const anchors = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name: --a')
 
+// The list sits under the control, as wide as it: CSS anchor positioning in
+// @supports, a JS fallback (place) elsewhere. An empty .note stays rendered
+// (no padding) as a status region, so a new note is announced.
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-control-bg, #0B1224);
@@ -38,7 +41,7 @@ const styles = /* css */ `
 	--_placeholder: var(--sb-control-placeholder, #7785A8);
 	--_label: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
-	--_panel: var(--sb-surface-raised, #141D32);
+	--_panel: var(--sb-surface-raised, #10182B);
 	--_hover: var(--sb-surface-hover, #1A2540);
 	--_brand: var(--sb-brand, #8C6BFF);
 	--_brand-light: var(--sb-brand-light, #B09AFF);
@@ -48,7 +51,8 @@ const styles = /* css */ `
 	inline-size: 100%;
 	max-inline-size: 26rem;
 }
-:host([disabled]) { opacity: 0.5; pointer-events: none; }
+:host([hidden]) { display: none; }
+.field:has(:disabled) { opacity: 0.5; pointer-events: none; }
 .field { display: grid; gap: 0.4rem; }
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 .control {
@@ -57,7 +61,8 @@ const styles = /* css */ `
 	align-items: center;
 	gap: 0.3rem;
 	min-block-size: 2.75rem;
-	padding: 0.3rem 2.25rem 0.3rem 0.5rem;
+	padding-block: 0.3rem;
+	padding-inline: 0.5rem 2.25rem;
 	box-sizing: border-box;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
@@ -78,14 +83,15 @@ const styles = /* css */ `
 	block-size: 6px;
 	translate: 0 -50%;
 	background: var(--_placeholder);
-	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 4px 4px, 4px 6px, 4px 6px, 4px 4px, 2px 4px, 2px 2px, 0 2px);
+	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 5px 4px, 5px 6px, 3px 6px, 3px 4px, 2px 4px, 2px 2px, 0 2px);
 }
 .open .control::after { rotate: 180deg; }
 .chip {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.25rem;
-	padding: 0.15rem 0.2rem 0.15rem 0.5rem;
+	padding-block: 0.15rem;
+	padding-inline: 0.5rem 0.2rem;
 	border-radius: calc(var(--_radius) - 2px);
 	background: var(--_brand-subtle);
 	color: var(--_text);
@@ -120,7 +126,6 @@ input[readonly] { cursor: pointer; }
 	overflow: auto;
 	box-sizing: border-box;
 }
-/* Under the control, as wide as it (CSS anchor positioning; a JS fallback sets top/left elsewhere). */
 @supports (anchor-name: --a) {
 	[popover] {
 		position-anchor: --sb-select;
@@ -134,9 +139,11 @@ input[readonly] { cursor: pointer; }
 [role="option"] { display: grid; gap: 0.1rem; padding: 0.45rem 0.6rem; border-radius: calc(var(--_radius) - 2px); cursor: pointer; }
 [role="option"][aria-disabled="true"] { opacity: 0.45; cursor: default; }
 [role="option"].active { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); }
+[role="option"].active:dir(rtl) { box-shadow: inset -2px 0 0 var(--_brand); }
 [role="option"][aria-selected="true"] { color: var(--_brand-light); font-weight: 600; }
 .desc { color: var(--_muted); font-size: 0.75rem; font-weight: 400; }
 .note { padding: 0.6rem; color: var(--_muted); font-size: 0.8125rem; }
+.note:empty { padding: 0; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 `
 
@@ -203,45 +210,47 @@ rocket('sb-select', {
 		$$.typing = props.searchable || props.remote
 		$$.loading = props.loading
 		$$.clearable = props.clearable
-		$$.pending = false // remote: typed, waiting for the debounce or the answer
+		$$.disabled = props.disabled
+		$$.pending = false // remote: typed, waiting for the debounce
 
 		const chipsOf = () => $$.selected.map((v) => ({ value: v, label: labels.get(v) ?? v }))
 		$$.chips = chipsOf()
 		// What the input shows: the query while typing, else (single) the label.
-		$$.text = () => ($$.typing && ($$.open || $$.multiple) ? $$.query : $$.multiple ? '' : ($$.chips?.[0]?.label ?? ''))
+		// Never read a missing index of a signal array: that creates it ("" at [0]
+		// of an empty list). And signals are gone while the element is detached.
+		$$.text = () => ($$.typing && ($$.open || $$.multiple) ? $$.query : $$.multiple || !$$.chips?.length ? '' : $$.chips[0].label)
+		const at = () => $$.view?.find((_, i) => i === $$.active) // the highlighted option
 
 		const refresh = () => {
 			const q = fold($$.query.trim())
-			let view = options
-			if (props.searchable && !props.remote && q) view = options.filter((o) => fold(o.label).includes(q) || fold(o.description).includes(q))
+			// Remote: the results belong to the query, and a short one has none.
+			const short = props.remote && $$.query.trim().length < props.minChars
+			const view = short ? [] : props.searchable && !props.remote && q ? options.filter((o) => fold(o.label).includes(q) || fold(o.description).includes(q)) : options
 			$$.view = view.map((o, i) => ({ ...o, id: 'o' + i, selected: $$.selected.includes(o.value) }))
 			if ($$.active >= view.length) $$.active = view.length ? 0 : -1
-			$$.note = props.remote && $$.query.trim().length < props.minChars ? (props.minChars > 0 ? 'Type to search' : '') : (props.loading || $$.pending) && !view.length ? 'Searching' : !view.length ? 'No results' : ''
+			$$.note = short ? 'Type to search' : view.length ? '' : props.loading || $$.pending ? 'Searching…' : 'No results'
 			$$.chips = chipsOf()
 		}
 		refresh()
 
 		// peek: attribute changes arrive inside the effect of whoever set them.
-		observeProps((_, changes) =>
+		observeProps(() =>
 			peek(() => {
-				// The search is answered: results arrived, or the request ended.
-				if ('results' in changes || !props.loading) $$.pending = false
 				learn()
-				// A value attribute sent by the server wins when it changes; removed
-				// attributes are ignored (morphs also strip reflected ones; see sb-slider).
-				if ('value' in changes && host.hasAttribute('value')) $$.selected = parseValue(props.value)
 				$$.label = props.label
 				$$.placeholder = props.placeholder
 				$$.multiple = props.multiple
 				$$.typing = props.searchable || props.remote
 				$$.loading = props.loading
 				$$.clearable = props.clearable
+				$$.disabled = props.disabled
+				if (props.disabled) setOpen(false)
 				if (props.remote && $$.open && $$.active < 0 && options.length) $$.active = 0
 				refresh()
 			}),
 		)
 
-		const value = () => (props.multiple ? [...$$.selected] : ($$.selected[0] ?? ''))
+		const value = (s = [...$$.selected]) => (props.multiple ? s : (s[0] ?? ''))
 		overrideProp('value', () => peek(value), (v) => peek(() => (($$.selected = parseValue(v)), refresh())))
 		// Commands: the attribute is the server's value, JSON.stringify($$.selected) the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
@@ -250,6 +259,23 @@ rocket('sb-select', {
 		const sync = () => peek(() => (props.confirm && JSON.stringify($$.selected) !== JSON.stringify(parseValue(props.value)) ? states.add('pending') : states.delete('pending')))
 		effect(() => (JSON.stringify($$.selected), sync()))
 		observeProps(sync)
+		// A new value attribute from the server wins, value="" included. Watched on
+		// the attribute: observeProps stays silent when the decoded value did not
+		// change (value="" on an element that never had one). A removed attribute
+		// is ignored (morphs also strip reflected ones; see sb-slider), and the
+		// same value again leaves the user's edit alone.
+		let served = host.hasAttribute('value') ? props.value : null
+		const watch = new MutationObserver(() =>
+			peek(() => {
+				if (!host.hasAttribute('value')) return void (served = null)
+				if (props.value === served) return
+				served = props.value
+				$$.selected = parseValue(served) // the effect above syncs pending
+				refresh()
+			}),
+		)
+		watch.observe(host, { attributeFilter: ['value'] })
+		cleanup(() => watch.disconnect())
 		defineHostProp('revert', { value: () => peek(() => (($$.selected = parseValue(props.value), refresh()), sync())) })
 
 		const popover = () => host.shadowRoot?.querySelector('[popover]')
@@ -261,8 +287,10 @@ rocket('sb-select', {
 			const p = popover()
 			Object.assign(p.style, { position: 'fixed', inset: 'auto', left: r.left + 'px', top: r.bottom + 4 + 'px', width: r.width + 'px' })
 		}
+		// Keep the highlighted option in view.
+		const show = () => requestAnimationFrame(() => host.shadowRoot?.getElementById(at()?.id)?.scrollIntoView({ block: 'nearest' }))
 		const setOpen = (open) => {
-			if (open === $$.open || props.disabled) return
+			if (open === $$.open || (open && props.disabled)) return
 			$$.open = open
 			const p = popover()
 			try {
@@ -270,7 +298,7 @@ rocket('sb-select', {
 				else p.hidePopover()
 			} catch {}
 			if (!open && !props.multiple) $$.query = ''
-			if (open) $$.active = Math.max(0, $$.view.findIndex((o) => o.selected))
+			if (open) ($$.active = Math.max(0, $$.view.findIndex((o) => o.selected))), search(), show()
 			refresh()
 		}
 		const change = () => {
@@ -300,16 +328,19 @@ rocket('sb-select', {
 			const q = $$.query.trim()
 			if (q.length < props.minChars) return ($$.pending = false)
 			$$.pending = true
-			timer = setTimeout(() => emit('sb-search', { query: q }), props.delay)
+			// The spinner covers the debounce; the request itself is loading's
+			// (data-indicator): an answer that changes nothing can't be seen.
+			timer = setTimeout(() => (emit('sb-search', { query: q }), ($$.pending = false), refresh()), props.delay)
 		}
 		cleanup(() => clearTimeout(timer))
 
-		action('type', ({ el }) => {
+		action('type', ({ el, evt }) => {
+			evt.stopPropagation() // a query is not a value: no input event on the host
 			$$.query = el.value
-			$$.active = 0
 			setOpen(true)
+			search() // before refresh: the note says "Searching…" during the pause
+			$$.active = 0 // the first match, after setOpen's selected one
 			refresh()
-			search()
 		})
 		action('toggle', ({ evt }) => {
 			if (evt.target.closest('button')) return
@@ -318,7 +349,7 @@ rocket('sb-select', {
 		})
 		action('pick', ({ evt }, v) => {
 			evt.preventDefault() // keep focus in the input
-			pick(v)
+			evt.button || pick(v) // the main button only
 		})
 		action('remove', ({ evt }, v) => {
 			evt.stopPropagation()
@@ -333,9 +364,12 @@ rocket('sb-select', {
 			input()?.focus()
 		})
 		action('blur', () => setTimeout(() => host.shadowRoot?.activeElement || setOpen(false), 0))
+		let buf = '' // type-ahead, without searchable or remote
+		let typer = 0
 		action('key', ({ evt }) => {
 			const n = $$.view.length
-			switch (evt.key) {
+			// Space opens and picks like Enter, unless it is typed text.
+			switch (evt.key === ' ' && !$$.typing && !buf ? 'Enter' : evt.key) {
 				case 'ArrowDown':
 					if (!$$.open) setOpen(true)
 					else if (n) $$.active = ($$.active + 1) % n
@@ -350,7 +384,7 @@ rocket('sb-select', {
 					$$.active = evt.key === 'Home' ? 0 : n - 1
 					break
 				case 'Enter':
-					if ($$.open && $$.view[$$.active]) pick($$.view[$$.active].value)
+					if ($$.open && at()) pick(at().value)
 					else if (!$$.open) setOpen(true)
 					break
 				case 'Escape':
@@ -365,12 +399,21 @@ rocket('sb-select', {
 				case 'Tab':
 					setOpen(false)
 					return
-				default:
-					return
+				default: {
+					// Type-ahead: a letter moves to the next option that starts with
+					// it (the same letter again cycles), more letters refine the match.
+					if ($$.typing || evt.key.length > 1 || evt.ctrlKey || evt.metaKey) return
+					clearTimeout(typer)
+					typer = setTimeout(() => (buf = ''), 500)
+					const q = (buf += fold(evt.key)).replace(/^(.)\1+$/, '$1')
+					setOpen(true)
+					const a = $$.active - (q.length > 1) // search after it, or from it
+					const j = [...$$.view, ...$$.view].findIndex((o, i) => i > a && fold(o.label).startsWith(q))
+					if (j >= 0) $$.active = j % n
+				}
 			}
 			evt.preventDefault()
-			// Keep the highlighted option in view.
-			requestAnimationFrame(() => host.shadowRoot?.getElementById($$.view[$$.active]?.id)?.scrollIntoView({ block: 'nearest' }))
+			show()
 		})
 	},
 	render: ({ html }) => html`
@@ -380,16 +423,18 @@ rocket('sb-select', {
 				<template data-for="c in $$chips">
 					<span class="chip" part="chip" data-show="$$multiple">
 						<span data-text="c?.label"></span>
-						<button type="button" tabindex="-1" data-attr:aria-label="'Remove ' + c?.label" data-on:click="@remove(c?.value)">×</button>
+						<button type="button" tabindex="-1" data-attr:aria-label="'Remove ' + c?.label" data-on:mousedown="evt.preventDefault()" data-on:click="@remove(c?.value)">×</button>
 					</span>
 				</template>
 				<input id="input" part="input" role="combobox" autocomplete="off" spellcheck="false"
-					aria-controls="list" aria-autocomplete="list"
+					aria-controls="list"
+					data-attr:aria-autocomplete="$$typing && 'list'"
 					data-attr:aria-label="$$label ? null : ($$placeholder || 'Select')"
 					data-attr:aria-expanded="String($$open)"
-					data-attr:aria-activedescendant="$$open && $$view[$$active] ? $$view[$$active].id : null"
+					data-attr:aria-activedescendant="$$open && $$view?.find((_, i) => i === $$active)?.id"
 					data-attr:aria-busy="$$loading ? 'true' : null"
 					data-attr:readonly="!$$typing"
+					data-attr:disabled="$$disabled"
 					data-attr:placeholder="$$multiple && $$chips?.length ? null : $$placeholder"
 					data-effect="el.value !== $$text && (el.value = $$text)"
 					data-on:input="@type()"
@@ -414,7 +459,7 @@ rocket('sb-select', {
 						<span class="desc" data-show="o?.description" data-text="o?.description"></span>
 					</div>
 				</template>
-				<div class="note" data-show="$$note" data-text="$$note === 'Searching' ? 'Searching…' : $$note"></div>
+				<div class="note" role="status" data-text="$$note"></div>
 			</div>
 		</div>
 	`,

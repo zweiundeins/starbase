@@ -36,7 +36,7 @@ Type a star, planet or moon ("or", "sat", "eu"…), from the site's example data
 3. The server patches `$_found` with the results.
 4. `data-attr:results` hands them back.
 
-`data-indicator` shows the spinner while the request is in flight.
+`data-indicator` shows the spinner while the request is in flight. Without `loading`, the spinner only covers the pause before `sb-search`.
 
 ```html preview
 <div data-signals="{_found: [], _body: '', _searching: false}" style="display: grid; gap: 12px">
@@ -64,6 +64,8 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 Or the server re-renders the element with a new `results` attribute: a changed attribute always wins.
 
+Until the query has `min-chars` characters, the list shows no results. With `min-chars="0"`, opening the list searches too, with an empty query (e.g. for recent or popular picks).
+
 ### Searchable
 
 ```html preview
@@ -88,9 +90,15 @@ With `multiple`, the value is an array. Keep it in a signal with `sb-change`: `d
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
 
+A new `value` from the server always wins, and `value=""` clears it. Markup re-sent with the same `value` leaves the user's pick alone. Typing a search fires no `input` event on the element: `change` and `sb-change` come when the value changes.
+
 ## Options
 
 `options` (and `results`, for remote searches) is a JSON array of strings, or of `{value, label?, description?, disabled?}`. The server can change either at any time. A selected value keeps its label even after the options it came from are gone.
+
+## Forms
+
+`sb-select` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -114,11 +122,13 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 It follows the ARIA combobox pattern:
 
-- **Structure:** the input is a `combobox` controlling a `listbox`, with the highlighted option in `aria-activedescendant`.
+- **Structure:** the input is a `combobox` controlling a `listbox`, with the highlighted option in `aria-activedescendant`. It is `aria-autocomplete="list"` only when you can type (`searchable` or `remote`).
 - **Keys:**
   - Down and Up open the list and move through it; Home and End jump.
   - Enter picks, and Escape closes.
+  - Without `searchable` or `remote`, Space opens and picks like Enter, and typing jumps to the next option that starts with the letters (the same letter again cycles).
   - Backspace in an empty input removes the last chip, with `multiple`.
-- **Loading:** the input is `aria-busy` while results are on their way.
+- **Loading:** the input is `aria-busy` while results are on their way, and "Searching…", "No results" and "Type to search" are announced (a status region).
+- **Disabled:** `disabled` takes it out of the tab order, and neither keys nor the pointer can change it.
 
 The list is a native popover, so it is never clipped by a scrolling container.
