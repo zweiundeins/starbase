@@ -25,9 +25,9 @@ const decimals = (n) => (String(n).split('.')[1] || '').length
 const probe = document.createElement('input')
 probe.type = 'range'
 
-// Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
+// Pixel corners: notches every corner by --_n (2px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = `polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n))`
 
 const styles = /* css */ `
 :host {
@@ -68,7 +68,7 @@ input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px
 		block-size: 8px;
 		background: linear-gradient(to right, var(--sb-brand, #8C6BFF) var(--_p), var(--sb-surface-inset, #0B1224) var(--_p));
 		box-shadow: 0 0 0 2px var(--sb-border, #283552);
-		clip-path: ${notch('var(--_n)')};
+		clip-path: ${notch};
 		border-radius: calc(4px * (1 - var(--_notch)));
 	}
 	.rail:dir(rtl)::before { scale: -1 1; }
@@ -82,7 +82,7 @@ input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px
 		border: 0;
 		background: var(--_thumb);
 		box-shadow: inset 0 -3px 0 var(--_thumb-edge);
-		clip-path: ${notch('var(--_n)')};
+		clip-path: ${notch};
 		border-radius: calc(7px * (1 - var(--_notch)));
 		transition: translate 80ms;
 	}
@@ -90,10 +90,10 @@ input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px
 		inline-size: 14px;
 		block-size: 20px;
 		border: 0;
-		clip-path: ${notch('var(--_n)')};
-		border-radius: calc(7px * (1 - var(--_notch)));
 		background: var(--_thumb);
 		box-shadow: inset 0 -3px 0 var(--_thumb-edge);
+		clip-path: ${notch};
+		border-radius: calc(7px * (1 - var(--_notch)));
 	}
 	input:active::-webkit-slider-thumb { translate: 0 1px; }
 }
@@ -123,8 +123,6 @@ rocket('sb-slider', {
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const clamp = (v) => (Object.assign(probe, { min: props.min, max: props.max, step: props.step || 'any', value: Number.isFinite(v) ? v : props.min }), +probe.value)
-		// Shown with the decimals of the step and of min (2 when continuous).
-		const dec = () => Math.max(decimals(props.step || 0.01), decimals(props.min))
 		const states = internalsOf(host).states
 		// With confirm: the values committed while pending. The server echoes
 		// each one; an echo of an older one, with newer ones still on their
@@ -132,20 +130,21 @@ rocket('sb-slider', {
 		// and the server's agree.
 		let sent = []
 		$$.value = clamp(props.value)
-		// What derives from the value and the props: the fill, the text and,
-		// with confirm, :state(pending) while the local value differs from the
-		// server's (revert() goes back to it, e.g. when a command is rejected).
+		// Runs on every value and prop change. A new range or step moves the
+		// value into it; from the value derive the fill, the text (with the
+		// decimals of the step and of min, 2 when continuous) and, with confirm,
+		// :state(pending) while the local value differs from the server's
+		// (revert() goes back to it, e.g. when a command is rejected).
 		const sync = () =>
 			peek(() => {
-				const v = $$.value
+				const v = ($$.value = clamp($$.value))
 				$$.pct = ((v - props.min) / (props.max - props.min || 1)) * 100 + '%'
-				$$.shown = v.toFixed(dec()) + props.unit
+				$$.shown = v.toFixed(Math.max(decimals(props.step || 0.01), decimals(props.min))) + props.unit
 				props.confirm && v !== clamp(props.value) ? states.add('pending') : (states.delete('pending'), (sent = []))
 			})
 		// (No value: the element is being disconnected, its signals are gone.)
 		effect(() => $$.value != null && sync())
-		// A new range or step moves the value into it.
-		observeProps(() => peek(() => (($$.value = clamp($$.value)), sync())))
+		observeProps(sync)
 		// A value attribute sent by the server wins when it changes; re-sending
 		// the same markup changes nothing, so edits survive re-renders. A
 		// *removed* attribute changes nothing either: morphs also remove
@@ -159,8 +158,8 @@ rocket('sb-slider', {
 				if (!host.hasAttribute('value')) return void (served = null)
 				if (props.value === served) return
 				served = props.value
-				const i = sent.indexOf(served)
-				sent = i < 0 ? [] : sent.slice(i + 1)
+				// Drop the commits up to this echo (all of them when it echoes none).
+				sent = sent.slice(sent.indexOf(served) + 1 || sent.length)
 				sent.length || ($$.value = clamp(served))
 			}),
 		)
