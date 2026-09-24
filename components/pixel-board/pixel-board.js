@@ -8,6 +8,10 @@ const PALETTE = [
 const PENDING_MS = 3000
 const FLUSH_MS = 80
 
+// gridOn is the default line colour for a board whose blank cells are c:
+// faint white on a dark board, faint black on a light one.
+const gridOn = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b > 140 ? 'rgb(0 0 0 / 0.1)' : 'rgb(255 255 255 / 0.06)')
+
 const hex = (c) => {
 	const m = /^#?([0-9a-f]{6})$/i.exec(c)
 	const n = m ? parseInt(m[1], 16) : 0
@@ -22,6 +26,7 @@ const styles = /* css */ `
 	--_border: var(--sb-border, #283552);
 	--_focus: var(--sb-brand-light, #B09AFF);
 	--_surface: var(--sb-surface-inset, #0B1224);
+	--_swatch-edge: color-mix(in srgb, var(--sb-text-1, #FFFFFF) 12%, transparent);
 	display: inline-block;
 	inline-size: var(--sb-pixel-board-size, 24rem);
 	max-inline-size: 100%;
@@ -37,8 +42,11 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; }
 	inset: 0;
 	pointer-events: none;
 	background-image:
-		linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
-		linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+		linear-gradient(to right, var(--_grid) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--_grid) 1px, transparent 1px);
+	/* The lines lie on the cells, not on the page: by default they follow the
+	   blank cell colour (palette[0], see gridOn), light on a dark board. */
+	--_grid: var(--sb-pixel-board-grid, var(--_grid-auto, rgb(255 255 255 / 0.06)));
 	background-size: calc(100% / var(--_n)) calc(100% / var(--_n));
 }
 .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
@@ -46,7 +54,7 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; }
 .palette button {
 	all: unset;
 	aspect-ratio: 1;
-	border: 1px solid rgb(255 255 255 / 0.12);
+	border: 1px solid var(--_swatch-edge);
 	cursor: pointer;
 	transition: translate 80ms;
 }
@@ -75,6 +83,7 @@ rocket('sb-pixel-board', {
 		adoptStyles(host, styles)
 		$$.color = props.color
 		$$.palette = props.palette
+		$$.gridAuto = () => gridOn(hex($$.palette[0] ?? PALETTE[0]))
 		$$.label = 'Pixel board'
 
 		const n = () => props.size
@@ -227,7 +236,7 @@ rocket('sb-pixel-board', {
 	},
 	render: ({ html, props: { size, readonly, grid } }) => html`
 		<div class="board" part="board">
-			<div class="frame" style="--_n: ${size}">
+			<div class="frame" style="--_n: ${size}" data-style:--_grid-auto="$$gridAuto">
 				<canvas part="canvas" width="${size}" height="${size}" tabindex="0" role="img"
 					data-ref:canvas
 					data-attr:aria-label="$$label"

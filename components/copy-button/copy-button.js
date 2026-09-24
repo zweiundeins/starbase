@@ -25,6 +25,8 @@ button {
 	place-items: center;
 	inline-size: 2rem;
 	block-size: 2rem;
+	/* The icon is half the button, whatever size a page gives it (::part(button)). */
+	container-type: size;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
 	background: var(--_bg);
@@ -36,7 +38,7 @@ button:hover { color: var(--_text-hover); border-color: color-mix(in oklch, var(
 button:focus-visible { box-shadow: var(--_focus); }
 button.copied { color: var(--_ok); border-color: color-mix(in oklch, var(--_ok) 50%, transparent); }
 button.failed { color: var(--_danger); border-color: color-mix(in oklch, var(--_danger) 50%, transparent); }
-svg { inline-size: 1rem; block-size: 1rem; }
+svg { inline-size: 50cqi; block-size: 50cqi; } /* half the button (the 2rem box inside its border) */
 .tip {
 	position: absolute;
 	inset-block-end: calc(100% + 6px);

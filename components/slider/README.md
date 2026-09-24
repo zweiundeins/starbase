@@ -59,12 +59,12 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 - **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
 - **Fonts:** the label, the value and the tick labels use your page's font.
-- **Colours:** the filled part of the track is `--sb-brand`, the rest `--sb-surface-inset` with a `--sb-border` edge. The thumb is `--sb-text-1` with a `--sb-brand-light` edge, which is also the focus ring. The label is `--sb-text-2`, the value `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumb instead of notching them.
-- **Parts:** `label`, `value` and `input` (the range input). The thumb is drawn inside the input and has no part: colour it with the tokens. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Colours:** the filled part of the track is `--sb-brand`, the rest `--sb-surface-inset` with a `--sb-border` edge. The thumb is `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. The label is `--sb-text-2`, the value `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumb instead of notching them.
+- **Parts:** `label`, `value` and `input` (the range input). The thumb is drawn inside the input and has no part: colour it with `--sb-slider-thumb` and `--sb-slider-thumb-edge`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
-  .my-slider { max-inline-size: 20rem; --sb-brand: #F97316; --sb-brand-light: #FDBA74; --sb-notch: 0; }
+  .my-slider { max-inline-size: 20rem; --sb-brand: #F97316; --sb-brand-light: #FDBA74; --sb-notch: 0; --sb-slider-thumb: #FFFFFF; --sb-slider-thumb-edge: #F97316; }
   .my-slider::part(value) { color: #F97316; }
 </style>
 <sb-slider class="my-slider" label="Thrust" value="70" unit="%"></sb-slider>

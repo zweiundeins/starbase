@@ -4,7 +4,7 @@ Community gallery for Datastar Rocket web components. Go 1.27, templ, SQLite (mo
 
 ## Commands
 - `go tool task live`: dev server (air, `-tags dev`, live reload via `/dev/reload`)
-- `go tool task test`: `go vet` + `go test ./...`. Run `go tool templ generate` after editing `.templ` (the `_templ.go` files are committed).
+- `go tool task test`: `go vet` + `go test ./...`. `TestCodeEditorLinesAlign` (`internal/app`) drives headless Chrome like `cmd/manifests`: it skips without Chrome, and without a sandbox unless `STARBASE_CHROME_NO_SANDBOX=1`. Run `go tool templ generate` after editing `.templ` (the `_templ.go` files are committed).
 - `go tool task new -- <slug> --category <cat>`: scaffold a component
 - `go tool task manifests`: regenerate all `manifest.json` in headless Chrome (`cmd/manifests`, runs the app in-process); `--check` in CI. Chrome keeps its sandbox (submitted code runs there); on machines without one, set `STARBASE_CHROME_NO_SANDBOX=1` (never in CI).
 

@@ -45,12 +45,13 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 - **Fonts:** the tab labels use your page's font.
 - **Colours:** the strip is `--sb-surface-inset` with a `--sb-border` edge. Tabs are `--sb-text-2` (`--sb-text-1` on hover) with a `--sb-border` outline; the selected tab fills with `--sb-brand-light` and writes in `--sb-bg`. The focus ring is `--sb-focus-ring`, corners `--sb-control-radius`.
-- **Parts:** `tablist` (the strip), `tab` (every tab) and `panel` (every panel). The selected tab has no part of its own: change its colours with the tokens. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `tablist` (the strip), `tab` (every tab) and `panel` (every panel). The selected tab is also `selected`, so `::part(tab selected)` styles only that one; it moves with the selection. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
   .my-tabs { --sb-brand-light: var(--sb-accent); --sb-control-radius: 0; }
   .my-tabs::part(tab) { padding: 0.35rem 0.75rem; font-size: 0.8125rem; }
+  .my-tabs::part(tab selected) { text-decoration: underline; }
 </style>
 <sb-tabs class="my-tabs" labels='["Orbit","Crew"]'>
   <p slot="orbit">Low Earth orbit, 420 km.</p>

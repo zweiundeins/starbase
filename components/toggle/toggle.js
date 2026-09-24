@@ -25,7 +25,7 @@ const styles = /* css */ `
 :host {
 	--_track: var(--sb-border-strong, #3A4868);
 	--_on: var(--sb-brand, #8C6BFF);
-	--_knob: var(--sb-text-1, #F3F4FA);
+	--_knob: var(--sb-toggle-knob, var(--sb-text-1, #F3F4FA));
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_focus: var(--sb-brand-light, #B09AFF);
 	--_notch: var(--sb-notch, 1);

@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	stylingPartRe  = regexp.MustCompile(`::part\(([a-z0-9-]+)\)`)
+	stylingPartRe  = regexp.MustCompile(`::part\(([a-z0-9 -]+)\)`)
 	stylingTokenRe = regexp.MustCompile(`(var\(\s*)?(--sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
 	sourcePartRe   = regexp.MustCompile(`\bpart="([^"]*)"`)
+	partNameRe     = regexp.MustCompile(`[a-z][a-z0-9-]*`)
 )
 
 // stylingSection returns the body of a README's "## Styling" section.
@@ -80,13 +81,16 @@ func TestStylingDocs(t *testing.T) {
 		}
 		parts := map[string]bool{}
 		for _, m := range sourcePartRe.FindAllStringSubmatch(src, -1) {
-			for _, p := range strings.Fields(m[1]) {
+			// A static list (part="tab") or an expression (data-attr:part="… ? 'tab selected' : 'tab'").
+			for _, p := range partNameRe.FindAllString(m[1], -1) {
 				parts[p] = true
 			}
 		}
 		for _, m := range stylingPartRe.FindAllStringSubmatch(section, -1) {
-			if !parts[m[1]] {
-				t.Errorf("%s: Styling mentions ::part(%s), but no element has part=%q", c.Slug, m[1], m[1])
+			for _, p := range strings.Fields(m[1]) {
+				if !parts[p] {
+					t.Errorf("%s: Styling mentions ::part(%s), but no element has part %q", c.Slug, m[1], p)
+				}
 			}
 		}
 		seen := map[string]bool{}

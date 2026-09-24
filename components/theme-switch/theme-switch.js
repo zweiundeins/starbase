@@ -15,6 +15,8 @@ const iconCSS = Object.entries(ICON_PATHS)
 		return `.icon.${name} { --_mask: url("data:image/svg+xml,${encodeURIComponent(svg)}"); }`
 	})
 	.join('\n')
+// The select's arrow, as a mask too (see .picker::after).
+const CHEVRON = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>')}")`
 const iconOf = (theme) => (theme in ICON_PATHS && theme !== 'palette' ? theme : '')
 
 // Text inside a single-quoted string of a Datastar expression.
@@ -91,7 +93,7 @@ select {
 	padding: 0 2rem 0 0.75rem;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
-	background: var(--_bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23AEBBDD' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.5rem center / 1rem;
+	background: var(--_bg);
 	color: var(--_active);
 	font: inherit;
 	font-size: 0.8125rem;
@@ -99,6 +101,20 @@ select {
 	cursor: pointer;
 }
 select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
+/* The select's arrow, drawn over it in the options' text colour, so it follows the theme. */
+.picker { position: relative; display: inline-flex; }
+.picker::after {
+	content: "";
+	position: absolute;
+	inset-inline-end: calc(0.5rem + 1px); /* inside the select's border */
+	inset-block-start: 50%;
+	inline-size: 1rem;
+	block-size: 1rem;
+	translate: 0 -50%;
+	background: var(--_text);
+	mask: ${CHEVRON} center / contain no-repeat;
+	pointer-events: none;
+}
 .trigger {
 	all: unset;
 	display: grid;
@@ -204,7 +220,7 @@ rocket('sb-theme-switch', {
 				<div id="menu" class="menu" part="menu" popover role="radiogroup" aria-label="${label}"
 					data-on:sb-theme-change__window="@sync()">
 					<template data-for="o in $$options">
-						<label>
+						<label data-attr:part="$$theme === o?.value ? 'option selected' : 'option'">
 							<input type="radio" name="theme"
 								data-attr:value="o.value"
 								data-effect="el.checked = $$theme === o.value"
@@ -216,18 +232,18 @@ rocket('sb-theme-switch', {
 				</div>`
 			: variant === 'select'
 			? html`
-				<select part="select" aria-label="${label}"
+				<span class="picker"><select part="select" aria-label="${label}"
 					data-on:change="@pick()"
 					data-on:sb-theme-change__window="@sync()">
 					<template data-for="o in $$options">
 						<option data-attr:value="o.value" data-text="o.label" data-effect="el.selected = $$theme === o.value"></option>
 					</template>
-				</select>`
+				</select></span>`
 			: html`
 				<div class="group ${compact ? 'compact' : ''}" part="group" role="radiogroup" aria-label="${label}"
 					data-on:sb-theme-change__window="@sync()">
 					<template data-for="o in $$options">
-						<label data-class:iconless="!o.icon" data-attr:title="o.label">
+						<label data-class:iconless="!o.icon" data-attr:title="o.label" data-attr:part="$$theme === o?.value ? 'option selected' : 'option'">
 							<input type="radio" name="theme"
 								data-attr:value="o.value"
 								data-effect="el.checked = $$theme === o.value"

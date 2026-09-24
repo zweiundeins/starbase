@@ -87,8 +87,8 @@ rocket('sb-alert', {
 		>
 			<span class="light" aria-hidden="true"></span>
 			<div>
-				${heading ? html`<strong class="heading">${heading}</strong>` : null}
-				<div class="msg"><slot></slot></div>
+				${heading ? html`<strong class="heading" part="heading">${heading}</strong>` : null}
+				<div class="msg" part="message"><slot></slot></div>
 			</div>
 			${closable ? html`<button class="close" type="button" aria-label="Dismiss" data-on:click="@close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
 		</div>

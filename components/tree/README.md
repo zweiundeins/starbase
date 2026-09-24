@@ -81,12 +81,13 @@ Style it from your page's CSS — no need to change the component or import anyt
 - **Size:** set `font-size` on the element (default `0.875rem`) to scale the text; rows are at least `2rem` tall (`min-block-size` on `::part(item)`).
 - **Fonts:** the rows use your page's font.
 - **Colours:** text is `--sb-text-1`, the carets and "loading" `--sb-text-muted`. Rows turn `--sb-surface-hover` on hover; the selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-radius-sm`.
-- **Parts:** `tree` and `item` (every row). The selected row has no part of its own: change its colours with the tokens. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `tree` and `item` (every row). Selected rows are also `selected`, so `::part(item selected)` styles only those; it moves with the selection. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
   .my-tree { font-size: 1rem; --sb-brand: var(--sb-accent); }
   .my-tree::part(item) { min-block-size: 2.5rem; }
+  .my-tree::part(item selected) { font-weight: 700; }
 </style>
 <sb-tree class="my-tree" label="Files" value="main" expanded="src" items='[{"id":"src","label":"src","children":[{"id":"main","label":"main.go"},{"id":"util","label":"util.go"}]},{"id":"readme","label":"README.md"}]'></sb-tree>
 ```

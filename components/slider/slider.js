@@ -26,8 +26,8 @@ const styles = /* css */ `
 	--_track: var(--sb-surface-inset, #0B1224);
 	--_border: var(--sb-border, #283552);
 	--_fill: var(--sb-brand, #8C6BFF);
-	--_thumb: var(--sb-text-1, #F3F4FA);
-	--_thumb-edge: var(--sb-brand-light, #B09AFF);
+	--_thumb: var(--sb-slider-thumb, var(--sb-text-1, #F3F4FA));
+	--_thumb-edge: var(--sb-slider-thumb-edge, var(--sb-brand-light, #B09AFF));
 	--_label: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
 	--_value: var(--sb-text-1, #F3F4FA);

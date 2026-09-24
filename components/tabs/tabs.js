@@ -116,7 +116,7 @@ rocket('sb-tabs', {
 				<button
 					type="button"
 					role="tab"
-					part="tab"
+					data-attr:part="$$selected === ${i} ? 'tab selected' : 'tab'"
 					id="tab-${i}"
 					aria-controls="panel-${i}"
 					data-attr:aria-selected="String($$selected === ${i})"

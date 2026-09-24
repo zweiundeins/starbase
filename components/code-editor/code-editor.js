@@ -45,6 +45,7 @@ const styles = /* css */ `
 	--_sel: var(--sb-selection, rgb(140 107 255 / 0.4));
 	--_radius: var(--sb-radius, 8px);
 	--_font: var(--sb-font-ui, "JetBrains Mono", ui-monospace, monospace);
+	--_code-size: var(--sb-code-editor-font-size, 0.8125rem);
 	display: block;
 	inline-size: 100%;
 }
@@ -80,12 +81,17 @@ const styles = /* css */ `
 pre, textarea, .gutter {
 	margin: 0;
 	font-family: var(--_font);
-	font-size: 0.8125rem;
+	/* One size for the textarea, the highlighted <pre> and the gutter: the caret and the colours must line up. */
+	font-size: var(--_code-size);
 	line-height: 1.6;
 	white-space: pre;
 	tab-size: inherit;
 	font-variant-ligatures: none;
 }
+/* The browser gives <code> its own monospace font: a second font on every
+   line makes each line box taller, and the highlighting drifts away from the
+   caret and the line numbers. It takes the <pre>'s font, size and line height. */
+pre code { font: inherit; }
 pre, textarea { padding: 0.75rem 1rem; border: 0; }
 pre { color: var(--_text); pointer-events: none; }
 textarea {

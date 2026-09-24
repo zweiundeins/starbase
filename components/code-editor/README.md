@@ -75,8 +75,8 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value i
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** it fills the width it is given. `--sb-code-editor-height` (default `28rem`) is the most it grows before it scrolls, `--sb-code-editor-min-height` (default `0`) the least it shrinks to.
-- **Fonts:** the code uses `--sb-font-ui` when a site sets one, else JetBrains Mono or the system's monospace font; set `--sb-font-ui` on the editor to choose it. The label uses your page's font. The highlighted code is drawn under a transparent textarea, and the two must line up to the pixel, so change the code's font through the token, not with `::part(textarea)`.
+- **Size:** it fills the width it is given. `--sb-code-editor-height` (default `28rem`) is the most it grows before it scrolls, `--sb-code-editor-min-height` (default `0`) the least it shrinks to. `--sb-code-editor-font-size` (default `0.8125rem`) sets the size of the code and the line numbers.
+- **Fonts:** the code uses `--sb-font-ui` when a site sets one, else JetBrains Mono or the system's monospace font; set `--sb-font-ui` on the editor to choose it. The label uses your page's font. The highlighted code is drawn under a transparent textarea, and the two must line up to the pixel, so change the code's font and size through `--sb-font-ui` and `--sb-code-editor-font-size`, which set both, not with `::part(textarea)`.
 - **Colours:** the syntax colours are `--sb-code-keyword`, `--sb-code-function`, `--sb-code-tag`, `--sb-code-string` and `--sb-code-number`; comments, punctuation and the line numbers are `--sb-text-muted`, plain code `--sb-text-1`. The box is `--sb-surface-inset` with a `--sb-border` edge (`--sb-brand-light` while you type), the selection `--sb-selection`, the label `--sb-text-2`, the corners `--sb-radius`.
 - **Parts:** `editor` (the scrolling box), `label` and `textarea` (the layer you type in). Your page's `::part()` rules win over the component's own, without `!important`.
 
@@ -84,6 +84,7 @@ Style it from your page's CSS — no need to change the component or import anyt
 <style>
   .my-editor {
     --sb-code-editor-height: 8rem;
+    --sb-code-editor-font-size: 1rem;
     --sb-font-ui: "Courier New", monospace;
     --sb-code-keyword: #DB2777;
   }

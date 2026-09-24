@@ -66,7 +66,7 @@ rocket('sb-card', {
 		<article class="${variant}" part="card" data-init="@slots()" data-on:slotchange="@slots()">
 			<div class="media" part="media" data-show="$$media"><slot name="media"></slot></div>
 			<div class="body" part="body">
-				${heading ? html`<h3 class="heading">${href ? html`<a href="${href}">${heading}</a>` : heading}</h3>` : null}
+				${heading ? html`<h3 class="heading" part="heading">${href ? html`<a href="${href}">${heading}</a>` : heading}</h3>` : null}
 				<slot></slot>
 			</div>
 			<div class="footer" part="footer" data-show="$$footer"><slot name="footer"></slot></div>

@@ -31,12 +31,13 @@ jobs:
           git diff --exit-code -- '*_templ.go'
       - name: Vet
         run: go vet ./... && go vet -tags dev ./...
-      - name: Test
-        run: go test -race ./...
       - name: Let Chrome use its sandbox
         # Ubuntu 24.04 restricts unprivileged user namespaces, which Chrome's
         # sandbox needs; without this it would have to run with --no-sandbox.
+        # Before the tests: TestCodeEditorLinesAlign drives headless Chrome too.
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: Test
+        run: go test -race ./...
       - name: Component manifests are up to date (headless Chrome)
         run: go run -tags dev ./cmd/manifests --check
 

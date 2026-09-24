@@ -245,7 +245,8 @@ rocket('sb-tree', {
 			data-on:keydown="@key()" data-on:focusin="@focusin()" data-on:focusout="@focusout()">
 			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
 			<template data-for="r in $$rows">
-				<div role="treeitem" part="item"
+				<div role="treeitem"
+					data-attr:part="$$mode !== 'none' && $$selected.includes(r?.id) ? 'item selected' : 'item'"
 					data-attr:data-id="r?.id"
 					data-attr:aria-level="r?.depth + 1"
 					data-attr:aria-posinset="r?.pos"

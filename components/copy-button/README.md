@@ -59,7 +59,7 @@ Browsers can refuse the clipboard: outside a secure context (plain `http://`), i
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** the button is a `2rem` square; set `inline-size` and `block-size` on `::part(button)` for another.
+- **Size:** the button is a `2rem` square; set `inline-size` and `block-size` on `::part(button)` for another, and the icon stays half its size.
 - **Fonts:** the "Copied!" tip uses your page's font.
 - **Colours:** the button is `--sb-surface-raised` with a `--sb-border` edge and a `--sb-text-2` icon (`--sb-text-1` on hover). After copying it turns `--sb-ok`, after a refusal `--sb-danger`. The tip is `--sb-surface-raised` with a `--sb-border-strong` edge and `--sb-text-1` text; a failure fills it with `--sb-danger` and `--sb-text-on-danger`. Corners are `--sb-radius-sm`, the focus ring `--sb-focus-ring`.
 - **Parts:** `button` and `tip`. Your page's `::part()` rules win over the component's own, without `!important`.
