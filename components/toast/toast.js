@@ -44,7 +44,7 @@ const normalize = (list) => {
 
 const styles = /* css */ `
 :host {
-	--_bg: var(--sb-surface-raised, #141D32);
+	--_bg: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border, #283552);
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_body: var(--sb-text-2, #AEBBDD);
