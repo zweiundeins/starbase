@@ -45,17 +45,15 @@ rocket('sb-starfield', {
 		let stars = []
 		let raf = 0, last = 0, v = 0, visible = true
 
-		// x and y are relative to the view: a star is on screen while |x| and
-		// |y| are below z, so a resize stretches the field instead of cropping
-		// it. Stars come from a box of ±1.2 seen at a focal length of 0.9 × the
-		// shorter side, so there are none before the field has a size.
 		const spawn = (s = {}) => {
-			s.x = (Math.random() * 2 - 1) * 2.16 * Math.min(1, h / w)
-			s.y = (Math.random() * 2 - 1) * 2.16 * Math.min(1, w / h)
+			s.x = (Math.random() * 2 - 1) * 1.2
+			s.y = (Math.random() * 2 - 1) * 1.2
 			s.z = Math.random() * 0.95 + 0.05
 			s.pz = s.z
 			return s
 		}
+		// None before the field has a size: a still frame moves every star on
+		// screen, and on a stand-in size that would bunch them in the middle.
 		const populate = () => {
 			const n = w ? Math.round(props.density) : 0
 			while (stars.length < n) stars.push(spawn())
@@ -93,6 +91,7 @@ rocket('sb-starfield', {
 				rgb = ctx.getImageData(0, 0, 1, 1).data
 			}
 			img.data.fill(0)
+			const f = Math.min(w, h) * 0.9
 			if (dt >= 0) v = (props.speed / 100) * 0.9 * dt
 			next: for (const s of stars) {
 				if (dt >= 0) {
@@ -100,14 +99,14 @@ rocket('sb-starfield', {
 					s.z -= v
 					if (s.z <= 0.02) spawn(s), (s.z = 1), (s.pz = 1)
 				}
+				let sx, sy
 				// Off screen: a moving field shows the new star from the next frame
 				// on; a still one draws until it has one on screen, so it shows them all.
-				while (Math.abs(s.x) >= s.z || Math.abs(s.y) >= s.z) if ((spawn(s), v)) continue next
-				const sx = (w / 2) * (1 + s.x / s.z), sy = (h / 2) * (1 + s.y / s.z)
+				while (((sx = w / 2 + (s.x / s.z) * f), (sy = h / 2 + (s.y / s.z) * f), sx < 0 || sy < 0 || sx >= w || sy >= h)) if ((spawn(s), v)) continue next
 				// Nearer stars are brighter: four stepped levels.
 				const a = [70, 130, 200, 255][Math.min(3, Math.floor((1 - s.z) * 4))]
 				if (props.warp && v > 0) {
-					line((w / 2) * (1 + s.x / s.pz), (h / 2) * (1 + s.y / s.pz), sx, sy, a)
+					line(w / 2 + (s.x / s.pz) * f, h / 2 + (s.y / s.pz) * f, sx, sy, a)
 				} else {
 					plot(sx, sy, a)
 					if (s.z < 0.25) plot(sx + 1, sy, a), plot(sx, sy + 1, a), plot(sx + 1, sy + 1, a)

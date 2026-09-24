@@ -46,7 +46,7 @@ Stars fly toward you in chunky pixels. Every knob is an attribute, so a slider (
 
 ## Performance
 
-It renders at a third of the CSS resolution into one `ImageData`. It stops animating offscreen, when `speed` is 0, or under `prefers-reduced-motion`, where it shows a single still frame with every star. A resize stretches the field to the new size. Set the height with `--sb-starfield-height`.
+It renders at a third of the CSS resolution into one `ImageData`. It stops animating offscreen, when `speed` is 0, or under `prefers-reduced-motion`, where it shows a single still frame with every star. Set the height with `--sb-starfield-height`.
 
 ## Styling
 
