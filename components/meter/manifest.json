@@ -68,7 +68,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Caption."
+        "description": "Caption, and the accessible name."
       }
     },
     {

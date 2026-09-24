@@ -1,5 +1,12 @@
 import { rocket } from 'datastar'
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached. The host is the meter (role,
+// name, values) and carries its tone as a custom state (:state(warn)): both
+// are morph-proof, unlike attributes.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 const styles = /* css */ `
 :host {
 	--_track: var(--sb-surface-inset, #0B1224);
@@ -36,6 +43,10 @@ const styles = /* css */ `
 }
 .seg.on { background: var(--_c); box-shadow: inset 0 -3px 0 color-mix(in oklch, var(--_c), black 25%); }
 @media (prefers-reduced-motion: reduce) { .seg { transition: none; } }
+@media (forced-colors: active) {
+	.bar { outline: 1px solid CanvasText; }
+	.seg.on { forced-color-adjust: none; background: CanvasText; }
+}
 `
 
 rocket('sb-meter', {
@@ -46,7 +57,7 @@ rocket('sb-meter', {
 		segments: number.clamp(2, 40).step(1).default(12).docs({ description: 'Number of blocks.' }),
 		warn: number.default(70).docs({ description: 'Warning threshold, in value units. Unset, it sits at 70% of the range (70 on 0–100). Below danger means low values are bad (like fuel).' }),
 		danger: number.default(90).docs({ description: 'Danger threshold, in value units. Unset, it sits at 90% of the range (90 on 0–100).' }),
-		label: string.trim.docs({ description: 'Caption.' }),
+		label: string.trim.docs({ description: 'Caption, and the accessible name.' }),
 		unit: string.docs({ description: 'Unit after the value.' }),
 		showValue: bool.default(true).docs({ description: 'Show the value.' }),
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals shown.' }),
@@ -68,15 +79,18 @@ rocket('sb-meter', {
 		const s = danger < warn ? -1 : 1
 		const tone = s * (value - danger) >= 0 ? 'danger' : s * (value - warn) >= 0 ? 'warn' : 'ok'
 		const shown = Number(value).toFixed(decimals) + unit
+		const x = internalsOf(host)
+		Object.assign(x, { role: 'meter', ariaLabel: label, ariaValueMin: min, ariaValueMax: max, ariaValueNow: Math.min(max, Math.max(min, value)), ariaValueText: shown })
+		x.states.clear()
+		x.states.add(tone)
 		return html`
 			${label || showValue ? html`
-				<div class="head">
+				<div class="head" aria-hidden="true">
 					<span class="label" part="label">${label}</span>
 					${showValue ? html`<span class="value" part="value">${shown}</span>` : null}
 				</div>` : null}
-			<div class="bar ${tone}" part="bar" role="meter" aria-label="${label || 'Meter'}"
-				aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}" aria-valuetext="${shown}">
-				${Array.from({ length: segments }, (_, i) => html`<span class="seg ${i < lit ? 'on' : ''}" style="--i: ${lit > from ? i - from : from - 1 - i}"></span>`)}
+			<div class="bar ${tone}" part="bar">
+				${Array.from({ length: segments }, (_, i) => html`<span class="seg ${i < lit ? 'on' : ''}" part="segment${i < lit ? ' lit' : ''}" style="--i: ${lit > from ? i - from : from - 1 - i}"></span>`)}
 			</div>
 		`
 	},

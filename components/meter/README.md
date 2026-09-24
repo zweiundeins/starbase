@@ -2,9 +2,9 @@
 name: Meter
 tag: sb-meter
 category: feedback
-summary: A segmented pixel bar for levels, progress and resources.
+summary: A segmented pixel bar for levels and resources.
 author: zweiundeins
-tags: [progress, level, bar, battery, fuel]
+tags: [level, bar, battery, fuel]
 since: 2026-09-21
 preview: |
   <sb-meter label="Shields" value="75" unit="%" style="--sb-meter-width: 13rem"></sb-meter>
@@ -60,7 +60,8 @@ Style it from your page's CSS — no need to change the component or import anyt
 - **Size:** `--sb-meter-width` (default `22rem`) is the widest it gets, `--sb-meter-height` (default `12px`) the height of the blocks; `segments` sets how many there are.
 - **Fonts:** the label and the value use your page's font.
 - **Colours:** lit blocks are `--sb-ok`, `--sb-warn` past the `warn` threshold and `--sb-danger` past `danger`. The track is `--sb-surface-inset` with a `--sb-border` edge, and unlit blocks are a tint of that border. The label is `--sb-text-2`, the value `--sb-text-1`.
-- **Parts:** `label`, `value` and `bar`. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `label`, `value` and `bar`, and `segment` for every block; the lit ones are also `lit`: `::part(segment lit)`. Your page's `::part()` rules win over the component's own, without `!important`.
+- **States:** the host has `:state(ok)`, `:state(warn)` or `:state(danger)`, so the tone can restyle any part: `sb-meter:state(danger)::part(label)`.
 
 ```html preview
 <style>
@@ -72,4 +73,8 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The bar is a `role="meter"` with min, max, value and a readable value text. The colour change is backed by the number, so tone never carries the meaning alone.
+The element itself is the meter: `role="meter"` with `min`, `max`, the value (held within the range) and the shown text, such as `75%`, as its value text. They are set through `ElementInternals`, so page morphs can't strip them. Its name is `label`; without one, give the element an `aria-label`. The caption and number above the bar are hidden from assistive technology, so nothing is read twice.
+
+The fill and the number show the level; the tone is colour only, and assistive technology gets the value, not whether it is past `warn` or `danger`. Where that matters, say it in the label or next to the meter. In forced-colours mode (Windows High Contrast), the lit blocks are drawn in the text colour inside an outlined frame.
+
+`sb-meter` shows a level within a known range, like the native `<meter>`. For the progress of a task, use a progress bar (`role="progressbar"`).
