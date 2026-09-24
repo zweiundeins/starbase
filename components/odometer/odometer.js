@@ -54,22 +54,26 @@ const styles = /* css */ `
 	align-items: flex-end;
 	line-height: 1;
 	font-variant-numeric: tabular-nums;
+	direction: ltr; /* a number reads left to right in right-to-left text too */
 }
-.odo { display: contents; }
+:host([hidden]) { display: none; }
+/* Every wheel holds all its digits: a copy takes the .sr text instead. */
+.odo { display: contents; -webkit-user-select: none; user-select: none; }
 .sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .col { display: inline-block; block-size: 1em; overflow: hidden; }
 .strip { display: block; will-change: transform; }
 .strip > span { display: block; block-size: 1em; line-height: 1em; text-align: center; }
 .static { display: inline-block; }
 
-/* Drum: the window shows the digit face-on and the neighbours curving away
-   above and below it, fading into the page. A face is 1em tall, so ten of them
-   close into a cylinder of radius 0.5em / tan(18°). */
-:host([drum]) {
+/* Drum (.d, from the decoded prop: drum="false" is no drum): the window shows
+   the digit face-on and the neighbours curving away above and below it, fading
+   into the page. A face is 1em tall, so ten of them close into a cylinder of
+   radius 0.5em / tan(18°). */
+.d > * {
 	--_window: var(--sb-odometer-window, 1.5em);
 	--_perspective: var(--sb-odometer-perspective, 5em);
 	--_r: 1.5388em;
-	align-items: center;
+	align-self: center;
 }
 .drum {
 	position: relative;
@@ -98,7 +102,7 @@ const styles = /* css */ `
    same trim, so the decimal mark keeps the digits' baseline. Where text-box is
    not supported the drum simply looks as it did without it. */
 .face > span,
-:host([drum]) .static > span {
+.d > .static > span {
 	display: block;
 	text-box: trim-both cap alphabetic;
 }
@@ -179,7 +183,7 @@ rocket('sb-odometer', {
 				: html`<span class="col" part="digit"><span class="strip" style="transform:${offset(pos[i])}">${CELLS.map((d) => html`<span>${d}</span>`)}</span></span>`
 		}
 		return html`
-			<span class="sr">${text}</span><span class="odo" id="${shape}" aria-hidden="true">${[...text].map((ch) =>
+			<span class="sr">${text}</span><span class="odo${drum ? ' d' : ''}" id="${shape}" aria-hidden="true">${[...text].map((ch) =>
 				isDigit(ch) ? wheel() : html`<span class="static" part="separator"><span>${ch}</span></span>`,
 			)}</span>
 		`
