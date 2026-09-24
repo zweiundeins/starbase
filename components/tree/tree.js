@@ -29,6 +29,7 @@ const styles = /* css */ `
 	color: var(--_text);
 	font-size: 0.875rem;
 }
+:host([hidden]) { display: none; }
 [role="tree"] { display: grid; gap: 1px; outline: none; }
 [role="treeitem"] {
 	display: flex;
@@ -36,7 +37,7 @@ const styles = /* css */ `
 	gap: 0.4rem;
 	min-block-size: 2rem;
 	padding-inline: calc(var(--depth) * var(--_indent) + 0.25rem) 0.5rem;
-	border-radius: var(--sb-radius-sm, 4px);
+	border-radius: var(--sb-radius-sm, 6px);
 	cursor: pointer;
 	user-select: none;
 }
