@@ -58,6 +58,7 @@ const styles = /* css */ `
 	display: inline-flex;
 	vertical-align: middle;
 }
+:host([hidden]) { display: none; }
 .group {
 	display: inline-flex;
 	gap: 2px;
@@ -151,7 +152,7 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 .menu:popover-open { display: grid; gap: 2px; min-inline-size: 10rem; }
 .menu label { justify-content: flex-start; padding-inline: 0.6rem 1rem; }
 @media (forced-colors: active) {
-	.icon, .picker::after { background: CanvasText; }
+	.icon, .picker::after { forced-color-adjust: none; background: CanvasText; }
 	label:has(:checked) { outline: 2px solid Highlight; }
 }
 `
