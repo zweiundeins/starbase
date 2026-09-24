@@ -23,10 +23,10 @@ import (
 )
 
 // playgroundRun serves the code playground's runner: the page inside the
-// preview iframe. It is always embedded with sandbox="allow-scripts" (no
-// allow-same-origin), so user code runs in an opaque origin: it cannot read
-// the site's cookies, storage or DOM. The page has its own CSP; the site's
-// nonce-only policy would forbid running user code at all.
+// preview iframe. It is always embedded with sandbox="allow-scripts
+// allow-modals" (no allow-same-origin), so user code runs in an opaque
+// origin: it cannot read the site's cookies, storage or DOM. The page has its
+// own CSP; the site's nonce-only policy would forbid running user code at all.
 //
 // Protocol (postMessage, all messages carry source: "sb-runner"):
 //
