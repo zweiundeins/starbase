@@ -71,7 +71,7 @@ rocket('sb-qr-code', {
 			data-effect="el.setAttribute('viewBox', '0 0 ' + $$n + ' ' + $$n)">
 			<rect class="bg" part="background" width="100%" height="100%"></rect>
 			<path class="mod" part="modules" data-attr:d="$$mods"></path>
-			<path class="eye" part="corners" data-attr:d="$$eyes || null"></path>
+			<path class="eye" part="corners" data-attr:d="$$eyes"></path>
 		</svg>
 		<div class="error" part="error" role="alert" data-show="$$error"><slot name="error">Too much data for a QR code</slot></div>
 	`,
