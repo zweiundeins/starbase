@@ -30,7 +30,7 @@ type NamedSize struct {
 // build that precompresses would ship it. Datastar and Rocket are not
 // counted: every component shares them.
 type Sizes struct {
-	Files []NamedSize // its own module files: <slug>.js first, then vendored files
+	Files []NamedSize // the module files a page loads: <slug>.js first, then what it imports
 	Uses  []NamedSize // components it renders (transitively), by tag, all their files
 	Own   Size        // sum of Files
 	Total Size        // Own plus Uses
@@ -111,7 +111,7 @@ func (cat *Catalog) ownSizes(c *Component) (Sizes, error) {
 	}
 	main := strings.TrimPrefix(c.Script, c.Slug+"/")
 	names := make([]string, 0, len(files))
-	for n := range files {
+	for n := range cat.Loaded(c, files) {
 		names = append(names, n)
 	}
 	slices.SortFunc(names, func(a, b string) int {

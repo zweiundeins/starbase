@@ -59,9 +59,10 @@ func (cat *Catalog) Measure(code []byte, c *Component) (Measured, error) {
 		}
 	}
 
-	// Components it renders, except the ones it defines itself.
+	// Components it renders, except the ones it defines itself. The source,
+	// not the minified code: minifying renames the rocket import.
 	own := map[string]bool{}
-	for _, d := range definesRe.FindAllStringSubmatch(string(m), -1) {
+	for _, d := range definesRe.FindAllStringSubmatch(string(code), -1) {
 		own[d[1]] = true
 	}
 	seen := map[*Component]bool{}

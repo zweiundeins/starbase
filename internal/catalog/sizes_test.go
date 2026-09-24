@@ -37,6 +37,13 @@ func TestSizes(t *testing.T) {
 	if pg.Sizes.Total != pg.Sizes.Own.Add(editor.Sizes.Own) {
 		t.Errorf("total: %+v", pg.Sizes.Total)
 	}
+	// A file only the docs' examples import is not part of the download.
+	auto, _ := cat.Get("autoloader")
+	for _, f := range auto.Sizes.Files {
+		if f.Name == "demo-badge.js" {
+			t.Errorf("autoloader counts its example-only module: %+v", auto.Sizes.Files)
+		}
+	}
 }
 
 // The single-file bundle (loading experiment): every component in one module,

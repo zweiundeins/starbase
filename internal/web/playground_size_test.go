@@ -24,7 +24,8 @@ func TestPlaygroundSize(t *testing.T) {
 		}
 		return string(b)
 	}
-	for _, slug := range []string{"code-editor", "code-playground", "button"} {
+	// dropdown renders <sb-dropdown> itself (submenus): its own tag is not a dependency.
+	for _, slug := range []string{"code-editor", "code-playground", "button", "dropdown"} {
 		comp, _ := cat.Get(slug)
 		src, _ := fs.ReadFile(cat.FS, comp.Script)
 		got := measure(slug, string(src))

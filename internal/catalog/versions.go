@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io/fs"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -29,6 +30,33 @@ func (cat *Catalog) ModuleFiles(c *Component) (map[string][]byte, error) {
 		return err
 	})
 	return out, err
+}
+
+// Loaded returns the module files a page using c actually loads: its main
+// module and every file reached from it through relative imports (static or
+// dynamic), by name inside the folder. A file only the docs' examples import
+// (autoloader's demo-badge.js) is served and versioned like the others, but
+// not counted in the component's download size.
+func (cat *Catalog) Loaded(c *Component, files map[string][]byte) map[string]bool {
+	seen := map[string]bool{}
+	var walk func(string)
+	walk = func(name string) {
+		if seen[name] {
+			return
+		}
+		src, ok := files[name]
+		if !ok {
+			return
+		}
+		seen[name] = true
+		for _, spec := range Imports(string(src)) {
+			if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "../") {
+				walk(path.Clean(path.Join(path.Dir(name), spec)))
+			}
+		}
+	}
+	walk(strings.TrimPrefix(c.Script, c.Slug+"/"))
+	return seen
 }
 
 // SRI is a Subresource Integrity hash ("sha384-…") for integrity="…" and
