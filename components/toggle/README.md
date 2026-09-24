@@ -53,7 +53,7 @@ The server's `checked` wins when it sends a new one, even onto a toggle rendered
 
 ## Forms
 
-`sb-toggle` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-toggle` submits like a checkbox: `name=on` when it is on, nothing when it is off or `disabled`, and nothing without a `name`. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's `checked` without firing `change` or `sb-change`. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 

@@ -123,13 +123,24 @@ rocket('sb-toggle', {
 		// Rocket's disconnect wipes $$ (re-running this) before a move re-attaches.
 		effect(() => ((keep.on = $$.on ?? keep.on), sync()))
 		observeProps(sync)
-		defineHostProp('revert', { value: () => peek(() => (($$.on = props.checked), sync())) })
+		const revert = () => peek(() => (($$.on = props.checked), sync()))
+		defineHostProp('revert', { value: revert })
 		action('toggle', () => {
 			if (props.disabled) return
 			$$.on = !$$.on
 			emit('change')
 			emit('sb-change', { name: props.name, value: $$.on, checked: $$.on })
 		})
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in. Like a checkbox without
+		// a value: name=on when on, nothing when off. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		const form = host.closest('form')
+		const onData = (evt) => peek(() => props.name && !props.disabled && $$.on && evt.formData.append(props.name, 'on'))
+		// A reset is revert(): the server's value, no change events (like a native reset).
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', revert)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
 	},
 	render: ({ html, props: { label, size, disabled } }) => html`
 		<label>
