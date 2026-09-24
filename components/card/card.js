@@ -9,14 +9,14 @@ const styles = /* css */ `
 	--_muted: var(--sb-text-2, #AEBBDD);
 	--_brand: var(--sb-brand, #8C6BFF);
 	--_radius: var(--sb-radius-lg, 10px);
+	--_inner: calc(var(--_radius) - 1px); /* inside the 1px border */
 	display: block;
-	container-type: inline-size;
 }
+:host([hidden]) { display: none; }
 article {
 	display: flex;
 	flex-direction: column;
 	block-size: 100%;
-	overflow: hidden;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
 	background: var(--_bg);
@@ -26,16 +26,23 @@ article {
 .inset { background: var(--_inset); }
 .glow { border-color: color-mix(in oklch, var(--_brand) 50%, var(--_border)); box-shadow: 0 8px 32px -12px color-mix(in oklch, var(--_brand) 60%, transparent); }
 :host([href]) article:hover { border-color: color-mix(in oklch, var(--_brand) 60%, var(--_border)); translate: 0 -2px; }
-.media { display: grid; }
-::slotted([slot="media"]) { display: block; inline-size: 100%; block-size: auto; image-rendering: pixelated; }
-.body { display: grid; gap: 0.375rem; padding: 1rem; }
-.body:empty { display: none; }
+/* Only the media is clipped to the corners (all four when nothing follows it),
+   so tooltips and badges can leave the card. */
+.media { display: grid; overflow: hidden; border-radius: var(--_inner) var(--_inner) 0 0; }
+.media.end { border-radius: var(--_inner); }
+::slotted([slot="media"]) { display: block; inline-size: 100%; block-size: auto; }
+/* 0.75rem under 14rem, without a size container, which would leave the card
+   no width of its own in flex rows and fit-content layouts. 100% is the
+   card's inner width (14rem - 2px at the switch). While the browser measures
+   the content it counts as 0, which gives 1rem, so text never wraps early. */
+.body { display: grid; gap: 0.375rem; padding: clamp(0.75rem, 1rem + 99 * max(-100%, 100% + 2px - 14rem), 1rem); }
+/* A block, so inline markup in the body stays in one flow. */
+.body > slot { display: block; }
 .heading { margin: 0; color: var(--_text); font-size: 1rem; font-weight: 700; }
 .heading a { color: inherit; text-decoration: none; }
 .heading a::after { content: ""; position: absolute; inset: 0; }
 :host([href]) article { position: relative; }
-.footer { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-block-start: 1px solid var(--_border); }
-@container (width < 14rem) { .body { padding: 0.75rem; } }
+.footer { display: flex; align-items: center; gap: 0.5rem; margin-block-start: auto; padding: 0.75rem 1rem; border-block-start: 1px solid var(--_border); }
 `
 
 rocket('sb-card', {
@@ -51,23 +58,27 @@ rocket('sb-card', {
 			{ name: 'footer', description: 'Actions or metadata at the bottom.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, host }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, host }) => {
 		adoptStyles(host, styles)
-		// Which named slots received content; empty sections collapse.
-		$$.media = false
-		$$.footer = false
-		action('slots', () => {
-			const filled = (name) => host.shadowRoot.querySelector(`slot[name="${name}"]`)?.assignedNodes({ flatten: true }).length > 0
-			$$.media = filled('media')
-			$$.footer = filled('footer')
-		})
+		// Which slots received content (whitespace doesn't count); empty sections collapse.
+		$$.media = $$.body = $$.footer = false
+		const slots = () => {
+			for (const slot of host.shadowRoot.querySelectorAll('slot')) {
+				$$[slot.name || 'body'] = slot.assignedNodes({ flatten: true }).some((n) => n.nodeType != 3 || n.data.trim())
+			}
+		}
+		action('slots', slots)
+		// A morph rewrites a text node in place, without a slotchange.
+		const watch = new MutationObserver(slots)
+		watch.observe(host, { characterData: true, subtree: true })
+		cleanup(() => watch.disconnect())
 	},
 	render: ({ html, props: { heading, href, variant } }) => html`
 		<article class="${variant}" part="card" data-init="@slots()" data-on:slotchange="@slots()">
-			<div class="media" part="media" data-show="$$media"><slot name="media"></slot></div>
-			<div class="body" part="body">
+			<div class="media" part="media" data-show="$$media" data-class:end="${!heading} && !$$body && !$$footer"><slot name="media"></slot></div>
+			<div class="body" part="body" data-show="${heading ? 'true' : '$$body'}">
 				${heading ? html`<h3 class="heading" part="heading">${href ? html`<a href="${href}">${heading}</a>` : heading}</h3>` : null}
-				<slot></slot>
+				<slot data-show="$$body"></slot>
 			</div>
 			<div class="footer" part="footer" data-show="$$footer"><slot name="footer"></slot></div>
 		</article>

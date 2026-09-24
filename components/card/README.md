@@ -16,7 +16,7 @@ playground:
   style: "inline-size: min(100%, 18rem)"
 ---
 
-A surface with optional media, heading, body and footer. Slots that get no content collapse, and `href` turns the whole card into one link.
+A surface with optional media, heading, body and footer. Sections that get no content collapse (whitespace doesn't count), and `href` turns the whole card into one link.
 
 ## Examples
 
@@ -43,7 +43,9 @@ A surface with optional media, heading, body and footer. Slots that get no conte
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** it fills the width it is given (a grid cell, say) and tightens its padding when that is under `14rem`. Set `max-inline-size` on the card to cap it.
+- **Size:** it fills the width it is given (a grid cell, say) and tightens its padding when that is under `14rem`; in a flex row or any other fit-content layout it takes the width of its content. Set `max-inline-size` on the card to cap it. Cards in one grid row stretch to the same height, with their footers at the bottom.
+- **Body:** normal flow, like a `<div>`: inline markup stays in its line, and block children (paragraphs, lists) keep their own margins.
+- **Media:** scaled to the card's width and clipped to its corners. Nothing else is clipped, so tooltips and badges can reach outside the card. Raster pixel art that should stay crisp when scaled needs `image-rendering: pixelated` on your `<img>`.
 - **Fonts:** the heading and the body use your page's font.
 - **Colours:** the surface is `--sb-surface-card` (`--sb-surface-inset` for `variant="inset"`) with a `--sb-border` edge; the heading is `--sb-text-1` and the body `--sb-text-2`. `--sb-brand` tints the border of a linked card on hover and of the `glow` variant. Corners are `--sb-radius-lg`.
 - **Parts:** `card` (the frame), `media`, `heading`, `body` and `footer`. Your page's `::part()` rules win over the component's own, without `!important`.
