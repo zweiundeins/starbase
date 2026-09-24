@@ -130,5 +130,6 @@ It follows the ARIA combobox pattern:
   - Backspace in an empty input removes the last chip, with `multiple`.
 - **Loading:** the input is `aria-busy` while results are on their way, and "Searching…", "No results" and "Type to search" are announced (a status region).
 - **Disabled:** `disabled` takes it out of the tab order, and neither keys nor the pointer can change it.
+- **Forced colours:** the focus ring, the highlighted option and the arrow use system colours.
 
 The list is a native popover, so it is never clipped by a scrolling container.
