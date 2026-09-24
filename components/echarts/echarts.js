@@ -45,7 +45,7 @@ const optionCodec = createCodec({
 		if (typeof v !== 'string' || !v.trim()) return null
 		try {
 			const o = JSON.parse(v)
-			return o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length ? o : null
+			return isObj(o) && Object.keys(o).length ? o : null
 		} catch (e) {
 			console.error('<sb-echarts>: option is not valid JSON', e)
 			return null
@@ -119,7 +119,7 @@ const localeFor = (ec, lang) => {
 // ECharts parses an item's colour to lighten it for the hover state. With one it
 // cannot read, the hovered bar is drawn with no colour at all and flickers in
 // and out under the pointer. A 1×1 canvas turns anything the browser understands
-// into sRGB.
+// into sRGB. (Its context also measures legend labels, in margins() below.)
 const pixel = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
 const rgba = (css) => {
 	pixel.clearRect(0, 0, 1, 1)
@@ -167,16 +167,12 @@ const styles = /* css */ `
 .plot { position: absolute; inset: 0; }
 .fallback { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 :host(:not(:state(ready))) .fallback { position: static; inline-size: auto; block-size: auto; clip-path: none; white-space: normal; }
-.probe { position: absolute; visibility: hidden; }
 `
 
 // ---- the chart ----------------------------------------------------------------
 
-// setup keeps each element's chart in its closure; onFirstRender hands it the plot.
-const plots = new WeakMap()
-
-// One ElementInternals per element: attachInternals() works once, and setup
-// reruns when the element is re-attached. The ready state lives there rather
+// One ElementInternals per element: attachInternals() works once, and
+// onFirstRender runs again when the element is re-attached. The ready state lives there rather
 // than in an attribute, which the next server morph would strip.
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
@@ -196,16 +192,25 @@ rocket('sb-echarts', {
 		events: [{ name: 'sb-chart-click', kind: 'custom-event', bubbles: true, composed: true, description: 'A click on a data item. detail: { seriesName, seriesIndex, name, value, dataIndex }.' }],
 	},
 	renderOnPropChange: false,
-	setup: ({ action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
+	render: ({ html }) => html`
+		<div class="plot" part="plot" data-ref:plot data-on:keydown="@key()" data-on:blur="@blur()"></div>
+		<div class="fallback"><slot></slot></div>
+	`,
+	// All of it runs here rather than in setup: onFirstRender gets the same
+	// context plus the plot, and runs again on every connect.
+	onFirstRender: ({ action, adoptStyles, cleanup, emit, host, observeProps, props, refs: { plot } }) => {
 		adoptStyles(host, styles)
-		let plot = null // from onFirstRender
+		// With a server fallback in the slot, that is what screen readers get; the
+		// drawing adds nothing for them. Without one, the drawing is what readers
+		// get, keyboard users included.
+		if (host.firstElementChild) plot.setAttribute('aria-hidden', 'true')
+		else plot.tabIndex = 0
 		let alive = true, visible = false, starting = false
 		let ec = null, chart = null, lang = ''
 		// The last built option before its grid was fitted (for a resize to fit
 		// again), and the margins it got; sized: its kind read the plot's size.
-		let unfitted = null, fitted = '', measure = null, sized = false
+		let unfitted = null, fitted = '', sized = false
 		let si = 0, at = -1 // the series and item the keyboard is on
-		plots.set(host, (p) => ((plot = p), start()))
 
 		const langOf = () => locale(props.lang || host.closest('[lang]')?.lang) ?? navigator.language
 		// A token's value as the page resolves it, in the element's own scope (so
@@ -216,9 +221,10 @@ rocket('sb-echarts', {
 		// The font the canvas draws with: the token when a page sets one, else
 		// whatever font the element inherits from the page.
 		const font = () => css('--_font') || getComputedStyle(host).fontFamily
+		// The probe leaves again in the same task, before anything is laid out or
+		// painted, so it needs no styles to stay out of sight.
 		const color = (value) => {
 			const probe = document.createElement('span')
-			probe.className = 'probe'
 			probe.style.color = value.startsWith('--') ? `var(${value})` : value
 			host.shadowRoot.append(probe)
 			const c = getComputedStyle(probe).color
@@ -230,7 +236,7 @@ rocket('sb-echarts', {
 		// never "undefined".
 		const formatNumber = (n) =>
 			missing(n) ? '-'
-			: typeof n !== 'number' || !Number.isFinite(n) ? String(n)
+			: !Number.isFinite(n) ? String(n)
 			: reg.format ? reg.format(n, lang)
 			: new Intl.NumberFormat(lang, { maximumFractionDigits: 20 }).format(n)
 
@@ -275,7 +281,7 @@ rocket('sb-echarts', {
 					borderColor: line,
 					textStyle: { color: color('--_strong'), fontFamily: numbers, fontSize: 12 },
 				},
-				aria: { enabled: !host.querySelector(':scope > *') }, // a server table says it better
+				aria: { enabled: !host.firstElementChild }, // a server table says it better
 			}
 			// Axes and a grid belong only to charts that plot on one, which ECharts
 			// draws only with axes in the option. Giving them to a pie, a gauge, or
@@ -327,17 +333,16 @@ rocket('sb-echarts', {
 			const num = (v, or) => (typeof v === 'number' ? v : or)
 			const labels = isObj(legend) && legend.show !== false && (legend.orient ?? 'horizontal') === 'horizontal' ? (legend.data ?? [o.series].flat().map((s) => s?.name).filter((n) => n != null)) : []
 			if (labels.length && w && h) {
-				const near = (v) => v === 0 || v === '0' || (typeof v === 'string' && v.endsWith('%') && parseFloat(v) < 25) || (typeof v === 'number' && v < 60)
+				const near = (v) => v === '0' || (typeof v === 'string' && v.endsWith('%') && parseFloat(v) < 25) || (typeof v === 'number' && v < 60)
 				const atTop = legend.top === 'top' || near(legend.top)
 				const atBottom = legend.bottom === 'bottom' || near(legend.bottom) || (legend.top == null && legend.bottom == null)
-				const ctx = (measure ??= document.createElement('canvas').getContext('2d'))
-				ctx.font = `12px ${font()}`
+				pixel.font = `12px ${font()}`
 				const gap = num(legend.itemGap, 10), icon = num(legend.itemWidth, 25)
 				let rows = 1, x = 0
 				// A scrolling legend keeps to one row.
 				if (legend.type !== 'scroll')
 					for (const label of labels) {
-						const lw = icon + 5 + ctx.measureText(String(isObj(label) ? label.name : label)).width + gap
+						const lw = icon + 5 + pixel.measureText(String(isObj(label) ? label.name : label)).width + gap
 						if (x > 0 && x + lw > w * 0.96) (rows++, (x = lw))
 						else x += lw
 					}
@@ -356,11 +361,11 @@ rocket('sb-echarts', {
 		const click = (p) => emit('sb-chart-click', { seriesName: p.seriesName, seriesIndex: p.seriesIndex, name: p.name, value: p.value, dataIndex: p.dataIndex })
 
 		const start = async () => {
-			if (chart || starting || !plot || !visible || !props.option) return
+			if (chart || starting || !visible || !props.option) return
 			starting = true
 			ec = await load()
 			starting = false
-			// Moved or removed while ECharts loaded: this setup is over, and a new
+			// Moved or removed while ECharts loaded: this connect is over, and a new
 			// one (if any) starts its own chart.
 			if (!alive || chart) return
 			chart = ec.init(plot, null, { renderer: props.renderer, locale: localeFor(ec, langOf()) })
@@ -459,19 +464,6 @@ rocket('sb-echarts', {
 			removeEventListener('sb-theme-change', retheme)
 			reg.charts.delete(onKind)
 			dispose()
-			plots.delete(host)
 		})
-	},
-	render: ({ html }) => html`
-		<div class="plot" part="plot" data-ref:plot data-on:keydown="@key()" data-on:blur="@blur()"></div>
-		<div class="fallback"><slot></slot></div>
-	`,
-	onFirstRender: ({ host, refs: { plot } }) => {
-		// With a server fallback in the slot, that is what screen readers get; the
-		// drawing adds nothing for them. Without one, the drawing is what readers
-		// get, keyboard users included.
-		if (host.querySelector(':scope > *')) plot.setAttribute('aria-hidden', 'true')
-		else plot.tabIndex = 0
-		plots.get(host)(plot)
 	},
 })
