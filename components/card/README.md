@@ -62,4 +62,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-A linked card renders one real `<a>` in the heading and stretches its click area over the card, so screen readers hear a single link; without a `heading` there is no link. Keyboard focus rings the whole card. Links and buttons placed directly in the body, and everything in the footer, stay clickable on their own; give other interactive content in a linked card `position: relative`, so it sits above the card's link. Always give media images `alt` text.
+A linked card renders one real `<a>` in the heading and stretches its click area over the card, so screen readers hear a single link; without a `heading` there is no link. Keyboard focus rings the whole card. `<a>` and `<button>` elements placed directly in the body, and everything in the footer, stay clickable on their own; give other interactive content in the body of a linked card (an `<sb-button>`, a link inside a paragraph) `position: relative`, so it sits above the card's link. Always give media images `alt` text.
