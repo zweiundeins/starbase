@@ -99,8 +99,11 @@ rocket('sb-tabs', {
 		// A selection always names a tab, so the tablist stays in the tab order.
 		const clamp = (i) => Math.max(0, Math.min(i | 0, props.labels.length - 1))
 		// last: the index the server has (its attribute, or the last one sent).
-		let served, last, timer
-		last = $$.selected = clamp(props.selected)
+		// want: the index asked for (by the server, the user or a property
+		// write), even past the last tab: new labels re-clamp it, so labels
+		// that shrink and grow again return to it.
+		let served, last, timer, want
+		last = $$.selected = clamp((want = props.selected))
 		// The server's last word on selected, or null while it has no opinion.
 		// Only a *different* one wins, so re-sent markup keeps the user's choice.
 		// A *removed* attribute is ignored: morphs also strip attributes that
@@ -112,14 +115,14 @@ rocket('sb-tabs', {
 				$$.label = host.getAttribute('aria-label') || false
 				if (!host.hasAttribute('selected')) return void (served = null)
 				if (props.selected === served) return
-				served = props.selected
-				last = $$.selected = clamp(served)
+				last = $$.selected = clamp((want = served = props.selected))
 			})
 		serverSays()
 		const watch = new MutationObserver(serverSays)
 		watch.observe(host, { attributeFilter: ['selected', 'aria-label'] })
-		cleanup(() => watch.disconnect())
-		overrideProp('selected', () => peek(() => $$.selected), (v) => peek(() => ($$.selected = clamp(v))))
+		// A keyboard commit still waiting (see select) dies with the element.
+		cleanup(() => (watch.disconnect(), clearTimeout(timer)))
+		overrideProp('selected', () => peek(() => $$.selected), (v) => peek(() => ($$.selected = clamp((want = v)))))
 		// Commands: the attribute is the server's value, $$.selected the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
@@ -127,8 +130,8 @@ rocket('sb-tabs', {
 		const states = internalsOf(host).states
 		const sync = () => peek(() => (props.confirm && $$.selected !== clamp(props.selected) ? states.add('pending') : states.delete('pending')))
 		effect(() => ($$.selected, sync()))
-		observeProps(() => peek(() => (($$.selected = clamp($$.selected)), sync())))
-		defineHostProp('revert', { value: () => peek(() => ((last = $$.selected = clamp(props.selected)), sync())) })
+		observeProps(() => peek(() => (($$.selected = clamp(want)), sync())))
+		defineHostProp('revert', { value: () => peek(() => ((last = $$.selected = clamp((want = props.selected))), sync())) })
 		// From a click or a timer, never inside an effect: no peek needed.
 		const commit = () => {
 			clearTimeout(timer)
@@ -142,7 +145,7 @@ rocket('sb-tabs', {
 		// server's echo of an earlier one would pull the selection back.
 		const select = (i, key) => {
 			const n = props.labels.length
-			const next = ((i % n) + n) % n
+			const next = (want = ((i % n) + n) % n)
 			if (next !== $$.selected) ($$.selected = next), emit('input')
 			if (!key) return commit()
 			host.shadowRoot.querySelectorAll('[role="tab"]')[next]?.focus()
@@ -174,7 +177,8 @@ rocket('sb-tabs', {
 			list.scrollLeft += Math.min(a.left - b.left - 8, 0) || Math.max(a.right - b.right + 8, 0)
 		}),
 	render: ({ html, props: { labels } }) => {
-		// Two labels can give the same slot (C++ and C#): the later one gets its index.
+		// Two labels can give the same slot (C++ and C#): the later one gets its
+		// index (again, while another label has that slot too).
 		const slots = new Set()
 		return html`
 			<div role="tablist" part="tablist" data-attr:aria-label="$$label">
@@ -194,7 +198,7 @@ rocket('sb-tabs', {
 			</div>
 			${labels.map((label, i) => {
 				let slot = slug(label)
-				if (slots.has(slot)) slot += '-' + i
+				while (slots.has(slot)) slot += '-' + i
 				slots.add(slot)
 				return html`
 					<div role="tabpanel" part="panel" id="panel-${i}" aria-labelledby="tab-${i}" tabindex="0" data-show="$$selected === ${i}">
