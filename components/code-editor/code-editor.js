@@ -83,21 +83,22 @@ const styles = /* css */ `
 }
 .code { display: grid; }
 .code > * { grid-area: 1 / 1; }
-pre, textarea, .gutter {
+/* The gutter is a <pre> too. */
+pre, textarea {
 	margin: 0;
+	padding: 0.75rem 1rem;
+	border: 0;
 	font-family: var(--_font);
 	/* One size for the textarea, the highlighted <pre> and the gutter: the caret and the colours must line up. */
 	font-size: var(--_code-size);
 	line-height: 1.6;
 	white-space: pre;
-	tab-size: inherit;
 	font-variant-ligatures: none;
 }
 /* The browser gives <code> its own monospace font: a second font on every
    line makes each line box taller, and the highlighting drifts away from the
    caret and the line numbers. It takes the <pre>'s font, size and line height. */
 pre code { font: inherit; }
-pre, textarea { padding: 0.75rem 1rem; border: 0; }
 pre { color: var(--_text); pointer-events: none; }
 textarea {
 	box-sizing: border-box;
@@ -153,7 +154,6 @@ rocket('sb-code-editor', {
 
 		// Local signals the markup renders from.
 		$$.code = live.get(host) ?? server()
-		effect(() => $$.code != null && live.set(host, $$.code))
 		const mirror = () => Object.assign($$, { lang: props.language, gutter: props.lineNumbers, tab: props.tabSize, readonly: props.readonly })
 		mirror()
 		observeProps(mirror, 'language', 'lineNumbers', 'tabSize', 'readonly')
@@ -161,7 +161,7 @@ rocket('sb-code-editor', {
 		// Rocket clears local signals when the element is removed, and computeds
 		// may run once more: treat missing code as empty.
 		$$.html = () => ($$.ready, highlight($$.code ?? '', $$.lang || 'js'))
-		$$.numbers = () => Array.from({ length: ($$.code ?? '').split('\n').length }, (_, i) => i + 1).join('\n')
+		$$.numbers = () => ($$.code ?? '').split('\n').map((_, i) => i + 1).join('\n')
 
 		// Typing updates $$code; the textarea's data-effect only writes back
 		// external changes (the values differ), so the caret never jumps.
@@ -188,8 +188,9 @@ rocket('sb-code-editor', {
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.code !== server() ? states.add('pending') : states.delete('pending')))
-		effect(() => ($$.code, sync()))
+		const sync = () => peek(() => states[props.confirm && $$.code !== server() ? 'add' : 'delete']('pending'))
+		// Every change of the code: keep it for a re-attach, and sync.
+		effect(() => ($$.code != null && live.set(host, $$.code), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.code = server()), sync())) })
 		// The host isn't focusable: focus() goes to the textarea.
@@ -218,17 +219,18 @@ rocket('sb-code-editor', {
 				return
 			}
 			if (area.readOnly) return
+			const { selectionStart: s, value: v } = area
+			// Where the caret's line starts. (At 0 the line starts at 0:
+			// lastIndexOf('\n', -1) would still find a newline at v[0].)
+			const a = s && v.lastIndexOf('\n', s - 1) + 1
 			if (e.key === 'Tab' && !escaped) {
 				e.preventDefault()
-				const { selectionStart: s, value: v } = area
 				let t = area.selectionEnd
 				if (!e.shiftKey && s === t) return insert(area, '\t')
 				// (De)indent the selected lines, whole, but not a line the selection
 				// only reaches at its column 0. Shift+Tab alone outdents the caret's
-				// line and keeps the caret where it was in the text. (At 0 the line
-				// starts at 0: lastIndexOf('\n', -1) would still find a newline at v[0].)
+				// line and keeps the caret where it was in the text.
 				if (t > s && v[t - 1] === '\n') t--
-				const a = s && v.lastIndexOf('\n', s - 1) + 1
 				const b = (v.indexOf('\n', t) + 1 || v.length + 1) - 1
 				const block = v.slice(a, b)
 				const next = e.shiftKey ? block.replace(/^(\t| {1,2})/gm, '') : block.replace(/^/gm, '\t')
@@ -241,11 +243,8 @@ rocket('sb-code-editor', {
 			escaped = false
 			if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
 				e.preventDefault()
-				const v = area.value
-				const lineStart = v.lastIndexOf('\n', area.selectionStart - 1) + 1
-				const line = v.slice(lineStart, area.selectionStart)
-				const indent = line.match(/^[ \t]*/)[0]
-				insert(area, '\n' + indent + (/[{([]\s*$/.test(line) ? '\t' : ''))
+				const line = v.slice(a, s)
+				insert(area, '\n' + line.match(/^[ \t]*/)[0] + (/[{([]\s*$/.test(line) ? '\t' : ''))
 			}
 		})
 	},
