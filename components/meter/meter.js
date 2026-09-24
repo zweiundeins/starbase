@@ -24,8 +24,8 @@ const styles = /* css */ `
 .head { display: flex; justify-content: space-between; gap: 1rem; margin-block-end: 0.4rem; font-size: 0.8125rem; }
 .label { color: var(--_label); font-weight: 600; }
 .value { color: var(--_text); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* --_c: the tone's colour, from render */
 .bar {
-	--_c: var(--_ok);
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr;
@@ -34,19 +34,16 @@ const styles = /* css */ `
 	background: var(--_track);
 	box-shadow: 0 0 0 2px var(--_edge);
 }
-.bar.warn { --_c: var(--_warn); }
-.bar.danger { --_c: var(--_danger); }
-.seg {
+.bar > * {
 	block-size: var(--sb-meter-height, 12px);
 	background: color-mix(in oklch, var(--_edge) 60%, transparent);
-	transition: 120ms steps(2, end);
-	transition-delay: calc(var(--i) * 18ms);
+	transition: 120ms steps(2) calc(var(--i) * 18ms);
 }
-.seg.on { background: var(--_c); box-shadow: inset 0 -3px 0 color-mix(in oklch, var(--_c), black 25%); }
-@media (prefers-reduced-motion: reduce) { .seg { transition: none; } }
+[part~=lit] { background: var(--_c); box-shadow: inset 0 -3px 0 color-mix(in oklch, var(--_c), black 25%); }
+@media (prefers-reduced-motion: reduce) { .bar > * { transition: none; } }
 @media (forced-colors: active) {
 	.bar { outline: 1px solid CanvasText; }
-	.seg.on { forced-color-adjust: none; background: CanvasText; }
+	[part~=lit] { forced-color-adjust: none; background: CanvasText; }
 }
 `
 
@@ -65,7 +62,7 @@ rocket('sb-meter', {
 	}),
 	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
 	render: ({ html, host, props: { value, min, max, segments, warn, danger, label, unit, showValue, decimals } }) => {
-		const f = Math.max(0, Math.min(1, (value - min) / (max - min || 1)))
+		const f = (value - min) / (max - min || 1)
 		// The nearest block, but any value above min lights one, and only max lights them all.
 		const lit = Math.min(segments - (f < 1), Math.max(f > 0, Math.round(f * segments)))
 		// The cascade runs from the edge that moves: blocks light up outwards
@@ -90,8 +87,8 @@ rocket('sb-meter', {
 					<span class="label" part="label">${label}</span>
 					${showValue ? html`<span class="value" part="value">${shown}</span>` : null}
 				</div>` : null}
-			<div class="bar ${tone}" part="bar">
-				${Array.from({ length: segments }, (_, i) => html`<span class="seg ${i < lit ? 'on' : ''}" part="segment${i < lit ? ' lit' : ''}" style="--i: ${lit > from ? i - from : from - 1 - i}"></span>`)}
+			<div class="bar" part="bar" style="--_c: var(--_${tone})">
+				${Array.from({ length: segments }, (_, i) => html`<span part="segment${i < lit ? ' lit' : ''}" style="--i: ${lit > from ? i - from : from - 1 - i}"></span>`)}
 			</div>
 		`
 	},
