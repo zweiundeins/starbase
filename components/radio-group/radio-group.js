@@ -161,7 +161,7 @@ rocket('sb-radio-group', {
 			$$.disabled = p.disabled
 			int.ariaLabel = p.label || null
 			int.ariaOrientation = p.orientation
-			int.ariaDisabled = String(p.disabled)
+			int.ariaDisabled = p.disabled
 			states[p.disabled ? 'add' : 'delete']('disabled')
 		}
 		take(props)
@@ -281,11 +281,13 @@ rocket('sb-radio-group', {
 			// "loses" focus: that's not leaving, and refocus() hands the focus to
 			// a neighbour. data-for fires focusout while it removes the row, which
 			// is still connected then, so an empty relatedTarget is decided a
-			// microtask later: a row that is still there and focusable means the
-			// focus went to the page (a click on text), the browser or another
-			// window, and the group must not pull it back.
+			// microtask later: a row that is still there and focusable, in a
+			// document that has the focus, means the focus went to the page (a
+			// click on text), and the group must not pull it back. A switch to
+			// another window or tab is not leaving: the focus comes back to the
+			// row, or to its neighbour if the row was dropped meanwhile.
 			const t = evt.target
-			if (evt.relatedTarget === null) queueMicrotask(() => t.isConnected && t.hasAttribute('tabindex') && ($$.hasFocus = false))
+			if (evt.relatedTarget === null) queueMicrotask(() => t.isConnected && t.hasAttribute('tabindex') && document.hasFocus() && ($$.hasFocus = false))
 			else if (!el.contains(evt.relatedTarget)) $$.hasFocus = false
 		})
 		action('pick', (_, v) => pick(v))
