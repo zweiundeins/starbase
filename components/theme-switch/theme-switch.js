@@ -85,9 +85,11 @@ label:hover { color: var(--_active); }
 label:has(:checked) { background: var(--_brand-subtle); color: var(--_active); box-shadow: inset 0 0 0 1px var(--_brand); }
 label:has(:focus-visible) { outline: 2px solid var(--_focus); outline-offset: 1px; }
 input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: inherit; }
-.icon { display: block; flex: none; inline-size: 1.05rem; block-size: 1.05rem; background: currentColor; mask: var(--_mask) center / contain no-repeat; }
-.compact .text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.compact .iconless .text { position: static; inline-size: auto; block-size: auto; clip-path: none; }
+/* Always a flex or grid item, so it is a block without saying so. */
+.icon { flex: none; inline-size: 1.05rem; block-size: 1.05rem; background: currentColor; mask: var(--_mask) center / contain no-repeat; }
+/* Compact: a name with an icon is for screen readers (and the tooltip) only. */
+.compact .text { overflow: hidden; white-space: nowrap; }
+.compact :not(.iconless) > .text { position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); }
 select {
 	min-block-size: 2rem;
 	padding: 0;
@@ -136,7 +138,7 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 	border-radius: var(--_radius);
 	background: var(--_bg);
 	color: var(--_text);
-	box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+	box-shadow: 0 12px 32px -12px #0009;
 }
 /* Below the button, right-aligned (anchor positioning; centred where unsupported). */
 @supports (anchor-name: --a) {
@@ -150,7 +152,7 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 	}
 }
 .menu:popover-open { display: grid; gap: 2px; min-inline-size: 10rem; }
-.menu label { justify-content: flex-start; padding-inline: 0.6rem 1rem; }
+.menu label { padding-inline: 0.6rem 1rem; }
 @media (forced-colors: active) {
 	.icon, .picker::after { forced-color-adjust: none; background: CanvasText; }
 	label:has(:checked) { outline: 2px solid Highlight; }
