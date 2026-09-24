@@ -200,7 +200,16 @@ rocket('sb-details', {
 		cleanup(leave)
 		// Exclusive from the first paint, like <details name>: a panel that
 		// arrives open while another one in its group is open starts closed.
-		if (st.open && others().some((other) => other.host.open)) st.open = false
+		// It asks again in a microtask, once the mutation observers (queued by
+		// then: connecting a host sets attributes) have seen the rest of the
+		// morph that brought it, so a morph that closes the open panel and adds
+		// a new open one leaves the new one open. Both come before the first
+		// style: nothing animates. (`group` is empty once it has left.)
+		const clash = () => others().some((other) => other.host.open)
+		if (st.open && clash()) {
+			st.open = false
+			queueMicrotask(() => group && !clash() && set(true, false))
+		}
 		$$.open = st.open
 
 		// --- the server owns open when it says so ---------------------------
