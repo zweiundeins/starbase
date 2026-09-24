@@ -11,17 +11,12 @@ const peek = (fn) => {
 	}
 }
 
-// Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
-// border-radius takes over).
+// Pixel corners: notches every corner by p (a toast: 2px times --sb-notch, and
+// at 0 the border-radius takes over; the status light: 3px).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
 
 const LEAVE = 160 // ms the fade-out runs before the toast is taken out
 const ANNOUNCE_MAX = 200 // characters handed to the live region
-
-// Warnings and errors interrupt; everything else waits its turn.
-const assertive = (variant) => variant === 'warn' || variant === 'danger'
-
-const clip = (s) => (s.length > ANNOUNCE_MAX ? `${s.slice(0, ANNOUNCE_MAX - 1)}…` : s)
 
 // A toast is {id, title?, text, variant?, duration?}; strings are allowed too.
 // Without an id, the message is the id ("#2", "#3"… on repeats): a position
@@ -35,10 +30,11 @@ const normalize = (list) => {
 		if (!text && !title) return []
 		const msg = title ? `${title}. ${text}` : text
 		const n = (seen[msg] = (seen[msg] || 0) + 1)
-		const variant = ['info', 'ok', 'warn', 'danger'].includes(o.variant) ? o.variant : 'info'
+		const variant = ['ok', 'warn', 'danger'].includes(o.variant) ? o.variant : 'info'
 		// Capped where setTimeout overflows (it takes anything longer as 0).
 		const duration = Number.isFinite(Number(o.duration)) && o.duration !== '' && o.duration !== null ? Math.min(2 ** 31 - 1, Math.max(0, Number(o.duration))) : null
-		return [{ id: String(o.id ?? (n > 1 ? `${msg}#${n}` : msg)), title, text, msg: clip(msg), variant, duration }]
+		// msg is what the live region and the dismiss button read.
+		return [{ id: String(o.id ?? (n > 1 ? `${msg}#${n}` : msg)), title, text, msg: msg.length > ANNOUNCE_MAX ? `${msg.slice(0, ANNOUNCE_MAX - 1)}…` : msg, variant, duration }]
 	})
 }
 
@@ -52,7 +48,6 @@ const styles = /* css */ `
 	--_radius: var(--sb-radius, 8px);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
-	--_gap: 0.5rem;
 	--_inset: var(--sb-toast-inset, 1rem);
 	--_width: var(--sb-toast-width, 22rem);
 	/* No box of its own: the region positions itself, the live regions are invisible. */
@@ -64,7 +59,7 @@ const styles = /* css */ `
 	z-index: var(--sb-z-toast, 60);
 	display: flex;
 	flex-direction: column;
-	gap: var(--_gap);
+	gap: 0.5rem;
 	/* % of the viewport without its scrollbar (dvw would include it). */
 	inline-size: min(var(--_width), calc(100% - 2 * var(--_inset)));
 	/* The region itself is never a click target; the toasts in it are. */
@@ -72,7 +67,6 @@ const styles = /* css */ `
 	/* Here, not on .toast: a toast's own clip-path would cut its shadow off. */
 	filter: drop-shadow(0 10px 20px rgb(0 0 0 / 0.45));
 }
-.region > * { pointer-events: auto; }
 [data-placement^="top"] { inset-block-start: var(--_inset); }
 [data-placement^="bottom"] { inset-block-end: var(--_inset); }
 [data-placement$="-start"] { inset-inline-start: var(--_inset); }
@@ -81,6 +75,8 @@ const styles = /* css */ `
 /* For the docs and for pages that want the stack in the flow. */
 [data-placement="inline"] { position: static; inline-size: 100%; }
 .toast {
+	--_tone: var(--sb-info, #65BFFF);
+	--_from: -6px;
 	display: grid;
 	grid-template-columns: auto 1fr auto;
 	align-items: start;
@@ -93,11 +89,11 @@ const styles = /* css */ `
 	clip-path: ${notch('var(--_n)')};
 	background: linear-gradient(color-mix(in oklch, var(--_tone) 8%, transparent), transparent), var(--_bg);
 	color: var(--_body);
+	pointer-events: auto;
 	/* The negative --in (elapsed since it appeared) keeps the entrance from
 	   replaying when the list re-renders: the animation is already over. */
 	animation: sb-toast-in 180ms cubic-bezier(0.2, 0, 0, 1) var(--in, 0ms) both;
 }
-.toast { --_tone: var(--sb-info, #65BFFF); --_from: -6px; }
 [data-placement^="bottom"] .toast { --_from: 6px; }
 [data-variant="ok"] { --_tone: var(--sb-ok, #6EF59A); }
 [data-variant="warn"] { --_tone: var(--sb-warn, #F5C451); }
@@ -112,7 +108,7 @@ const styles = /* css */ `
 	block-size: 12px;
 	margin-block-start: 0.3em;
 	background: var(--_tone);
-	clip-path: polygon(3px 0, 9px 0, 9px 3px, 12px 3px, 12px 9px, 9px 9px, 9px 12px, 3px 12px, 3px 9px, 0 9px, 0 3px, 3px 3px);
+	clip-path: ${notch('3px')};
 	box-shadow: 0 0 12px var(--_tone);
 }
 .title { display: block; color: var(--_tone); font-weight: 700; }
@@ -124,7 +120,7 @@ const styles = /* css */ `
 	place-items: center;
 	inline-size: 1.75rem;
 	block-size: 1.75rem;
-	margin: -0.25rem 0 0;
+	margin-top: -0.25rem;
 	margin-inline-end: -0.375rem;
 	border-radius: calc(4px * (1 - var(--_notch)));
 	color: var(--_muted);
@@ -137,7 +133,7 @@ const styles = /* css */ `
    negative delay, so a re-render resumes instead of restarting. */
 .bar {
 	position: absolute;
-	inset: auto 0 0 0;
+	inset: auto 0 0;
 	block-size: 3px;
 	background: var(--_tone);
 	opacity: 0.55;
@@ -151,8 +147,6 @@ const styles = /* css */ `
 	inline-size: 1px;
 	block-size: 1px;
 	margin: -1px;
-	padding: 0;
-	border: 0;
 	overflow: hidden;
 	clip-path: inset(50%);
 	white-space: nowrap;
@@ -163,7 +157,7 @@ const styles = /* css */ `
 @keyframes sb-toast-bar { to { scale: 0 1; } }
 @keyframes sb-toast-bar2 { to { scale: 0 1; } }
 @media (prefers-reduced-motion: reduce) {
-	.toast, .leaving { animation: none; }
+	.toast { animation: none; }
 	.bar { animation-timing-function: steps(5); }
 }
 `
@@ -204,7 +198,7 @@ rocket('sb-toast', {
 		const dismissed = new Set() // ids this viewer closed or let expire
 		const announced = new Set() // ids already handed to a live region
 		const seenAt = new Map() // id -> when it first appeared (entrance)
-		const timers = new Map() // id -> {total, left, at, t}
+		const timers = new Map() // id -> {total, left, at, t}; at and t are set by arm()
 		const leaving = new Map() // id -> timeout that takes it out after the fade
 		let last = [] // the list as last shown, fading toasts included
 		let view = [] // the rows as last rendered, in DOM order
@@ -215,19 +209,16 @@ rocket('sb-toast', {
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
 
 		$$.rows = []
-		$$.label = props.label
-		$$.placement = props.placement
-		$$.paused = false
 		$$.polite = ''
 		$$.assertive = ''
 
-		const region = () => host.shadowRoot?.querySelector('.region')
-		const closes = () => host.shadowRoot?.querySelectorAll('.close') ?? []
-		const now = () => performance.now()
+		// Attached before setup runs (and kept when the element is moved).
+		const root = host.shadowRoot
+		const closes = () => root.querySelectorAll('.close')
 		// Keyboard focus pauses and is kept on its toast; a button focused by a
 		// click does neither, or a dismissal with the mouse would stop every other
 		// countdown and scroll an inline stack back into view as toasts go.
-		const kb = () => host.shadowRoot?.querySelector(':focus-visible')
+		const kb = () => root.querySelector(':focus-visible')
 		const paused = () => hover || !!kb()
 
 		const hold = (id) => {
@@ -235,12 +226,12 @@ rocket('sb-toast', {
 			if (!s?.t) return
 			clearTimeout(s.t)
 			s.t = 0
-			s.left = Math.max(0, s.left - (now() - s.at))
+			s.left = Math.max(0, s.left - (performance.now() - s.at))
 		}
 		const arm = (id) => {
 			const s = timers.get(id)
 			if (!s || s.t || paused()) return
-			s.at = now()
+			s.at = performance.now()
 			s.t = setTimeout(() => {
 				s.t = 0
 				s.left = 0
@@ -265,40 +256,31 @@ rocket('sb-toast', {
 			// when the server has dropped it already.
 			last.forEach((t, i) => leaving.has(t.id) && !list.some((u) => u.id === t.id) && list.splice(i, 0, t))
 			last = list
-			const ids = new Set(list.map((t) => t.id))
 			// An id the server no longer sends is forgotten everywhere, so a
 			// dismissal can never leak onto a later toast with the same id.
-			for (const id of [...dismissed]) if (!ids.has(id)) dismissed.delete(id)
-			for (const id of [...seenAt.keys()]) if (!ids.has(id)) forget(id)
+			for (const id of dismissed) if (!list.some((t) => t.id === id)) dismissed.delete(id)
+			for (const id of seenAt.keys()) if (!list.some((t) => t.id === id)) forget(id)
 
 			const alive = list.filter((t) => !dismissed.has(t.id) || leaving.has(t.id))
 			const shown = alive.slice(-props.max)
-			const shownIds = new Set(shown.map((t) => t.id))
-			// Off the stack (queued behind max): no countdown.
-			for (const id of timers.keys()) if (!shownIds.has(id)) hold(id)
 
-			const t0 = now()
+			const t0 = performance.now()
 			gen = !gen
 			const rows = shown.map((t) => {
 				const going = leaving.has(t.id)
 				if (!seenAt.has(t.id)) seenAt.set(t.id, t0)
 				const total = t.duration ?? props.duration
-				if (total > 0 && !going && !timers.has(t.id)) timers.set(t.id, { total, left: total, at: t0, t: 0 })
+				if (total > 0 && !going && !timers.has(t.id)) timers.set(t.id, { total, left: total })
 				const s = timers.get(t.id)
 				const spent = s ? s.total - s.left + (s.t ? t0 - s.at : 0) : 0
 				return {
-					id: t.id,
-					title: t.title,
-					text: t.text,
-					variant: t.variant,
+					...t,
 					leaving: going,
 					alt: gen,
-					timed: !!s && !going,
-					dur: `${s?.total ?? 0}ms`,
-					bd: `-${Math.max(0, Math.round(spent))}ms`,
-					enter: `-${Math.max(0, Math.round(t0 - seenAt.get(t.id)))}ms`,
-					// The button says which toast it closes.
-					close: `Dismiss: ${t.msg}`,
+					// Only a toast with a timer has a bar (dismiss() drops a fading toast's).
+					dur: s && `${s.total}ms`,
+					bd: `-${Math.round(spent)}ms`,
+					enter: `-${Math.round(t0 - seenAt.get(t.id))}ms`,
 				}
 			})
 			// Newest nearest the edge the region is pinned to, and the DOM order is
@@ -322,7 +304,8 @@ rocket('sb-toast', {
 			for (const t of shown) {
 				if (announced.has(t.id) || leaving.has(t.id)) continue
 				announced.add(t.id)
-				fresh[assertive(t.variant) ? 'assertive' : 'polite'].push(t.msg)
+				// Warnings and errors interrupt; everything else waits its turn.
+				fresh[t.variant === 'warn' || t.variant === 'danger' ? 'assertive' : 'polite'].push(t.msg)
 			}
 			for (const k in fresh) {
 				const s = fresh[k].join('. ')
@@ -333,21 +316,22 @@ rocket('sb-toast', {
 			}
 
 			// The pointer may have been left behind by a toast that went away.
-			syncPause(region()?.matches(':hover') ?? hover)
-			for (const id of shownIds) if (!leaving.has(id)) arm(id)
+			syncPause(root.querySelector('.region')?.matches(':hover') ?? hover)
 		}
 
-		function syncPause(next) {
+		const syncPause = (next) => {
 			hover = next
 			$$.paused = paused()
-			if (paused()) for (const id of timers.keys()) hold(id)
-			else for (const r of view) if (!r.leaving) arm(r.id)
+			// Only the rendered toasts count down (not those queued behind max), and
+			// none while paused.
+			for (const id of timers.keys()) if (paused() || !view.some((r) => r.id === id)) hold(id)
+			for (const r of view) arm(r.id)
 		}
 
 		// Dismissing is view state: it happens here and now, and the server hears
 		// about it so it can drop the toast from its own list (after the local
 		// rebuild, so a page that drops it at once still sees it fade).
-		function dismiss(id, reason) {
+		const dismiss = (id, reason) => {
 			if (!id || dismissed.has(id)) return
 			dismissed.add(id)
 			hold(id)
@@ -357,20 +341,18 @@ rocket('sb-toast', {
 			emit('sb-dismiss', { id, reason })
 		}
 
-		rebuild()
+		const update = () => {
+			$$.label = props.label
+			$$.placement = props.placement
+			rebuild()
+		}
+		update()
 		// peek: attribute changes arrive inside the effect of whoever set them
 		// (e.g. data-attr:toasts), and reading signals here must not subscribe it.
-		observeProps(() =>
-			peek(() => {
-				$$.label = props.label
-				$$.placement = props.placement
-				rebuild()
-			}),
-		)
+		observeProps(() => peek(update))
 
 		action('dismiss', (_, id) => dismiss(id, 'user'))
-		action('enter', () => syncPause(true))
-		action('leave', () => syncPause(false))
+		action('hover', (_, on) => syncPause(on))
 		action('focus', ({ el }, evt) => {
 			// Entering from outside: only the keyboard gets its focus handed back.
 			if (evt && !el.contains(evt.relatedTarget)) from = evt.target.matches(':focus-visible') ? evt.relatedTarget : null
@@ -382,8 +364,8 @@ rocket('sb-toast', {
 		defineHostProp('clear', { value: () => peek(() => normalize(props.toasts).forEach((t) => dismiss(t.id, 'user'))) })
 
 		cleanup(() => {
-			for (const id of [...timers.keys()]) hold(id)
-			for (const t of leaving.values()) clearTimeout(t)
+			for (const id of timers.keys()) hold(id)
+			leaving.forEach(clearTimeout)
 			leaving.clear()
 		})
 	},
@@ -395,8 +377,8 @@ rocket('sb-toast', {
 			data-attr:aria-label="$$label"
 			data-attr:data-placement="$$placement"
 			data-class:paused="$$paused"
-			data-on:pointerenter="@enter()"
-			data-on:pointerleave="@leave()"
+			data-on:pointerenter="@hover(true)"
+			data-on:pointerleave="@hover(false)"
 			data-on:focusin="@focus(evt)"
 			data-on:focusout="@focus()"
 		>
@@ -407,22 +389,21 @@ rocket('sb-toast', {
 					class="toast"
 					part="toast"
 					data-attr:data-variant="r?.variant"
-					data-attr:aria-hidden="r?.leaving ? 'true' : null"
+					data-attr:aria-hidden="r?.leaving && 'true'"
 					data-class:alt="r?.alt"
 					data-class:leaving="r?.leaving"
-					data-style:--dur="r?.dur"
-					data-style:--bd="r?.bd"
-					data-style:--in="r?.enter"
+					data-style="{'--dur': r?.dur, '--bd': r?.bd, '--in': r?.enter}"
 				>
 					<span class="light" aria-hidden="true"></span>
 					<div>
-						<strong class="title" part="title" data-show="!!r?.title" data-text="r?.title"></strong>
+						<strong class="title" part="title" data-show="r?.title" data-text="r?.title"></strong>
 						<div class="text" part="text" data-text="r?.text"></div>
 					</div>
-					<button class="close" part="close" type="button" data-attr:aria-label="r?.close" data-attr:tabindex="r?.leaving ? -1 : null" data-on:click="@dismiss(r?.id)">
+					<!-- The button says which toast it closes. -->
+					<button class="close" part="close" type="button" data-attr:aria-label="r && 'Dismiss: ' + r.msg" data-attr:tabindex="r?.leaving && -1" data-on:click="@dismiss(r?.id)">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
 					</button>
-					<div class="bar" part="bar" aria-hidden="true" data-show="!!r?.timed"></div>
+					<div class="bar" part="bar" aria-hidden="true" data-show="r?.dur"></div>
 				</div>
 			</template>
 		</div>
