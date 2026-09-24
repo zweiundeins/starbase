@@ -8,7 +8,17 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "The value. A new value from the server replaces it; the live value is the value property."
+        "description": "The server's value. A new one replaces local edits (to clear, send value=\"\"); the live value is the value property."
+      }
+    },
+    {
+      "name": "rev",
+      "attribute": "rev",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Revision of the server's value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it)."
       }
     },
     {
@@ -151,7 +161,7 @@
       "name": "sb-change",
       "bubbles": true,
       "composed": true,
-      "description": "When the value is committed (blur or Enter). detail: { name, value }: ready for a command."
+      "description": "When the value is committed (Enter, or leaving a changed field). detail: { name, value }: ready for a command."
     },
     {
       "kind": "custom-event",

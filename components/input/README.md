@@ -11,6 +11,7 @@ preview: |
 playground:
   values: {placeholder: "Your message...", action: true}
   props: {minlength: {min: 0, max: 20}}
+  exclude: [rev]
 ---
 
 A text field with a label, help text, native constraint validation and an optional submit arrow. It exposes a live `value` property, so `data-bind` works as it does on a native `<input>`.
@@ -25,7 +26,7 @@ A text field with a label, help text, native constraint validation and an option
 
 ### Validation
 
-Validation runs after the first blur and then on every keystroke. `required`, `minlength`, `pattern` and `type` use the browser's own rules. Set `error` to replace the default message.
+Validation starts once a value is committed (Enter, or leaving a changed field) or submitted, and then runs on every keystroke and on every new value, like the browser's `:user-invalid`. `required`, `minlength`, `pattern` and `type` use the browser's own rules. Set `error` to replace the default message.
 
 ```html preview
 <sb-input label="Email" type="email" required placeholder="you@starbase.dev"></sb-input>
@@ -45,7 +46,7 @@ Declare the signal first, because `data-bind` only writes to a signal that alrea
 
 ### Submit with the arrow
 
-`sb-submit` fires on Enter or on the arrow button, but only when the value is valid. Send it to your backend with `@post`.
+`sb-submit` fires on Enter or on the arrow button, but only when the value is valid. Send it to your backend with `@post`. (Enter also commits the value, so `sb-change` follows.)
 
 ```html preview
 <div data-signals:_log="''">
@@ -56,7 +57,23 @@ Declare the signal first, because `data-bind` only writes to a signal that alrea
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed (Enter, or leaving a changed field): ready to post as a command. The `value` attribute is the server's value: a new one replaces what the user typed, and re-sent identical markup leaves an edit alone. To clear the field, the server sends `value=""`.
+
+With `confirm`, it sets `:state(pending)` while the local value differs from the server's, and `revert()` goes back to the server's value when a command is rejected:
+
+```html
+<sb-input name="callsign" label="Call sign" confirm value="STARBASE-1" rev="7"
+  data-on:sb-change="@post('/cmd/flight', {payload: evt.detail})"
+  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-input>
+```
+
+A server that answers with the value it already had (it upper-cased `starbase-1` back to `STARBASE-1`, or ignored a no-op) sends identical markup, so the edit would stay pending. Render `rev`, a revision that changes with every applied command for this field (a counter will do): a new `rev` means the server has answered, and its value wins even when it is unchanged. The same clears a chat-style field after its message was sent: `value=""` with a new `rev`.
+
+See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase), which runs this call sign.
+
+## Forms
+
+`sb-input` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 

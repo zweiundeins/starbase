@@ -17,6 +17,11 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// The live state per element, for the same reason: re-attaching (e.g. a morph
+// moving the element) runs setup again, and must not throw away an edit the
+// server hasn't seen, or its pending and error state.
+const kept = new WeakMap()
+
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-control-bg, #0B1224);
@@ -80,7 +85,8 @@ input:focus-visible { border-color: var(--_brand-light); box-shadow: 0 0 0 3px v
 
 rocket('sb-input', {
 	props: ({ bool, number, oneOf, string }) => ({
-		value: string.docs({ description: 'The value. A new value from the server replaces it; the live value is the value property.' }),
+		value: string.docs({ description: 'The server\'s value. A new one replaces local edits (to clear, send value=""); the live value is the value property.' }),
+		rev: string.docs({ description: 'Revision of the server\'s value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it).' }),
 		label: string.trim.docs({ description: 'Visible label.' }),
 		placeholder: string.docs({ description: 'Placeholder text.' }),
 		type: oneOf('text', 'email', 'search', 'url', 'tel', 'password').default('text').docs({ description: 'Input type.' }),
@@ -97,31 +103,14 @@ rocket('sb-input', {
 		events: [
 			{ name: 'input', kind: 'event', bubbles: true, composed: true, description: 'On every keystroke (native, re-targeted to the host).' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'When the value is committed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed (blur or Enter). detail: { name, value }: ready for a command.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed (Enter, or leaving a changed field). detail: { name, value }: ready for a command.' },
 			{ name: 'sb-submit', kind: 'custom-event', bubbles: true, composed: true, description: 'Enter or arrow button with a valid value. detail: { name, value }.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		$$.value = props.value
-		// A value attribute sent by the server wins when it changes (a morph
-		// with a new value); re-sending the same markup changes nothing, so edits
-		// survive re-renders. A *removed* attribute changes nothing either: morphs
-		// also remove attributes that were only reflected (e.g. from a data-bind
-		// write before the upgrade). To clear it, the server sends value="".
-		observeProps(() => peek(() => host.hasAttribute('value') && ($$.value = props.value)), 'value')
-		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = String(v ?? ''))))
-		// Commands: the attribute is the server's value, $$.value the local one.
-		// With confirm, :state(pending) marks an edit the server hasn't confirmed
-		// yet; revert() returns to the server's value (e.g. a rejected command).
-		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.value !== props.value ? states.add('pending') : states.delete('pending')))
-		effect(() => ($$.value, sync()))
-		observeProps(sync)
-		defineHostProp('revert', { value: () => peek(() => (($$.value = props.value), sync())) })
-		$$.touched = false
-		$$.invalid = false
-		$$.message = ''
+		// The state kept from before a re-attach, or a fresh one.
+		;[$$.value, $$.touched, $$.invalid, $$.message] = kept.get(host) ?? [props.value, false, false, '']
 
 		const field = () => host.shadowRoot?.querySelector('input')
 		const validate = () => {
@@ -132,21 +121,59 @@ rocket('sb-input', {
 			$$.message = ok ? '' : props.error || el.validationMessage
 			return ok
 		}
-		const submit = () => {
-			$$.touched = true
-			if (validate()) emit('sb-submit', { name: props.name, value: $$.value })
-		}
-		action('input', ({ el }) => {
-			$$.value = el.value
-			if ($$.touched) validate()
-		})
+		// Every new value goes through here, so the error always describes the
+		// value shown (once validation has started).
+		const set = (v) => (($$.value = v), $$.touched && validate())
+
+		// The server's value is the attribute; $$.value the local one. A value
+		// attribute the server *changes* wins; re-sent identical markup changes
+		// nothing, so edits survive re-renders. A *removed* attribute is ignored:
+		// morphs also remove attributes that were only reflected (e.g. from a
+		// data-bind write before the upgrade). To clear, the server sends
+		// value="". A new rev means the server has answered a command, so its
+		// value wins even when it is the same as before. Why not observeProps:
+		// it only fires when the decoded value changes, so value="" on an element
+		// that had no value attribute would go unnoticed.
+		let served = host.getAttribute('value')
+		let rev = host.getAttribute('rev')
+		const watch = new MutationObserver(() =>
+			peek(() => {
+				const v = host.getAttribute('value')
+				const r = host.getAttribute('rev')
+				if ((v !== null && v !== served) || r !== rev) set(props.value)
+				served = v
+				rev = r
+			}),
+		)
+		watch.observe(host, { attributeFilter: ['value', 'rev'] })
+		cleanup(() => watch.disconnect())
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => set(String(v ?? ''))))
+
+		// Commands: with confirm, :state(pending) marks an edit the server hasn't
+		// confirmed yet; revert() returns to the server's value (e.g. a rejected
+		// command).
+		const states = internalsOf(host).states
+		const sync = () => peek(() => (props.confirm && $$.value !== props.value ? states.add('pending') : states.delete('pending')))
+		// (Rocket clears the signals on disconnect, which runs this once more
+		// with no value: that is not a state to keep.)
+		effect(() => (typeof $$.value == 'string' && kept.set(host, [$$.value, $$.touched, $$.invalid, $$.message]), sync()))
+		observeProps(sync)
+		defineHostProp('revert', { value: () => peek(() => set(props.value)) })
+
+		action('input', ({ el }) => set(el.value))
 		action('commit', () => {
 			$$.touched = true
 			validate()
 			emit('change')
 			emit('sb-change', { name: props.name, value: $$.value })
 		})
-		action('submit', submit)
+		// Enter or the arrow. Enter also commits: the native change event
+		// follows. keyCode 13, not key: the Enter that picks a word in an input
+		// method is 229 (and isComposing, where the browser says so).
+		action('submit', () => {
+			$$.touched = true
+			if (validate()) emit('sb-submit', { name: props.name, value: $$.value })
+		})
 	},
 	render: ({ html, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
 		<label class="field">
@@ -164,7 +191,7 @@ rocket('sb-input', {
 					data-effect="el.value !== $$value && (el.value = $$value)"
 					data-on:input="@input()"
 					data-on:change="@commit()"
-					data-on:keydown="evt.key === 'Enter' && (evt.preventDefault(), @submit())"
+					data-on:keydown="evt.keyCode == 13 && !evt.isComposing && @submit()"
 				/>
 				${action ? html`<button class="go" type="button" part="button" aria-label="Submit" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
 			</span>
