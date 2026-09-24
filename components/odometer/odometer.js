@@ -14,8 +14,8 @@ import { rocket } from 'datastar'
 // readout since 2026-09.
 
 // Each wheel is three turns of 0–9 stacked, resting on the middle one. A wheel
-// that passes 9 → 0 while the number climbs rolls on into the turn below and
-// one passing 0 → 9 while it falls rolls back into the turn above, the way a
+// that passes 9 → 0 while the number grows rolls on into the turn below and
+// one passing 0 → 9 while it shrinks rolls back into the turn above, the way a
 // real odometer turns over, instead of spinning back through every digit. Before
 // the next change, a wheel sent into an outer turn moves a whole turn back
 // towards the middle one, which looks identical, so it always has room to roll
@@ -158,18 +158,18 @@ rocket('sb-odometer', {
 				strip.style.transition = ''
 			})
 		}
-		const pos = digits.map((d, i) => {
-			const from = same ? last.pos[i] % 10 : d
-			if (up && d < from) return REST + 10 + d // 9 → 0 going up: roll on over the top
-			if (down && d > from) return d // 0 → 9 going down: roll back under
-			return REST + d
-		})
-		// Drum turns: from where each wheel stands, forward to the new digit when
-		// the number climbs and back when it falls, however many digits away.
-		// Neither means the same value, so the same digits.
-		const turn = digits.map((d, i) => {
+		// Each wheel steps from the digit it shows, forward to the new one when the
+		// number grows and back when it shrinks, however many digits away (neither:
+		// the same value, so the same digits). The drum turn only accumulates; the
+		// strip steps from the middle turn, so 9 → 0 going up rolls on over the top
+		// into the turn below, and 0 → 9 going down back under into the turn above.
+		const pos = []
+		const turn = []
+		digits.forEach((d, i) => {
 			const t = same ? last.turn[i] : d
-			return up ? t + mod10(d - t) : down ? t - mod10(t - d) : t
+			const step = up ? mod10(d - t) : down ? -mod10(t - d) : 0
+			turn[i] = t + step
+			pos[i] = REST + mod10(t) + step
 		})
 		wheels.set(host, { value, shape, pos, turn })
 
