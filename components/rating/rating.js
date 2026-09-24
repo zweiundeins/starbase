@@ -83,7 +83,8 @@ rocket('sb-rating', {
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		const step = () => +props.precision
+		// Number(), not +: property writes aren't decoded, and +1n throws.
+		const step = () => Number(props.precision)
 		const clamp = (v) => Math.min(props.max, Math.max(0, Math.round((Number(v) || 0) / step()) * step()))
 		$$.value = clamp(props.value)
 		$$.hover = -1 // preview while pointing, -1 when not
@@ -101,6 +102,10 @@ rocket('sb-rating', {
 		)
 		watch.observe(host, { attributeFilter: ['value'] })
 		cleanup(() => watch.disconnect())
+		// A new max or precision re-clamps the current value. Only those: clamp()
+		// is not idempotent with a max between steps (max 3.2 clamps 9 to 3.2,
+		// but 3.2 to 3), so a re-clamp on any prop would change the value.
+		observeProps(() => peek(() => ($$.value = clamp($$.value))), 'max', 'precision')
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(v))))
 		// Commands: the attribute is the server's value, $$.value the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
@@ -110,9 +115,7 @@ rocket('sb-rating', {
 		// signals). Outside the effect, sync() is called inside peek().
 		const sync = () => ($$.value !== clamp(props.value) && props.confirm ? states.add('pending') : states.delete('pending'))
 		effect(sync)
-		// Any prop: a new max or precision re-clamps the current value (a no-op
-		// for the others: it is always clamped), and pending follows.
-		observeProps(() => peek(() => (($$.value = clamp($$.value)), sync())))
+		observeProps(() => peek(sync))
 		defineHostProp('revert', { value: () => peek(() => (($$.value = clamp(props.value)), sync())) })
 
 		const commit = (v) => {
@@ -149,16 +152,20 @@ rocket('sb-rating', {
 		action('key', ({ evt }) => {
 			if (!live()) return
 			const s = rtl() ? -step() : step() // Left and Right follow the row
-			// Home and End move by the whole range: commit() clamps to 0 and max.
-			const keys = { ArrowRight: s, ArrowUp: step(), ArrowLeft: -s, ArrowDown: -step(), Home: -props.max, End: props.max }
+			// The value each key goes to (End exactly max: a step past it would
+			// clamp differently with a max between steps).
+			const keys = { ArrowRight: $$.value + s, ArrowUp: $$.value + step(), ArrowLeft: $$.value - s, ArrowDown: $$.value - step(), Home: 0, End: props.max }
 			if (!(evt.key in keys)) return
-			commit($$.value + keys[evt.key])
+			commit(keys[evt.key])
 			$$.hover = -1
 			evt.preventDefault()
 		})
 	},
 	render: ({ html, svg, props: { max, icon, size, label, readonly, disabled } }) => {
 		const body = path(SPRITES[icon], '#+'), shine = path(SPRITES[icon], '+')
+		// aria-readonly and aria-disabled use a ternary, not `readonly && 'true'`:
+		// property writes aren't decoded, and el.disabled = 0 would render
+		// aria-disabled="0" (dimmed, while the keyboard still works).
 		return html`
 			${label ? html`<span class="label" part="label" id="label">${label}</span>` : null}
 			<div
@@ -170,8 +177,8 @@ rocket('sb-rating', {
 				aria-label="${label ? null : 'Rating'}"
 				aria-valuemin="0"
 				aria-valuemax="${max}"
-				aria-readonly="${readonly && 'true'}"
-				aria-disabled="${disabled && 'true'}"
+				aria-readonly="${readonly ? 'true' : null}"
+				aria-disabled="${disabled ? 'true' : null}"
 				data-attr:aria-valuenow="$$value"
 				data-attr:aria-valuetext="$$value + ' of ${max}'"
 				data-on:pointermove="@point()"
