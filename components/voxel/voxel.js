@@ -226,9 +226,6 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 4px; bo
 
 const rad = (d) => (d * Math.PI) / 180
 
-// setup hands onFirstRender a function that attaches the rendered canvas.
-const buffers = new WeakMap()
-
 rocket('sb-voxel', {
 	props: ({ number, oneOf }) => ({
 		model: oneOf('rocket', 'satellite', 'planet').default('rocket').docs({ description: 'Which voxel model to show.' }),
@@ -245,15 +242,17 @@ rocket('sb-voxel', {
 	},
 	// The canvas is repainted imperatively; props never re-render the DOM.
 	renderOnPropChange: false,
-	setup: ({ action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
-		adoptStyles(host, styles)
+	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
+	// Everything else needs the canvas, so it starts once it is rendered.
+	onFirstRender: ({ action, cleanup, emit, host, observeProps, props, refs: { canvas } }) => {
+		const ctx = canvas.getContext('2d')
+		const img = ctx.createImageData(RES, RES)
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
 		const zbuf = new Float32Array(RES * RES)
-		let canvas = null, ctx = null, img = null // attached in onFirstRender
 
 		// Local orbit state: drag offsets and spin, never written to attributes.
 		let dragYaw = 0, dragPitch = 0, spun = 0, drag = null
-		let visible = true, raf = 0, last = 0, dirty = true
+		let visible = true, raf = 0, last = 0
 
 		const angles = () => {
 			const yaw = props.yaw + dragYaw + spun
@@ -266,37 +265,26 @@ rocket('sb-voxel', {
 			ctx.putImageData(img, 0, 0)
 			canvas.setAttribute('aria-label', `Voxel ${props.model}, yaw ${Math.round(yaw)}°, pitch ${Math.round(pitch)}°`)
 		}
+		// Each frame paints; while spinning (and visible) it asks for the next one.
 		const tick = (t) => {
 			raf = 0
-			const dt = last ? (t - last) / 1000 : 0
-			last = t
 			const spinning = props.spin && !reduced.matches
-			if (spinning) {
-				spun = (spun + props.spin * dt) % 360
-				dirty = true
-			}
-			if (dirty && canvas) {
-				dirty = false
-				paint()
-			}
-			if (spinning && visible) schedule()
-			else last = 0
-		}
-		const schedule = () => {
-			if (!raf && visible) raf = requestAnimationFrame(tick)
+			if (spinning) spun = (spun + (props.spin * (last ? t - last : 0)) / 1000) % 360
+			last = spinning && visible ? t : 0
+			if (last) invalidate()
+			paint()
 		}
 		const invalidate = () => {
-			dirty = true
-			schedule()
+			if (!raf && visible) raf = requestAnimationFrame(tick)
 		}
 		observeProps(invalidate)
 		// No declarative hook exists for these two: keep them imperative.
 		reduced.addEventListener('change', invalidate)
 		const io = new IntersectionObserver(([e]) => {
-			visible = e.isIntersecting
-			if (visible) invalidate()
+			if ((visible = e.isIntersecting)) invalidate()
 		})
 		io.observe(host)
+		invalidate()
 
 		// Drag (one gesture: down, move, up/cancel) or use the arrow keys to orbit.
 		action('orbit', ({ el, evt }) => {
@@ -327,12 +315,6 @@ rocket('sb-voxel', {
 			emit('sb-orbit', angles())
 		})
 
-		buffers.set(host, (el) => {
-			canvas = el
-			ctx = el.getContext('2d')
-			img = ctx.createImageData(RES, RES)
-			invalidate()
-		})
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			io.disconnect()
@@ -348,5 +330,4 @@ rocket('sb-voxel', {
 			data-on:pointercancel="@orbit()"
 			data-on:keydown="@key()"></canvas>
 	`,
-	onFirstRender: ({ host, refs }) => buffers.get(host)(refs.canvas),
 })
