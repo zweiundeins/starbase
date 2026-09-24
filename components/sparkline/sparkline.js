@@ -106,8 +106,10 @@ rocket('sb-sparkline', {
 		})
 		watch.observe(host, { attributeFilter: ['value'] })
 		const ro = new ResizeObserver(draw)
-		queueMicrotask(() => ro.observe(host.shadowRoot.querySelector('canvas')))
-		cleanup(() => (cancelAnimationFrame(raf), watch.disconnect(), ro.disconnect()))
+		// The canvas renders after setup. Removed before then (in the same task),
+		// raf is -1 and nothing is observed: the observer would outlive cleanup.
+		queueMicrotask(() => raf < 0 || ro.observe(host.shadowRoot.querySelector('canvas')))
+		cleanup(() => (cancelAnimationFrame(raf), (raf = -1), watch.disconnect(), ro.disconnect()))
 		observeProps((_, changes) => {
 			if ('values' in changes) kept.set(host, (data = [...props.values]))
 			draw()
