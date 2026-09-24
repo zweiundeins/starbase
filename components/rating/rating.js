@@ -27,7 +27,6 @@ const path = (rows, ch) => {
 	return d
 }
 
-// (Notes here, not in the CSS: the minifier keeps comments inside the string.)
 // - Disabled is styled from the rendered row (aria-disabled), not
 //   :host([disabled]), which disabled="false" matches too.
 // - touch-action pan-y: a vertical swipe still scrolls the page, a sideways
@@ -139,12 +138,15 @@ rocket('sb-rating', {
 				return f < 0 ? v : i + (f < 0.5 ? step() : 1)
 			}, -1)
 		const live = () => !props.readonly && !props.disabled
-		action('point', ({ evt }) => live() && ($$.hover = at(evt)))
-		action('leave', () => ($$.hover = -1))
-		// On pointerup, not click: a touch drag ends without a click.
+		// A preview left from before readonly or disabled goes on the next move.
+		action('point', ({ evt }) => ($$.hover = live() ? at(evt) : -1))
+		action('leave', () => (($$.hover = -1), ($$.down = 0)))
+		// On pointerup, not click: a touch drag ends without a click. Only after
+		// a press on the row ($$down): a mouse drag that started elsewhere (e.g.
+		// selecting text) and ends over it picks nothing.
 		action('pick', ({ evt }) => {
 			const v = at(evt)
-			if (!live() || evt.button || v < 0) return
+			if (!$$.down || !live() || evt.button || v < 0) return
 			$$.hover = -1 // show the result, not the preview
 			// clearable is for picking: a key at the maximum stays there.
 			commit(props.clearable && v === $$.value ? 0 : v)
@@ -180,6 +182,7 @@ rocket('sb-rating', {
 				data-attr:aria-valuetext="$$value + ' of ${max}'"
 				data-on:pointermove="@point()"
 				data-on:pointerleave="@leave()"
+				data-on:pointerdown="$$down = 1"
 				data-on:pointerup="@pick()"
 				data-on:keydown="@key()"
 			>
