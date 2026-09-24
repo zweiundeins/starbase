@@ -33,10 +33,14 @@ const anchors = CSS.supports('anchor-name: --a')
 // (no padding) as a status region, so a new note is announced.
 const styles = /* css */ `
 :host {
+	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
+	--_border-hover: var(--sb-control-border-hover, #3A4868);
 	--_text: var(--sb-control-text, #F3F4FA);
 	--_placeholder: var(--sb-control-placeholder, #7785A8);
+	--_label: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
+	--_panel: var(--sb-surface-raised, #10182B);
 	--_hover: var(--sb-surface-hover, #1A2540);
 	--_brand: var(--sb-brand, #8C6BFF);
 	--_brand-light: var(--sb-brand-light, #B09AFF);
@@ -49,7 +53,7 @@ const styles = /* css */ `
 :host([hidden]) { display: none; }
 .field:has(:disabled) { opacity: 0.5; pointer-events: none; }
 .field { display: grid; gap: 0.4rem; }
-.label { color: var(--sb-text-2, #AEBBDD); font-size: 0.8125rem; font-weight: 600; }
+.label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 .control {
 	display: flex;
 	flex-wrap: wrap;
@@ -61,13 +65,13 @@ const styles = /* css */ `
 	box-sizing: border-box;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
-	background: var(--sb-control-bg, #0B1224);
+	background: var(--_bg);
 	cursor: text;
 	position: relative;
 	anchor-name: --sb-select;
 	transition: border-color 120ms, box-shadow 120ms;
 }
-.control:hover { border-color: var(--sb-control-border-hover, #3A4868); }
+.control:hover { border-color: var(--_border-hover); }
 .control:focus-within { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); outline: 2px solid transparent; }
 .control::after {
 	content: "";
@@ -112,7 +116,7 @@ input[readonly] { cursor: pointer; }
 	padding: 4px;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
-	background: var(--sb-surface-raised, #10182B);
+	background: var(--_panel);
 	color: var(--_text);
 	box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
 	max-block-size: min(18rem, 50dvh);
