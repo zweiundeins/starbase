@@ -76,7 +76,7 @@ This is the point of the component. The button fires a request at a demo endpoin
 </div>
 ```
 
-`datastar-fetch` is dispatched on the document and reaches *every* listener, so `sb-busy` checks `event.detail.el` before counting anything. Requests from elsewhere on the page leave it alone.
+`datastar-fetch` is dispatched on the document and reaches *every* listener, so `sb-busy` checks `event.detail.el` when a request starts. Requests from elsewhere on the page leave it alone. From then on the request belongs to the element that fired it, and its end counts even if that element is gone by then: a Delete button whose row the response removes still takes the indicator down.
 
 ### Which requests to watch
 
@@ -190,11 +190,13 @@ Two details make the composed spinner behave inside a button:
 </div>
 ```
 
+An `sb-busy` removed while it is up emits a last `{ busy: false }`, so whatever the page switched on with it is switched off again. Its own `data-on` listener still hears it; listeners further up do not, since the element has left the document.
+
 The indicator never shows a *result* before the server produced one: it only says that the page is waiting. The list, the count and the message come from the server's render.
 
 ## Styling
 
-Parts: `base` (the status region), `spinner`, `bar`, `fill`, `skeleton` and `label`.
+Parts: `base` (the indicator, shown while it is up), `spinner`, `bar`, `fill`, `skeleton` and `label`.
 
 | Token | Used for |
 | --- | --- |
@@ -211,12 +213,13 @@ form:has(sb-busy:state(busy)) { opacity: 0.6; }
 
 The live visible state is on the element as a read-only `visible` property; `busy` stays the server's attribute.
 
-A watched request that was already in flight before the element was upgraded is not counted: the component starts watching when it connects. Long-lived streams (`@get` on an SSE endpoint) stay in flight until the stream ends, so point `for` at elements that make one-shot requests.
+A watched request that was already in flight before the element was upgraded is not counted: the component starts watching when it connects. A morph that moves the element keeps what it counted; an element removed and inserted again starts afresh. Long-lived streams (`@get` on an SSE endpoint) stay in flight until the stream ends, so point `for` at elements that make one-shot requests.
 
 ## Accessibility
 
-- The indicator is a `role="status"` region with `aria-live="polite"`, holding the `label` text. Without `show-label` that text is visually hidden but still read out, so "Loading systems" is announced when the wait starts.
-- The host reflects `aria-busy`. It is set through `ElementInternals`, so the semantics survive a morph; the matching attribute is written too, for CSS and tests.
-- A determinate bar is a `role="progressbar"` with `aria-valuemin`, `aria-valuemax`, `aria-valuenow` and a percentage `aria-valuetext`, labelled by the same label. An indeterminate bar has no `aria-valuenow`, which is how "unknown progress" is expressed.
-- The spinner dots and the skeleton lines are `aria-hidden` decoration inside the status region: the text carries the meaning, never the animation.
+- A visually hidden `role="status"` region (polite) is always there, and it gets the `label` text when the wait starts, so "Loading systems" is announced then; it is emptied when the wait ends. A region that only appears with its text already in it is not reliably read out. The visible label (`show-label`) is `aria-hidden`, so it is not read twice.
+- `sb-busy` sets no `aria-busy`. It belongs on the content that is loading, not on the indicator, and on an ancestor of the status region it would hold the announcement back. Set it on your own region from `sb-busy-change` (`data-attr:aria-busy="$_busy && 'true'"` with the form example above) or from `data-indicator`.
+- A determinate bar is a `role="progressbar"` with `aria-valuemin`, `aria-valuemax`, `aria-valuenow` and a percentage `aria-valuetext`, labelled by the same label. An indeterminate bar has no `aria-valuenow`, which is how "unknown progress" is expressed. In a right-to-left page the bar fills and sweeps from the right.
+- The spinner dots and the skeleton lines are `aria-hidden` decoration: the text carries the meaning, never the animation.
 - With `prefers-reduced-motion: reduce` nothing spins, sweeps or shimmers. Each variant keeps a static state instead: one lit dot, a dimmed full bar, plain blocks.
+- In forced colors (Windows High Contrast) the dots and the fill are drawn in `CanvasText`, and the bar and the skeleton blocks get an outline: forced colors drop the backgrounds and shadows they are otherwise drawn with.
