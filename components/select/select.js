@@ -160,7 +160,7 @@ rocket('sb-select', {
 		loading: bool.docs({ description: 'Show that results are on their way (bind it to data-indicator).' }),
 		clearable: bool.docs({ description: 'Show a button that clears the value.' }),
 		disabled: bool.docs({ description: 'Disable the control.' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with its form.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 	}),
 	manifest: {
@@ -265,6 +265,18 @@ rocket('sb-select', {
 		cleanup(() => watch.disconnect())
 		// sync() too: inside a Datastar expression the effect runs only at its end.
 		defineHostProp('revert', { value: () => peek(() => (($$.selected = parseValue(props.value), refresh()), sync())) })
+
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Like <select>: one entry per picked value with multiple (none when
+		// nothing is picked), else one, "" when nothing is.
+		const form = host.closest('form')
+		const onData = (evt) => peek(() => props.name && !props.disabled && [value()].flat().forEach((v) => evt.formData.append(props.name, v)))
+		const onReset = () => host.revert() // back to the server's value, like a native reset
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', onReset)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
 
 		const $ = (s) => host.shadowRoot?.querySelector(s) // in the rendered template
 		// Keep the highlighted option in view.
