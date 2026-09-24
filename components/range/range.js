@@ -178,12 +178,15 @@ rocket('sb-range', {
 		// submissions and resets of the form it sits in. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
 		// The entry is the local range in the value attribute's JSON; a reset is
-		// revert(): the server's range, no events, like a native reset.
+		// revert(): the server's range, no events, like a native reset. Like
+		// native fields, it keeps the range when a listener before this one
+		// (e.g. onreset) canceled the reset.
 		const form = host.closest('form')
 		const onData = (evt) => props.name && !props.disabled && evt.formData.append(props.name, JSON.stringify(cur()))
+		const onReset = (evt) => evt.defaultPrevented || revert()
 		form?.addEventListener('formdata', onData)
-		form?.addEventListener('reset', revert)
-		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
+		form?.addEventListener('reset', onReset)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
 		// Both inputs report here. A pointer that grabs the thumbs where they
 		// meet ($$tie) picks the part with its first move: down moves the start,
 		// up the end. When that is the other input's part, the inputs swap what
