@@ -22,13 +22,16 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
 
 // Choices come as strings or {value, label?, description?, disabled?}, from the
-// options prop or from <sb-radio> children.
+// options prop or from <sb-radio> children. A choice needs a value: "" is the
+// group's "nothing chosen".
 const normalize = (list) =>
-	(Array.isArray(list) ? list : []).map((o) =>
-		typeof o === 'object' && o !== null
-			? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), description: o.description ? String(o.description) : '', disabled: !!o.disabled }
-			: { value: String(o), label: String(o), description: '', disabled: false },
-	)
+	(Array.isArray(list) ? list : [])
+		.map((o) => (typeof o === 'object' && o !== null ? o : { value: String(o) })) // a string is its value and label
+		.map((o) => ({ value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), description: o.description ? String(o.description) : '', disabled: !!o.disabled }))
+		.filter((o) => o.value)
+
+// A choice that can be picked (and take the focus).
+const live = (o) => !!o && !o.disabled
 
 // :state(disabled) comes from the decoded prop, so disabled="false" is not
 // disabled. Forced colours paint every background Canvas: the checked dot is
@@ -79,8 +82,8 @@ const styles = /* css */ `
 	position: relative;
 	flex: none;
 	box-sizing: border-box;
-	inline-size: 16px;
-	block-size: 16px;
+	width: 16px;
+	height: 16px;
 	margin-block-start: 0.1rem;
 	border: 2px solid var(--_border);
 	background: var(--_bg);
@@ -132,16 +135,15 @@ rocket('sb-radio-group', {
 		// <select>: inert elements the group reads. They are not their own Rocket
 		// component, so the repeated items contain no custom elements (Datastar's
 		// morph is not re-entrant) and the roving focus stays in one shadow root.
+		// normalize() does the rest: the value falls back to the label, then to
+		// the text.
 		const fromChildren = () =>
-			[...host.querySelectorAll(':scope > sb-radio')].map((el) => {
-				const text = el.textContent.trim()
-				return {
-					value: el.getAttribute('value') ?? el.getAttribute('label') ?? text,
-					label: el.getAttribute('label') ?? text,
-					description: el.getAttribute('description') ?? '',
-					disabled: el.hasAttribute('disabled'),
-				}
-			})
+			[...host.querySelectorAll(':scope > sb-radio')].map((el) => ({
+				value: el.getAttribute('value'),
+				label: el.getAttribute('label') ?? el.textContent.trim(),
+				description: el.getAttribute('description'),
+				disabled: el.hasAttribute('disabled'),
+			}))
 
 		$$.value = str(props.value)
 		$$.focus = '' // the item in the tab order (roving tabindex)
@@ -173,7 +175,7 @@ rocket('sb-radio-group', {
 		let shown = '[]'
 		const rebuild = () => {
 			const kids = fromChildren()
-			const items = normalize(kids.length ? kids : props.options).filter((o) => o.value !== '')
+			const items = normalize(kids.length ? kids : props.options)
 			const json = JSON.stringify(items)
 			// Where the focus sat before the new list: a choice the server drops
 			// hands the focus to its neighbour, so the keyboard stays in the group
@@ -181,7 +183,7 @@ rocket('sb-radio-group', {
 			const was = $$.items.findIndex((o) => o.value === $$.focus)
 			if (json !== shown) (shown = json), ($$.items = items)
 			const list = $$.items
-			const live = (o) => !!o && !o.disabled
+			// Nearest first, both ways, so it reaches every choice.
 			const neighbour = () => {
 				const at = Math.min(Math.max(was, 0), list.length - 1)
 				for (let i = 0; i < list.length; i++) {
@@ -189,9 +191,8 @@ rocket('sb-radio-group', {
 					if (live(list[at - i])) return list[at - i]
 				}
 			}
-			const checked = list.find((o) => o.value === $$.value && live(o))
-			const stays = list.find((o) => o.value === $$.focus && live(o))
-			const next = (checked ?? stays ?? neighbour() ?? list.find(live))?.value ?? ''
+			const pickable = (v) => list.find((o) => o.value === v && live(o))
+			const next = (pickable($$.value) ?? pickable($$.focus) ?? neighbour())?.value ?? ''
 			if (next !== $$.focus) $$.focus = next
 			refocus()
 		}
@@ -242,11 +243,9 @@ rocket('sb-radio-group', {
 		observeProps((p) => peek(() => (take(p), rebuild(), sync())))
 		defineHostProp('revert', { value: () => peek(() => (($$.value = str(props.value)), rebuild(), sync())) })
 
-		const item = (v) => $$.items.find((o) => o.value === v)
 		// Arrow keys move and select, like native radios.
 		const pick = (v) => {
-			const o = item(v)
-			if (!o || o.disabled || props.disabled) return
+			if (props.disabled || !live($$.items.find((o) => o.value === v))) return
 			$$.focus = v
 			refocus()
 			if (v === $$.value) return
@@ -254,20 +253,15 @@ rocket('sb-radio-group', {
 			emit('change')
 			emit('sb-change', { name: props.name, value: v })
 		}
-		// The next enabled choice, wrapping around; dir -1 goes back.
-		const step = (from, dir) => {
+		// The next enabled choice after index at, wrapping around; dir -1 goes
+		// back. From -1 onwards it is the first, from 0 backwards the last.
+		const step = (at, dir) => {
 			const list = $$.items
 			const n = list.length
-			const at = Math.max(0, list.findIndex((o) => o.value === from))
 			for (let i = 1; i <= n; i++) {
 				const o = list[(((at + dir * i) % n) + n) % n]
-				if (o && !o.disabled) return o.value
+				if (live(o)) return o.value
 			}
-			return from
-		}
-		const edge = (dir) => {
-			const list = dir > 0 ? $$.items : [...$$.items].reverse()
-			return list.find((o) => !o.disabled)?.value ?? ''
 		}
 
 		// Focus can also arrive by Tab or a click: keep the roving focus in step.
@@ -294,24 +288,25 @@ rocket('sb-radio-group', {
 		action('key', ({ evt }) => {
 			// Modified arrows belong to the browser (Alt+Left is Back).
 			if (props.disabled || !$$.items.length || evt.altKey || evt.ctrlKey || evt.metaKey) return
+			const at = Math.max(0, $$.items.findIndex((o) => o.value === $$.focus))
 			switch (evt.key) {
 				case 'ArrowDown':
-					pick(step($$.focus, 1))
+					pick(step(at, 1))
 					break
 				case 'ArrowUp':
-					pick(step($$.focus, -1))
+					pick(step(at, -1))
 					break
 				// Left and Right follow the reading direction, like native radios:
 				// Left goes on in right-to-left text.
 				case 'ArrowRight':
 				case 'ArrowLeft':
-					pick(step($$.focus, (evt.key === 'ArrowLeft') === (getComputedStyle(host).direction === 'rtl') ? 1 : -1))
+					pick(step(at, (evt.key === 'ArrowLeft') === (getComputedStyle(host).direction === 'rtl') ? 1 : -1))
 					break
 				case 'Home':
-					pick(edge(1))
+					pick(step(-1, 1))
 					break
 				case 'End':
-					pick(edge(-1))
+					pick(step(0, -1))
 					break
 				case ' ':
 				case 'Enter':
@@ -345,7 +340,7 @@ rocket('sb-radio-group', {
 						data-on:pointerleave="$$hover = ''">
 						<span class="dot" part="dot" aria-hidden="true"></span>
 						<span class="text">
-							<span class="label-text" data-text="o?.label"></span>
+							<span data-text="o?.label"></span>
 							<span class="desc" part="description" data-show="o?.description" data-text="o?.description"></span>
 						</span>
 					</div>
