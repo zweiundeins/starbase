@@ -82,7 +82,6 @@ const MODELS = {
 		voxel(x, y, z) {
 			const d = Math.hypot(x, y, z)
 			if (d <= 7.6) {
-				if (d < 6.4) return null // hollow: only the shell is ever visible
 				if (Math.abs(y) >= 6.3) return 'ice'
 				return noise(x / 3.2 + 7, y / 3.2, z / 3.2) > 0.55 ? 'green' : 'ocean'
 			}
