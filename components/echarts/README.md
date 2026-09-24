@@ -16,7 +16,7 @@ playground:
   style: "block-size: 16rem"
 ---
 
-Draws an [Apache ECharts](https://echarts.apache.org) chart from an option your server sends as JSON. The element does the part every page would otherwise write again: it colours the chart from the page's `--sb-*` tokens and follows theme changes, writes numbers, months and weekdays in the reader's language, keeps a wrapping legend clear of the axes, and animates each new option into place. ECharts itself is vendored with the component and loaded only when a chart comes near the screen.
+Draws an [Apache ECharts](https://echarts.apache.org) chart from an option your server sends as JSON. The element does the part every page would otherwise write again: it colours the chart from the page's `--sb-*` tokens and follows theme changes, writes numbers, months and weekdays in the reader's language, keeps the legend (wrapped onto as many rows as it needs) and a zoom slider clear of the axes, and animates each new option into place. ECharts itself is vendored with the component and loaded only when a chart comes near the screen.
 
 Size it with CSS (`block-size`, `height`); it defaults to `18rem`.
 
@@ -53,7 +53,7 @@ When the `option` attribute changes (a server morph, or a signal as here), the c
 
 ### Beyond axes
 
-Pies, gauges and the like get no phantom grid.
+Axes and a grid come only with an option that has axes, so pies, gauges, and polar or calendar charts get no phantom grid.
 
 ```html preview
 <sb-echarts style="block-size: 16rem" option='{
@@ -108,7 +108,9 @@ defineChartKind('timeline', (option, { echarts, color, css, formatNumber, lang, 
 <sb-echarts option='{"kind": "timeline", "rows": ["Apollo 11"], "bars": [[0, -14182940000, -13402140000]]}'></sb-echarts>
 ```
 
-The builder gets the ECharts module (for `echarts.graphic` and friends), `color()` to resolve a token or CSS colour, `css()` to read a token such as a font, the element's number format, language and size. What it returns is themed like any other option.
+The builder gets the ECharts module (for `echarts.graphic` and friends), `color()` to resolve a token or CSS colour, `css()` to read a token such as a font, the element's number format, language and size; it runs again when the element changes size. What it returns is themed like any other option. A chart whose kind the page hasn't defined yet shows its fallback, and draws as soon as the kind is defined.
+
+Every copy of the module shares the kinds and the number format a page sets, so import it from whichever URL suits the page: the one your `<script>` already loads (no second download), or `/c/echarts/echarts.js` next to the autoloader.
 
 ## Numbers
 
