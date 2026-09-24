@@ -20,11 +20,13 @@ const seen = new WeakSet()
 
 // Both copies share one grid cell: the final value (invisible, for screen
 // readers) holds the width, so the line doesn't move while the digits grow.
+// The grid is an inner box: the host stays inline (a block in a flex or grid
+// card), so text-align places the number as before.
 // Print has no scrolling to start a count: it shows the final value.
 const styles = /* css */ `
-:host { display: inline-grid; justify-items: end; font-variant-numeric: tabular-nums; }
-:host([hidden]) { display: none; }
-span { grid-area: 1/1; }
+:host { font-variant-numeric: tabular-nums; }
+:host > span { display: inline-grid; justify-items: end; }
+span span { grid-area: 1/1; }
 .sr { opacity: 0; }
 @media print { .sr { opacity: 1; } [part] { visibility: hidden; } }
 `
@@ -90,5 +92,5 @@ rocket('sb-count-up', {
 			visible && !still ? count(shown, props.value) : settle()
 		})
 	},
-	render: ({ html }) => html`<span class="sr" data-text="$$final"></span><span part="value" aria-hidden="true" data-text="$$text"></span>`,
+	render: ({ html }) => html`<span><span class="sr" data-text="$$final"></span><span part="value" aria-hidden="true" data-text="$$text"></span></span>`,
 })

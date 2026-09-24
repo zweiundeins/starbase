@@ -7,9 +7,9 @@ author: zweiundeins
 tags: [number, counter, animation, statistics, intl]
 since: 2026-09-23
 preview: |
-  <sb-count-up value="4681" style="font-size: 2rem">4681</sb-count-up>
+  <sb-count-up value="4681" style="font-size: 2rem">4,681</sb-count-up>
 usage: |
-  <sb-count-up value="4681">4681</sb-count-up>
+  <sb-count-up value="4681">4,681</sb-count-up>
 playground:
   props:
     value: {min: 0, max: 10000}
@@ -32,7 +32,7 @@ It counts once, the first time it is on screen. Moving it elsewhere in the page 
 
 ```html preview
 <p style="font-size: 1.25rem">
-  <sb-count-up value="1113" style="font-size: 2.5rem; font-weight: 700">1113</sb-count-up>
+  <sb-count-up value="1113" style="font-size: 2.5rem; font-weight: 700">1,113</sb-count-up>
   models, <sb-count-up value="56">56</sb-count-up> makes.
 </p>
 ```
@@ -53,7 +53,7 @@ When the server sends a new `value` while the number is on screen, it counts fro
 
 ```html preview
 <div data-signals="{_total: 1200}" style="display: flex; gap: 1rem; align-items: center">
-  <sb-count-up data-attr:value="$_total" data-preserve-attr="value" style="font-size: 2rem">1200</sb-count-up>
+  <sb-count-up data-attr:value="$_total" data-preserve-attr="value" style="font-size: 2rem">1,200</sb-count-up>
   <sb-button data-on:click="$_total += Math.round(Math.random() * 500)">Add an order</sb-button>
 </div>
 ```
@@ -70,7 +70,7 @@ Style it from your page's CSS — no need to change the component or import anyt
   .my-count { font-size: 2.5rem; font-weight: 700; letter-spacing: 0.05em; }
   .my-count::part(value) { color: var(--sb-brand-light); }
 </style>
-<sb-count-up class="my-count" value="4681">4681</sb-count-up>
+<sb-count-up class="my-count" value="4681">4,681</sb-count-up>
 ```
 
 ## Accessibility
