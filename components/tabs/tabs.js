@@ -127,10 +127,12 @@ rocket('sb-tabs', {
 		// Commands: the attribute is the server's value, $$.selected the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
-		// New labels re-clamp the selection.
+		// New labels re-clamp the selection. sync is also the effect on
+		// $$.selected: it reads $$.selected first, so the effect tracks it with
+		// or without confirm (props aren't signals; its other callers peek).
 		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.selected !== clamp(props.selected) ? states.add('pending') : states.delete('pending')))
-		effect(() => ($$.selected, sync()))
+		const sync = () => ($$.selected !== clamp(props.selected) && props.confirm ? states.add('pending') : states.delete('pending'))
+		effect(sync)
 		observeProps(() => peek(() => (($$.selected = clamp(want)), sync())))
 		defineHostProp('revert', { value: () => peek(() => ((last = $$.selected = clamp((want = props.selected))), sync())) })
 		// From a click or a timer, never inside an effect: no peek needed.
@@ -145,12 +147,13 @@ rocket('sb-tabs', {
 		// Selection follows focus, so a click commits at once, but arrow keys
 		// commit only after a pause: every press would be a command, and the
 		// server's echo of an earlier one would pull the selection back.
+		// i is a tab's index, or one past either end (an arrow key), which wraps.
 		const select = (i, key) => {
 			const n = props.labels.length
-			const next = (want = ((i % n) + n) % n)
+			const next = (want = (i + n) % n)
 			if (next !== $$.selected) ($$.selected = next), emit('input')
 			if (!key) return commit()
-			host.shadowRoot.querySelectorAll('[role="tab"]')[next]?.focus()
+			host.shadowRoot.getElementById('tab-' + next)?.focus()
 			clearTimeout(timer)
 			timer = setTimeout(commit, 250)
 		}
@@ -170,7 +173,7 @@ rocket('sb-tabs', {
 	// selected it. Only the strip scrolls: scrollIntoView() would move the page.
 	onFirstRender: ({ $$, effect, host }) =>
 		effect(() => {
-			const tab = host.shadowRoot.querySelectorAll('[role="tab"]')[$$.selected]
+			const tab = host.shadowRoot.getElementById('tab-' + $$.selected)
 			const list = tab?.parentNode
 			if (!list) return
 			const a = tab.getBoundingClientRect()
