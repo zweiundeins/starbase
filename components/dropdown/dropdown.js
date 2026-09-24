@@ -17,8 +17,6 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
-const report = (err) => (typeof reportError === 'function' ? reportError(err) : console.error(err))
-
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -26,13 +24,13 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // Case- and accent-insensitive matching for the type-ahead.
 const fold = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
-const anchors = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name: --a')
+const anchors = CSS.supports('anchor-name: --a')
 
 // Submenus: how deep the tree may go. Children below this are dropped, so a
 // silly (or cyclic) tree can neither lock the browser up nor render a menu
 // nobody can reach. The markup holds one popover per level.
 const MAX_DEPTH = 5
-const LEVELS = Array.from({ length: MAX_DEPTH + 1 }, (_, k) => k)
+const LEVELS = [...Array(MAX_DEPTH + 1).keys()]
 
 // Items are strings, "-" for a divider, or {value, label?, description?, icon?,
 // disabled?, danger?, divider?, children?, type?}. An item with children is a
@@ -42,9 +40,10 @@ const normalize = (list, depth = 0) =>
 	(Array.isArray(list) ? list : [])
 		.map((it) => {
 			if (it === null || it === undefined) return null
+			// A string is an item with only a value.
 			if (typeof it !== 'object') {
 				const s = String(it)
-				return s === '-' || s === '---' ? { divider: true } : { divider: false, key: s, value: s, label: s, description: '', icon: '', disabled: false, danger: false, children: [] }
+				it = s === '-' || s === '---' ? { divider: true } : { value: s }
 			}
 			if (it.divider) return { divider: true }
 			const children = depth < MAX_DEPTH ? normalize(it.children, depth + 1) : []
@@ -92,19 +91,13 @@ const styles = /* css */ `
 /* Trigger: a notched plate with a pixel caret. */
 .trigger {
 	all: unset;
-	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5em;
 	min-block-size: 2.5rem;
 	padding-inline: 0.9rem;
 	background: var(--_bg);
-	box-shadow: inset 0 0 0 1px var(--_border);
-	clip-path: ${notch('var(--_n)')};
-	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
-	color: var(--_text);
 	font: inherit;
-	font-size: 0.875rem;
 	font-weight: 600;
 	line-height: 1;
 	white-space: nowrap;
@@ -141,11 +134,15 @@ const styles = /* css */ `
 	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
 }
 .menu {
-	box-sizing: border-box;
 	max-block-size: min(20rem, 60dvh);
 	overflow: auto;
 	padding: 4px;
 	background: var(--_panel);
+}
+/* The trigger and every menu: a notched plate. After .trigger, whose
+   all: unset would take these back. */
+.trigger, .menu {
+	box-sizing: border-box;
 	box-shadow: inset 0 0 0 1px var(--_border);
 	clip-path: ${notch('var(--_n)')};
 	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
@@ -157,12 +154,9 @@ const styles = /* css */ `
 @supports (anchor-name: --a) {
 	[popover] { position-try-fallbacks: flip-block, flip-inline; }
 	.lvl0 { position-anchor: --sb-dropdown; min-inline-size: anchor-size(width); }
-${LEVELS.filter((k) => k > 0)
-	.map((k) => `	.lvl${k} { position-anchor: --sb-sub-${k}; }`)
-	.join('\n')}
-${LEVELS.filter((k) => k > 0)
-	.map((k) => `	.lvl${k - 1} .open-parent { anchor-name: --sb-sub-${k}; }`)
-	.join('\n')}
+${LEVELS.slice(1)
+	.map((k) => `.lvl${k}{position-anchor:--sb-sub-${k}}.lvl${k - 1} [aria-expanded="true"]{anchor-name:--sb-sub-${k}}`)
+	.join('')}
 	[data-place="bottom-start"] { position-area: block-end span-inline-end; margin-block-start: 4px; }
 	[data-place="bottom"] { position-area: block-end center; margin-block-start: 4px; }
 	[data-place="bottom-end"] { position-area: block-end span-inline-start; margin-block-start: 4px; }
@@ -185,7 +179,8 @@ ${LEVELS.filter((k) => k > 0)
 	outline: none;
 }
 [role^="menuitem"]:hover { background: var(--_hover); }
-[role^="menuitem"]:focus, .open-parent { background: var(--_hover); box-shadow: inset calc(2px * var(--_dir)) 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
+/* The focused row, and the row whose submenu is open. */
+[role^="menuitem"]:focus, [role^="menuitem"][aria-expanded="true"] { background: var(--_hover); box-shadow: inset calc(2px * var(--_dir)) 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
 [role^="menuitem"]:focus-visible { outline: 2px solid var(--_brand-light); outline-offset: -2px; }
 [role^="menuitem"][aria-disabled="true"] { opacity: 0.45; cursor: default; }
 [role^="menuitem"][aria-disabled="true"]:hover { background: none; }
@@ -273,29 +268,22 @@ rocket('sb-dropdown', {
 		// attribute, which a morph would reset anyway.
 		let isOpen = props.open // plain too: cleanup runs after the signals are cleared
 		$$.open = isOpen
-		$$.depth = isOpen ? 1 : 0 // how many levels are on screen
-		$$.level = 0 // level with the keyboard focus
-		$$.active = -1 // row index inside that level, -1 for none
-		$$.inside = false // keyboard focus is in one of the menus
-		$$.label = props.label
+		// Where the keyboard focus is: plain, since nothing renders it.
+		let focusLevel = 0 // level with the keyboard focus
+		let focusIndex = -1 // row index inside that level, -1 for none
+		let inside = false // keyboard focus is in one of the menus
 		$$.disabled = props.disabled
 		$$.value = props.value // radio group: the checked value
-		$$.trigger = props.label // what the trigger reads: label, plus the choice
 		$$.anim = false // no opening animation for a menu that starts open
-		$$.icons = false
-		$$.rev = 0
-		for (const k of LEVELS) {
-			$$['checks' + k] = false // the level holding the radio group reserves a mark column
-			$$['rows' + k] = []
-			$$['parent' + k] = -1 // row index whose submenu is open, -1 for none
-			$$['lbl' + k] = k === 0 ? props.label : ''
-			// The root follows the placement prop; a submenu always opens to the
-			// inline end and flips to the start when there is no room.
-			$$['side' + k] = k === 0 ? props.placement : 'end'
-		}
+		// The root follows the placement prop; a submenu always opens to the
+		// inline end and flips to the start when there is no room.
+		for (const k of LEVELS) $$['side' + k] = k === 0 ? props.placement : 'end'
+		// publish() (in the first rebuild() below) sets the rest: how many levels
+		// are on screen (depth), what the trigger reads (trigger), icons, rev, and
+		// per level its rows, open parent, name and mark column.
 
 		const menuEl = (k) => host.shadowRoot?.querySelector('.lvl' + k)
-		const rowEl = (k, i) => (i >= 0 ? menuEl(k)?.querySelector(`[data-idx="${i}"]`) : null)
+		const rowEl = (k, i) => menuEl(k)?.querySelector(`[data-idx="${i}"]`)
 		const trigger = () => host.shadowRoot?.querySelector('.trigger')
 
 		// tree and path stay plain: a tree in a signal would merge on every
@@ -311,24 +299,11 @@ rocket('sb-dropdown', {
 		let servedV = props.value
 		// The group starts at its root level and runs through every submenu below
 		// it, so a nested leaf is part of the same group.
-		const onGroup = (k) => {
-			if (!group || k < group.length) return false
-			for (let j = 0; j < group.length; j++) if (path[j] !== group[j]) return false
-			return true
-		}
-		const inGroup = (k, i) => {
-			if (!onGroup(k)) return false
-			const r = nodes(k)[i]
-			return !!r && !r.divider && !r.children?.length
-		}
+		const onGroup = (k) => !!group && k >= group.length && group.every((g, j) => path[j] === g)
 		// What a row of the group reports: the item values from the group root
 		// down to it, joined with dots ("date.newest").
-		const pathValue = (k, i) => {
-			const segs = []
-			for (let j = group.length; j < k; j++) segs.push(nodes(j)[path[j]]?.key ?? '')
-			segs.push(nodes(k)[i]?.key ?? '')
-			return segs.join('.')
-		}
+		const pathValue = (k, i) =>
+			[...path.slice(group.length, k), i].map((at, j) => node(group.length + j, at)?.key ?? '').join('.')
 		// The items of the group, whatever level they sit on.
 		const atPath = (p) => {
 			let list = tree
@@ -340,13 +315,13 @@ rocket('sb-dropdown', {
 		const chosenLabel = () => {
 			if (!group || !$$.value) return ''
 			let list = atPath(group)
-			let hit = null
-			for (const seg of String($$.value).split('.')) {
-				hit = (list || []).find((r) => !r.divider && r.key === seg)
-				if (!hit) return String($$.value)
+			let hit
+			for (const seg of $$.value.split('.')) {
+				hit = list.find((r) => !r.divider && r.key === seg)
+				if (!hit) return $$.value
 				list = hit.children
 			}
-			return hit && !hit.children?.length ? hit.label : String($$.value)
+			return hit.children.length ? $$.value : hit.label
 		}
 		const nodes = (k) => {
 			let list = tree
@@ -355,10 +330,6 @@ rocket('sb-dropdown', {
 		}
 		const node = (k, i) => nodes(k)[i]
 		const opens = (k, i) => !!node(k, i)?.children?.length && !node(k, i).disabled
-		const pickable = (k, i) => {
-			const r = node(k, i)
-			return !!r && !r.divider && !r.disabled && !r.children?.length
-		}
 		const focusable = (k, i) => {
 			const r = node(k, i)
 			return !!r && !r.divider && !r.disabled
@@ -384,10 +355,10 @@ rocket('sb-dropdown', {
 					children = JSON.parse(el.getAttribute('data-children') || '[]')
 				} catch {}
 				return {
-					value: el.getAttribute('value') ?? el.textContent.trim(),
+					value: el.getAttribute('value'), // normalize() falls back to the label
 					label: el.textContent.trim(),
-					description: el.getAttribute('data-description') ?? '',
-					icon: el.getAttribute('data-icon') ?? '',
+					description: el.getAttribute('data-description'),
+					icon: el.getAttribute('data-icon'),
 					disabled: el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true',
 					danger: el.hasAttribute('data-danger'),
 					children,
@@ -428,8 +399,7 @@ rocket('sb-dropdown', {
 			$$.icons = icons
 			// A radio menu says what it is and what is chosen; a page that sets
 			// label still owns the first half, and an actions menu is untouched.
-			const chose = chosenLabel()
-			$$.trigger = chose ? (props.label ? props.label + ': ' + chose : chose) : props.label
+			$$.trigger = [props.label, chosenLabel()].filter(Boolean).join(': ')
 			$$.depth = $$.open ? path.length + 1 : 0
 			$$.rev = ++rev // any change to what is on screen re-runs the placement
 		}
@@ -440,20 +410,20 @@ rocket('sb-dropdown', {
 		// removed under it. If the user moved on, leave them alone.
 		const refocus = (force) =>
 			requestAnimationFrame(() => {
-				if (!$$.open || !$$.inside || $$.active < 0) return
+				if (!$$.open || !inside || focusIndex < 0) return
 				if (!force) {
 					const active = document.activeElement
 					if (active && active !== document.body && active !== host) return
 				}
-				const el = rowEl($$.level, $$.active)
+				const el = rowEl(focusLevel, focusIndex)
 				if (el && host.shadowRoot.activeElement !== el) el.focus()
 			})
 		const focusRow = (k, i) => {
 			if (i < 0) return
-			if (k !== $$.level) type = '' // the type-ahead never leaks across levels
-			$$.level = k
-			$$.active = i
-			$$.inside = true
+			if (k !== focusLevel) type = '' // the type-ahead never leaks across levels
+			focusLevel = k
+			focusIndex = i
+			inside = true
 			refocus(true)
 		}
 
@@ -466,8 +436,8 @@ rocket('sb-dropdown', {
 			// Whether a menu had the focus has to be read before the rows go:
 			// the morph can park a row before removing it, so focusout fires
 			// while it is still connected and only the empty relatedTarget shows.
-			const had = $$.inside
-			const was = { level: $$.level, active: $$.active }
+			const had = inside
+			const was = { level: focusLevel, active: focusIndex }
 			tree = next
 			// One radio group per dropdown: the root menu (type="radio" on the
 			// host) or the children of one item (type: "radio"). Anything beyond
@@ -484,7 +454,7 @@ rocket('sb-dropdown', {
 					if (r.children?.length) scan(r.children, [...at, i])
 				})
 			scan(tree, [])
-			if (extra.length) report(new Error(`<sb-dropdown> holds one radio group; ignoring ${extra.join(', ')}`))
+			if (extra.length) reportError(new Error(`<sb-dropdown> holds one radio group; ignoring ${extra.join(', ')}`))
 			// Submenus survive new items only while their parent is still a
 			// parent: otherwise the path is cut back to where it still holds.
 			let keep = 0
@@ -496,12 +466,11 @@ rocket('sb-dropdown', {
 			// the first row — that would send one arrow key to the other end.
 			const level = Math.min(was.level, path.length)
 			if (!focusable(level, was.active) || level !== was.level) {
-				const n = nodes(level).length
-				const from = Math.min(Math.max(was.active, 0), Math.max(n - 1, 0))
-				$$.level = level
-				$$.active = focusable(level, from) ? from : n ? (step(level, from - 1, 1) >= 0 ? step(level, from - 1, 1) : step(level, from, -1)) : -1
+				focusLevel = level
+				// step() from the row before tries the clamped index itself first.
+				focusIndex = step(level, Math.min(Math.max(was.active, 0), nodes(level).length - 1) - 1, 1)
 			}
-			$$.inside = had
+			inside = had
 			refocus(false)
 		}
 
@@ -512,7 +481,11 @@ rocket('sb-dropdown', {
 			const r = a.getBoundingClientRect()
 			const gap = 4
 			const pad = 8
-			const fits = (y, h) => y >= pad && y + h <= innerHeight - pad
+			// Whether v..v + size fits into pad..max - pad; the wanted spot, or the
+			// other one when only that fits; a spot shifted back inside, in px.
+			const fits = (v, size, max) => v >= pad && v + size <= max - pad
+			const pick = (want, other, size, max) => (fits(want, size, max) || !fits(other, size, max) ? want : other)
+			const shift = (v, size, max) => Math.round(Math.min(Math.max(pad, v), Math.max(pad, max - size - pad))) + 'px'
 			if (k === 0) m.style.minInlineSize = r.width + 'px'
 			const w = m.offsetWidth
 			const h = m.offsetHeight
@@ -520,30 +493,23 @@ rocket('sb-dropdown', {
 			let top
 			if (k === 0) {
 				const [side, align = 'center'] = props.placement.split('-')
-				top = side === 'top' ? r.top - h - gap : r.bottom + gap
-				// Flip to the other side when this one has no room.
-				if (!fits(top, h)) {
-					const other = side === 'top' ? r.bottom + gap : r.top - h - gap
-					if (fits(other, h)) top = other
-				}
+				const above = r.top - h - gap
+				const below = r.bottom + gap
+				// Flip to the other side when only that one has room.
+				top = side === 'top' ? pick(above, below, h, innerHeight) : pick(below, above, h, innerHeight)
 				left = align === 'end' ? r.right - w : align === 'center' ? r.left + (r.width - w) / 2 : r.left
 			} else {
 				// A submenu hangs off its parent row, to the inline end.
-				const rtl = getComputedStyle(host).direction === 'rtl'
-				const end = rtl ? r.left - w + 2 : r.right - 2
-				const start = rtl ? r.right - 2 : r.left - w + 2
-				left = end
-				if (left < pad || left + w > innerWidth - pad) {
-					if (start >= pad && start + w <= innerWidth - pad) left = start
-				}
+				const after = r.right - 2 // to the right of the row
+				const before = r.left - w + 2 // to its left
+				left = getComputedStyle(host).direction === 'rtl' ? pick(before, after, w, innerWidth) : pick(after, before, w, innerWidth)
+				// Level with the row, or ending level with it when that has no room.
 				top = r.top - 6
-				if (!fits(top, h)) top = Math.min(Math.max(pad, r.bottom + 6 - h), Math.max(pad, innerHeight - h - pad))
+				if (!fits(top, h, innerHeight)) top = r.bottom + 6 - h
 			}
 			// Shift back into the viewport.
-			left = Math.min(Math.max(pad, left), Math.max(pad, innerWidth - w - pad))
-			top = Math.min(Math.max(pad, top), Math.max(pad, innerHeight - h - pad))
-			m.style.left = Math.round(left) + 'px'
-			m.style.top = Math.round(top) + 'px'
+			m.style.left = shift(left, w, innerWidth)
+			m.style.top = shift(top, h, innerHeight)
 		}
 
 		// No attribute form for these: a click anywhere in the document, and the
@@ -561,16 +527,11 @@ rocket('sb-dropdown', {
 		const bind = (on) => {
 			if (on === bound) return
 			bound = on
-			if (on) {
-				document.addEventListener('pointerdown', onDown, true)
-				if (!anchors) {
-					window.addEventListener('scroll', onMove, { capture: true, passive: true })
-					window.addEventListener('resize', onMove)
-				}
-			} else {
-				document.removeEventListener('pointerdown', onDown, true)
-				window.removeEventListener('scroll', onMove, { capture: true })
-				window.removeEventListener('resize', onMove)
+			const m = on ? 'addEventListener' : 'removeEventListener'
+			document[m]('pointerdown', onDown, true)
+			if (!anchors) {
+				window[m]('scroll', onMove, { capture: true, passive: true })
+				window[m]('resize', onMove)
 			}
 		}
 
@@ -583,7 +544,7 @@ rocket('sb-dropdown', {
 			clearTimeout(hoverIn)
 			clearTimeout(hoverOut)
 		}
-		const setOpen = (next, { focus = null, reason = 'api', defer = false } = {}) => {
+		const setOpen = (next, { focus, reason = 'api', defer } = {}) => {
 			if (next && props.disabled) return
 			if (!!next === !!$$.open) return
 			clearTimeout(typer)
@@ -595,9 +556,9 @@ rocket('sb-dropdown', {
 			// it later would start the animation a frame too late).
 			if (next) $$.anim = true
 			$$.open = isOpen = !!next
-			$$.level = 0
-			$$.inside = !!(next && focus)
-			$$.active = next ? (focus ? edge(0, focus === 'last' ? -1 : 1) : -1) : -1
+			focusLevel = 0
+			inside = !!(next && focus)
+			focusIndex = next ? (focus ? edge(0, focus === 'last' ? -1 : 1) : -1) : -1
 			publish()
 			if (next && focus) refocus(true)
 			const fire = () => emit(next ? 'sb-open' : 'sb-close', next ? undefined : { reason })
@@ -622,7 +583,7 @@ rocket('sb-dropdown', {
 			timers()
 			if (path.length <= level) return
 			const parent = path[level]
-			const had = $$.inside && $$.level > level // the focus was in a level that is going
+			const had = inside && focusLevel > level // the focus was in a level that is going
 			path = path.slice(0, level)
 			publish()
 			if (focus || had) focusRow(level, parent)
@@ -632,11 +593,12 @@ rocket('sb-dropdown', {
 			// hovering opened it already. A second tap closes it again, the only
 			// way back on a touch screen. Its own value never counts.
 			if (opens(k, i)) return touch && path[k] === i ? closeTo(k, true) : openSub(k, i, true)
-			if (!pickable(k, i)) return
+			// Not a parent, so a row the focus can take is a leaf.
+			if (!focusable(k, i)) return
 			const value = node(k, i).value
 			// An item of the radio group changes a value; every other item is an
 			// intent the page turns into a command. Never both for one item.
-			if (inGroup(k, i)) {
+			if (onGroup(k)) {
 				$$.value = pathValue(k, i)
 				publish()
 				sync()
@@ -689,7 +651,6 @@ rocket('sb-dropdown', {
 		observeProps((p, changes) =>
 			peek(() => {
 				if (p.disabled && $$.open) setOpen(false, { reason: 'api', defer: true })
-				$$.label = p.label
 				$$.side0 = p.placement
 				$$.disabled = p.disabled
 				rebuild('type' in changes) // a new type moves the group
@@ -702,7 +663,7 @@ rocket('sb-dropdown', {
 		// one. With confirm, :state(pending) marks a choice the server has not
 		// confirmed yet; revert() goes back to the server's value.
 		effect(() => ($$.value, sync()))
-		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.value = v == null ? '' : String(v)), publish(), sync())))
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.value = String(v ?? '')), publish(), sync())))
 		defineHostProp('revert', { value: () => peek(() => (($$.value = servedV), publish(), sync())) })
 
 		// host.open / show() / hide(): the live state, never an attribute.
@@ -734,12 +695,8 @@ rocket('sb-dropdown', {
 			for (const k of LEVELS) {
 				const m = menuEl(k)
 				try {
-					if (k < depth) {
-						if (!m.matches(':popover-open')) m.showPopover()
-						place(k)
-					} else if (m.matches(':popover-open')) {
-						m.hidePopover()
-					}
+					m.togglePopover(k < depth) // nothing happens to a level already there
+					if (k < depth) place(k)
 				} catch {}
 			}
 			// Measured once more after the rows have rendered: a popover that was
@@ -767,24 +724,23 @@ rocket('sb-dropdown', {
 		)
 		action('focusin', ({ evt }, k) =>
 			peek(() => {
-				$$.inside = true
+				inside = true
 				const i = Number(evt.target?.dataset?.idx)
 				if (Number.isInteger(i)) {
-					if (k !== $$.level) type = ''
-					$$.level = k
-					$$.active = i
+					if (k !== focusLevel) type = ''
+					focusLevel = k
+					focusIndex = i
 				}
 			}),
 		)
-		action('focusout', ({ el, evt }) =>
+		action('focusout', ({ evt }) =>
 			peek(() => {
 				// A row that re-rendered away also "loses" focus, and the morph can
 				// park it first, so it is still connected and only the empty
 				// relatedTarget gives it away; refocus() decides where it goes.
 				if (!evt.target.isConnected || evt.relatedTarget === null) return
 				// Moving between levels is not leaving: every level is its own popover.
-				if (host.shadowRoot.contains(evt.relatedTarget)) return
-				if (!el.contains(evt.relatedTarget)) $$.inside = false
+				if (!host.shadowRoot.contains(evt.relatedTarget)) inside = false
 			}),
 		)
 		// Hover: open a submenu after a moment, and close it a little later, so a
@@ -814,7 +770,7 @@ rocket('sb-dropdown', {
 		action('move', ({ evt }) =>
 			peek(() => {
 				const r = evt.target.closest('[data-idx]:not([aria-disabled])')
-				if (r && $$.inside && evt.pointerType !== 'touch') r.focus({ preventScroll: true })
+				if (r && inside && evt.pointerType !== 'touch') r.focus({ preventScroll: true })
 			}),
 		)
 		action('triggerKey', ({ evt }) =>
@@ -832,7 +788,7 @@ rocket('sb-dropdown', {
 				const rtl = getComputedStyle(host).direction === 'rtl'
 				const into = rtl ? 'ArrowLeft' : 'ArrowRight'
 				const out = rtl ? 'ArrowRight' : 'ArrowLeft'
-				const i = $$.active
+				const i = focusIndex
 				switch (evt.key) {
 					case 'ArrowDown':
 						focusRow(k, step(k, i, 1))
@@ -921,7 +877,6 @@ rocket('sb-dropdown', {
 						data-attr:aria-expanded="r?.parent ? String($$parent${k} === i) : null"
 						data-class:danger="r?.danger"
 						data-class:pending="r?.pending"
-						data-class:open-parent="r?.parent && $$parent${k} === i"
 						data-on:click="@click(${k}, i)"
 						data-on:pointerenter="@enter(${k}, i)"
 						data-on:pointerleave="@leave()">
