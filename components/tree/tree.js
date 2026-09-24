@@ -30,7 +30,7 @@ const styles = /* css */ `
 	font-size: 0.875rem;
 }
 :host([hidden]) { display: none; }
-[role="tree"] { display: grid; gap: 1px; outline: none; }
+[role="tree"] { display: grid; gap: 1px; }
 [role="treeitem"] {
 	display: flex;
 	align-items: center;
@@ -52,15 +52,15 @@ const styles = /* css */ `
 	block-size: 8px;
 	background: currentColor;
 	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
-	transition: rotate 120ms steps(2, end);
+	transition: rotate 120ms steps(2);
 }
 [aria-expanded="true"] > .caret::before { rotate: 90deg; }
 :not([aria-expanded]) > .caret::before { display: none; }
 .icon { flex: none; inline-size: 1.1rem; text-align: center; }
 .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .busy { color: var(--_muted); font-size: 0.75rem; }
-.busy::after { content: "…"; animation: dots 1s steps(3, end) infinite; display: inline-block; inline-size: 1.2em; overflow: hidden; vertical-align: bottom; }
-@keyframes dots { from { inline-size: 0 } to { inline-size: 1.2em } }
+.busy::after { content: "…"; animation: dots 1s steps(3) infinite; display: inline-block; inline-size: 1.2em; overflow: hidden; vertical-align: bottom; }
+@keyframes dots { from { inline-size: 0 } }
 @media (prefers-reduced-motion: reduce) { .caret::before, .busy::after { transition: none; animation: none; } }
 `
 
@@ -110,13 +110,9 @@ rocket('sb-tree', {
 				// it alone.
 				const active = document.activeElement
 				if (active && active !== document.body && active !== host) return
-				const el = host.shadowRoot?.querySelector(`[data-id="${CSS.escape($$.focus)}"]`)
+				const el = host.shadowRoot.querySelector(`[data-id="${CSS.escape($$.focus)}"]`)
 				if (el && host.shadowRoot.activeElement !== el) el.focus()
 			})
-		// Load requests go out in a later task: during setup the page's
-		// data-on:sb-load isn't attached yet, and inside another effect (a
-		// morph) the @get it starts would be tracked by that effect.
-		const request = (id) => setTimeout(() => emit('sb-load', { id }))
 
 		// The visible rows: a depth-first walk through the open items.
 		const rebuild = () => {
@@ -133,7 +129,10 @@ rocket('sb-tree', {
 					if (kids) loading.delete(id)
 					else if (isOpen && it.lazy && !loading.has(id)) {
 						loading.add(id)
-						request(id)
+						// The request goes out in a later task: during setup the page's
+						// data-on:sb-load isn't attached yet, and inside another effect
+						// (a morph) the @get it starts would be tracked by that effect.
+						setTimeout(() => emit('sb-load', { id }))
 					}
 					rows.push({ id, label: String(it.label ?? id), icon: it.icon ?? '', depth, parent, branch, open: isOpen, loading: loading.has(id), pos: i + 1, size: items.length })
 					if (isOpen && kids?.length) walk(kids, depth + 1, id)
@@ -218,10 +217,11 @@ rocket('sb-tree', {
 		}
 		const focus = (id) => id && (($$.focus = id), refocus())
 
-		// Focus can also arrive by Tab or a click: keep the roving focus in step.
+		// Focus can also arrive by Tab or a click: keep the roving focus in step
+		// (only rows are focusable, so the target is a row).
 		action('focusin', ({ evt }) => {
 			$$.hasFocus = true
-			const id = evt.target.closest?.('[role="treeitem"]')?.dataset.id
+			const id = evt.target.dataset.id
 			if (id) $$.focus = id
 		})
 		action('focusout', ({ evt }) => {
@@ -238,7 +238,8 @@ rocket('sb-tree', {
 			$$.focus = id
 			if (row(id)?.branch && evt.target.closest('.caret')) return setOpen(id, !row(id).open)
 			select(id)
-			if (row(id)?.branch && props.selection !== 'multiple') setOpen(id, !row(id).open)
+			// A click also opens or closes a branch, except in multiple mode (setOpen skips leaves).
+			if (props.selection !== 'multiple') setOpen(id, !row(id)?.open)
 		})
 		action('key', ({ evt }) => {
 			const rows = $$.rows
@@ -271,7 +272,7 @@ rocket('sb-tree', {
 	render: ({ html }) => html`
 		<div role="tree" part="tree"
 			data-attr:aria-label="$$label"
-			data-attr:aria-multiselectable="$$mode === 'multiple' ? 'true' : null"
+			data-attr:aria-multiselectable="$$mode === 'multiple' && 'true'"
 			data-on:keydown="@key()" data-on:focusin="@focusin()" data-on:focusout="@focusout()">
 			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
 			<template data-for="r in $$rows">
@@ -281,9 +282,9 @@ rocket('sb-tree', {
 					data-attr:aria-level="r?.depth + 1"
 					data-attr:aria-posinset="r?.pos"
 					data-attr:aria-setsize="r?.size"
-					data-attr:aria-expanded="r?.branch ? String(r?.open) : null"
-					data-attr:aria-selected="$$mode === 'none' ? null : String($$selected.includes(r?.id))"
-					data-attr:aria-busy="r?.loading ? 'true' : null"
+					data-attr:aria-expanded="r?.branch && String(r?.open)"
+					data-attr:aria-selected="$$mode !== 'none' && String($$selected.includes(r?.id))"
+					data-attr:aria-busy="r?.loading && 'true'"
 					data-attr:tabindex="r?.id === $$focus ? 0 : -1"
 					data-style:--depth="r?.depth"
 					data-on:click="@click(r?.id)">
