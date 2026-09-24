@@ -1,8 +1,16 @@
 import { rocket } from 'datastar'
 
-// Tags already being loaded, shared by every instance: two autoloaders on one
-// page (or the same one after a morph) never fetch a module twice.
-const started = new Set()
+// Loads by tag (a promise, or 0 once it failed), shared by every instance:
+// two autoloaders on one page (or the same one after a morph) never fetch a
+// module twice, and each one waits for the loads it finds, whoever started
+// them.
+const loads = new Map()
+// The browser's module map remembers a failed import by URL, so a retry
+// imports it under a new #fragment (which the HTTP cache ignores).
+let retries = 0
+// Per host, what outlives a re-attach (Rocket reruns setup on every
+// connect): sb-ready fires once, and el.ready stays the same promise.
+const hosts = new WeakMap()
 
 // The element adds nothing to the page: no box of its own, and any children
 // render exactly where they are written (so it can wrap markup, or stand
@@ -18,96 +26,97 @@ rocket('sb-autoloader', {
 		match: string.trim.docs({ description: 'Regular expression the tag must match before pattern applies, e.g. "^x-". Empty: every unknown custom element.' }),
 		requires: json.default(() => ({})).docs({ description: 'Tags a component renders itself, loaded with it: {"x-table": ["x-cell"]}.' }),
 		base: string.trim.docs({ description: 'Base for relative URLs. Default: the document\'s base URL.' }),
-		cloak: string.trim.docs({ description: 'Class removed from <html> once the first components are defined (against the flash of undefined elements).' }),
-		timeout: number.min(0).default(3000).docs({ description: 'Remove the cloak class after this many ms, whatever happens.' }),
+		cloak: string.trim.docs({ description: 'Class removed from <html> once the components present at startup have loaded or failed, or after timeout (against the flash of undefined elements).' }),
+		timeout: number.min(0).default(3000).docs({ description: 'Remove the cloak class after this many ms, whatever happens (sb-ready still waits for the loads).' }),
 	}),
 	manifest: {
+		slots: [{ name: 'default', description: 'Optional markup to wrap; it renders exactly as written.' }],
 		events: [
 			{ name: 'sb-load', kind: 'custom-event', bubbles: true, composed: true, description: 'After a component is defined. detail: { tag, url }.' },
-			{ name: 'sb-load-error', kind: 'custom-event', bubbles: true, composed: true, description: 'When a module fails to load. detail: { tag, url, error }.' },
-			{ name: 'sb-ready', kind: 'custom-event', bubbles: true, composed: true, description: 'Once, when the components present at startup are defined (right away when there were none). detail: { loaded }.' },
+			{ name: 'sb-load-error', kind: 'custom-event', bubbles: true, composed: true, description: 'When a module fails to load, or loads without defining its tag. detail: { tag, url, error }.' },
+			{ name: 'sb-ready', kind: 'custom-event', bubbles: true, composed: true, description: 'Once, when every component present at startup has loaded or failed (right away when there were none). detail: { loaded }.' },
 		],
 	},
 	setup: ({ adoptStyles, cleanup, defineHostProp, emit, host, props }) => {
 		adoptStyles(host, styles)
-		let pending = 0
-		let loaded = 0
-		let settled = false
-		let markReady
-		const ready = new Promise((resolve) => (markReady = resolve))
+		const uncloak = () => props.cloak && document.documentElement.classList.remove(props.cloak)
+		let s = hosts.get(host)
+		if (!s) {
+			hosts.set(host, (s = { loaded: 0, pending: 0 }))
+			s.ready = new Promise((resolve) => (s.done = resolve))
+			// Never leave a page cloaked, even when the loader is gone by then.
+			setTimeout(uncloak, props.timeout)
+		}
 
-		const report = (err) => (typeof reportError === 'function' ? reportError(err) : console.error(err))
-
-		// match, compiled once per value. A broken pattern disables the fallback
-		// instead of throwing on every tag.
-		let re, reSrc, reBad
+		// match, compiled once per value. A broken one is reported and matches
+		// nothing, so the pattern is skipped.
+		let src, re
 		const matches = (tag) => {
-			if (!props.match) return true
-			if (reSrc !== props.match) {
-				reSrc = props.match
+			if (src !== props.match) {
+				src = props.match
 				try {
-					;(re = new RegExp(props.match)), (reBad = false)
+					re = new RegExp(src) // empty: every tag
 				} catch (cause) {
 					re = null
-					if (!reBad) report(new Error(`<sb-autoloader> match="${props.match}" is not a regular expression`, { cause }))
-					reBad = true
+					reportError(new Error(`<sb-autoloader> match="${src}" is not a regular expression`, { cause }))
 				}
 			}
-			return !!re?.test(tag)
+			return re?.test(tag)
 		}
 
 		// Where a tag's module lives: the explicit map first, then the pattern
 		// (only for tags that match), resolved against base.
 		const urlFor = (tag) => {
 			const from = props.modules?.[tag] || (props.pattern && matches(tag) ? props.pattern.replaceAll('{tag}', tag) : '')
-			if (!from) return ''
-			const base = props.base ? new URL(props.base, document.baseURI) : document.baseURI
-			return new URL(from, base).href
+			return from && new URL(from, new URL(props.base, document.baseURI)).href
 		}
 
-		const uncloak = () => {
-			if (settled) return
-			settled = true
-			if (props.cloak) document.documentElement.classList.remove(props.cloak)
-			markReady(loaded)
-			emit('sb-ready', { loaded })
-		}
-		// A microtask and a frame, so tags that appear right after a module
-		// runs (a component rendering its own children) still count.
-		const settle = () => queueMicrotask(() => pending === 0 && requestAnimationFrame(() => pending === 0 && uncloak()))
-		const timer = setTimeout(uncloak, props.timeout) // never leave a page cloaked
+		// After the microtasks, so tags that appear right after a module runs
+		// (a component rendering its own children) still count.
+		const settle = () =>
+			setTimeout(() => {
+				if (s.pending || !s.done) return
+				uncloak()
+				s.done(s.loaded)
+				s.done = 0
+				emit('sb-ready', { loaded: s.loaded })
+			})
+		const done = () => (s.pending--, settle())
 
 		const load = (tag) => {
-			if (started.has(tag) || customElements.get(tag)) return
-			const url = urlFor(tag)
-			if (!url) return
-			started.add(tag)
-			for (const dep of props.requires?.[tag] ?? []) load(dep)
-			pending++
-			import(url)
-				// Rocket defines its elements once Datastar is ready: wait for that too.
-				.then(() => customElements.whenDefined(tag))
-				.then(() => {
-					loaded++
-					emit('sb-load', { tag, url })
-				})
-				.catch((cause) => {
-					started.delete(tag) // a later attempt may succeed
-					emit('sb-load-error', { tag, url, error: String(cause?.message ?? cause) })
-					report(new Error(`<sb-autoloader> could not load <${tag}> from ${url}`, { cause }))
-				})
-				.finally(() => {
-					pending--
-					settle()
-				})
+			if (customElements.get(tag)) return
+			let p = loads.get(tag)
+			if (!p) {
+				const url = urlFor(tag)
+				if (!url) return
+				loads.set(
+					tag,
+					(p = import(loads.has(tag) ? `${url}#${++retries}` : url)
+						.then(() => {
+							// sb-autoloader runs once Datastar is ready, so a Rocket module, like
+							// any other, defines its tag while it runs.
+							if (!customElements.get(tag)) throw new Error(`${url} does not define <${tag}>`)
+							s.loaded++
+							emit('sb-load', { tag, url })
+						})
+						.catch((cause) => {
+							loads.set(tag, 0) // failed: a later attempt may succeed
+							emit('sb-load-error', { tag, url, error: String(cause?.message ?? cause) })
+							reportError(new Error(`<sb-autoloader> could not load <${tag}> from ${url}`, { cause }))
+							throw cause
+						})),
+				)
+				for (const dep of props.requires?.[tag] ?? []) load(dep) // after set: a cycle ends here
+			}
+			s.pending++
+			p.then(done, done)
+			return p
 		}
 
 		// Undefined custom elements in a tree (an element, the document, or a
 		// shadow root), including the root itself.
-		const discover = (root) => {
-			if (root.localName?.includes('-')) load(root.localName)
-			for (const el of root.querySelectorAll?.(':not(:defined)') ?? []) load(el.localName)
-		}
+		const discover = (root) =>
+			Promise.allSettled([root, ...(root.querySelectorAll?.(':not(:defined)') ?? [])].map((el) => el.localName?.includes('-') && load(el.localName)))
 
 		discover(document.documentElement)
 		settle() // nothing to load: ready right away
@@ -116,12 +125,9 @@ rocket('sb-autoloader', {
 			for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) discover(n)
 		})
 		observer.observe(document.documentElement, { subtree: true, childList: true })
-		cleanup(() => {
-			observer.disconnect()
-			clearTimeout(timer)
-		})
+		cleanup(() => observer.disconnect())
 
-		defineHostProp('ready', { get: () => ready })
+		defineHostProp('ready', { value: s.ready })
 		defineHostProp('load', { value: load })
 		defineHostProp('discover', { value: discover })
 	},

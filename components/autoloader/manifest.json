@@ -58,7 +58,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Class removed from <html> once the first components are defined (against the flash of undefined elements)."
+        "description": "Class removed from <html> once the components present at startup have loaded or failed, or after timeout (against the flash of undefined elements)."
       }
     },
     {
@@ -68,11 +68,16 @@
       "default": 3000,
       "required": false,
       "docs": {
-        "description": "Remove the cloak class after this many ms, whatever happens."
+        "description": "Remove the cloak class after this many ms, whatever happens (sb-ready still waits for the loads)."
       }
     }
   ],
-  "slots": [],
+  "slots": [
+    {
+      "name": "default",
+      "description": "Optional markup to wrap; it renders exactly as written."
+    }
+  ],
   "events": [
     {
       "kind": "custom-event",
@@ -86,14 +91,14 @@
       "name": "sb-load-error",
       "bubbles": true,
       "composed": true,
-      "description": "When a module fails to load. detail: { tag, url, error }."
+      "description": "When a module fails to load, or loads without defining its tag. detail: { tag, url, error }."
     },
     {
       "kind": "custom-event",
       "name": "sb-ready",
       "bubbles": true,
       "composed": true,
-      "description": "Once, when the components present at startup are defined (right away when there were none). detail: { loaded }."
+      "description": "Once, when every component present at startup has loaded or failed (right away when there were none). detail: { loaded }."
     }
   ]
 }
