@@ -128,7 +128,7 @@ Style it from your page's CSS — no need to change the component or import anyt
 - **Size:** set `block-size` (or `height`) on the element; it defaults to `18rem` and fills the width it is given.
 - **Fonts:** labels and the legend use `--sb-font-body` when a site sets one, numbers (the value axis, the tooltip) `--sb-font-ui`. Without them the chart draws in the element's own font, inherited from your page, so `font-family` on the element is enough.
 - **Colours:** series take `--sb-chart-1` to `--sb-chart-8`, falling back to `--sb-brand-light`, `--sb-accent`, `--sb-ok`, `--sb-warn`, `--sb-danger`, `--sb-info`, `--sb-text-2` and `--sb-brand`. Text is `--sb-text-2`, axis labels `--sb-text-muted`, axis lines `--sb-border`, grid lines `--sb-border-subtle`, and the tooltip `--sb-surface-overlay` with `--sb-text-1` values. Set any of them on the element or an ancestor to give charts their own palette. A pick on `sb-theme-switch`, or the system flipping under "auto", redraws the chart in the new colours without starting it again.
-- **Parts:** `plot`, the box ECharts draws in. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `plot`, the box ECharts draws in (and, without a fallback, the one that takes keyboard focus: `::part(plot):focus-visible` styles its ring). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -146,7 +146,7 @@ A font you load yourself works inside the component too: load it in the page (a 
 
 ## Accessibility
 
-With a fallback table in the element, screen readers get the table and the drawing is hidden from them. Without one, ECharts' own description is switched on, which names the chart type and series. With `prefers-reduced-motion: reduce` nothing animates.
+With a fallback table in the element, screen readers get the table and the drawing is hidden from them; if a click on the chart drills down, offer the same links outside it too. Without one, ECharts' own description is switched on, which names the chart type and series, and the chart takes keyboard focus: ←/→ step through a series' items and ↑/↓ from one series to the next, each shown with its tooltip, and Enter fires `sb-chart-click` for the item. With `prefers-reduced-motion: reduce` nothing animates.
 
 ## Licence
 

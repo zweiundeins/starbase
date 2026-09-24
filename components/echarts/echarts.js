@@ -181,6 +181,10 @@ const plots = new WeakMap()
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// The keyboard's steps: [series, item].
+const KEYS = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0], Enter: [0, 0] }
+const clamp = (v, max) => Math.max(0, Math.min(v, max))
+
 rocket('sb-echarts', {
 	props: ({ oneOf, string }) => ({
 		option: optionCodec.docs({ description: 'The ECharts option, as JSON. Strings that are exactly var(--token) become that colour. { "kind": "name", ... } is expanded by a builder the page defined with defineChartKind().' }),
@@ -192,7 +196,7 @@ rocket('sb-echarts', {
 		events: [{ name: 'sb-chart-click', kind: 'custom-event', bubbles: true, composed: true, description: 'A click on a data item. detail: { seriesName, seriesIndex, name, value, dataIndex }.' }],
 	},
 	renderOnPropChange: false,
-	setup: ({ adoptStyles, cleanup, emit, host, observeProps, props }) => {
+	setup: ({ action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		let plot = null // from onFirstRender
 		let alive = true, visible = false, starting = false
@@ -200,6 +204,7 @@ rocket('sb-echarts', {
 		// The last built option before its grid was fitted (for a resize to fit
 		// again), and the margins it got.
 		let unfitted = null, fitted = '', measure = null
+		let si = 0, at = -1 // the series and item the keyboard is on
 		plots.set(host, (p) => ((plot = p), start()))
 
 		const langOf = () => locale(props.lang || host.closest('[lang]')?.lang) ?? navigator.language
@@ -411,6 +416,21 @@ rocket('sb-echarts', {
 			internalsOf(host).states.delete('ready')
 		}
 
+		// The keyboard reaches what the pointer does: ←/→ step through a series'
+		// items and ↑/↓ from one series to the next, each shown with its tooltip,
+		// and Enter clicks the item.
+		action('key', ({ evt }) => {
+			const model = chart?.getModel(), n = model?.getSeriesCount(), [ds, di] = KEYS[evt.key] ?? []
+			if (!n || ds == null || (!ds && !di && at < 0)) return
+			evt.preventDefault()
+			const s = model.getSeriesByIndex((si = clamp(si + ds, n - 1))), data = s.getData(), count = data.count()
+			if (!count) return
+			at = clamp(at + di, count - 1)
+			if (ds || di) chart.dispatchAction({ type: 'showTip', seriesIndex: si, dataIndex: data.getRawIndex(at) })
+			else click(s.getDataParams(at))
+		})
+		action('blur', () => chart?.dispatchAction({ type: 'hideTip' }))
+
 		// Loaded and drawn only once it is about to be seen.
 		const io = new IntersectionObserver(([e]) => ((visible = e.isIntersecting), start()), { rootMargin: '200px' })
 		io.observe(host)
@@ -441,13 +461,15 @@ rocket('sb-echarts', {
 		})
 	},
 	render: ({ html }) => html`
-		<div class="plot" part="plot" data-ref:plot></div>
+		<div class="plot" part="plot" data-ref:plot data-on:keydown="@key()" data-on:blur="@blur()"></div>
 		<div class="fallback"><slot></slot></div>
 	`,
 	onFirstRender: ({ host, refs: { plot } }) => {
 		// With a server fallback in the slot, that is what screen readers get; the
-		// drawing adds nothing for them.
+		// drawing adds nothing for them. Without one, the drawing is what readers
+		// get, keyboard users included.
 		if (host.querySelector(':scope > *')) plot.setAttribute('aria-hidden', 'true')
+		else plot.tabIndex = 0
 		plots.get(host)(plot)
 	},
 })
