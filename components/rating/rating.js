@@ -121,10 +121,11 @@ rocket('sb-rating', {
 		// Forms: until Rocket can make this element form-associated, join the
 		// submissions and resets of the form it sits in. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
-		// A reset is revert(): the server's value, no change events (like a
-		// native reset).
+		// It bubbles: a form nested in this one by script would collect the
+		// value too, so only this form's own event counts. A reset is revert():
+		// the server's value, no change events (like a native reset).
 		const form = host.closest('form')
-		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
+		const onData = (evt) => peek(() => evt.target === form && props.name && !props.disabled && evt.formData.append(props.name, $$.value))
 		form?.addEventListener('formdata', onData)
 		form?.addEventListener('reset', revert)
 		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
