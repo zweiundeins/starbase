@@ -869,15 +869,16 @@ rocket('sb-dropdown', {
 						if (evt.key.length !== 1 || evt.altKey || evt.ctrlKey || evt.metaKey) return
 						clearTimeout(typer)
 						typer = setTimeout(() => (type = ''), 700)
-						// A letter searches from the row after the focused one, so
-						// repeating it cycles through the rows it starts; a longer word
-						// searches from the focused row, which may still match. Both wrap.
-						const c = fold(evt.key)
-						if (type !== c) type += c
+						type += fold(evt.key)
+						// A letter, also typed again and again ("ddd"), searches from the
+						// row after the focused one, so it cycles through the rows it
+						// starts; a word ("lla" for Llama) searches from the focused row,
+						// which may still match. Both wrap.
+						const q = type.replace(/^(.)\1+$/, '$1')
 						const n = nodes(k).length
-						for (let s = type[1] ? 0 : 1; s <= n; s++) {
+						for (let s = q[1] ? 0 : 1; s <= n; s++) {
 							const j = (i + s + n) % n
-							if (focusable(k, j) && fold(nodes(k)[j].label).startsWith(type)) {
+							if (focusable(k, j) && fold(nodes(k)[j].label).startsWith(q)) {
 								focusRow(k, j)
 								break
 							}
