@@ -18,7 +18,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Makes the whole card a link."
+        "description": "Makes the whole card a link: the heading is the link, so it needs `heading`."
       }
     },
     {

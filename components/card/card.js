@@ -25,7 +25,10 @@ article {
 }
 .inset { background: var(--_inset); }
 .glow { border-color: color-mix(in oklch, var(--_brand) 50%, var(--_border)); box-shadow: 0 8px 32px -12px color-mix(in oklch, var(--_brand) 60%, transparent); }
-:host([href]) article:hover { border-color: color-mix(in oklch, var(--_brand) 60%, var(--_border)); translate: 0 -2px; }
+/* A linked card: hover and keyboard focus on its one link light up the whole card. */
+article:has(a:is(:hover, :focus-visible)) { border-color: color-mix(in oklch, var(--_brand) 60%, var(--_border)); }
+article:has(a:focus-visible) { box-shadow: var(--sb-focus-ring, 0 0 0 2px #080D1D, 0 0 0 4px #B09AFF); outline: 2px solid transparent; outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { article:has(a:is(:hover, :focus-visible)) { translate: 0 -2px; } }
 /* Only the media is clipped to the corners (all four when nothing follows it),
    so tooltips and badges can leave the card. */
 .media { display: grid; overflow: hidden; border-radius: var(--_inner) var(--_inner) 0 0; }
@@ -39,16 +42,17 @@ article {
 /* A block, so inline markup in the body stays in one flow. */
 .body > slot { display: block; }
 .heading { margin: 0; color: var(--_text); font-size: 1rem; font-weight: 700; }
-.heading a { color: inherit; text-decoration: none; }
+.heading a { color: inherit; text-decoration: none; outline: none; }
 .heading a::after { content: ""; position: absolute; inset: 0; }
-:host([href]) article { position: relative; }
+/* Links and buttons in the body and everything in the footer rise above the stretched link. */
+article:has(a), article:has(a) ::slotted(:is(a, button, [slot="footer"])) { position: relative; }
 .footer { display: flex; align-items: center; gap: 0.5rem; margin-block-start: auto; padding: 0.75rem 1rem; border-block-start: 1px solid var(--_border); }
 `
 
 rocket('sb-card', {
 	props: ({ oneOf, string }) => ({
 		heading: string.trim.docs({ description: 'Card title.' }),
-		href: string.trim.docs({ description: 'Makes the whole card a link.' }),
+		href: string.trim.docs({ description: 'Makes the whole card a link: the heading is the link, so it needs `heading`.' }),
 		variant: oneOf('default', 'inset', 'glow').default('default').docs({ description: 'Surface style.' }),
 	}),
 	manifest: {

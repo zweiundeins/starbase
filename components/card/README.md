@@ -16,7 +16,7 @@ playground:
   style: "inline-size: min(100%, 18rem)"
 ---
 
-A surface with optional media, heading, body and footer. Sections that get no content collapse (whitespace doesn't count), and `href` turns the whole card into one link.
+A surface with optional media, heading, body and footer. Sections that get no content collapse (whitespace doesn't count), and `href` makes the whole card one link: its heading, stretched over the card.
 
 ## Examples
 
@@ -47,7 +47,8 @@ Style it from your page's CSS — no need to change the component or import anyt
 - **Body:** normal flow, like a `<div>`: inline markup stays in its line, and block children (paragraphs, lists) keep their own margins.
 - **Media:** scaled to the card's width and clipped to its corners. Nothing else is clipped, so tooltips and badges can reach outside the card. Raster pixel art that should stay crisp when scaled needs `image-rendering: pixelated` on your `<img>`.
 - **Fonts:** the heading and the body use your page's font.
-- **Colours:** the surface is `--sb-surface-card` (`--sb-surface-inset` for `variant="inset"`) with a `--sb-border` edge; the heading is `--sb-text-1` and the body `--sb-text-2`. `--sb-brand` tints the border of a linked card on hover and of the `glow` variant. Corners are `--sb-radius-lg`.
+- **Colours:** the surface is `--sb-surface-card` (`--sb-surface-inset` for `variant="inset"`) with a `--sb-border` edge; the heading is `--sb-text-1` and the body `--sb-text-2`. `--sb-brand` tints the border of the `glow` variant and of a linked card on hover and keyboard focus; keyboard focus also rings the card with `--sb-focus-ring`. Corners are `--sb-radius-lg`.
+- **Motion:** a linked card lifts by 2px on hover and focus, except with `prefers-reduced-motion`.
 - **Parts:** `card` (the frame), `media`, `heading`, `body` and `footer`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -61,4 +62,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-A linked card renders one real `<a>` in the heading and stretches its click area over the card, so screen readers hear a single link. Always give media images `alt` text.
+A linked card renders one real `<a>` in the heading and stretches its click area over the card, so screen readers hear a single link; without a `heading` there is no link. Keyboard focus rings the whole card. Links and buttons placed directly in the body, and everything in the footer, stay clickable on their own; give other interactive content in a linked card `position: relative`, so it sits above the card's link. Always give media images `alt` text.
