@@ -273,7 +273,10 @@ rocket('sb-select', {
 		// nothing is picked), else one, "" when nothing is.
 		const form = host.closest('form')
 		const onData = (evt) => peek(() => props.name && !props.disabled && [value()].flat().forEach((v) => evt.formData.append(props.name, v)))
-		const onReset = () => host.revert() // back to the server's value, like a native reset
+		// Back to the server's value, like a native reset, and a typed search goes.
+		// Not when the page canceled the reset: seen from listeners added before
+		// this one (a data-on:reset in server-rendered markup is).
+		const onReset = (evt) => evt.defaultPrevented || (($$.query = ''), host.revert())
 		form?.addEventListener('formdata', onData)
 		form?.addEventListener('reset', onReset)
 		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))

@@ -98,7 +98,7 @@ A new `value` from the server always wins, and `value=""` clears it. Markup re-s
 
 ## Forms
 
-Inside a `<form>`, `sb-select` submits its value under its `name` (`name=value`; with `multiple`, one entry per picked value and none when nothing is picked, like `<select multiple>`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value. A `disabled` select submits nothing. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-select` submits its value under its `name` (`name=value`; with `multiple`, one entry per picked value and none when nothing is picked, like `<select multiple>`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears a typed search. A `disabled` select submits nothing. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
