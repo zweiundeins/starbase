@@ -191,7 +191,11 @@ func (pg *Playground) Element() string {
 			if c.Initial == true {
 				b.WriteString(" " + c.Attr)
 			}
-			fmt.Fprintf(&b, ` data-attr:%s="$_pg.%s"`, c.Attr, c.Prop)
+			// Off removes the attribute and sets the property: a component that
+			// ignores a removed attribute (sb-toggle's checked, which the server
+			// clears with "false") still follows. Not "false": :host([x]) rules
+			// would match it.
+			fmt.Fprintf(&b, ` data-attr:%s="$_pg.%s || (el.%s = false)"`, c.Attr, c.Prop, c.Prop)
 		case ControlText:
 			if s, _ := c.Initial.(string); s != "" {
 				fmt.Fprintf(&b, ` %s="%s"`, c.Attr, html.EscapeString(s))

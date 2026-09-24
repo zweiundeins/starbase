@@ -76,7 +76,7 @@ func TestPlaygroundControls(t *testing.T) {
 	el := pg.Element()
 	for _, want := range []string{
 		` yaw="30" data-attr:yaw="$_pg.yaw"`,
-		`data-attr:spin="$_pg.spin"`,
+		`data-attr:spin="$_pg.spin || (el.spin = false)"`,
 		`data-attr:show-value="$_pg.showValue ? null : 'false'"`,
 		`data-attr:label="$_pg.label || null"`,
 		`>Hello</sb-widget>`,
