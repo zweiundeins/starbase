@@ -24,8 +24,8 @@ const styles = /* css */ `
 .head { display: flex; justify-content: space-between; gap: 1rem; margin-block-end: 0.4rem; font-size: 0.8125rem; }
 .label { color: var(--_label); font-weight: 600; }
 .value { color: var(--_text); font-weight: 700; font-variant-numeric: tabular-nums; }
-/* --_c: the tone's colour, from render */
 .bar {
+	--_c: var(--_ok);
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr;
@@ -34,10 +34,13 @@ const styles = /* css */ `
 	background: var(--_track);
 	box-shadow: 0 0 0 2px var(--_edge);
 }
+.bar.warn { --_c: var(--_warn); }
+.bar.danger { --_c: var(--_danger); }
 .bar > * {
 	block-size: var(--sb-meter-height, 12px);
 	background: color-mix(in oklch, var(--_edge) 60%, transparent);
-	transition: 120ms steps(2) calc(var(--i) * 18ms);
+	transition: 120ms steps(2);
+	transition-delay: calc(var(--i) * 18ms);
 }
 [part~=lit] { background: var(--_c); box-shadow: inset 0 -3px 0 color-mix(in oklch, var(--_c), black 25%); }
 @media (prefers-reduced-motion: reduce) { .bar > * { transition: none; } }
@@ -87,7 +90,7 @@ rocket('sb-meter', {
 					<span class="label" part="label">${label}</span>
 					${showValue ? html`<span class="value" part="value">${shown}</span>` : null}
 				</div>` : null}
-			<div class="bar" part="bar" style="--_c: var(--_${tone})">
+			<div class="bar ${tone}" part="bar">
 				${Array.from({ length: segments }, (_, i) => html`<span part="segment${i < lit ? ' lit' : ''}" style="--i: ${lit > from ? i - from : from - 1 - i}"></span>`)}
 			</div>
 		`
