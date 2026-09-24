@@ -115,7 +115,7 @@ rocket('sb-radio-group', {
 		orientation: oneOf('vertical', 'horizontal').default('vertical').docs({ description: 'Stack the choices or lay them out in a row.' }),
 		disabled: bool.docs({ description: 'Disable the whole group.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command), and the field it submits in a form.' }),
 	}),
 	manifest: {
 		slots: [{ name: '', description: '<sb-radio value="…" [description] [disabled]>Label</sb-radio> items: markup the group reads as its choices, like <option> in a native <select>. Nothing is slotted; the group renders the items itself.' }],
@@ -241,7 +241,20 @@ rocket('sb-radio-group', {
 		// peek: attribute changes arrive inside the effect of whoever set them
 		// (e.g. data-attr:options); reading signals here must not subscribe it.
 		observeProps((p) => peek(() => (take(p), rebuild(), sync())))
-		defineHostProp('revert', { value: () => peek(() => (($$.value = str(props.value)), rebuild(), sync())) })
+		const revert = () => peek(() => (($$.value = str(props.value)), rebuild(), sync()))
+		defineHostProp('revert', { value: revert })
+
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Like radios, only a checked choice that is enabled is submitted. A reset
+		// is revert(): the server's value, no change events. setup reruns when the
+		// element is re-attached, so a move into another form follows it.
+		const form = host.closest('form')
+		const onData = ({ formData }) => peek(() => props.name && !props.disabled && live($$.items.find((o) => o.value === $$.value)) && formData.append(props.name, $$.value))
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', revert)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
 
 		// Arrow keys move and select, like native radios.
 		const pick = (v) => {
