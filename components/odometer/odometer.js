@@ -33,15 +33,14 @@ const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 const STEP = 36 // degrees per digit
 const mod10 = (n) => ((n % 10) + 10) % 10
 
-// Per element: the last value, and each wheel's strip position and drum turn,
-// counted from the right so the units wheel stays the units wheel when a
-// digit is gained.
+// Per element: the last value, and each wheel's strip position and drum turn.
+// A roll only reads them for the same shape, so the same wheels.
 const wheels = new WeakMap()
 
 // The shape key: the same length and the same digit/static layout means a roll
-// is valid. Statics (signs, separators, the decimal mark) are encoded by char
-// code, so the key stays a plain id token.
-const shapeKey = (s) => 'odo-' + [...s].map((c) => (isDigit(c) ? 'd' : c.charCodeAt(0).toString(36))).join('-')
+// is valid. The statics (signs, separators, the decimal mark) stay as they are:
+// the morph only matches ids, never uses them in a selector.
+const shapeKey = (s) => 'odo' + s.replace(/\d/g, 'd')
 
 // Formatters are cached per option set: Intl.NumberFormat is not cheap, and a
 // readout can change many times a second.
@@ -88,7 +87,6 @@ const styles = /* css */ `
 	block-size: var(--_window);
 	overflow: hidden;
 	perspective: var(--_perspective);
-	-webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
 	mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
 }
 .cyl { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
@@ -146,35 +144,29 @@ rocket('sb-odometer', {
 			// the same digit, so nothing visibly moves, but the roll that follows
 			// starts from the middle and can turn over in either direction.
 			host.shadowRoot?.querySelectorAll('.strip').forEach((strip, i) => {
-				const k = digits.length - 1 - i
-				const pos = last.pos[k]
-				if (pos === undefined || (pos >= REST && pos < REST + 10)) return
+				const pos = last.pos[i]
+				if (pos >= REST && pos < REST + 10) return
 				strip.style.transition = 'none'
 				strip.style.transform = offset(REST + (pos % 10))
 				void strip.offsetHeight
 				strip.style.transition = ''
-				last.pos[k] = REST + (pos % 10)
+				last.pos[i] = REST + (pos % 10)
 			})
 		}
 		const pos = digits.map((d, i) => {
-			const k = digits.length - 1 - i
-			const from = same ? last.pos[k] % 10 : d
+			const from = same ? last.pos[i] % 10 : d
 			if (up && d < from) return REST + 10 + d // 9 → 0 going up: roll on over the top
 			if (down && d > from) return d // 0 → 9 going down: roll back under
 			return REST + d
 		})
 		// Drum turns: from where each wheel stands, forward to the new digit when
 		// the number climbs and back when it falls, however many digits away.
+		// Neither means the same value, so the same digits.
 		const turn = digits.map((d, i) => {
-			const k = digits.length - 1 - i
-			const t = same ? last.turn[k] : undefined
-			if (t === undefined) return d
-			if (up) return t + mod10(d - mod10(t))
-			if (down) return t - mod10(mod10(t) - d)
-			return t + (mod10(d - mod10(t)) <= 5 ? mod10(d - mod10(t)) : mod10(d - mod10(t)) - 10)
+			const t = same ? last.turn[i] : d
+			return up ? t + mod10(d - t) : down ? t - mod10(t - d) : t
 		})
-		const byWheel = (list) => Object.fromEntries(list.map((v, i) => [digits.length - 1 - i, v]))
-		wheels.set(host, { value, shape, pos: byWheel(pos), turn: byWheel(turn) })
+		wheels.set(host, { value, shape, pos, turn })
 
 		// Assistive tech gets the formatted value once; each strip holds all its
 		// digits, so the strips are hidden from it.
