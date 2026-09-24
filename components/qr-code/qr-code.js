@@ -2,21 +2,16 @@ import { rocket } from 'datastar'
 // uqr (MIT), vendored unmodified from npm; see vendor.json.
 import { encode } from './vendor/uqr.mjs'
 
-// Module types from uqr: the three finder squares are "Position".
-const POSITION = 2
-
-// pathOf draws the dark modules (matching keep) as horizontal runs.
-const pathOf = (qr, keep) => {
-	let d = ''
-	qr.data.forEach((row, y) => {
-		for (let x = 0; x < row.length; ) {
-			if (!row[x] || !keep(qr.types?.[y]?.[x])) {
-				x++
-				continue
-			}
-			const start = x
-			while (x < row.length && row[x] && keep(qr.types?.[y]?.[x])) x++
-			d += `M${start} ${y}h${x - start}v1h-${x - start}z`
+// paths draws the dark modules as horizontal runs: [modules, corners]. With
+// accent, the finder squares (uqr type 2, "Position") go to the second path.
+const paths = ({ data, types }, accent) => {
+	const d = ['', '']
+	data.forEach((row, y) => {
+		for (let x = 0, s, k; x < row.length; ) {
+			if (!row[x]) { x++; continue }
+			k = +(accent && types[y][x] == 2)
+			for (s = x; row[x] && +(accent && types[y][x] == 2) == k; ) x++
+			d[k] += `M${s} ${y}h${x - s}v1h-${x - s}z`
 		}
 	})
 	return d
@@ -27,13 +22,12 @@ const styles = /* css */ `
 	--_fg: var(--sb-qr-color, #0B1224);
 	--_bg: var(--sb-qr-background, #FFFFFF);
 	--_eye: var(--sb-qr-accent, var(--sb-brand, #8C6BFF));
-	--_size: 10rem;
 	display: inline-block;
-	inline-size: var(--_size);
+	inline-size: 10rem;
 	aspect-ratio: 1;
 	line-height: 0;
 }
-svg { inline-size: 100%; block-size: 100%; image-rendering: pixelated; }
+svg { inline-size: 100%; block-size: 100%; }
 .bg { fill: var(--_bg); }
 .mod { fill: var(--_fg); }
 .eye { fill: var(--_eye); }
@@ -44,7 +38,7 @@ rocket('sb-qr-code', {
 	props: ({ bool, number, oneOf, string }) => ({
 		value: string.docs({ description: 'Text or URL to encode.' }),
 		ecc: oneOf('L', 'M', 'Q', 'H').default('M').docs({ description: 'Error correction: L 7%, M 15%, Q 25%, H 30% of the code can be damaged or covered.' }),
-		border: number.clamp(0, 8).default(2).docs({ description: 'Quiet zone around the code, in modules (the standard asks for 4; 2 scans fine on a plain background).' }),
+		border: number.round.clamp(0, 8).default(2).docs({ description: 'Quiet zone around the code, in modules (the standard asks for 4; 2 scans fine on a plain background).' }),
 		accent: bool.docs({ description: 'Colour the three corner squares with --sb-qr-accent (default: the brand colour).' }),
 		label: string.trim.docs({ description: 'Accessible name (default: "QR code: " and the value).' }),
 	}),
@@ -62,8 +56,7 @@ rocket('sb-qr-code', {
 			try {
 				const qr = encode(props.value, { ecc: props.ecc, border: props.border })
 				$$.n = qr.size
-				$$.mods = pathOf(qr, (t) => !props.accent || t !== POSITION)
-				$$.eyes = props.accent ? pathOf(qr, (t) => t === POSITION) : ''
+				;[$$.mods, $$.eyes] = paths(qr, props.accent)
 			} catch {
 				$$.n = 0
 				$$.mods = $$.eyes = ''
