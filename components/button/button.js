@@ -14,7 +14,6 @@ const styles = /* css */ `
 	--_radius: var(--sb-control-radius, 6px);
 	--_frame: var(--sb-frame-color, #B09AFF);
 	--_step: var(--sb-frame-step, 3px);
-	--_display: var(--sb-font-display, "Pixelify Sans", ui-monospace, monospace);
 	--_focus: var(--sb-focus-ring, 0 0 0 2px #080D1D, 0 0 0 4px #B09AFF);
 	display: inline-block;
 	vertical-align: middle;
@@ -83,7 +82,7 @@ const styles = /* css */ `
 	border-radius: 0;
 	background: var(--_text);
 	color: var(--_bg);
-	font-family: var(--_display);
+	font-family: var(--sb-font-display, inherit); /* the page's font unless a theme sets a display font */
 	font-weight: 700;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;

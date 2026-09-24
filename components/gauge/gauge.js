@@ -28,11 +28,16 @@ const styles = /* css */ `
 	inline-size: var(--sb-gauge-size, 12rem);
 	max-inline-size: 100%;
 	vertical-align: middle;
+	/* The readout scales with the gauge: cqi is 1% of its width. */
+	container-type: inline-size;
 }
 canvas { inline-size: 100%; aspect-ratio: ${W} / ${H}; image-rendering: pixelated; }
 .readout { display: grid; justify-items: center; line-height: 1.2; }
-.value { color: var(--_text); font-family: var(--sb-font-display, ui-monospace, monospace); font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.label { color: var(--_muted); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+/* 1.5rem and 0.75rem at the default 12rem, in proportion otherwise, never
+   smaller than stays readable. The value's font is the page's unless a theme
+   sets a display font. */
+.value { color: var(--_text); font-family: var(--sb-font-display, inherit); font-size: max(0.875rem, 12.5cqi); font-weight: 700; font-variant-numeric: tabular-nums; }
+.label { color: var(--_muted); font-size: max(0.625rem, 6.25cqi); letter-spacing: 0.08em; text-transform: uppercase; }
 `
 
 rocket('sb-gauge', {

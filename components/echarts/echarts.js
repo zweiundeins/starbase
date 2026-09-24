@@ -134,8 +134,10 @@ const styles = /* css */ `
 	--_line: var(--sb-border, #283552);
 	--_grid: var(--sb-border-subtle, #1B2640);
 	--_tip: var(--sb-surface-overlay, #141D32);
-	--_font: var(--sb-font-body, system-ui, sans-serif);
-	--_numbers: var(--sb-font-ui, var(--sb-font-body, system-ui, sans-serif));
+	/* No fallbacks: without the tokens the chart uses the element's own font,
+	   inherited from the page (font() below). */
+	--_font: var(--sb-font-body);
+	--_numbers: var(--sb-font-ui, var(--sb-font-body));
 	${PALETTE.map(([own, semantic, fallback], i) => `--_c${i + 1}: var(${own}, var(${semantic}, ${fallback}));`).join('\n\t')}
 	display: block;
 	position: relative;
@@ -185,6 +187,14 @@ class Chart {
 	css(token) {
 		return getComputedStyle(this.host).getPropertyValue(token).trim()
 	}
+	// The fonts the canvas draws with: the tokens when a page sets them, else
+	// whatever font the element inherits from the page.
+	font() {
+		return this.css('--_font') || getComputedStyle(this.host).fontFamily
+	}
+	numbersFont() {
+		return this.css('--_numbers') || this.font()
+	}
 	color(value) {
 		const probe = document.createElement('span')
 		probe.className = 'probe'
@@ -230,7 +240,7 @@ class Chart {
 			option = kind(option, this.context())
 		}
 		const text = this.color('--_text'), muted = this.color('--_muted'), line = this.color('--_line'), grid = this.color('--_grid')
-		const font = this.css('--_font'), numbers = this.css('--_numbers')
+		const font = this.font(), numbers = this.numbersFont()
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 		const axis = {
 			axisLine: { lineStyle: { color: line } },
@@ -381,7 +391,7 @@ class Chart {
 		const o = this.props.option
 		if (!o?.legend) return
 		const probe = { legend: o.legend, yAxis: o.yAxis, grid: { top: '10%', bottom: '12%', ...(isObj(o.grid) ? o.grid : {}) } }
-		this.fitLegend(probe, this.css('--_font'))
+		this.fitLegend(probe, this.font())
 		const key = JSON.stringify([probe.grid.top, probe.grid.bottom])
 		if (key !== this.legendGrid) (this.legendGrid = key), this.chart.setOption({ grid: { top: probe.grid.top, bottom: probe.grid.bottom } })
 	}

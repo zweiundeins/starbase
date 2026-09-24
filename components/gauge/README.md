@@ -54,8 +54,8 @@ This site's demo endpoint streams telemetry as signal patches. The gauge follows
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** `--sb-gauge-size` (default `12rem`) sets the width; the dial keeps its proportions.
-- **Fonts:** the label inherits your page's font. The value uses the display font, `--sb-font-display`: set it to give the value your own font.
+- **Size:** `--sb-gauge-size` (default `12rem`) sets the width. The dial keeps its proportions and the value and label scale with it (never below a readable size).
+- **Fonts:** the value and the label use your page's font. A site that sets a display font (`--sb-font-display`, like Starbase's pixel font) gets it for the value; set `--sb-font-display` on the gauge to choose the value's font on its own.
 - **Colours:** the dial reads theme tokens when it paints, and repaints when the theme changes: `--sb-ok`, `--sb-warn` and `--sb-danger` for the zones, `--sb-border` for the track, `--sb-text-1` for the needle and the value, `--sb-brand` for the hub. The label is `--sb-text-2`.
 - **Parts:** `value`, `label` and `dial` (the canvas), for anything the tokens don't cover. Your page's `::part()` rules win over the component's own, without `!important`.
 
@@ -63,8 +63,8 @@ Style it from your page's CSS — no need to change the component or import anyt
 <style>
   .my-gauge {
     --sb-gauge-size: 14rem;
-    --sb-font-display: Georgia, serif;
     font-family: Georgia, serif;
+    --sb-font-display: Georgia, serif; /* only needed where a display font is set, like here */
   }
   .my-gauge::part(label) { text-transform: none; letter-spacing: 0; }
 </style>
