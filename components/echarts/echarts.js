@@ -302,8 +302,9 @@ rocket('sb-echarts', {
 			// A pie's or funnel's outside labels get ECharts' own dark text outline,
 			// which reads as a smudge on a dark ground: plain text in the theme's colour.
 			for (const s of [o.series].flat()) if (isObj(s) && (s.type === 'pie' || s.type === 'funnel')) s.label = { color: text, textBorderWidth: 0, ...s.label }
-			// deepMerge replaced array axes wholesale; give each its themed defaults.
-			for (const k of ['xAxis', 'yAxis']) if (Array.isArray(o[k])) o[k] = o[k].map((a) => deepMerge(base[k] ?? axis, a))
+			// deepMerge replaced array axes wholesale; give each its themed defaults
+			// (an option with axes always has base ones).
+			for (const k of ['xAxis', 'yAxis']) if (Array.isArray(o[k])) o[k] = o[k].map((a) => deepMerge(base[k], a))
 			// Value axes and tooltips get the element's number format, where the
 			// option has not set a formatter of its own (a unit-carrying axis, a
 			// custom tooltip).
