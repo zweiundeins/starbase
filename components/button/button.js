@@ -11,7 +11,7 @@ const styles = /* css */ `
 	--_brand-subtle: var(--sb-brand-subtle, rgb(140 107 255 / 0.14));
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_on-brand: var(--sb-text-on-brand, #F3F4FA);
-	--_hover: var(--sb-surface-hover, #1A2440);
+	--_hover: var(--sb-surface-hover, #1A2540);
 	--_bg: var(--sb-bg, #080D1D);
 	--_radius: var(--sb-control-radius, 6px);
 	--_frame: var(--sb-frame-color, #B09AFF);
