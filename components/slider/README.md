@@ -20,6 +20,8 @@ playground:
 
 A range control with a chunky pixel thumb. It wraps a native `<input type="range">`, so keyboard, touch and screen readers work out of the box. It exposes a numeric `value` property for `data-bind`.
 
+Whichever way a value arrives (the attribute, the property, `data-bind`), it is put in range and on a step, like the native input's thumb. With `step="0"` the slider is continuous and shows two decimals.
+
 ## Examples
 
 ### Basic
@@ -51,13 +53,18 @@ When the driven element is a component inside a server-rendered region, add `dat
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. Every step taken with the keyboard is a commit, and the server echoes each one: while newer commits are on their way, the echo of an older one doesn't pull the thumb back, so holding an arrow key loses no steps. Any other new `value` from the server wins, even `value="0"` on a slider first rendered without one. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+
+## Forms
+
+`sb-slider` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
+- **Direction:** in right-to-left text the minimum is on the right, and the track fills from there.
 - **Fonts:** the label, the value and the tick labels use your page's font.
 - **Colours:** the filled part of the track is `--sb-brand`, the rest `--sb-surface-inset` with a `--sb-border` edge. The thumb is `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. The label is `--sb-text-2`, the value `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumb instead of notching them.
 - **Parts:** `label`, `value` and `input` (the range input). The thumb is drawn inside the input and has no part: colour it with `--sb-slider-thumb` and `--sb-slider-thumb-edge`. Your page's `::part()` rules win over the component's own, without `!important`.
@@ -72,4 +79,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The native range input provides the role, value and keyboard support (arrow keys, Page Up/Down, Home/End). Give it a `label`; without one it is announced as "Value".
+The native range input provides the role, value and keyboard support (arrow keys, Page Up/Down, Home/End). Its name is the `label` (a click on the label focuses the slider), else the element's `aria-label`, else "Value": give it one of the first two. The value is announced with its unit (`aria-valuetext`, e.g. "30°"). With forced colours (e.g. Windows High Contrast) it shows the native control, drawn in the system's colours.

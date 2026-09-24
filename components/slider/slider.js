@@ -17,76 +17,85 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// Decimals as written: 0.05 -> 2.
+const decimals = (n) => (String(n).split('.')[1] || '').length
+
+// A detached range input puts a value in range and on a step exactly as the
+// rendered one does (with the browser's decimal arithmetic).
+const probe = document.createElement('input')
+probe.type = 'range'
+
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
 
 const styles = /* css */ `
 :host {
-	--_track: var(--sb-surface-inset, #0B1224);
-	--_border: var(--sb-border, #283552);
-	--_fill: var(--sb-brand, #8C6BFF);
 	--_thumb: var(--sb-slider-thumb, var(--sb-text-1, #F3F4FA));
 	--_thumb-edge: var(--sb-slider-thumb-edge, var(--sb-brand-light, #B09AFF));
-	--_label: var(--sb-text-2, #AEBBDD);
-	--_muted: var(--sb-text-muted, #7785A8);
-	--_value: var(--sb-text-1, #F3F4FA);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
 	display: block;
 	inline-size: 100%;
 	min-inline-size: 8rem;
 }
-:host([disabled]) { opacity: 0.5; pointer-events: none; }
+:host([hidden]) { display: none; }
 .field { display: grid; gap: 0.5rem; }
+.field:has(:disabled) { opacity: 0.5; pointer-events: none; }
 .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.8125rem; }
-.label { color: var(--_label); font-weight: 600; }
-output { color: var(--_value); font-variant-numeric: tabular-nums; font-weight: 700; }
+.label { color: var(--sb-text-2, #AEBBDD); font-weight: 600; }
+.value { color: var(--sb-text-1, #F3F4FA); font-variant-numeric: tabular-nums; font-weight: 700; }
 .rail { position: relative; block-size: 20px; display: grid; align-items: center; }
-/* Pixel track: notched ends, filled part drawn with a gradient stop at --_p. */
-.rail::before {
-	content: "";
-	position: absolute;
-	inset-inline: 0;
-	block-size: 8px;
-	background: linear-gradient(to right, var(--_fill) var(--_p), var(--_track) var(--_p));
-	box-shadow: 0 0 0 2px var(--_border);
-	clip-path: ${notch('var(--_n)')};
-	border-radius: calc(4px * (1 - var(--_notch)));
-}
 input {
 	position: relative;
 	inline-size: 100%;
 	block-size: 20px;
 	margin: 0;
 	background: transparent;
-	appearance: none;
 	cursor: pointer;
 }
-input::-webkit-slider-runnable-track { background: transparent; block-size: 20px; }
-input::-moz-range-track { background: transparent; }
-input::-webkit-slider-thumb {
-	appearance: none;
-	inline-size: 14px;
-	block-size: 20px;
-	border: 0;
-	background: var(--_thumb);
-	box-shadow: inset 0 -3px 0 var(--_thumb-edge);
-	clip-path: ${notch('var(--_n)')};
-	border-radius: calc(7px * (1 - var(--_notch)));
-	transition: translate 80ms;
-}
-input::-moz-range-thumb {
-	inline-size: 14px;
-	block-size: 20px;
-	border: 0;
-	border-radius: calc(7px * (1 - var(--_notch)));
-	background: var(--_thumb);
-	box-shadow: inset 0 -3px 0 var(--_thumb-edge);
-}
-input:active::-webkit-slider-thumb { translate: 0 1px; }
 input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px; }
-.ticks { display: flex; justify-content: space-between; color: var(--_muted); font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
+.ticks { display: flex; justify-content: space-between; color: var(--sb-text-muted, #7785A8); font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
+/* The pixel look. With forced colours (high contrast) the native control
+   stays: it draws itself in system colours. */
+@media (forced-colors: none) {
+	/* Pixel track: notched ends, the filled part drawn with a gradient stop
+	   at --_p (from the right in right-to-left text). */
+	.rail::before {
+		content: "";
+		position: absolute;
+		inset-inline: 0;
+		block-size: 8px;
+		background: linear-gradient(to right, var(--sb-brand, #8C6BFF) var(--_p), var(--sb-surface-inset, #0B1224) var(--_p));
+		box-shadow: 0 0 0 2px var(--sb-border, #283552);
+		clip-path: ${notch('var(--_n)')};
+		border-radius: calc(4px * (1 - var(--_notch)));
+	}
+	.rail:dir(rtl)::before { scale: -1 1; }
+	input { appearance: none; }
+	input::-webkit-slider-runnable-track { background: transparent; block-size: 20px; }
+	input::-moz-range-track { background: transparent; }
+	input::-webkit-slider-thumb {
+		appearance: none;
+		inline-size: 14px;
+		block-size: 20px;
+		border: 0;
+		background: var(--_thumb);
+		box-shadow: inset 0 -3px 0 var(--_thumb-edge);
+		clip-path: ${notch('var(--_n)')};
+		border-radius: calc(7px * (1 - var(--_notch)));
+		transition: translate 80ms;
+	}
+	input::-moz-range-thumb {
+		inline-size: 14px;
+		block-size: 20px;
+		border: 0;
+		border-radius: calc(7px * (1 - var(--_notch)));
+		background: var(--_thumb);
+		box-shadow: inset 0 -3px 0 var(--_thumb-edge);
+	}
+	input:active::-webkit-slider-thumb { translate: 0 1px; }
+}
 `
 
 rocket('sb-slider', {
@@ -110,57 +119,81 @@ rocket('sb-slider', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed. detail: { name, value }: ready for a command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		const clamp = (v) => Math.min(props.max, Math.max(props.min, Number.isFinite(v) ? v : props.min))
-		const decimals = () => (String(props.step).split('.')[1] || '').length
-		$$.value = clamp(props.value)
-		// A value attribute sent by the server wins when it changes (a morph
-		// with a new value); re-sending the same markup changes nothing, so edits
-		// survive re-renders. A *removed* attribute changes nothing either: morphs
-		// also remove attributes that were only reflected (e.g. from a data-bind
-		// write before the upgrade). To clear it, the server sends a new value.
-		// A new min or max re-clamps the current value.
-		observeProps((p, changes) => peek(() => ($$.value = clamp('value' in changes && host.hasAttribute('value') ? p.value : $$.value))), 'value', 'min', 'max')
-		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
-		// Commands: the attribute is the server's value, $$.value the local one.
-		// With confirm, :state(pending) marks an edit the server hasn't confirmed
-		// yet; revert() returns to the server's value (e.g. a rejected command).
+		const clamp = (v) => (Object.assign(probe, { min: props.min, max: props.max, step: props.step || 'any', value: Number.isFinite(v) ? v : props.min }), +probe.value)
+		// Shown with the decimals of the step and of min (2 when continuous).
+		const dec = () => Math.max(decimals(props.step || 0.01), decimals(props.min))
 		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.value !== clamp(props.value) ? states.add('pending') : states.delete('pending')))
-		effect(() => ($$.value, sync()))
-		observeProps(sync)
-		defineHostProp('revert', { value: () => peek(() => (($$.value = clamp(props.value)), sync())) })
-		$$.pct = () => ((($$.value - props.min) / (props.max - props.min || 1)) * 100).toFixed(2) + '%'
-		$$.shown = () => Number($$.value).toFixed(decimals()) + props.unit
+		// With confirm: the values committed while pending. The server echoes
+		// each one; an echo of an older one, with newer ones still on their
+		// way, must not pull the thumb back. Emptied whenever the local value
+		// and the server's agree.
+		let sent = []
+		$$.value = clamp(props.value)
+		// What derives from the value and the props: the fill, the text and,
+		// with confirm, :state(pending) while the local value differs from the
+		// server's (revert() goes back to it, e.g. when a command is rejected).
+		const sync = () =>
+			peek(() => {
+				const v = $$.value
+				$$.pct = ((v - props.min) / (props.max - props.min || 1)) * 100 + '%'
+				$$.shown = v.toFixed(dec()) + props.unit
+				props.confirm && v !== clamp(props.value) ? states.add('pending') : (states.delete('pending'), (sent = []))
+			})
+		// (No value: the element is being disconnected, its signals are gone.)
+		effect(() => $$.value != null && sync())
+		// A new range or step moves the value into it.
+		observeProps(() => peek(() => (($$.value = clamp($$.value)), sync())))
+		// A value attribute sent by the server wins when it changes; re-sending
+		// the same markup changes nothing, so edits survive re-renders. A
+		// *removed* attribute changes nothing either: morphs also remove
+		// attributes that were only reflected (e.g. from a data-bind write
+		// before the upgrade). The attribute is watched, not the prop: value="0"
+		// on a slider rendered without one decodes to the same 0. The callback
+		// runs after the whole morph, when a new range has arrived as well.
+		let served = host.hasAttribute('value') ? props.value : null
+		const watch = new MutationObserver(() =>
+			peek(() => {
+				if (!host.hasAttribute('value')) return void (served = null)
+				if (props.value === served) return
+				served = props.value
+				const i = sent.indexOf(served)
+				sent = i < 0 ? [] : sent.slice(i + 1)
+				sent.length || ($$.value = clamp(served))
+			}),
+		)
+		watch.observe(host, { attributeFilter: ['value'] })
+		cleanup(() => watch.disconnect())
+		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
+		defineHostProp('revert', { value: () => peek(() => ($$.value = clamp(props.value))) })
 		action('commit', () => {
+			states.has('pending') && sent.push($$.value)
 			emit('change')
 			emit('sb-change', { name: props.name, value: $$.value })
 		})
 	},
-	// The filled part of the track follows the value through a custom
-	// property on the rail.
-	onFirstRender: ({ $$, effect, host }) => {
-		const rail = host.shadowRoot.querySelector('.rail')
-		effect(() => rail.style.setProperty('--_p', $$.pct))
-	},
-	render: ({ html, props: { min, max, step, label, showValue, ticks, disabled, unit } }) => html`
+	// The fill follows the value through --_p on the rail (data-style sets it
+	// again after a re-render). The input's effect names the range, so it runs
+	// again once a re-render has given the input a new one.
+	render: ({ html, host, props: { min, max, step, label, showValue, ticks, disabled, unit } }) => html`
 		<label class="field">
 			${label || showValue ? html`
 				<span class="head">
 					<span class="label" part="label">${label}</span>
-					${showValue ? html`<output part="value" data-text="$$shown"></output>` : null}
+					${showValue ? html`<span class="value" part="value" data-text="$$shown"></span>` : null}
 				</span>` : null}
-			<span class="rail">
+			<span class="rail" data-style:--_p="$$pct">
 				<input
 					type="range"
 					part="input"
 					min="${min}"
 					max="${max}"
 					step="${step || 'any'}"
-					aria-label="${label ? null : 'Value'}"
+					aria-label="${label || host.ariaLabel || 'Value'}"
+					data-attr:aria-valuetext="$$shown"
 					disabled="${disabled}"
-					data-effect="el.value != $$value && (el.value = $$value)"
+					data-effect="${min},${max},${step}, el.value != $$value && (el.value = $$value)"
 					data-on:input="$$value = +el.value"
 					data-on:change="@commit()"
 				/>
