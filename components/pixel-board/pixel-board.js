@@ -7,9 +7,11 @@ const PALETTE = [
 ]
 const PENDING_MS = 3000
 const FLUSH_MS = 80
+const BATCH = 60 // cells per sb-paint at most (the Showcase server's burst)
 
-// gridOn is the default line colour for a board whose blank cells are c:
-// faint white on a dark board, faint black on a light one.
+// gridOn is the default line colour (--_grid-auto) for a board whose blank cells are c:
+// the lines lie on the cells, not on the page, so faint white on a dark board, faint black on a light one.
+// (Comments inside the CSS string would ship: keep them out here.)
 const gridOn = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b > 140 ? 'rgb(0 0 0 / 0.1)' : 'rgb(255 255 255 / 0.06)')
 
 const hex = (c) => {
@@ -18,24 +20,27 @@ const hex = (c) => {
 	return [n >> 16, (n >> 8) & 255, n & 255]
 }
 
-// Per-instance painter shared by setup and onFirstRender.
-const painters = new WeakMap()
+// host → [buffer, the cells it was decoded from]: a re-attach (a move, a morph) keeps a local drawing.
+const boards = new WeakMap()
 
+// A readonly board renders no palette, so its frame is an only child: styled from what is rendered,
+// not from the attribute (el.readonly = false writes readonly="false").
 const styles = /* css */ `
 :host {
 	--_border: var(--sb-border, #283552);
 	--_focus: var(--sb-brand-light, #B09AFF);
 	--_surface: var(--sb-surface-inset, #0B1224);
-	--_swatch-edge: color-mix(in srgb, var(--sb-text-1, #FFFFFF) 12%, transparent);
+	--_swatch-edge: color-mix(in srgb, var(--sb-text-1, #F3F4FA) 12%, transparent);
 	display: inline-block;
 	inline-size: var(--sb-pixel-board-size, 24rem);
 	max-inline-size: 100%;
 	vertical-align: middle;
 }
+:host([hidden]) { display: none; }
 .board { display: grid; gap: 0.75rem; container-type: inline-size; }
 .frame { position: relative; aspect-ratio: 1; border: 1px solid var(--_border); background: var(--_surface); }
-canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none; }
-:host([readonly]) canvas { cursor: default; }
+canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: pinch-zoom; }
+.frame:only-child canvas { cursor: default; touch-action: auto; }
 canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; }
 .grid {
 	position: absolute;
@@ -44,23 +49,22 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; }
 	background-image:
 		linear-gradient(to right, var(--_grid) 1px, transparent 1px),
 		linear-gradient(to bottom, var(--_grid) 1px, transparent 1px);
-	/* The lines lie on the cells, not on the page: by default they follow the
-	   blank cell colour (palette[0], see gridOn), light on a dark board. */
 	--_grid: var(--sb-pixel-board-grid, var(--_grid-auto, rgb(255 255 255 / 0.06)));
 	background-size: calc(100% / var(--_n)) calc(100% / var(--_n));
 }
 .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
 @container (width > 22rem) { .palette { grid-template-columns: repeat(16, 1fr); } }
-.palette button {
+.palette input {
 	all: unset;
 	aspect-ratio: 1;
 	border: 1px solid var(--_swatch-edge);
 	cursor: pointer;
 	transition: translate 80ms;
+	forced-color-adjust: none;
 }
-.palette button:hover { translate: 0 -1px; }
-.palette button[aria-checked="true"] { outline: 2px solid var(--_focus); outline-offset: 2px; }
-.palette button:focus-visible { outline: 2px solid var(--_focus); outline-offset: 2px; }
+.palette input:hover { translate: 0 -1px; }
+.palette :checked { outline: 2px solid var(--_focus); outline-offset: 2px; }
+.palette :focus-visible { outline: 2px solid var(--_focus); outline-offset: 2px; }
 `
 
 rocket('sb-pixel-board', {
@@ -78,25 +82,28 @@ rocket('sb-pixel-board', {
 			{ name: 'sb-paint', kind: 'custom-event', bubbles: true, composed: true, description: 'Painted cells, batched every ~80 ms during a stroke. detail: { color, cells: [index…] }.' },
 		],
 	},
-	renderOnPropChange: ({ changes }) => 'readonly' in changes || 'grid' in changes,
+	renderOnPropChange: ({ changes }) => 'readonly' in changes || 'grid' in changes || 'size' in changes,
 	setup: ({ $$, action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		$$.color = props.color
 		$$.palette = props.palette
-		$$.gridAuto = () => gridOn(hex($$.palette[0] ?? PALETTE[0]))
-		$$.label = 'Pixel board'
+		// ?. because disconnecting deletes the signals first, and a throw here would leave the host half-disconnected.
+		$$.gridAuto = () => gridOn(hex($$.palette?.[0] ?? PALETTE[0]))
+		$$.cur = -1 // the keyboard cursor
+		$$.v = 0 // bumped on every paint, so the label follows the cells
 
 		const n = () => props.size
-		let buf = new Uint8Array(n() * n())
-		const pending = new Map() // idx → { color, at }
+		let [buf, from] = boards.get(host) || []
+		const pending = new Map() // idx → { color }
 		const queue = new Set()
-		let ctx = null, img = null, raf = 0, flushTimer = 0, expiry = 0
-		let drawing = false, last = -1, hover = -1, cursor = -1
+		let ctx = null, img = null, raf = 0, flushTimer = 0
+		let drawing = false, pid, last = -1, hover = -1
 
 		const decode = () => {
 			const size = n() * n()
-			if (buf.length !== size) buf = new Uint8Array(size)
-			const s = props.cells || ''
+			if (buf?.length !== size) (buf = new Uint8Array(size)), ($$.cur = -1)
+			boards.set(host, [buf, (from = props.cells)])
+			const s = from || ''
 			for (let i = 0; i < size; i++) {
 				const v = parseInt(s[i] ?? '0', 16)
 				buf[i] = Number.isNaN(v) ? 0 : v
@@ -106,8 +113,9 @@ rocket('sb-pixel-board', {
 		}
 		const paint = () => {
 			raf = 0
+			ctx ||= host.shadowRoot.querySelector('canvas')?.getContext('2d')
 			if (!ctx) return
-			const size = n()
+			const size = n(), cur = $$.cur
 			if (!img || img.width !== size) {
 				ctx.canvas.width = ctx.canvas.height = size
 				img = ctx.createImageData(size, size)
@@ -118,13 +126,14 @@ rocket('sb-pixel-board', {
 				const p = pending.get(i)
 				let c = rgb[p ? p.color : buf[i]] || rgb[0]
 				if (p) c = c.map((v, k) => Math.round(v * 0.6 + rgb[buf[i]][k] * 0.4)) // in flight
-				if (i === hover || i === cursor) c = c.map((v) => Math.round(v + (255 - v) * 0.35))
+				if (i === hover || i === cur) c = c.map((v) => Math.round(v + (255 - v) * 0.35))
 				d[i * 4] = c[0]
 				d[i * 4 + 1] = c[1]
 				d[i * 4 + 2] = c[2]
 				d[i * 4 + 3] = 255
 			}
 			ctx.putImageData(img, 0, 0)
+			$$.v++
 		}
 		const redraw = () => {
 			if (!raf) raf = requestAnimationFrame(paint)
@@ -135,37 +144,24 @@ rocket('sb-pixel-board', {
 			emit('sb-paint', { color: $$.color, cells: [...queue] })
 			queue.clear()
 		}
-		const expire = () => {
-			const now = performance.now()
-			for (const [i, p] of pending) if (now - p.at > PENDING_MS) pending.delete(i)
-			redraw()
-			expiry = pending.size ? setTimeout(expire, 500) : 0
-		}
 		const put = (i) => {
-			if (i < 0 || props.readonly) return
+			if (props.readonly) return
 			if (props.local) buf[i] = $$.color
 			else {
-				pending.set(i, { color: $$.color, at: performance.now() })
-				if (!expiry) expiry = setTimeout(expire, 500)
+				const p = { color: $$.color }
+				pending.set(i, p)
+				setTimeout(() => pending.get(i) === p && (pending.delete(i), redraw()), PENDING_MS)
 			}
 			queue.add(i)
-			if (!flushTimer) flushTimer = setTimeout(flush, FLUSH_MS)
+			if (queue.size >= BATCH) flush()
+			else if (!flushTimer) flushTimer = setTimeout(flush, FLUSH_MS)
 			redraw()
 		}
-		// Every cell on the grid line between two cells, so fast drags leave no gaps.
+		// Every cell on the grid line from a to b (a itself is painted already), so fast drags leave no gaps.
 		const line = (a, b) => {
-			const size = n()
-			let x0 = a % size, y0 = (a / size) | 0
-			const x1 = b % size, y1 = (b / size) | 0
-			const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1
-			let err = dx + dy
-			for (;;) {
-				put(y0 * size + x0)
-				if (x0 === x1 && y0 === y1) break
-				const e2 = 2 * err
-				if (e2 >= dy) (err += dy), (x0 += sx)
-				if (e2 <= dx) (err += dx), (y0 += sy)
-			}
+			const s = n(), x = a % s, y = (a / s) | 0, dx = (b % s) - x, dy = ((b / s) | 0) - y
+			const k = Math.max(Math.abs(dx), Math.abs(dy))
+			for (let t = 1; t <= k; t++) put(Math.round(y + (dy * t) / k) * s + Math.round(x + (dx * t) / k))
 		}
 		const cellAt = (el, evt) => {
 			const r = el.getBoundingClientRect()
@@ -180,86 +176,78 @@ rocket('sb-pixel-board', {
 			return `Pixel board, cell ${(i % size) + 1},${((i / size) | 0) + 1}, colour ${buf[i] + 1}; painting colour ${$$.color + 1}`
 		}
 
-		// One gesture: down, move, up, cancel, leave.
+		// One gesture: the primary button of one pointer, from down until its capture ends (up or cancel).
 		action('stroke', ({ el, evt }) => {
 			const i = cellAt(el, evt)
 			switch (evt.type) {
 				case 'pointerdown':
-					if (props.readonly || i < 0) return
-					el.setPointerCapture(evt.pointerId)
+					if (props.readonly || i < 0 || evt.button || drawing) return
+					el.setPointerCapture((pid = evt.pointerId))
 					drawing = true
-					last = i
-					put(i)
+					put((last = i))
 					break
 				case 'pointermove':
-					if (hover !== i) (hover = i), redraw()
-					if (drawing && i >= 0 && i !== last) line(last, i), (last = i)
+					if (hover !== i && !props.readonly) (hover = i), redraw()
+					// Leaving the board ends the segment: coming back starts a new one, not a line across.
+					if (drawing && evt.pointerId === pid && i !== last) i < 0 ? (last = -1) : (last < 0 ? put(i) : line(last, i), (last = i))
 					break
-				default: // pointerup, pointercancel, pointerleave
-					if (evt.type === 'pointerleave') (hover = -1), redraw()
-					if (drawing && evt.type !== 'pointerleave') (drawing = false), flush()
+				case 'pointerleave':
+					hover = -1
+					redraw()
+					break
+				default: // lostpointercapture
+					if (evt.pointerId === pid) (drawing = false), flush()
 			}
 		})
 		action('key', ({ evt }) => {
-			const size = n()
-			if (cursor < 0) cursor = ((size / 2) | 0) * size + ((size / 2) | 0)
-			const x = cursor % size, y = (cursor / size) | 0
-			const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
-			if (evt.key in moves) {
-				evt.preventDefault()
-				const nx = Math.min(size - 1, Math.max(0, x + moves[evt.key][0]))
-				const ny = Math.min(size - 1, Math.max(0, y + moves[evt.key][1]))
-				cursor = ny * size + nx
-			} else if (evt.key === ' ' || evt.key === 'Enter') {
-				evt.preventDefault()
-				put(cursor)
-				flush()
-			} else return
-			$$.label = describe(cursor)
+			// Only these keys arm the cursor: a move, or 0 for paint. Tab and the rest pass.
+			const size = n(), m = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], ' ': 0, Enter: 0 }[evt.key]
+			if (m === undefined) return
+			evt.preventDefault()
+			let c = $$.cur
+			if (c < 0) c = ((size / 2) | 0) * (size + 1)
+			if (m) c = Math.min(size - 1, Math.max(0, ((c / size) | 0) + m[1])) * size + Math.min(size - 1, Math.max(0, (c % size) + m[0]))
+			else put(c), flush()
+			$$.cur = c
 			redraw()
 		})
+		action('blur', () => (($$.cur = -1), redraw()))
 
 		observeProps(() => (decode(), redraw()), 'cells', 'size')
 		observeProps(() => ($$.palette = props.palette, redraw()), 'palette')
 		observeProps(() => ($$.color = props.color), 'color')
-		decode()
-		painters.set(host, (canvas) => {
-			ctx = canvas.getContext('2d')
-			img = null
-			redraw()
-		})
+		if (from !== props.cells || buf?.length !== n() * n()) decode()
+		$$.label = () => ($$.v, describe($$.cur))
+		redraw()
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			clearTimeout(flushTimer)
-			clearTimeout(expiry)
+			pending.clear() // the per-cell timers find nothing left to expire
 		})
 	},
 	render: ({ html, props: { size, readonly, grid } }) => html`
 		<div class="board" part="board">
 			<div class="frame" style="--_n: ${size}" data-style:--_grid-auto="$$gridAuto">
-				<canvas part="canvas" width="${size}" height="${size}" tabindex="0" role="img"
-					data-ref:canvas
+				<canvas part="canvas" width="${size}" height="${size}" tabindex="0" role="application"
 					data-attr:aria-label="$$label"
 					data-on:pointerdown="@stroke()"
 					data-on:pointermove="@stroke()"
-					data-on:pointerup="@stroke()"
-					data-on:pointercancel="@stroke()"
 					data-on:pointerleave="@stroke()"
-					data-on:keydown="@key()"></canvas>
+					data-on:lostpointercapture="@stroke()"
+					data-on:keydown="@key()"
+					data-on:blur="@blur()"></canvas>
 				${grid ? html`<div class="grid" aria-hidden="true"></div>` : null}
 			</div>
 			${readonly ? null : html`
 				<div class="palette" part="palette" role="radiogroup" aria-label="Colour">
 					<template data-for="c, i in $$palette">
-						<button type="button" role="radio"
-							data-attr:aria-checked="String($$color === i)"
+						<input type="radio" name="c"
 							data-attr:aria-label="'Colour ' + (i + 1)"
 							data-style:background="c"
-							data-on:click="$$color = i"></button>
+							data-effect="el.checked = $$color === i"
+							data-on:change="$$color = i">
 					</template>
 				</div>`}
 		</div>
 	`,
-	// The canvas exists now; hand it to the painter.
-	onFirstRender: ({ host, refs }) => painters.get(host)(refs.canvas),
 })

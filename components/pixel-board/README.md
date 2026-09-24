@@ -19,7 +19,7 @@ playground:
   style: "--sb-pixel-board-size: 18rem"
 ---
 
-A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **server-driven multiplayer**: the board state is one attribute, `cells` (one hex digit per cell, row by row), which the server renders. Painting doesn't change `cells`. It emits `sb-paint`, your backend applies it, and the next server frame brings the new `cells` to everyone. While a pixel is in flight, it's drawn slightly faded.
+A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **server-driven multiplayer**: the board state is one attribute, `cells` (one hex digit per cell, row by row), which the server renders. Painting doesn't change `cells`. It emits `sb-paint`, your backend applies it, and the next server frame brings the new `cells` to everyone. While a pixel is in flight, it's drawn slightly faded; if no frame confirms it within 3 seconds (say the server refused it), it goes back to the board's colour.
 
 ## Examples
 
@@ -37,11 +37,13 @@ This is the wiring the multiplayer board on the [Showcase](/showcase) page uses.
 
 ```html
 <sb-pixel-board id="board" size="48" cells="…rendered by the server…"
-  data-on:sb-paint="@post('/cmd/paint', {payload: {tabid: $tabid, color: evt.detail.color, cells: evt.detail.cells}})">
-</sb-pixel-board>
+  data-on:sb-paint="@post('/cmd/paint', {
+    payload: {color: evt.detail.color, cells: evt.detail.cells},
+    requestCancellation: 'disabled'
+  })"></sb-pixel-board>
 ```
 
-No `data-preserve-attr` here: `cells` belongs to the server, and every morph brings the latest board.
+`requestCancellation: 'disabled'` matters: a stroke posts every 80 ms, and by default Datastar cancels a request that is still running when the next one goes to the same URL, which would drop pixels mid-stroke on a slow connection. No `data-preserve-attr` here: `cells` belongs to the server, and every morph brings the latest board.
 
 ### Watch only
 
@@ -51,7 +53,9 @@ No `data-preserve-attr` here: `cells` belongs to the server, and every morph bri
 
 ## Event
 
-`sb-paint` bubbles out of the shadow root with `detail: { color, cells }`, where `cells` are the indices (`y * size + x`) touched since the last event. Events are batched every ~80 ms during a stroke, and fast drags are interpolated so strokes have no gaps.
+`sb-paint` bubbles out of the shadow root with `detail: { color, cells }`, where `cells` are the indices (`y * size + x`) touched since the last event. Events are batched every ~80 ms during a stroke, with at most 60 cells each (a quick stroke sends more events, not a bigger one, so a server can cap a command's size), and fast drags are interpolated so strokes have no gaps. A stroke that leaves the board and comes back continues where it re-enters, without a line across.
+
+Only the primary button of one pointer paints: a right click doesn't, and a second finger doesn't join the stroke. On touch screens, two fingers zoom the page. A `readonly` board leaves touches to the page, which scrolls over it, and doesn't highlight the cell under the pointer.
 
 ## Styling
 
@@ -71,4 +75,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The canvas is focusable: the arrow keys move a highlighted cursor, and Space or Enter paints. Its label always states the cursor position, that cell's colour and the selected colour. The palette is a radio group of labelled buttons.
+The canvas is focusable, with the role `application`, so a screen reader passes the keys on to it: the arrow keys move a highlighted cursor (starting in the middle), and Space or Enter paints. Other keys, like Tab, are left alone, and the cursor goes away when the board loses focus. The canvas label states the cursor position, that cell's colour and the selected colour, and follows all three, including a new colour choice and cells the server changes. The palette is a group of native radio buttons ("Colour 1" to "Colour 16"): one tab stop, and the arrow keys pick the colour. In forced colours (Windows High Contrast) the swatches keep their colours.
