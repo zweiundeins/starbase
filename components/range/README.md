@@ -19,7 +19,7 @@ playground:
   attrs: {value: '{"start":20,"end":60}'}
 ---
 
-A slider with two thumbs, for a start and an end: a price band, a time window, an altitude range. It is the sibling of [`sb-slider`](/components/slider), and is built on two native range inputs, so arrow keys, Page Up/Down, Home/End and touch work on each thumb. The thumbs can meet but not cross. Where they meet, the direction you drag picks the thumb: left moves the start, right the end.
+A slider with two thumbs, for a start and an end: a price band, a time window, an altitude range. It is the sibling of [`sb-slider`](/components/slider), and is built on two native range inputs, so arrow keys, Page Up/Down, Home/End and touch work on each thumb. The thumbs can meet but not cross. Where they meet, the direction you drag picks the thumb: towards `min` moves the start, towards `max` the end.
 
 The range is **one value**: `value='{"start":20,"end":60}'` in, `{ start, end }` out. Both ends change together in one `sb-change` and one command. See [Components with several values](/contribute#components-with-several-values).
 

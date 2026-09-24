@@ -11,6 +11,11 @@ const peek = (fn) => {
 	}
 }
 
+// A detached range input puts a value in range and on the step grid exactly
+// as the thumbs do, in decimal arithmetic (0.7 / 0.1 is 6.999… in floats).
+const probe = document.createElement('input')
+probe.type = 'range'
+
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -121,12 +126,10 @@ rocket('sb-range', {
 		// Decimals of the step grid (step and min); continuous shows two.
 		const dec = (n) => (String(n).split('.')[1] || '').length
 		const places = () => (props.step ? Math.max(dec(props.step), dec(props.min)) : 2)
-		// In bounds and on the step grid, like the native inputs (whose last
-		// stop can be below max).
-		const clamp = (v, { min, max, step } = props) => {
-			v = Math.min(max, Math.max(min, Number.isNaN(v) ? min : v))
-			return step ? +(min + Math.min(Math.round((v - min) / step), Math.floor((max - min) / step)) * step).toFixed(places()) : v
-		}
+		// In bounds and on the step grid, like the thumbs (whose last stop can
+		// be below max). ±Infinity (a missing part) and NaN become a bound first:
+		// the probe would take them as its middle.
+		const clamp = (v, { min, max, step } = props) => (Object.assign(probe, { min, max, step: step || 'any', value: isFinite(v) ? v : v > 0 ? max : min }), +probe.value)
 		// A range in order and in bounds; accepts {start, end} or [start, end].
 		const norm = (v) => {
 			const [a, b] = Array.isArray(v) ? v : [v?.start, v?.end]
@@ -154,22 +157,27 @@ rocket('sb-range', {
 		const sync = () =>
 			peek(() => {
 				const s = norm(props.value)
-				const fmt = (n) => (+n).toFixed(places()) + props.unit
+				const fmt = (n) => n.toFixed(places()) + props.unit
 				mine = s.start !== $$.start || s.end !== $$.end
 				props.confirm && mine ? states.add('pending') : states.delete('pending')
 				const a = ($$.startText = fmt($$.start))
 				const b = ($$.endText = fmt($$.end))
 				$$.shown = a === b ? a : `${a} – ${b}`
 			})
-		effect(() => ($$.start, $$.end, sync()))
+		// (No start: the element is being removed and its signals are gone;
+		// writing the texts would bring them back.)
+		effect(() => $$.start != null && ($$.end, sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => set(props.value) })
-		// Both inputs report here. When a pointer grabs the thumbs where they
-		// meet ($$tie), the first move picks the thumb: left moves the start,
-		// right the end. The input it drags then keeps its value and fires no
-		// change, so pointerup commits too. A commit only emits if the range
-		// differs from the one before the drag or key press: a thumb stopped by
-		// the other one still fires change.
+		// Both inputs report here. A pointer that grabs the thumbs where they
+		// meet ($$tie) picks the part with its first move: down moves the start,
+		// up the end. When that is the other input's part, the inputs swap what
+		// they show ($$swap) until the commit, so the dragged thumb shows it.
+		// Such a drag can end where it began, without a change event, so
+		// pointerup (and pointercancel) commit too. A commit only emits if the
+		// range differs from the one before the drag or key press: a thumb
+		// stopped by the other one still fires change.
+		$$.swap = false // before the render, so the inputs' effects follow it
 		let from
 		action('slide', ({ evt: { target: t } }) =>
 			peek(() => {
@@ -178,7 +186,8 @@ rocket('sb-range', {
 				if ($$.tie === true) $$.tie = v < $$.start ? 'start' : 'end'
 				const k = $$.tie || t.name
 				$$[k] = k === 'end' ? Math.max(v, $$.start) : Math.min(v, $$.end)
-				t.value = $$[t.name]
+				$$.swap = k !== t.name
+				t.value = $$[k]
 			}),
 		)
 		action('commit', () => {
@@ -188,6 +197,7 @@ rocket('sb-range', {
 				emit('sb-change', { name: props.name, value: v })
 			}
 			from = $$.tie = null
+			$$.swap = false
 		})
 	},
 	render: ({ html, props: { min, max, step, label, showValue, ticks, disabled, unit } }) => html`
@@ -204,6 +214,7 @@ rocket('sb-range', {
 				data-style:--_b="($$end - ${min}) / ${max - min || 1}"
 				data-on:pointerdown="$$tie = $$start == $$end"
 				data-on:pointerup="@commit()"
+				data-on:pointercancel="@commit()"
 				data-on:input="@slide()"
 				data-on:change="@commit()"
 			>
@@ -218,7 +229,7 @@ rocket('sb-range', {
 					disabled="${disabled}"
 					data-class:top="$$start >= ${(min + max) / 2}"
 					data-attr:aria-valuetext="$$startText"
-					data-effect="${min}, ${max}, ${step}, el.value != $$start && (el.value = $$start)"
+					data-effect="${min}, ${max}, ${step}, el.value = $$swap ? $$end : $$start"
 				/>
 				<input
 					type="range"
@@ -230,7 +241,7 @@ rocket('sb-range', {
 					aria-label="${(label || 'Range') + ' end'}"
 					disabled="${disabled}"
 					data-attr:aria-valuetext="$$endText"
-					data-effect="${min}, ${max}, ${step}, el.value != $$end && (el.value = $$end)"
+					data-effect="${min}, ${max}, ${step}, el.value = $$swap ? $$start : $$end"
 				/>
 			</span>
 			${ticks ? html`<span class="ticks" aria-hidden="true"><span>${min}${unit}</span><span>${max}${unit}</span></span>` : null}
