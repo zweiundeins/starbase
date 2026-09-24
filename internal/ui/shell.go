@@ -19,7 +19,7 @@ type Assets interface {
 	Static(name string) string // files under static/
 	Art(name string) string    // generated pixel art (internal/pixelart)
 	Components() string        // the autoloader: loads each component the page uses
-	Bundle() string            // every component in one module (?load=bundle experiment)
+	Bundle() string            // every component in one module (see web.bundleBudget)
 	AllComponents() string     // imports every component, listed or not (the dev manifest publisher)
 	Datastar() string          // the vendored datastar-rocket bundle
 	SiteCSS() string           // all the site's CSS in one file (see web/assets.go)
@@ -46,7 +46,7 @@ type Shell struct {
 	Nonce       string
 	Boot        string // server boot id, for dev live reload
 	Dev         bool
-	LoadBundle  bool // ?load=bundle: load every component as one file instead of the autoloader (experiment)
+	LoadBundle  bool // load every component as one file (default while it fits its budget) instead of the autoloader
 	// ManifestTags lists every component tag; in dev the page publishes
 	// their Rocket manifests to the server once they are defined.
 	ManifestTags []string

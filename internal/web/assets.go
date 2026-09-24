@@ -29,7 +29,8 @@ type assets struct {
 	art         map[string]generated
 	catalog     *catalog.Catalog
 	components  generated            // /c/index.js: imports every component module
-	bundle      generated            // /c/bundle.js: every component in one file (loading experiment)
+	bundle      generated            // /c/bundle.js: every component in one file
+	bundleFits  bool                 // the bundle is within bundleBudget: pages load it
 	autoloader  generated            // /c/autoloader.js: loads <sb-*> modules on first use
 	autoTheme   generated            // /theme/auto.css: daylight's tokens for "auto" on light systems
 	datastarSRI string               // of the vendored bundle, identical to the jsDelivr release
@@ -60,8 +61,13 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
 	if b, err := cat.Bundle(); err == nil {
 		a.bundle = generated{body: b, hash: hashOf(b)}
+		br, _ := precompress.Get(b)
+		a.bundleFits = len(br) <= bundleBudget
+		if !a.bundleFits {
+			slog.Warn("component bundle over budget: pages load the autoloader", "brotli", len(br), "budget", bundleBudget)
+		}
 	} else {
-		slog.Warn("component bundle", "err", err)
+		slog.Warn("component bundle", "err", err) // pages load the autoloader
 	}
 	auto := catalog.AutoloaderJS(cat, "")
 	a.autoloader = generated{body: []byte(auto), hash: hashOf([]byte(auto))}
@@ -161,9 +167,29 @@ func (a *assets) Static(name string) string { return "/static/" + a.static.HashN
 func (a *assets) Datastar() string          { return a.Static("vendor/datastar-rocket.js") }
 func (a *assets) Components() string        { return "/c/autoloader.js?v=" + a.autoloader.hash }
 
-// Bundle is every component in one module: the ?load=bundle experiment,
-// measured against the autoloader (Components).
+// Bundle is every component in one module.
 func (a *assets) Bundle() string { return "/c/bundle.js?v=" + a.bundle.hash }
+
+// bundleBudget is how big (brotli) the one-file bundle may grow before pages
+// go back to the autoloader. Measured on production (slow 4G, cold cache):
+// at 66 kB the bundle makes a visit that includes the homepage 250-450 ms
+// faster, and costs a visitor who lands on one component page about 265 ms;
+// that cost grows with the bundle, the autoloader's doesn't. 100 kB keeps it
+// under about 400 ms.
+const bundleBudget = 100 << 10
+
+// useBundle reports whether a page loads the one-file bundle (the default
+// while it fits the budget) or the autoloader. ?load=auto and ?load=bundle
+// override it, for measuring.
+func (a *assets) useBundle(r *http.Request) bool {
+	switch r.URL.Query().Get("load") {
+	case "bundle":
+		return a.bundle.body != nil
+	case "auto":
+		return false
+	}
+	return a.bundleFits
+}
 
 // AllComponents is the module that imports every component (the gallery
 // and the dev manifest publisher need them all at once).

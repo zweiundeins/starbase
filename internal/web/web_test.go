@@ -416,9 +416,9 @@ func TestAutoloader(t *testing.T) {
 			t.Errorf("autoloader lacks %q", want)
 		}
 	}
-	_, page := get(t, c, ts.URL+"/")
+	_, page := get(t, c, ts.URL+"/?load=auto") // the default is the bundle, see TestLoadingStrategy
 	if !strings.Contains(page, `src="/c/autoloader.js?v=`) {
-		t.Error("pages don't use the autoloader")
+		t.Error("?load=auto pages don't use the autoloader")
 	}
 }
 
@@ -680,5 +680,23 @@ func TestPrecompressedAssets(t *testing.T) {
 		if res.Header.Get("Content-Encoding") != "br" || !bytes.Equal(got, want) || len(want) == 0 {
 			t.Errorf("%s: Content-Encoding %q, round trip ok=%v (%d bytes)", u, res.Header.Get("Content-Encoding"), bytes.Equal(got, want), len(want))
 		}
+	}
+}
+
+// Pages load every component as one file while the bundle fits its budget;
+// ?load=auto forces the autoloader (for measuring), and over budget the
+// autoloader is the default.
+func TestLoadingStrategy(t *testing.T) {
+	ts, c := newServer(t)
+	_, page := get(t, c, ts.URL+"/about")
+	if !strings.Contains(page, `src="/c/bundle.js?v=`) || strings.Contains(page, `src="/c/autoloader.js?v=`) {
+		t.Error("a page should load the bundle by default")
+	}
+	_, page = get(t, c, ts.URL+"/about?load=auto")
+	if !strings.Contains(page, `src="/c/autoloader.js?v=`) || strings.Contains(page, `src="/c/bundle.js?v=`) {
+		t.Error("?load=auto should load the autoloader")
+	}
+	if res, body := get(t, c, ts.URL+"/c/bundle.js"); res.StatusCode != 200 || len(body) < 10_000 {
+		t.Fatalf("bundle: %d, %d bytes", res.StatusCode, len(body))
 	}
 }

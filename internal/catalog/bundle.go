@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"path"
@@ -10,8 +11,8 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-// Bundle is every component in one minified module (an experiment: one file
-// against the autoloader's many, see /c/bundle.js and ?load=bundle).
+// Bundle is every component in one minified module (/c/bundle.js). Pages
+// load it instead of the autoloader while it fits web.bundleBudget.
 // 'datastar' stays external (the page's import map provides it), and dynamic
 // imports stay lazy: they point at the component's versioned public files
 // instead of being inlined, so a library a component loads on demand (ECharts)
@@ -31,9 +32,22 @@ var bundleCache sync.Map // Catalog.Hash → bundle bytes (a process loads the s
 
 func (cat *Catalog) bundle() ([]byte, error) {
 	var entry strings.Builder
+	tags := make([]string, 0, len(cat.Components))
 	for _, c := range cat.Components {
 		fmt.Fprintf(&entry, "import %q\n", "./"+c.Script)
+		tags = append(tags, c.Tag)
 	}
+	// Like the autoloader: take the sb-cloak class off <html> once the
+	// components on the page are defined (Rocket defines them when Datastar
+	// is ready), waiting only for tags this bundle defines, and never longer
+	// than 3 s.
+	tj, _ := json.Marshal(tags)
+	fmt.Fprintf(&entry, `const tags = new Set(%s)
+const uncloak = () => document.documentElement.classList.remove('sb-cloak')
+const present = [...new Set([...document.querySelectorAll(':not(:defined)')].map((e) => e.localName))].filter((t) => tags.has(t))
+Promise.all(present.map((t) => customElements.whenDefined(t))).then(uncloak)
+setTimeout(uncloak, 3000)
+`, tj)
 	src := entry.String()
 	res := api.Build(api.BuildOptions{
 		Stdin:             &api.StdinOptions{Contents: src, Sourcefile: "bundle-entry.js", Loader: api.LoaderJS},
