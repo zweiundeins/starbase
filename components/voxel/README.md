@@ -20,13 +20,13 @@ playground:
   values: {spin: 30}
 ---
 
-A software 3D renderer for voxel models: a rocket, a satellite and a ringed planet. It rasterises into a 128×128 buffer with a z-buffer, uses flat, stepped shading and a pixel outline, and is scaled up with crisp edges. Drag it or use the arrow keys to orbit. Every angle is an attribute, so Datastar signals can steer it.
+A software 3D renderer for voxel models: a rocket, a satellite and a ringed planet. It rasterises into a 128×128 buffer with a z-buffer, uses flat, stepped shading and a pixel outline, and is scaled up with crisp edges. Drag it or use the arrow keys to orbit. Every angle is an attribute, so Datastar signals can steer it: the user's orbit is local, and the next angle the page sends replaces it.
 
 ## Examples
 
 ### Steered by sliders
 
-Each slider is bound to a local signal, and each signal drives an attribute with `data-attr`. `data-preserve-attr` keeps those attributes when a server frame morphs the page.
+Each slider is bound to a local signal, and each signal drives an attribute with `data-attr`. `data-preserve-attr` keeps those attributes when a server frame morphs the page. Drag the model, then move a slider: that angle follows the slider again.
 
 ```html preview
 <div data-signals="{_yaw: 30, _pitch: 15, _zoom: 1, _light: 45}" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; inline-size: 100%">
@@ -52,7 +52,7 @@ Each slider is bound to a local signal, and each signal drives an attribute with
 
 ### Report the orbit
 
-After a drag, `sb-orbit` reports the effective angles.
+When the user has turned the model, `sb-orbit` reports the effective angles: once when the drag ends or the arrow key is released, not for a plain click.
 
 ```html preview
 <div data-signals:_orbit="'drag the satellite'">
@@ -83,4 +83,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The canvas has `role="img"`, and its label always states the model and current angles. It is focusable, and the arrow keys orbit (Shift for bigger steps).
+The canvas has `role="img"` and a label with the model and its current angles; while it spins, the label says "spinning" instead of changing every frame. It is focusable, its description says it can be turned, and the arrow keys orbit (Shift for bigger steps).

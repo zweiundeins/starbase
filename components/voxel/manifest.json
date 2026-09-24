@@ -74,7 +74,7 @@
       "name": "sb-orbit",
       "bubbles": true,
       "composed": true,
-      "description": "After a drag. detail: { yaw, pitch } (effective angles)."
+      "description": "After a drag or an arrow-key turn. detail: { yaw, pitch } (effective angles)."
     }
   ]
 }
