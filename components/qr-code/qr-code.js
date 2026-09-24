@@ -17,11 +17,13 @@ const paths = ({ data, types }, accent) => {
 	return d
 }
 
+// The accent keeps the brand's hue at 50% lightness or less: finder squares
+// in a light brand colour (terminal's green is 1.6:1 on white) don't scan.
 const styles = /* css */ `
 :host {
 	--_fg: var(--sb-qr-color, #0B1224);
 	--_bg: var(--sb-qr-background, #FFFFFF);
-	--_eye: var(--sb-qr-accent, var(--sb-brand, #8C6BFF));
+	--_eye: var(--sb-qr-accent, oklch(from var(--sb-brand, #8C6BFF) min(l, .5) c h));
 	display: inline-block;
 	inline-size: 10rem;
 	aspect-ratio: 1;
@@ -39,7 +41,7 @@ rocket('sb-qr-code', {
 		value: string.docs({ description: 'Text or URL to encode.' }),
 		ecc: oneOf('L', 'M', 'Q', 'H').default('M').docs({ description: 'Error correction: L 7%, M 15%, Q 25%, H 30% of the code can be damaged or covered.' }),
 		border: number.round.clamp(0, 8).default(2).docs({ description: 'Quiet zone around the code, in modules (the standard asks for 4; 2 scans fine on a plain background).' }),
-		accent: bool.docs({ description: 'Colour the three corner squares with --sb-qr-accent (default: the brand colour).' }),
+		accent: bool.docs({ description: 'Colour the three corner squares with --sb-qr-accent (default: the brand colour, darkened where it is too light to scan).' }),
 		label: string.trim.docs({ description: 'Accessible name (default: "QR code: " and the value).' }),
 	}),
 	renderOnPropChange: false,

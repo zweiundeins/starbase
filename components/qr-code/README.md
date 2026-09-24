@@ -18,7 +18,7 @@ playground:
 
 Draws a QR code as a crisp SVG: every module is a pixel. It encodes with [uqr](https://github.com/unjs/uqr) (MIT), vendored unmodified from npm; `vendor.json` records the release it is verified against.
 
-The code stays dark on white whatever the theme, since some scanners can't read inverted codes. Size it with CSS (`inline-size`), or set `--sb-qr-color`, `--sb-qr-background` and `--sb-qr-accent`.
+The code stays dark on white whatever the theme, since some scanners can't read inverted codes. With `accent`, the corner squares take your brand colour, darkened where it is too light to scan. Size it with CSS (`inline-size`), or set `--sb-qr-color`, `--sb-qr-background` and `--sb-qr-accent`.
 
 ## Examples
 
@@ -46,7 +46,7 @@ Higher levels survive more damage, like a logo over the middle, and need more mo
 
 ```html preview
 <sb-qr-code value="https://github.com/zweiundeins/starbase" accent
-  style="inline-size: 8rem; --sb-qr-color: #2E2780; --sb-qr-accent: #E5484D"></sb-qr-code>
+  style="inline-size: 8rem; --sb-qr-color: #2E2780; --sb-qr-accent: #DC2626"></sb-qr-code>
 ```
 
 ## From the server
@@ -58,7 +58,7 @@ Server-rendered values work as they are: `<sb-qr-code value="https://example.com
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `10rem` square by default; set `inline-size` on the element and it stays square.
-- **Colours:** `--sb-qr-color` for the modules (near-black), `--sb-qr-background` behind them (white) and, with `accent`, `--sb-qr-accent` for the three corner squares (your `--sb-brand` unless set). Keep the contrast high: scanners need it.
+- **Colours:** `--sb-qr-color` for the modules (near-black), `--sb-qr-background` behind them (white) and, with `accent`, `--sb-qr-accent` for the three corner squares (unless set, your `--sb-brand` at 50% lightness or less, same hue). Keep the contrast high: scanners find a code by those corners, so an accent you set needs about 4.5:1 against the background, like text.
 - **Parts:** `svg`, `background`, `modules` and `corners`, for anything the tokens don't cover (they are SVG shapes, so they take `fill`). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
