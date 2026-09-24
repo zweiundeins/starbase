@@ -92,6 +92,7 @@ rocket('sb-tabs', {
 			{ name: 'input', kind: 'event', bubbles: true, composed: true, description: 'The user moved the selection (a click or an arrow key); host.selected is the new index.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The selection is committed: at once for a click, after a short pause for the keyboard.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value, label } (value is the index): ready for a command.' },
+			{ name: 'sb-tab-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { index, label }.' },
 		],
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
@@ -139,6 +140,7 @@ rocket('sb-tabs', {
 			last = $$.selected
 			emit('change')
 			emit('sb-change', { name: props.name, value: last, label: props.labels[last] })
+			emit('sb-tab-change', { index: last, label: props.labels[last] })
 		}
 		// Selection follows focus, so a click commits at once, but arrow keys
 		// commit only after a pause: every press would be a command, and the

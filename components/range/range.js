@@ -11,6 +11,12 @@ const peek = (fn) => {
 	}
 }
 
+// The element's ElementInternals: attachInternals() works only once, and setup
+// runs again when the element is re-attached. Its custom states
+// (:state(pending)) are styleable from the page and morph-proof.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // A detached range input puts a value in range and on the step grid exactly
 // as the thumbs do, in decimal arithmetic (0.7 / 0.1 is 6.999… in floats).
 const probe = document.createElement('input')
@@ -150,9 +156,7 @@ rocket('sb-range', {
 		overrideProp('value', cur, set)
 		// Commands: the attribute is the server's range, $$ the local one. Both
 		// ends are one value: pending while either differs, revert() restores both.
-		// The internals are kept on the host: attachInternals() works once, and
-		// setup runs again when the element is re-attached.
-		const states = (host._i ??= host.attachInternals()).states
+		const states = internalsOf(host).states
 		// Also keeps the shown texts current: props (unit, step) aren't signals.
 		const sync = () =>
 			peek(() => {

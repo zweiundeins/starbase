@@ -73,6 +73,13 @@
       "bubbles": true,
       "composed": true,
       "description": "Same moment. detail: { name, value, label } (value is the index): ready for a command."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-tab-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Same moment. detail: { index, label }."
     }
   ]
 }

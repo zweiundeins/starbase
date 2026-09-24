@@ -39,7 +39,7 @@ The live index is the `selected` property, and `input` fires on every move (a cl
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value, label }` (`value` is the index) when the selection is committed: ready to post as a command. A click commits at once; the arrow keys commit after a 250 ms pause, so running through the tabs sends one command, not one per tab (whose answers would pull the selection back one by one). With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` attribute matches, and `revert()` goes back to the server's value when a command is rejected. The panels are light DOM, so events from their content (a field's `change`, another component's `sb-change`) bubble through `sb-tabs` too: check `evt.target === el`. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value, label }` (`value` is the index) when the selection is committed: ready to post as a command (`sb-tab-change` fires at the same moment with `{ index, label }`). A click commits at once; the arrow keys commit after a 250 ms pause, so running through the tabs sends one command, not one per tab (whose answers would pull the selection back one by one). With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` attribute matches, and `revert()` goes back to the server's value when a command is rejected. The panels are light DOM, so events from their content (a field's `change`, another component's `sb-change`) bubble through `sb-tabs` too: check `evt.target === el`. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 ## Styling
 
