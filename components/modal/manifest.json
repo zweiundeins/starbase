@@ -18,7 +18,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Open. The server opens or closes it by changing the attribute; show() and close() work too."
+        "description": "The server's word: a changed attribute wins (open=\"false\" closes it, also after show()); a removed one is ignored. Emits no sb-open or sb-close. The property returns this word; isOpen tells whether it is showing."
       }
     },
     {
@@ -28,7 +28,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Render in place, without an overlay (previews, docs)."
+        "description": "Render in place, always visible, without an overlay or close button (previews, docs)."
       }
     },
     {
@@ -38,7 +38,7 @@
       "default": true,
       "required": false,
       "docs": {
-        "description": "Show the close button."
+        "description": "Show the close button (not on inline panels)."
       }
     }
   ],
@@ -49,7 +49,7 @@
     },
     {
       "name": "footer",
-      "description": "Action buttons. Elements with data-sb-close close the dialog."
+      "description": "Action buttons. Elements with data-sb-close close the dialog; sb-close reports the attribute's value (or the element's text) as detail.value."
     }
   ],
   "events": [
@@ -58,14 +58,14 @@
       "name": "sb-open",
       "bubbles": true,
       "composed": true,
-      "description": "After opening."
+      "description": "After show() opened it (not when the server opens it)."
     },
     {
       "kind": "custom-event",
       "name": "sb-close",
       "bubbles": true,
       "composed": true,
-      "description": "After closing. detail: { reason, value }."
+      "description": "After the user or close() closed it (not when the server closes it). detail: { reason: button | escape | backdrop | action | api, value }."
     }
   ]
 }
