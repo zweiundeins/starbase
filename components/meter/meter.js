@@ -31,7 +31,7 @@ const styles = /* css */ `
 .seg {
 	block-size: var(--sb-meter-height, 12px);
 	background: color-mix(in oklch, var(--_edge) 60%, transparent);
-	transition: background 120ms steps(2, end);
+	transition: 120ms steps(2, end);
 	transition-delay: calc(var(--i) * 18ms);
 }
 .seg.on { background: var(--_c); box-shadow: inset 0 -3px 0 color-mix(in oklch, var(--_c), black 25%); }
@@ -52,9 +52,14 @@ rocket('sb-meter', {
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals shown.' }),
 	}),
 	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),
-	render: ({ html, props: { value, min, max, segments, warn, danger, label, unit, showValue, decimals } }) => {
+	render: ({ html, host, props: { value, min, max, segments, warn, danger, label, unit, showValue, decimals } }) => {
 		const f = Math.max(0, Math.min(1, (value - min) / (max - min || 1)))
 		const lit = Math.round(f * segments)
+		// The cascade runs from the edge that moves: blocks light up outwards
+		// from the last fill and go dark from the far end. Blocks below a
+		// rising fill get a negative delay, so a new tone reaches them at once.
+		const from = host._lit ?? lit
+		host._lit = lit
 		const bad = danger >= warn ? [value >= danger, value >= warn] : [value <= danger, value <= warn]
 		const tone = bad[0] ? 'danger' : bad[1] ? 'warn' : 'ok'
 		const shown = Number(value).toFixed(decimals) + unit
@@ -66,7 +71,7 @@ rocket('sb-meter', {
 				</div>` : null}
 			<div class="bar ${tone}" part="bar" role="meter" aria-label="${label || 'Meter'}"
 				aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}" aria-valuetext="${shown}">
-				${Array.from({ length: segments }, (_, i) => html`<span class="seg ${i < lit ? 'on' : ''}" style="--i: ${i}"></span>`)}
+				${Array.from({ length: segments }, (_, i) => html`<span class="seg ${i < lit ? 'on' : ''}" style="--i: ${lit > from ? i - from : from - 1 - i}"></span>`)}
 			</div>
 		`
 	},
