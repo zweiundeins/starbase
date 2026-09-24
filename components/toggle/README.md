@@ -54,8 +54,8 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value i
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `size` (`sm`, `md`, `lg`) sets the switch.
-- **Fonts:** the label uses your page's font and size.
-- **Colours:** the track is `--sb-border-strong` when off and `--sb-brand` when on; the knob is `--sb-toggle-knob` (default `--sb-text-1`, like the label), the focus ring `--sb-brand-light`. `--sb-notch: 0` rounds the switch instead of notching it.
+- **Fonts:** the label uses your page's font, size and colour.
+- **Colours:** the track is `--sb-border-strong` when off and `--sb-brand` when on; the knob is `--sb-toggle-knob` (default `--sb-text-1`, and `--sb-text-on-brand` on the brand track), the focus ring `--sb-brand-light`. `--sb-notch: 0` rounds the switch instead of notching it.
 - **Parts:** `switch` (the track) and `label`. The knob has no part: colour it with `--sb-toggle-knob`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -68,4 +68,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The switch is a `<button role="switch">` with `aria-checked`, so it is focusable and toggles with Space and Enter. Give it a `label`. Without one it is announced as "Toggle".
+The switch is a `<button role="switch">` with `aria-checked`, so it is focusable and toggles with Space and Enter. Give it a `label`. Without one it is announced as "Toggle". In forced colours (Windows High Contrast) the track is outlined and the on state uses the system highlight colours.

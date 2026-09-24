@@ -26,14 +26,15 @@ const styles = /* css */ `
 	--_track: var(--sb-border-strong, #3A4868);
 	--_on: var(--sb-brand, #8C6BFF);
 	--_knob: var(--sb-toggle-knob, var(--sb-text-1, #F3F4FA));
-	--_text: var(--sb-text-1, #F3F4FA);
+	--_knob-on: var(--sb-toggle-knob, var(--sb-text-on-brand, #F3F4FA));
 	--_focus: var(--sb-brand-light, #B09AFF);
 	--_notch: var(--sb-notch, 1);
 	display: inline-flex;
 	vertical-align: middle;
 }
-:host([disabled]) { opacity: 0.5; pointer-events: none; }
-label { display: inline-flex; align-items: center; gap: 0.75em; color: var(--_text); cursor: pointer; }
+:host([hidden]) { display: none; }
+label { display: inline-flex; align-items: center; gap: 0.75em; cursor: pointer; }
+label:has(:disabled) { opacity: 0.5; pointer-events: none; }
 button {
 	all: unset;
 	position: relative;
@@ -56,12 +57,18 @@ button {
 	background: var(--_knob);
 	clip-path: ${notch('calc(var(--_u) / 2 * var(--_notch))')};
 	border-radius: calc(var(--_u) * 2 * (1 - var(--_notch)));
-	transition: translate 180ms steps(5, end);
+	transition: inset-inline-start 180ms steps(5, end);
 }
 button.on { background: var(--_on); }
-button.on .knob { translate: calc(var(--_u) * 5) 0; }
+button.on .knob { inset-inline-start: calc(var(--_u) * 6); background: var(--_knob-on); }
 button:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; clip-path: none; }
 @media (prefers-reduced-motion: reduce) { .knob, button { transition: none; } }
+@media (forced-colors: active) {
+	button { outline: 1px solid; outline-offset: -1px; }
+	button.on { background: Highlight; }
+	.knob { forced-color-adjust: none; background: CanvasText; }
+	button.on .knob { background: HighlightText; }
+}
 `
 
 rocket('sb-toggle', {
