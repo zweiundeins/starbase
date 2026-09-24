@@ -9,6 +9,7 @@ templ Installation(v InstallView) {
 		class="install-tabs"
 		labels={ installLabels() }
 		selected={ installSelected(v.Tab) }
+		aria-label="Installation method"
 		data-on:sb-change={ installChange() }
 	>
 		<div slot={ installSlot("autoloader") } class="install-panel">

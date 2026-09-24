@@ -43,11 +43,14 @@ type SelfHostFile struct {
 	Size                catalog.Size
 }
 
-var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
+var nonSlug = regexp.MustCompile(`[^\p{L}\p{N}]+`)
 
-// tabSlot is the slot sb-tabs gives a label's panel (its slug() in tabs.js).
+// tabSlot is the slot sb-tabs gives a label's panel (its slug() in tabs.js):
+// lowercased, every run of anything but letters and digits a hyphen. (sb-tabs
+// appends the index to a slot an earlier label already gave; the install
+// labels give distinct slots.)
 func tabSlot(label string) string {
-	return strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(strings.TrimSpace(label)), "-"), "-")
+	return strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(label), "-"), "-")
 }
 
 func installLabels() string {

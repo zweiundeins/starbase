@@ -22,7 +22,7 @@
       "default": 0,
       "required": false,
       "docs": {
-        "description": "Index of the selected tab. A new index from the server wins."
+        "description": "Index of the selected tab (past the last tab means the last one). A new index from the server wins; a removed attribute is ignored."
       }
     },
     {
@@ -32,7 +32,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        "description": "Server-confirmed value: :state(pending) while the local selection differs from the server's selected attribute (see revert())."
       }
     },
     {
@@ -49,23 +49,30 @@
   "slots": [
     {
       "name": "<label-slug>",
-      "description": "Panel content per tab, e.g. slot=\"docs\" for a tab labelled \"Docs\"."
+      "description": "Panel content per tab: slot=\"docs\" for a tab labelled \"Docs\", slot=\"übersicht\" for \"Übersicht\". A slot name an earlier tab already has gets the tab's index appended (\"c-1\" for a second tab whose label gives \"c\")."
     }
   ],
   "events": [
     {
-      "kind": "custom-event",
-      "name": "sb-tab-change",
+      "kind": "event",
+      "name": "input",
       "bubbles": true,
       "composed": true,
-      "description": "detail: { index, label }."
+      "description": "The user moved the selection (a click or an arrow key); host.selected is the new index."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The selection is committed: at once for a click, after a short pause for the keyboard."
     },
     {
       "kind": "custom-event",
       "name": "sb-change",
       "bubbles": true,
       "composed": true,
-      "description": "Same moment. detail: { name, value } (value is the index): ready for a command."
+      "description": "Same moment. detail: { name, value, label } (value is the index): ready for a command."
     }
   ]
 }

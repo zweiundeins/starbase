@@ -12,7 +12,7 @@ playground:
   props: {selected: {min: 0, max: 2}}
 ---
 
-A segmented tab bar with keyboard support. Labels come from a JSON attribute. Each panel is a slotted element whose `slot` is the label in kebab-case.
+A segmented tab bar with keyboard support. Labels come from a JSON attribute. Each panel is a slotted element whose `slot` is its label lowercased, with a hyphen for every run of anything but letters and digits: `slot="docs"` for "Docs", `slot="self-host"` for "Self-host", `slot="übersicht"` for "Übersicht". When two labels give the same slot ("C++" and "C#" both give `c`), the later one gets its index appended: `c-1`.
 
 ## Examples
 
@@ -28,23 +28,25 @@ A segmented tab bar with keyboard support. Labels come from a JSON attribute. Ea
 
 ### Follow the selection
 
+The live index is the `selected` property, and `input` fires on every move (a click or an arrow key), so `data-bind` follows it with the `__prop` modifier. Declare the signal first; setting it selects a tab.
+
 ```html preview
-<div data-signals:_tab="'Home'">
-  <sb-tabs labels='["Home","Docs","API"]' data-on:sb-tab-change="$_tab = evt.detail.label"></sb-tabs>
-  <p data-text="'Current: ' + $_tab"></p>
+<div data-signals:_tab="1">
+  <sb-tabs labels='["Home","Docs","API"]' data-bind:_tab__prop.selected></sb-tabs>
+  <p>Selected index: <strong data-text="$_tab"></strong></p>
 </div>
 ```
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value, label }` (`value` is the index) when the selection is committed: ready to post as a command. A click commits at once; the arrow keys commit after a 250 ms pause, so running through the tabs sends one command, not one per tab (whose answers would pull the selection back one by one). With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` attribute matches, and `revert()` goes back to the server's value when a command is rejected. The panels are light DOM, so events from their content (a field's `change`, another component's `sb-change`) bubble through `sb-tabs` too: check `evt.target === el`. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 ## Styling
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts:** the tab labels use your page's font.
-- **Colours:** the strip is `--sb-surface-inset` with a `--sb-border` edge. Tabs are `--sb-text-2` (`--sb-text-1` on hover) with a `--sb-border` outline; the selected tab fills with `--sb-brand-light` and writes in `--sb-bg`. The focus ring is `--sb-focus-ring`, corners `--sb-control-radius`.
+- **Colours:** the strip is `--sb-surface-inset` with a `--sb-border` edge. Tabs are `--sb-text-2` (`--sb-text-1` on hover) with a `--sb-border` outline; the selected tab fills with `--sb-brand-light` and writes in `--sb-bg`. The focus ring is `--sb-focus-ring`, corners `--sb-control-radius`. When the tabs don't fit, the strip scrolls sideways with a thin `--sb-border` scrollbar, and the selected tab scrolls into view.
 - **Parts:** `tablist` (the strip), `tab` (every tab) and `panel` (every panel). The selected tab is also `selected`, so `::part(tab selected)` styles only that one; it moves with the selection. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -61,4 +63,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-It follows the WAI-ARIA tabs pattern: `role="tablist"`, `tab` and `tabpanel`, a roving `tabindex`, and arrow keys, Home and End for navigation.
+It follows the WAI-ARIA tabs pattern: `role="tablist"`, `tab` and `tabpanel`, a roving `tabindex`, and arrow keys, Home and End for navigation; in a right-to-left layout the arrows follow the mirrored strip. Name the tab list with `aria-label` on `sb-tabs`: it is forwarded to the tablist inside (the site's own install tabs say `aria-label="Installation method"`). In forced-colors mode (Windows High Contrast) the selected tab is drawn in `Highlight` and the focus as an outline.
