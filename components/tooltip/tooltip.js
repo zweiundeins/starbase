@@ -46,7 +46,7 @@ const styles = /* css */ `
 	inline-size: 8px;
 	block-size: 4px;
 	background: var(--_border);
-	clip-path: polygon(0 0, 100% 0, 75% 50%, 50% 100%, 25% 50%);
+	clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 /* Physical sides, in RTL too. --_n is the slide-in. */
 .top, .bottom { left: 50%; translate: -50% var(--_n); }
