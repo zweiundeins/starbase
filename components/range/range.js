@@ -116,7 +116,7 @@ rocket('sb-range', {
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local range differs from the server\'s value attribute (see revert()).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a <form>.' }),
 	}),
 	manifest: {
 		events: [
@@ -125,7 +125,7 @@ rocket('sb-range', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the range is committed. detail: { name, value: { start, end } }: the whole range, one command.' },
 		],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Decimals of the step grid (step and min); continuous shows two.
 		const dec = (n) => (String(n).split('.')[1] || '').length
@@ -172,7 +172,18 @@ rocket('sb-range', {
 		// writing the texts would bring them back.)
 		effect(() => $$.start != null && ($$.end, sync()))
 		observeProps(sync)
-		defineHostProp('revert', { value: () => set(props.value) })
+		const revert = () => set(props.value)
+		defineHostProp('revert', { value: revert })
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// The entry is the local range in the value attribute's JSON; a reset is
+		// revert(): the server's range, no events, like a native reset.
+		const form = host.closest('form')
+		const onData = (evt) => props.name && !props.disabled && evt.formData.append(props.name, JSON.stringify(cur()))
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', revert)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
 		// Both inputs report here. A pointer that grabs the thumbs where they
 		// meet ($$tie) picks the part with its first move: down moves the start,
 		// up the end. When that is the other input's part, the inputs swap what

@@ -69,7 +69,7 @@ sb-range:state(pending) { opacity: 0.7; }
 
 ## Forms
 
-`sb-range` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-range` submits its range under its `name`, in the format of its `value` attribute (`window={"start":9,"end":17}`), and nothing while `disabled`. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's range. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
