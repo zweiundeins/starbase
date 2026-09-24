@@ -15,7 +15,7 @@ const styles = /* css */ `
 :host([hidden]) { display: none; }
 article {
 	display: flex;
-	flex-direction: column;
+	flex-flow: column;
 	block-size: 100%;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
@@ -26,9 +26,9 @@ article {
 .inset { background: var(--_inset); }
 .glow { border-color: color-mix(in oklch, var(--_brand) 50%, var(--_border)); box-shadow: 0 8px 32px -12px color-mix(in oklch, var(--_brand) 60%, transparent); }
 /* A linked card: hover and keyboard focus on its one link light up the whole card. */
-article:has(a:is(:hover, :focus-visible)) { border-color: color-mix(in oklch, var(--_brand) 60%, var(--_border)); }
+article:has(a:hover, a:focus-visible) { border-color: color-mix(in oklch, var(--_brand) 60%, var(--_border)); }
 article:has(a:focus-visible) { box-shadow: var(--sb-focus-ring, 0 0 0 2px #080D1D, 0 0 0 4px #B09AFF); outline: 2px solid transparent; outline-offset: 2px; }
-@media (prefers-reduced-motion: no-preference) { article:has(a:is(:hover, :focus-visible)) { translate: 0 -2px; } }
+@media (prefers-reduced-motion: no-preference) { article:has(a:hover, a:focus-visible) { translate: 0 -2px; } }
 /* Only the media is clipped to the corners (all four when nothing follows it),
    so tooltips and badges can leave the card. */
 .media { display: grid; overflow: hidden; border-radius: var(--_inner) var(--_inner) 0 0; }
@@ -38,15 +38,16 @@ article:has(a:focus-visible) { box-shadow: var(--sb-focus-ring, 0 0 0 2px #080D1
    no width of its own in flex rows and fit-content layouts. 100% is the
    card's inner width (14rem - 2px at the switch). While the browser measures
    the content it counts as 0, which gives 1rem, so text never wraps early. */
-.body { display: grid; gap: 0.375rem; padding: clamp(0.75rem, 1rem + 99 * max(-100%, 100% + 2px - 14rem), 1rem); }
+.body { display: grid; gap: .375rem; padding: clamp(.75rem, 1rem + 99 * max(-100%, 100% + 2px - 14rem), 1rem); }
 /* A block, so inline markup in the body stays in one flow. */
-.body > slot { display: block; }
-.heading { margin: 0; color: var(--_text); font-size: 1rem; font-weight: 700; }
-.heading a { color: inherit; text-decoration: none; outline: none; }
-.heading a::after { content: ""; position: absolute; inset: 0; }
+.body slot { display: block; }
+.heading { margin: 0; color: var(--_text); font-size: 1rem; } /* bold as an h3 */
+/* The heading's link, the only <a> in the shadow root. */
+a { color: inherit; text-decoration: none; outline: none; }
+a::after { content: ""; position: absolute; inset: 0; }
 /* Links and buttons in the body and everything in the footer rise above the stretched link. */
 article:has(a), article:has(a) ::slotted(:is(a, button, [slot="footer"])) { position: relative; }
-.footer { display: flex; align-items: center; gap: 0.5rem; margin-block-start: auto; padding: 0.75rem 1rem; border-block-start: 1px solid var(--_border); }
+.footer { display: flex; align-items: center; gap: .5rem; margin-block-start: auto; padding: .75rem 1rem; border-block-start: 1px solid var(--_border); }
 `
 
 rocket('sb-card', {
@@ -65,7 +66,7 @@ rocket('sb-card', {
 	setup: ({ $$, action, adoptStyles, cleanup, host }) => {
 		adoptStyles(host, styles)
 		// Which slots received content (whitespace doesn't count); empty sections collapse.
-		$$.media = $$.body = $$.footer = false
+		// The template's data-init sets all three; until then an unset signal hides like false.
 		const slots = () => {
 			for (const slot of host.shadowRoot.querySelectorAll('slot')) {
 				$$[slot.name || 'body'] = slot.assignedNodes({ flatten: true }).some((n) => n.nodeType != 3 || n.data.trim())
