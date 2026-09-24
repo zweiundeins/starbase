@@ -90,6 +90,7 @@ input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px
 		inline-size: 14px;
 		block-size: 20px;
 		border: 0;
+		clip-path: ${notch('var(--_n)')};
 		border-radius: calc(7px * (1 - var(--_notch)));
 		background: var(--_thumb);
 		box-shadow: inset 0 -3px 0 var(--_thumb-edge);

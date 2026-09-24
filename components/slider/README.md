@@ -53,7 +53,7 @@ When the driven element is a component inside a server-rendered region, add `dat
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. Every step taken with the keyboard is a commit, and the server echoes each one: while newer commits are on their way, the echo of an older one doesn't pull the thumb back, so holding an arrow key loses no steps. Any other new `value` from the server wins, even `value="0"` on a slider first rendered without one. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. Every step taken with the keyboard is a commit, and the server echoes each one: with `confirm`, the echo of an older commit doesn't pull the thumb back while newer ones are on their way, so holding an arrow key loses no steps. Any other new `value` from the server wins, even `value="0"` on a slider first rendered without one. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 ## Forms
 
