@@ -77,7 +77,7 @@ A new `value` from the server replaces the code; the same markup sent again leav
 
 ## Forms
 
-`sb-code-editor` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-code-editor` submits its code under its `name` (`name=…`, like a `<textarea>`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value. `readonly` code is submitted, `disabled` code is not. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 

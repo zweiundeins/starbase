@@ -53,7 +53,17 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Make the code read-only."
+        "description": "Make the code read-only (a form still submits it)."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable editing; a form doesn't submit it, like a disabled <textarea>."
       }
     },
     {
@@ -83,7 +93,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in sb-change (e.g. the field of a command)."
+        "description": "Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command)."
       }
     }
   ],

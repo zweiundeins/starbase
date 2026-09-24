@@ -63,6 +63,8 @@ const styles = /* css */ `
 	scrollbar-width: thin;
 }
 .scroller:focus-within { border-color: var(--_brand); }
+/* Disabled: dimmed like the other controls, but it still scrolls. */
+.label:has(+ * :disabled), .scroller:has(:disabled) { opacity: 0.5; }
 /* Gutter | code. The grid is at least the viewport and grows with the
    longest line, so the textarea and <pre> always line up. The gutter is at
    least 3rem whatever the lines' length, so the code never shifts sideways
@@ -131,10 +133,11 @@ rocket('sb-code-editor', {
 		value: string.docs({ description: 'The code (or a child <script type="text/plain">). A new value from the server replaces it; the live code is the value property.' }),
 		lineNumbers: bool.default(true).docs({ description: 'Show a line-number gutter.' }),
 		tabSize: number.clamp(1, 8).default(2).docs({ description: 'Visual width of a tab.' }),
-		readonly: bool.docs({ description: 'Make the code read-only.' }),
+		readonly: bool.docs({ description: 'Make the code read-only (a form still submits it).' }),
+		disabled: bool.docs({ description: 'Disable editing; a form doesn\'t submit it, like a disabled <textarea>.' }),
 		label: string.trim.docs({ description: 'Visible label; also the accessible name.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command).' }),
 	}),
 	manifest: {
 		events: [
@@ -154,9 +157,9 @@ rocket('sb-code-editor', {
 
 		// Local signals the markup renders from.
 		$$.code = live.get(host) ?? server()
-		const mirror = () => Object.assign($$, { lang: props.language, gutter: props.lineNumbers, tab: props.tabSize, readonly: props.readonly })
+		const mirror = () => Object.assign($$, { lang: props.language, gutter: props.lineNumbers, tab: props.tabSize, readonly: props.readonly, disabled: props.disabled })
 		mirror()
-		observeProps(mirror, 'language', 'lineNumbers', 'tabSize', 'readonly')
+		observeProps(mirror, 'language', 'lineNumbers', 'tabSize', 'readonly', 'disabled')
 		Prism || import('./vendor/prism.js').then((m) => ((Prism = m.default), host.isConnected && ($$.ready = 1)))
 		// Rocket clears local signals when the element is removed, and computeds
 		// may run once more: treat missing code as empty.
@@ -193,6 +196,18 @@ rocket('sb-code-editor', {
 		effect(() => ($$.code != null && live.set(host, $$.code), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.code = server()), sync())) })
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in, like a <textarea>.
+		// `formdata` also fires for new FormData(form), so Datastar's
+		// contentType: 'form' posts include it. A reset brings back the server's
+		// value without events (revert()). setup reruns on a re-attach, so a
+		// move into another form follows.
+		const form = host.closest('form')
+		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.code))
+		const onReset = () => host.revert()
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', onReset)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
 		// The host isn't focusable: focus() goes to the textarea.
 		defineHostProp('focus', { value: (o) => host.shadowRoot.querySelector('textarea').focus(o) })
 
@@ -268,6 +283,7 @@ rocket('sb-code-editor', {
 						aria-label="${label || host.getAttribute('aria-label') || 'Code'}"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"
+						data-attr:disabled="$$disabled"
 						data-on:input="$$code = el.value"
 						data-on:change="@change()"
 						data-on:blur="@blur()"
