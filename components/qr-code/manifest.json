@@ -44,7 +44,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Colour the three corner squares with --sb-qr-accent (default: the brand colour)."
+        "description": "Colour the three corner squares with --sb-qr-accent (default: the brand colour, darkened where it is too light to scan)."
       }
     },
     {
@@ -58,6 +58,11 @@
       }
     }
   ],
-  "slots": [],
+  "slots": [
+    {
+      "name": "error",
+      "description": "Replaces the \"Too much data for a QR code\" message, e.g. to translate it."
+    }
+  ],
   "events": []
 }

@@ -44,26 +44,22 @@ rocket('sb-qr-code', {
 		accent: bool.docs({ description: 'Colour the three corner squares with --sb-qr-accent (default: the brand colour, darkened where it is too light to scan).' }),
 		label: string.trim.docs({ description: 'Accessible name (default: "QR code: " and the value).' }),
 	}),
+	manifest: {
+		slots: [{ name: 'error', description: 'Replaces the "Too much data for a QR code" message, e.g. to translate it.' }],
+	},
 	renderOnPropChange: false,
 	setup: ({ $$, adoptStyles, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		const build = () => {
-			$$.error = ''
-			$$.name = props.label || (props.value ? 'QR code: ' + props.value : 'QR code')
-			if (!props.value) {
-				$$.n = 0
-				$$.mods = $$.eyes = ''
-				return
-			}
-			try {
-				const qr = encode(props.value, { ecc: props.ecc, border: props.border })
-				$$.n = qr.size
-				;[$$.mods, $$.eyes] = paths(qr, props.accent)
-			} catch {
-				$$.n = 0
-				$$.mods = $$.eyes = ''
-				$$.error = 'Too much data for a QR code'
-			}
+			const { value, ecc, border, accent, label } = props
+			let qr = { size: 0, data: [] }, error = 0
+			// toWellFormed: uqr throws on a lone surrogate (text cut mid-emoji),
+			// so the only error left is too much data.
+			if (value) try { qr = encode(value.toWellFormed(), { ecc, border }) } catch { error = 1 }
+			$$.name = label || 'QR code' + (value ? ': ' + value : '')
+			$$.error = error
+			$$.n = qr.size
+			;[$$.mods, $$.eyes] = paths(qr, accent)
 		}
 		build()
 		observeProps(build)
@@ -77,6 +73,6 @@ rocket('sb-qr-code', {
 			<path class="mod" part="modules" data-attr:d="$$mods"></path>
 			<path class="eye" part="corners" data-attr:d="$$eyes || null"></path>
 		</svg>
-		<div class="error" role="alert" data-show="$$error" data-text="$$error"></div>
+		<div class="error" part="error" role="alert" data-show="$$error"><slot name="error">Too much data for a QR code</slot></div>
 	`,
 })

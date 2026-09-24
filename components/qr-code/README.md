@@ -49,6 +49,16 @@ Higher levels survive more damage, like a logo over the middle, and need more mo
   style="inline-size: 8rem; --sb-qr-color: #2E2780; --sb-qr-accent: #DC2626"></sb-qr-code>
 ```
 
+### Too much data
+
+A code holds up to 2,953 bytes at `ecc="L"` (1,273 at `H`). A longer value shows "Too much data for a QR code" in its place; put your own text in the `error` slot, for example to translate it:
+
+```html
+<sb-qr-code data-attr:value="$_note" data-preserve-attr="value">
+  <span slot="error">Zu viele Daten für einen QR-Code</span>
+</sb-qr-code>
+```
+
 ## From the server
 
 Server-rendered values work as they are: `<sb-qr-code value="https://example.com/invite/X7Q2">`. When a stream re-renders the attribute, the code follows.
@@ -59,7 +69,7 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 - **Size:** `10rem` square by default; set `inline-size` on the element and it stays square.
 - **Colours:** `--sb-qr-color` for the modules (near-black), `--sb-qr-background` behind them (white) and, with `accent`, `--sb-qr-accent` for the three corner squares (unless set, your `--sb-brand` at 50% lightness or less, same hue). Keep the contrast high: scanners find a code by those corners, so an accent you set needs about 4.5:1 against the background, like text.
-- **Parts:** `svg`, `background`, `modules` and `corners`, for anything the tokens don't cover (they are SVG shapes, so they take `fill`). Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `svg`, `background`, `modules` and `corners`, for anything the tokens don't cover (they are SVG shapes, so they take `fill`), and `error`, the box that replaces the code when the value doesn't fit (its text is the `error` slot). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
