@@ -217,8 +217,9 @@ rocket('sb-tree', {
 		}
 		const focus = (id) => id && (($$.focus = id), refocus())
 
-		// Focus can also arrive by Tab or a click: keep the roving focus in step
-		// (only rows are focusable, so the target is a row).
+		// Focus can also arrive by Tab or a click: keep the roving focus in step.
+		// The target is a row (their spans don't take focus), or the container
+		// when a page makes ::part(tree) scroll (no data-id: nothing changes).
 		action('focusin', ({ evt }) => {
 			$$.hasFocus = true
 			const id = evt.target.dataset.id
