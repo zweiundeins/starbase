@@ -153,6 +153,12 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	return cat, nil
 }
 
+// minFormat is part of every component's version hash. A version's .min
+// files are frozen the first time they are stored (min.go), so a change to
+// how they are made (esbuild options, shrink.go) must change it: every
+// component then gets a new version, whose .min files are made the new way.
+const minFormat = "min2"
+
 func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	if !slugRe.MatchString(slug) {
 		return nil, fmt.Errorf("folder name must be kebab-case")
@@ -229,6 +235,7 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	}
 
 	h := sha256.New()
+	h.Write([]byte(minFormat))
 	err = fs.WalkDir(fsys, slug, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err

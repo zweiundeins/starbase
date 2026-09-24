@@ -54,9 +54,11 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 		a.art[name] = generated{body: []byte(svg), hash: hashOf([]byte(svg))}
 	}
 	var js strings.Builder
-	js.WriteString("// Generated: loads every community component.\n")
+	// The readable modules: the manifest publisher needs their .docs() and
+	// manifest: blocks, which the .min files and the bundle leave out.
+	js.WriteString("// Generated: loads every community component (readable modules).\n")
 	for _, c := range cat.Components {
-		fmt.Fprintf(&js, "import %q\n", a.ComponentScript(c))
+		fmt.Fprintf(&js, "import %q\n", "/c/"+c.VersionedScript())
 	}
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
 	if b, err := cat.Bundle(); err == nil {
@@ -191,8 +193,8 @@ func (a *assets) useBundle(r *http.Request) bool {
 	return a.bundleFits
 }
 
-// AllComponents is the module that imports every component (the gallery
-// and the dev manifest publisher need them all at once).
+// AllComponents imports every component's readable module, listed or not:
+// the dev manifest publisher needs them all, with their docs.
 func (a *assets) AllComponents() string { return "/c/index.js?v=" + a.components.hash }
 
 func (a *assets) ArtSVG(name string) string { return string(a.art[name].body) }

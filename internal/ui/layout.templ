@@ -46,18 +46,19 @@ templ Document(s Shell, body templ.Component) {
 			<link rel="stylesheet" href={ s.Assets.SiteCSS() }/>
 			@templ.Raw(`<script type="importmap" nonce="` + s.Nonce + `">` + importMap(s.Assets) + `</script>`)
 			<script type="module" src={ s.Assets.Datastar() }></script>
-			if s.LoadBundle {
+			if s.Dev && len(s.ManifestTags) > 0 {
+				// Dev pages publish the manifests, from the readable modules: the
+				// bundle and the .min files leave out the .docs() and manifest:
+				// blocks (catalog/shrink.go), and a component defined from both would
+				// depend on which rocket() call came last. Every module, not just the
+				// page's: the publisher waits for every tag, and an unlisted component
+				// (sb-code-playground) never appears on a page.
+				<script type="module" src={ s.Assets.AllComponents() }></script>
+				@templ.Raw(manifestScript(s))
+			} else if s.LoadBundle {
 				<script type="module" src={ s.Assets.Bundle() }></script>
 			} else {
 				<script type="module" src={ s.Assets.Components() }></script>
-			}
-			if s.Dev && len(s.ManifestTags) > 0 {
-				// The publisher waits for every tag to be defined, and the autoloader
-				// above only loads the tags on this page: an unlisted component
-				// (sb-code-playground) never appears, so without every module loaded
-				// the wait never ends and no manifest is ever published.
-				<script type="module" src={ s.Assets.AllComponents() }></script>
-				@templ.Raw(manifestScript(s))
 			}
 		</head>
 		<body data-signals={ s.Signals } data-init={ streamInit }>

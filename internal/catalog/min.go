@@ -63,7 +63,7 @@ func (cat *Catalog) MinFiles(c *Component) (map[string][]byte, error) {
 		if IsMinPath(p) {
 			continue
 		}
-		b, err := minify(src)
+		b, err := minify(p, src)
 		if err != nil {
 			return nil, fmt.Errorf("%s/%s: %w", c.Slug, p, err)
 		}
@@ -76,8 +76,10 @@ func (cat *Catalog) MinFiles(c *Component) (map[string][]byte, error) {
 	return out, nil
 }
 
-func minify(src []byte) ([]byte, error) {
-	res := api.Transform(string(src), api.TransformOptions{
+// minify shrinks (shrink.go) and minifies one module file; name is its path
+// inside the component folder.
+func minify(name string, src []byte) ([]byte, error) {
+	res := api.Transform(string(shrink(name, src)), api.TransformOptions{
 		Loader:            api.LoaderJS,
 		Format:            api.FormatESModule,
 		Target:            api.ESNext, // minify only; never lower the syntax

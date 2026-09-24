@@ -30,7 +30,7 @@ var definesRe = regexp.MustCompile(`rocket\(\s*['"](sb-[a-z0-9-]+)['"]`)
 // folder relative imports resolve against, or nil. A syntax error esbuild
 // can't minify past is returned as the error.
 func (cat *Catalog) Measure(code []byte, c *Component) (Measured, error) {
-	m, err := minify(code)
+	m, err := minify("component.js", code)
 	if err != nil {
 		return Measured{}, err
 	}

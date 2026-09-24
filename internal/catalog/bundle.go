@@ -89,13 +89,15 @@ func (cat *Catalog) fsPlugin() api.Plugin {
 					if !ok {
 						return api.OnResolveResult{}, fmt.Errorf("dynamic import outside a component: %s", p)
 					}
-					return api.OnResolveResult{Path: "/c/" + slug + "@" + c.Hash + "/" + rest, External: true}, nil
+					// The minified file (prism.js → prism.min.js), as the .min modules' own imports do.
+					return api.OnResolveResult{Path: "/c/" + slug + "@" + c.Hash + "/" + MinOf(rest), External: true}, nil
 				}
 				return api.OnResolveResult{Path: p, Namespace: "cfs"}, nil
 			})
 			b.OnLoad(api.OnLoadOptions{Filter: `.*`, Namespace: "cfs"}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 				body, err := fs.ReadFile(cat.FS, args.Path)
-				s := string(body)
+				_, name, _ := strings.Cut(args.Path, "/") // inside the component folder
+				s := string(shrink(name, body))
 				return api.OnLoadResult{Contents: &s, Loader: api.LoaderJS}, err
 			})
 		},
