@@ -53,7 +53,7 @@ The page's `lang` (or the `lang` attribute) picks the words.
 
 ### A date after a while
 
-With `threshold="7"`, anything more than a week away shows as a date.
+With `threshold="7"`, anything more than a week away shows as a date. While the page is open, a past moment turns into a date as it crosses the threshold, and a future one into relative text.
 
 ```html preview
 <sb-relative-time threshold="7" datetime="2026-01-01T00:00:00Z">1 Jan 2026</sb-relative-time>

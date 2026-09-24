@@ -17,7 +17,7 @@ const watch = (w) => {
 	}
 }
 
-const SECOND = 1000, MINUTE = 60 * SECOND, HOUR = 60 * MINUTE, DAY = 24 * HOUR, WEEK = 7 * DAY, MONTH = 30 * DAY, YEAR = 365 * DAY
+const SECOND = 1000, MINUTE = 60 * SECOND, HOUR = 60 * MINUTE, DAY = 24 * HOUR, WEEK = 7 * DAY, YEAR = 365 * DAY, MONTH = YEAR / 12
 const UNITS = [
 	['year', YEAR],
 	['month', MONTH],
@@ -40,23 +40,22 @@ const parse = (v) => {
 }
 
 // relative picks the largest unit that fits, and the moment the text next
-// changes: when the rounded count moves (abs crosses k + ½ units), or the
-// unit does. For the past, abs grows with time; for the future, it shrinks.
+// changes. That is an edge of the unit abs is in (before rounding up to the
+// next one): the rounded count moves (abs crosses k + ½ units), or abs grows
+// into the next unit (past) or shrinks below this one (future).
 const relative = (then, now, fmt) => {
 	const diff = then - now
 	const abs = Math.abs(diff)
 	const past = diff <= 0
-	let i = abs < SECOND ? UNITS.length - 1 : Math.max(0, UNITS.findIndex(([, ms]) => abs >= ms))
+	const i = abs < SECOND ? UNITS.length - 1 : Math.max(0, UNITS.findIndex(([, ms]) => abs >= ms))
+	let [unit, ms] = UNITS[i]
+	const edges = [
+		Math.abs((Math[past ? 'ceil' : 'floor'](abs / ms - 0.5) + 0.5) * ms - abs) + 1,
+		past ? UNITS[i - 1]?.[1] - abs : abs - ms + 1,
+	]
 	// "60 minutes ago" reads better as "1 hour ago".
-	if (i > 0 && Math.abs(Math.round(diff / UNITS[i][1])) * UNITS[i][1] >= UNITS[i - 1][1]) i--
-	const [unit, ms] = UNITS[i]
-	const n = Math.round(diff / ms)
-	const x = abs / ms
-	const edges = [Math.abs((past ? Math.floor(x - 0.5) + 1.5 : Math.ceil(x - 0.5) - 0.5) * ms - abs)]
-	if (past && i > 0) edges.push(UNITS[i - 1][1] - abs) // grows into the next unit
-	if (!past && abs >= ms) edges.push(abs - ms + 1) // shrinks below this unit
-	const wait = Math.max(SECOND, Math.min(...edges.filter((e) => e > 0)))
-	return { text: fmt.format(n, unit), next: now + wait }
+	if (i && Math.abs(Math.round(diff / ms)) * ms >= UNITS[i - 1][1]) [unit, ms] = UNITS[i - 1]
+	return { text: fmt.format(Math.round(diff / ms), unit), next: now + Math.min(...edges.filter((e) => e > 0)) }
 }
 
 rocket('sb-relative-time', {
@@ -83,14 +82,17 @@ rocket('sb-relative-time', {
 			const date = new Date(then)
 			$$.iso = date.toISOString()
 			$$.title = new Intl.DateTimeFormat(lang, { dateStyle: 'full', timeStyle: 'short' }).format(date)
-			if (props.threshold > 0 && Math.abs(then - now) > props.threshold * DAY) {
+			const t = props.threshold * DAY
+			let next
+			if (t && Math.abs(then - now) > t) {
 				$$.text = new Intl.DateTimeFormat(lang, { dateStyle: props.format === 'long' ? 'long' : 'medium' }).format(date)
-				w.next = now + HOUR // re-check now and then (the page may stay open for days)
-				return
+				next = then > now ? then - t : Infinity // a future date turns relative, a past one stays
+			} else {
+				const r = relative(then, now, new Intl.RelativeTimeFormat(lang, { numeric: props.numeric, style: props.format }))
+				$$.text = r.text
+				next = Math.min(r.next, t ? then + t + 1 : Infinity) // a past moment turns into a date
 			}
-			const r = relative(then, now, new Intl.RelativeTimeFormat(lang, { numeric: props.numeric, style: props.format }))
-			$$.text = r.text
-			w.next = props.sync ? r.next : Infinity
+			w.next = props.sync ? next : Infinity
 		}
 		w.update()
 		observeProps(() => w.update())
