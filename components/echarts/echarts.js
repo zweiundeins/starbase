@@ -120,7 +120,7 @@ const localeFor = (ec, lang) => {
 // ECharts parses an item's colour to lighten it for the hover state. With one it
 // cannot read, the hovered bar is drawn with no colour at all and flickers in
 // and out under the pointer. A 1×1 canvas turns anything the browser understands
-// into sRGB. (Its context also measures legend labels, in margins() below.)
+// into sRGB.
 const pixel = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
 const rgba = (css) => {
 	pixel.clearRect(0, 0, 1, 1)
@@ -147,7 +147,9 @@ const PALETTE = [
 // Without font tokens the chart uses the element's own font, inherited from
 // the page (font() below), so --_font and --_numbers have no fallbacks. A chart
 // fills the width it is given, also as a flex or grid item, where a block whose
-// only content is absolutely positioned would shrink to nothing.
+// only content is absolutely positioned would shrink to nothing. The fallback
+// is visually hidden unless the chart is not ready: a browser that cannot parse
+// :state() drops that one rule and keeps it hidden, not drawn over the chart.
 const styles = /* css */ `
 :host {
 	--_text: var(--sb-text-2, #AEBBDD);
@@ -166,8 +168,8 @@ const styles = /* css */ `
 	block-size: 18rem;
 }
 .plot { position: absolute; inset: 0; }
-.fallback { overflow: hidden; white-space: normal; }
-:host(:state(ready)) .fallback { position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); white-space: nowrap; }
+.fallback { overflow: hidden; white-space: nowrap; position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); }
+:host(:not(:state(ready))) .fallback { white-space: normal; position: static; inline-size: auto; block-size: auto; clip-path: none; }
 `
 
 // ---- the chart ----------------------------------------------------------------
@@ -211,7 +213,9 @@ rocket('sb-echarts', {
 		let ec, chart, lang
 		// The last built option before its grid was fitted (for a resize to fit
 		// again), and the margins it got; sized: its kind read the plot's size.
-		let unfitted, fitted, sized
+		// measure: this element's own canvas for legend labels (a font the canvas
+		// cannot parse leaves its last font, which must not be another chart's).
+		let unfitted, fitted, measure, sized
 		let si = 0, at = -1 // the series and item the keyboard is on
 
 		const langOf = () => locale(props.lang || host.closest('[lang]')?.lang) ?? navigator.language
@@ -339,13 +343,14 @@ rocket('sb-echarts', {
 				const near = (v) => v === '0' || (typeof v === 'string' && v.endsWith('%') && parseFloat(v) < 25) || (typeof v === 'number' && v < 60)
 				const atTop = legend.top === 'top' || near(legend.top)
 				const atBottom = legend.bottom === 'bottom' || near(legend.bottom) || (legend.top == null && legend.bottom == null)
-				pixel.font = `12px ${font()}`
+				const ctx = (measure ??= document.createElement('canvas').getContext('2d'))
+				ctx.font = `12px ${font()}`
 				const gap = num(legend.itemGap, 10), icon = num(legend.itemWidth, 25)
 				let rows = 1, x = 0
 				// A scrolling legend keeps to one row.
 				if (legend.type !== 'scroll')
 					for (const label of labels) {
-						const lw = icon + 5 + pixel.measureText(String(isObj(label) ? label.name : label)).width + gap
+						const lw = icon + 5 + ctx.measureText(String(isObj(label) ? label.name : label)).width + gap
 						if (x > 0 && x + lw > w * 0.96) (rows++, (x = lw))
 						else x += lw
 					}
