@@ -48,6 +48,21 @@ Stars fly toward you in chunky pixels. Every knob is an attribute, so a slider (
 
 It renders at a third of the CSS resolution into one `ImageData`. It stops animating offscreen, when `speed` is 0, or under `prefers-reduced-motion`, where it shows a single still frame. Set the height with `--sb-starfield-height`.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** it fills the width it is given; `--sb-starfield-height` (default `12rem`) sets the height.
+- **Colours:** the sky is `--sb-surface-inset`. `tint` picks the stars' token, read on every frame: `white` is `--sb-text-1`, `violet` `--sb-brand-light`, `cyan` `--sb-accent`, `green` `--sb-datastar`. Corners are `--sb-radius`.
+- **Parts:** `canvas`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-stars { --sb-starfield-height: 6rem; --sb-radius: 0; --sb-accent: #F0ABFC; }
+</style>
+<sb-starfield class="my-stars" tint="cyan"></sb-starfield>
+```
+
 ## Accessibility
 
 It is decorative motion: the canvas is labelled "Animated starfield". Don't rely on it to convey information.

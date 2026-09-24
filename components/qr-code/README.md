@@ -53,6 +53,21 @@ Higher levels survive more damage, like a logo over the middle, and need more mo
 
 Server-rendered values work as they are: `<sb-qr-code value="https://example.com/invite/X7Q2">`. When a stream re-renders the attribute, the code follows.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `10rem` square by default; set `inline-size` on the element and it stays square.
+- **Colours:** `--sb-qr-color` for the modules (near-black), `--sb-qr-background` behind them (white) and, with `accent`, `--sb-qr-accent` for the three corner squares (your `--sb-brand` unless set). Keep the contrast high: scanners need it.
+- **Parts:** `svg`, `background`, `modules` and `corners`, for anything the tokens don't cover (they are SVG shapes, so they take `fill`). Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-qr { inline-size: 7rem; --sb-qr-color: #1E3A8A; --sb-qr-accent: #DB2777; }
+</style>
+<sb-qr-code class="my-qr" accent value="https://data-star.dev"></sb-qr-code>
+```
+
 ## Accessibility
 
 The SVG is an `img` named "QR code: " plus the value (or `label`). Put the link or text next to the code as well, for people who can't scan it.

@@ -55,6 +55,23 @@ Browsers can refuse the clipboard: outside a secure context (plain `http://`), i
 <sb-copy-button value="go run ." data-on:sb-copy-error="console.warn('copy refused:', evt.detail.error)"></sb-copy-button>
 ```
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** the button is a `2rem` square; set `inline-size` and `block-size` on `::part(button)` for another.
+- **Fonts:** the "Copied!" tip uses your page's font.
+- **Colours:** the button is `--sb-surface-raised` with a `--sb-border` edge and a `--sb-text-2` icon (`--sb-text-1` on hover). After copying it turns `--sb-ok`, after a refusal `--sb-danger`. The tip is `--sb-surface-raised` with a `--sb-border-strong` edge and `--sb-text-1` text; a failure fills it with `--sb-danger` and `--sb-text-on-danger`. Corners are `--sb-radius-sm`, the focus ring `--sb-focus-ring`.
+- **Parts:** `button` and `tip`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-copy { --sb-ok: var(--sb-brand-light); }
+  .my-copy::part(button) { inline-size: 2.5rem; block-size: 2.5rem; border-radius: 50%; }
+</style>
+<sb-copy-button class="my-copy" value="go run ."></sb-copy-button>
+```
+
 ## Accessibility
 
 The button's accessible name is `label`. The result ("Copied!" or "Copy failed") goes to a `role="status"` region next to the button, so screen readers announce it without moving focus. It sits outside the button on purpose: a button's children are presentational, so a live region inside one may never be read out. The same element is the visual tip (`::part(tip)`).

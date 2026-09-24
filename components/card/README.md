@@ -39,6 +39,23 @@ A surface with optional media, heading, body and footer. Slots that get no conte
 </sb-card>
 ```
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** it fills the width it is given (a grid cell, say) and tightens its padding when that is under `14rem`. Set `max-inline-size` on the card to cap it.
+- **Fonts:** the heading and the body use your page's font.
+- **Colours:** the surface is `--sb-surface-card` (`--sb-surface-inset` for `variant="inset"`) with a `--sb-border` edge; the heading is `--sb-text-1` and the body `--sb-text-2`. `--sb-brand` tints the border of a linked card on hover and of the `glow` variant. Corners are `--sb-radius-lg`.
+- **Parts:** `card` (the frame), `media`, `body` and `footer`. The heading has no part of its own: it takes `--sb-text-1`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-card { max-inline-size: 20rem; --sb-surface-card: var(--sb-brand-subtle); --sb-radius-lg: 0; }
+  .my-card::part(body) { padding: 1.5rem; }
+</style>
+<sb-card class="my-card" heading="Planet X-9">A cold, quiet world with excellent stargazing.</sb-card>
+```
+
 ## Accessibility
 
 A linked card renders one real `<a>` in the heading and stretches its click area over the card, so screen readers hear a single link. Always give media images `alt` text.

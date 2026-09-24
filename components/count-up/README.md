@@ -56,6 +56,21 @@ When the server sends a new `value` while the number is on screen, it counts fro
 </div>
 ```
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Fonts and colours:** it is text: it takes the font, size, weight and colour of wherever you put it, and only switches the digits to equal widths (`tabular-nums`) so the number doesn't jitter while it counts.
+- **Parts:** `value`, the number you see (screen readers get a separate copy of the final value). Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-count { font-size: 2.5rem; font-weight: 700; color: var(--sb-brand-light); }
+  .my-count::part(value) { letter-spacing: 0.05em; }
+</style>
+<sb-count-up class="my-count" value="4681">4681</sb-count-up>
+```
+
 ## Accessibility
 
 Screen readers get the final value as text; the counting digits are hidden from them. With `prefers-reduced-motion: reduce` the number is shown at its value straight away, and a new value replaces it without counting.

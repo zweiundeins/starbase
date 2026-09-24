@@ -119,9 +119,28 @@ import { setNumberFormat } from '/c/echarts/echarts.js'
 setNumberFormat((n, lang) => myFormat(n, lang))
 ```
 
-## Theming
+## Styling
 
-Colours come from the `--sb-*` tokens: text, borders and the tooltip surface from the semantic ones, series from `--sb-chart-1` to `--sb-chart-8` (falling back to brand, accent, ok, warn, danger, info…). Set those on the element or an ancestor to give charts their own palette. A pick on `sb-theme-switch`, or the system flipping under "auto", redraws the chart in the new colours without starting it again.
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** set `block-size` (or `height`) on the element; it defaults to `18rem` and fills the width it is given.
+- **Fonts:** labels and the legend use `--sb-font-body` when a site sets one, numbers (the value axis, the tooltip) `--sb-font-ui`. Without them the chart draws in the element's own font, inherited from your page, so `font-family` on the element is enough.
+- **Colours:** series take `--sb-chart-1` to `--sb-chart-8`, falling back to `--sb-brand-light`, `--sb-accent`, `--sb-ok`, `--sb-warn`, `--sb-danger`, `--sb-info`, `--sb-text-2` and `--sb-brand`. Text is `--sb-text-2`, axis labels `--sb-text-muted`, axis lines `--sb-border`, grid lines `--sb-border-subtle`, and the tooltip `--sb-surface-overlay` with `--sb-text-1` values. Set any of them on the element or an ancestor to give charts their own palette. A pick on `sb-theme-switch`, or the system flipping under "auto", redraws the chart in the new colours without starting it again.
+- **Parts:** `plot`, the box ECharts draws in. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-chart {
+    block-size: 12rem;
+    --sb-chart-1: #F97316;
+    font-family: Georgia, serif;
+    --sb-font-body: Georgia, serif; /* only needed where a body font token is set, like here */
+  }
+</style>
+<sb-echarts class="my-chart" option='{"grid":{"top":8,"bottom":24,"left":36,"right":8},"xAxis":{"type":"category","data":["Mon","Tue","Wed","Thu","Fri"]},"yAxis":{"type":"value"},"series":[{"type":"bar","data":[120,200,150,80,70]}]}'></sb-echarts>
+```
+
+A font you load yourself works inside the component too: load it in the page (a `<link>`, or an `@import` at the very top of your main stylesheet). A component's own styles are a constructed stylesheet, which can't `@import`.
 
 ## Accessibility
 

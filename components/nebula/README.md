@@ -74,6 +74,21 @@ Clouds of gas and a few twinkling stars, rendered by a fragment shader. The shad
 
 One full-screen triangle and a single shader, rendered at a quarter of the CSS resolution by default (`pixel="4"`). It stops animating offscreen and when `speed` is 0. It frees its WebGL context when removed, and recovers when the browser takes the context away. Without WebGL it shows a still gradient in the same colours. Set the height with `--sb-nebula-height`.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** it fills the width it is given; `--sb-nebula-height` (default `14rem`) sets the height.
+- **Colours:** the cloud is painted from theme tokens, read on every frame, so a theme change or your own override shows at once. `palette` picks them: `violet` uses `--sb-brand`, `--sb-accent` and `--sb-text-1`; `aurora` `--sb-accent`, `--sb-datastar` and `--sb-text-1`; `ember` `--sb-danger`, `--sb-warn` and `--sb-text-1`; `mono` `--sb-border-strong`, `--sb-text-muted` and `--sb-text-1`. All of them sit on `--sb-surface-inset`. Without WebGL it shows a still `--sb-brand` glow instead. Corners are `--sb-radius`.
+- **Parts:** `canvas`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-nebula { --sb-nebula-height: 8rem; --sb-radius: 0; --sb-brand: #EC4899; }
+</style>
+<sb-nebula class="my-nebula"></sb-nebula>
+```
+
 ## Accessibility
 
 It is decorative motion, labelled "Animated nebula" (change it with `label`). Under `prefers-reduced-motion` it shows one still frame and ignores the pointer.

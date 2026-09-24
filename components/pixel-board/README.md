@@ -53,6 +53,22 @@ No `data-preserve-attr` here: `cells` belongs to the server, and every morph bri
 
 `sb-paint` bubbles out of the shadow root with `detail: { color, cells }`, where `cells` are the indices (`y * size + x`) touched since the last event. Events are batched every ~80 ms during a stroke, and fast drags are interpolated so strokes have no gaps.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `--sb-pixel-board-size` (default `24rem`) is the width of the board, which stays square, with the palette below it. `size` sets the number of cells per side, not the size on screen.
+- **Colours:** the paint colours are the `palette` prop (16 hex colours), not theme tokens. The board has a `--sb-border` frame around a `--sb-surface-inset` background; the chosen colour and the focus ring are `--sb-brand-light`.
+- **Parts:** `board` (the canvas and the palette together), `canvas` and `palette`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-board { --sb-pixel-board-size: 16rem; --sb-brand-light: var(--sb-accent); }
+  .my-board::part(palette) { gap: 2px; }
+</style>
+<sb-pixel-board class="my-board" local grid size="16"></sb-pixel-board>
+```
+
 ## Accessibility
 
 The canvas is focusable: the arrow keys move a highlighted cursor, and Space or Enter paints. Its label always states the cursor position, that cell's colour and the selected colour. The palette is a radio group of labelled buttons.

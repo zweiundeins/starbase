@@ -51,6 +51,23 @@ A row of pixel blocks lit up to `value`. The whole bar changes colour at the `wa
 </div>
 ```
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `--sb-meter-width` (default `22rem`) is the widest it gets, `--sb-meter-height` (default `12px`) the height of the blocks; `segments` sets how many there are.
+- **Fonts:** the label and the value use your page's font.
+- **Colours:** lit blocks are `--sb-ok`, `--sb-warn` past the `warn` threshold and `--sb-danger` past `danger`. The track is `--sb-surface-inset` with a `--sb-border` edge, and unlit blocks are a tint of that border. The label is `--sb-text-2`, the value `--sb-text-1`.
+- **Parts:** `label`, `value` and `bar`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-meter { --sb-meter-width: 16rem; --sb-meter-height: 20px; --sb-ok: var(--sb-accent); }
+  .my-meter::part(value) { font-size: 1.25rem; }
+</style>
+<sb-meter class="my-meter" label="Shields" value="45" unit="%"></sb-meter>
+```
+
 ## Accessibility
 
 The bar is a `role="meter"` with min, max, value and a readable value text. The colour change is backed by the number, so tone never carries the meaning alone.

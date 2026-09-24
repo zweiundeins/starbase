@@ -111,6 +111,22 @@ Inside a Rocket component, the first one has an attribute form in the template, 
 
 A cookie reaches the server with the request, so the server can render the theme straight away. Local storage would need a script on every page. The cookie holds only the theme name, for a year, on the whole site (`Path=/`, `SameSite=Lax`, `Secure` on https, and `Domain` when `domain` is set). Several switches on one page stay in sync.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Fonts:** the options use your page's font.
+- **Colours:** the control is `--sb-control-bg` with a `--sb-control-border` edge. Options are `--sb-text-2` (`--sb-text-1` when hovered or chosen); the chosen one fills with `--sb-brand-subtle` inside a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-control-radius`. The `menu` variant's list uses the same tokens.
+- **Parts:** `group` (the segmented control), `select` (with `variant="select"`), and `button` and `menu` (with `variant="menu"`). Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-switch { --sb-brand: var(--sb-accent); --sb-control-radius: 999px; }
+  .my-switch::part(group) { padding: 4px; }
+</style>
+<sb-theme-switch class="my-switch" cookie="sb-theme-demo" attribute="data-demo-theme"></sb-theme-switch>
+```
+
 ## Accessibility
 
 The segmented variant and the menu are radio groups (arrow keys move between themes); the select is a native `<select>`. All carry `label` ("Theme") as their accessible name; the menu button also says the current theme. The menu is a native popover: Escape and clicking outside close it.

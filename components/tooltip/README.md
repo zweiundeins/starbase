@@ -42,6 +42,25 @@ A short hint that appears on hover and keyboard focus, with a small pixel arrow.
 </div>
 ```
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** the tip is at most `16rem` wide; set `max-inline-size` on `::part(tip)` for another limit.
+- **Fonts:** the tip uses your page's font.
+- **Colours:** the tip is `--sb-surface-raised` with `--sb-text-1` text, and `--sb-border-strong` draws its edge and the arrow. These tokens reach your trigger too, so set the text colour on the part rather than the token.
+- **Parts:** `tip`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-tip { --sb-surface-raised: var(--sb-brand); --sb-border-strong: var(--sb-brand); }
+  .my-tip::part(tip) { color: var(--sb-text-on-brand); font-weight: 400; max-inline-size: 12rem; }
+</style>
+<div style="padding-block-end: 4rem">
+  <sb-tooltip class="my-tip" open placement="bottom" content="Fuel is topped up before every launch."><sb-button size="sm" variant="outline">Fuel</sb-button></sb-tooltip>
+</div>
+```
+
 ## Accessibility
 
 The tooltip shows on focus as well as hover, and Escape dismisses it. Keep tooltips short and supplementary: never put the only copy of important information in one.

@@ -63,6 +63,29 @@ The iframe (`sandbox="allow-scripts"`) loads `runner` and exchanges `postMessage
 
 The runner should import the edited `component.js` (for example from a `blob:` URL) **before** the dependencies, then `datastar`, and resolve `'datastar'` through an import map. A `blob:` module has no folder, so the runner resolves relative imports (`./vendor/lib.js`) against `base`, the `base` attribute as an absolute URL (empty when unset).
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `--sb-code-playground-height` (default `34rem`) is the height of the whole playground. It fills the width it is given; the editor and the preview sit side by side, and stack below `48rem`.
+- **Fonts:** the toolbar uses your page's font. The console and the code use `--sb-font-ui` when a site sets one, else a monospace font.
+- **Colours:** the frame is `--sb-surface-card` with `--sb-border` lines; the selected file tab, the console and the file picker are `--sb-surface-inset`. Text is `--sb-text-2` (`--sb-text-1` when active), the status `--sb-text-muted`. The Run button fills with `--sb-brand` and writes in `--sb-text-on-brand`; focus rings are `--sb-brand-light`. Console errors are `--sb-danger`, warnings `--sb-warn`, and the preview's background is `--sb-bg`. Corners are `--sb-radius-lg`. The editors are `sb-code-editor`s, so their syntax colours (`--sb-code-tag`, `--sb-code-keyword`…) reach them too.
+- **Parts:** `playground` (the frame), `run`, `preview` (the iframe) and `console`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-playground { inline-size: 100%; --sb-code-playground-height: 16rem; --sb-code-tag: #DB2777; }
+  .my-playground::part(run) { background: #15803D; border-color: #15803D; color: #FFFFFF; }
+</style>
+<sb-code-playground class="my-playground">
+  <script type="text/plain" data-file="index.html">
+    <p>Hello from a smaller playground.</p>
+  </script>
+</sb-code-playground>
+```
+
+A font you load yourself works inside the component too: load it in the page (a `<link>`, or an `@import` at the very top of your main stylesheet). A component's own styles are a constructed stylesheet, which can't `@import`.
+
 ## Accessibility
 
 File tabs are real tabs, the editors are native textareas, the preview frame has a title, and the console is a `role="log"` live region. Ctrl/Cmd+Enter in an editor runs the code.

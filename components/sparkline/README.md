@@ -57,6 +57,23 @@ The server pushes `$_tm.alt` four times a second. Push mode turns every update i
 
 `el.push(n)` appends a point, and `el.data` returns a copy of the buffer.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `--sb-sparkline-width` (default `12rem`) is the width of the line and the value together. The line keeps its proportions, so its height follows its width.
+- **Fonts:** the value uses your page's font.
+- **Colours:** `tone` picks the line's token, read when it paints (it repaints when the theme changes): `brand` is `--sb-brand-light`, `ok` `--sb-ok`, `warn` `--sb-warn`, `danger` `--sb-danger`, `accent` `--sb-accent`. The value is `--sb-text-1`.
+- **Parts:** `line` (the canvas) and `value`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-spark { --sb-sparkline-width: 16rem; --sb-brand-light: #22C55E; }
+  .my-spark::part(value) { font-size: 1.125rem; }
+</style>
+<sb-sparkline class="my-spark" values="[12,18,15,22,30,26,34,41]" show-value unit="%"></sb-sparkline>
+```
+
 ## Accessibility
 
 The canvas is `role="img"`, and its label summarises the data (point count, latest, low and high). Use `show-value` when the latest number matters.

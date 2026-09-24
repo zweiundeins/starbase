@@ -104,6 +104,10 @@ A component that renders another tag inside its own shadow root would otherwise 
 - **A failed module** reports through `reportError` (so `window.onerror` sees it) and emits `sb-load-error`. A `match` that isn't a valid regular expression is reported the same way, and the pattern is skipped.
 - **`demo-badge.js`** in this component's folder belongs to the examples above, not to the loader; that is why it shows up in the size table. It is served at `/c/autoloader/demo-badge.js`, so in a pull-request preview (where the component is not in the catalog yet) the examples report a failed load: the loader works, the demo module is simply not there.
 
+## Styling
+
+`sb-autoloader` has no box of its own (`display: contents`) and draws nothing, so there is nothing to style. The components it loads are styled as their own pages describe.
+
 ## Accessibility
 
 The element has no box of its own (`display: contents`) and no role; it adds nothing to the accessibility tree and takes no focus. Children, if you wrap any, render exactly where they are written. Use `cloak` so people don't see half-built elements, and remember the page must work if a module never arrives.

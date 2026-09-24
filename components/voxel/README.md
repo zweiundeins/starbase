@@ -65,6 +65,22 @@ After a drag, `sb-orbit` reports the effective angles.
 
 It only paints when something changes: a prop, a drag, or each frame while `spin` is set. Offscreen instances pause, and with `prefers-reduced-motion` the model doesn't spin.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `--sb-voxel-size` (default `16rem`) sets the width; it stays square and never grows wider than its container.
+- **Colours:** the models have their own colours, which themes don't change. The canvas is transparent, so it sits on whatever is behind it; the focus ring is `--sb-brand-light`.
+- **Parts:** `canvas`. Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-voxel { --sb-voxel-size: 10rem; }
+  .my-voxel::part(canvas) { background: radial-gradient(var(--sb-brand-subtle), transparent 70%); }
+</style>
+<sb-voxel class="my-voxel" model="planet" spin="30"></sb-voxel>
+```
+
 ## Accessibility
 
 The canvas has `role="img"`, and its label always states the model and current angles. It is focusable, and the arrow keys orbit (Shift for bigger steps).

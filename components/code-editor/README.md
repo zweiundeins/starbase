@@ -71,6 +71,28 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** it fills the width it is given. `--sb-code-editor-height` (default `28rem`) is the most it grows before it scrolls, `--sb-code-editor-min-height` (default `0`) the least it shrinks to.
+- **Fonts:** the code uses `--sb-font-ui` when a site sets one, else JetBrains Mono or the system's monospace font; set `--sb-font-ui` on the editor to choose it. The label uses your page's font. The highlighted code is drawn under a transparent textarea, and the two must line up to the pixel, so change the code's font through the token, not with `::part(textarea)`.
+- **Colours:** the syntax colours are `--sb-code-keyword`, `--sb-code-function`, `--sb-code-tag`, `--sb-code-string` and `--sb-code-number`; comments, punctuation and the line numbers are `--sb-text-muted`, plain code `--sb-text-1`. The box is `--sb-surface-inset` with a `--sb-border` edge (`--sb-brand-light` while you type), the selection `--sb-selection`, the label `--sb-text-2`, the corners `--sb-radius`.
+- **Parts:** `editor` (the scrolling box), `label` and `textarea` (the layer you type in). Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-editor {
+    --sb-code-editor-height: 8rem;
+    --sb-font-ui: "Courier New", monospace;
+    --sb-code-keyword: #DB2777;
+  }
+</style>
+<sb-code-editor class="my-editor" language="js" label="orbit.js" value="const period = 2 * Math.PI * Math.sqrt(a ** 3 / mu)"></sb-code-editor>
+```
+
+A font you load yourself works inside the component too: load it in the page (a `<link>`, or an `@import` at the very top of your main stylesheet). A component's own styles are a constructed stylesheet, which can't `@import`.
+
 ## Accessibility
 
 The editable element is a native textarea with an accessible name (`label`, or "Code"). The highlighted layer and the gutter are `aria-hidden`.

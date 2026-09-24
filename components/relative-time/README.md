@@ -67,6 +67,21 @@ The `datetime` attribute belongs to the server. When a Datastar stream re-render
 <p>Last paint <sb-relative-time datetime="2026-09-22T08:14:03Z">08:14</sb-relative-time></p>
 ```
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Fonts and colours:** it is text: it takes the font, size and colour of wherever you put it.
+- **Parts:** `time`, the `<time>` element (its `title` shows the full date on hover). Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-time { color: var(--sb-text-muted); }
+  .my-time::part(time) { font-style: italic; text-decoration: underline dotted; }
+</style>
+<p>Launched <sb-relative-time class="my-time" datetime="2026-09-01T08:00:00Z">on 1 September</sb-relative-time>.</p>
+```
+
 ## Accessibility
 
 It renders a `<time datetime="…">` with the full date as its `title`, so the precise moment is available to assistive technology and on hover.

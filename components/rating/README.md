@@ -61,6 +61,23 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value i
 
 The filled colour is `--sb-rating-color` (hearts default to `--sb-danger`, stars to `--sb-warn`); empty units use `--sb-border-strong`.
 
+## Styling
+
+Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+
+- **Size:** `size` (`sm`, `md`, `lg`) sets the icons to `1rem`, `1.5rem` or `2.25rem`. For another size, set `inline-size` and `block-size` on `::part(unit)`.
+- **Fonts:** the label uses your page's font.
+- **Colours:** `--sb-rating-color` fills the icons (by default `--sb-danger` for hearts, `--sb-warn` for stars) and `--sb-rating-shine` is their highlight; empty icons are `--sb-border-strong`. The label is `--sb-text-2`, the focus ring `--sb-brand-light`.
+- **Parts:** `label`, `base` (the row of icons) and `unit` (each icon). Your page's `::part()` rules win over the component's own, without `!important`.
+
+```html preview
+<style>
+  .my-rating { --sb-rating-color: var(--sb-brand-light); }
+  .my-rating::part(unit) { inline-size: 2rem; block-size: 2rem; }
+</style>
+<sb-rating class="my-rating" icon="star" label="Crew comfort" value="4"></sb-rating>
+```
+
 ## Accessibility
 
 The row is a `slider` (Arrow keys change the value by one step, Home clears it, End fills it), named by `label` or "Rating", with `aria-valuetext` like "3 of 5". Read-only ratings are an `img` with the same text.
