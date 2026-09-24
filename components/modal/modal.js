@@ -11,6 +11,7 @@ const styles = /* css */ `
 	--_radius: var(--sb-radius, 8px);
 	display: contents;
 }
+:host([hidden]) { display: none; }
 .panel {
 	box-sizing: border-box;
 	inline-size: min(28rem, 100vw - 2rem);

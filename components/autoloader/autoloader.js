@@ -19,6 +19,7 @@ const hosts = new WeakMap()
 // alone as a single tag).
 const styles = /* css */ `
 :host { display: contents }
+:host([hidden]) { display: none; }
 `
 
 rocket('sb-autoloader', {

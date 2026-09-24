@@ -212,6 +212,7 @@ const styles = /* css */ `
 	aspect-ratio: 1;
 	vertical-align: middle;
 }
+:host([hidden]) { display: none; }
 canvas {
 	display: block;
 	inline-size: 100%;

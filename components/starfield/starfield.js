@@ -22,6 +22,7 @@ const styles = /* css */ `
 	background: var(--_bg);
 	contain: strict;
 }
+:host([hidden]) { display: none; }
 canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: pixelated; }
 `
 

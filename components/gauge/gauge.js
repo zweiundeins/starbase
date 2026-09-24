@@ -38,6 +38,7 @@ const styles = /* css */ `
 	/* The readout scales with the gauge: cqi is 1% of its width. */
 	container-type: inline-size;
 }
+:host([hidden]) { display: none; }
 canvas { inline-size: 100%; aspect-ratio: ${W} / ${H}; image-rendering: pixelated; }
 i {
 	position: absolute;

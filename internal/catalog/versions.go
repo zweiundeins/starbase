@@ -128,8 +128,9 @@ const load = (tag) => {
 	for (const dep of requires[tag] || []) load(dep) // tags it renders itself
 	pending++
 	import(new URL(modules[tag], import.meta.url).href)
-		// Rocket defines elements once Datastar is ready: wait for that too.
-		.then(() => customElements.whenDefined(tag))
+		// Rocket defines elements once Datastar is ready: wait for that too, but
+		// not forever (a module that doesn't define its tag would hold ready).
+		.then(() => Promise.race([customElements.whenDefined(tag), new Promise((_, no) => setTimeout(no, 10000, new Error('not defined within 10 s')))]))
 		.catch((err) => {
 			started.delete(tag)
 			report(new Error('[starbase] could not load <' + tag + '>', { cause: err }))

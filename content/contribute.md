@@ -100,7 +100,7 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
 
 A component whose rows can be replaced by the server (a tree, a menu, a group of choices) has to defend the focus, or a morph throws the user out of it:
 
-- The morph can **park a row before removing it**, so `focusout` fires while the row is still connected and `relatedTarget` is `null`. Treat that as "not leaving" and keep your "focus is inside" flag.
+- The morph (or `data-for`) can **park a row before removing it**, so `focusout` fires while the row is still connected and `relatedTarget` is `null` — exactly like a click on the page's text. Decide it **a moment later** (a microtask, or a frame): if the row is gone, the server dropped it, so keep your "focus is inside" flag and move the focus to its neighbour; if the row is still there, the user left, so clear the flag (and never pull the focus back). A switch to another window or tab isn't leaving (`document.hasFocus()` is false then).
 - Restore the DOM focus after a re-render only when it **fell on the floor** — `document.activeElement` is the body or the host. If the user moved on to something else, leave it there; a component that grabs focus back is worse than one that loses it.
 - When the focused row is **gone from the new list**, focus its neighbour (the old index, clamped into the new list, skipping disabled rows), not the first row: jumping to the top turns one arrow key into a trip to the other end of the list.
 

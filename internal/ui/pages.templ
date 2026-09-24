@@ -141,7 +141,7 @@ templ MissionControl() {
 		</header>
 		<div class="mission__grid">
 			<div class="mission__view">
-				<sb-starfield tint="violet" density="420" data-attr:speed="Math.round(3 + $_tm.vel * 11)" data-attr:warp="$_tm.vel > 5"></sb-starfield>
+				<sb-starfield tint="violet" density="420" label="" data-attr:speed="Math.round(3 + $_tm.vel * 11)" data-attr:warp="$_tm.vel > 5"></sb-starfield>
 				<sb-voxel model="rocket" spin="24" zoom="0.9" data-attr:pitch="Math.round(($_tm.pitch - 90) / 4)"></sb-voxel>
 			</div>
 			<div class="mission__panel">
@@ -151,7 +151,7 @@ templ MissionControl() {
 				</div>
 				<div class="mission__row">
 					<span class="mission__caption">Altitude</span>
-					<sb-sparkline data-attr:value="$_tm.alt" length="80" show-value unit=" km" tone="accent"></sb-sparkline>
+					<sb-sparkline label="Altitude" data-attr:value="$_tm.alt" length="80" show-value unit=" km" tone="accent"></sb-sparkline>
 				</div>
 				<sb-meter label="Fuel" unit="%" warn="30" danger="15" segments="20" data-attr:value="Math.round($_tm.fuel)"></sb-meter>
 			</div>

@@ -114,7 +114,7 @@ A skeleton usually stands in for the content it is waiting for, so give it the s
 
 ### A spinner inside the button
 
-The most common loading state there is. For a button, reach for [`sb-button`](/components/button)'s own `loading` prop first: it draws the same eight blinking dots as `sb-busy`, sized from the button's own text and colour, and it blocks clicks and Enter in the capture phase — which is what stops a double submit, and which a spinner sitting inside the button cannot do.
+The most common loading state there is. For a button, reach for [`sb-button`](/components/button)'s own `loading` prop first: it draws the same eight blinking dots as `sb-busy`, sized from the button's own text and colour, and it blocks clicks (mouse, Enter or Space) in the capture phase — which is what stops a double submit, and which a spinner sitting inside the button cannot do.
 
 ```html preview
 <div data-signals="{_synced: []}" style="display: flex; align-items: center; gap: 16px">

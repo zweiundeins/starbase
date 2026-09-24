@@ -27,7 +27,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
                 data-attr:warp="$_tm.vel > 5"></sb-starfield>
   <sb-gauge label="Velocity" unit=" km/s" max="8" decimals="2"
             data-attr:value="$_tm.vel"></sb-gauge>
-  <sb-sparkline data-attr:value="$_tm.alt" length="80" show-value></sb-sparkline>
+  <sb-sparkline label="Altitude" data-attr:value="$_tm.alt" length="80" show-value></sb-sparkline>
   <sb-meter label="Fuel" warn="30" danger="15"
             data-attr:value="Math.round($_tm.fuel)"></sb-meter>
 </section>`, "html")

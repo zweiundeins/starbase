@@ -58,6 +58,7 @@ const styles = /* css */ `
 	/* No box of its own: the region positions itself, the live regions are invisible. */
 	display: contents;
 }
+:host([hidden]) { display: none; }
 .region {
 	position: fixed;
 	z-index: var(--sb-z-toast, 60);

@@ -29,6 +29,7 @@ const styles = /* css */ `
 	aspect-ratio: 1;
 	line-height: 0;
 }
+:host([hidden]) { display: none; }
 svg { inline-size: 100%; block-size: 100%; }
 .bg { fill: var(--_bg); }
 .mod { fill: var(--_fg); }

@@ -101,6 +101,7 @@ const styles = /* css */ `
 	background: radial-gradient(ellipse at 35% 45%, color-mix(in oklch, var(--_glow) 55%, transparent), transparent 60%), var(--_bg);
 	contain: strict;
 }
+:host([hidden]) { display: none; }
 canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: pixelated; touch-action: pan-y; }
 `
 
