@@ -34,11 +34,13 @@ const styles = /* css */ `
 	--_brand-light: var(--sb-brand-light, #B09AFF);
 	--_brand-subtle: var(--sb-brand-subtle, rgb(140 107 255 / 0.14));
 	--_danger: var(--sb-danger, #F2777A);
+	--_on-brand: var(--sb-text-on-brand, #F3F4FA);
 	--_radius: var(--sb-control-radius, 6px);
 	display: block;
 	inline-size: 100%;
 	max-inline-size: 26rem;
 }
+:host([hidden]) { display: none; }
 .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 .control { display: flex; gap: 0.5rem; }
@@ -59,6 +61,8 @@ input {
 input::placeholder { color: var(--_placeholder); }
 input:hover { border-color: var(--_border-hover); }
 input:focus-visible { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); }
+/* Invisible, except in forced colors, where the box-shadows are dropped. */
+input:focus-visible, .go:focus-visible { outline: 2px solid transparent; outline-offset: 2px; }
 .invalid input { border-color: var(--_danger); }
 .invalid input:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--_danger) 20%, transparent); }
 .go {
@@ -73,14 +77,19 @@ input:focus-visible { border-color: var(--_brand-light); box-shadow: 0 0 0 3px v
 	background: var(--_brand-subtle);
 	color: var(--_text);
 	cursor: pointer;
-	transition: background 120ms, translate 120ms;
+	transition: background 120ms, transform 120ms;
 }
-.go:hover { background: var(--_brand); translate: 1px 0; }
+.go:hover { background: var(--_brand); color: var(--_on-brand); transform: translate(1px); }
+/* Right to left, the arrow and its nudge point the other way. */
+:host(:dir(rtl)) .go { scale: -1 1; }
 .go:focus-visible { box-shadow: 0 0 0 2px var(--_bg), 0 0 0 4px var(--_brand-light); }
 .go svg { inline-size: 1.15rem; block-size: 1.15rem; }
 .hint, .error { font-size: 0.75rem; }
 .hint { color: var(--_placeholder); }
 .error { color: var(--_danger); }
+/* Out of the flow while empty, but never display: none: a live region
+   announces reliably only when it is already there when its text changes. */
+.error:empty { position: absolute; }
 `
 
 rocket('sb-input', {
@@ -175,15 +184,19 @@ rocket('sb-input', {
 			if (validate()) emit('sb-submit', { name: props.name, value: $$.value })
 		})
 	},
-	render: ({ html, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
-		<label class="field">
-			${label ? html`<span class="label" part="label">${label}</span>` : null}
+	// The label names the input, the hint (or the error) describes it. The
+	// error is a polite live region: it can change on every keystroke.
+	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
+		<div class="field">
+			${label ? html`<label class="label" part="label" for="i">${label}</label>` : null}
 			<span class="control" data-class:invalid="$$invalid">
 				<input
+					id="i"
 					part="input"
 					type="${type}"
 					placeholder="${placeholder || null}"
-					aria-label="${label ? null : placeholder || 'Text'}"
+					aria-label="${label ? null : host.getAttribute('aria-label')}"
+					aria-describedby="e h"
 					required="${required}"
 					minlength="${minlength || null}"
 					pattern="${pattern || null}"
@@ -195,8 +208,8 @@ rocket('sb-input', {
 				/>
 				${action ? html`<button class="go" type="button" part="button" aria-label="Submit" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
 			</span>
-			<span class="error" role="alert" data-show="$$invalid" data-text="$$message"></span>
-			${hint ? html`<span class="hint" data-show="!$$invalid">${hint}</span>` : null}
-		</label>
+			<span class="error" id="e" aria-live="polite" data-text="$$message"></span>
+			${hint ? html`<span class="hint" id="h" data-show="!$$invalid">${hint}</span>` : null}
+		</div>
 	`,
 })
