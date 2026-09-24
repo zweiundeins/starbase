@@ -5,7 +5,6 @@ const styles = /* css */ `
 	--_bg: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border-strong, #3A4868);
 	--_text: var(--sb-text-1, #F3F4FA);
-	--_gap: 10px;
 	/* Hug the trigger exactly: the tip is positioned against this box. */
 	position: relative;
 	display: inline-flex;
@@ -34,9 +33,9 @@ const styles = /* css */ `
 }
 .tip:empty { display: none; }
 .tip::before, .tip::after { content: ""; position: absolute; }
-/* The pointer can move onto a shown tip: this bridges the gap (and the
-   border) on the trigger's side (--_b), once the tip has slid into place,
-   so it never covers the trigger. */
+/* The pointer can move onto a shown tip: this bridges the 10px gap (and
+   the border) on the trigger's side (--_b), once the tip has slid into
+   place, so it never covers the trigger. */
 .tip::before { inset: var(--_b); visibility: hidden; }
 .show::before { visibility: visible; transition: 0s 120ms; }
 /* A pixel arrow. */
@@ -51,10 +50,10 @@ const styles = /* css */ `
 /* Physical sides, in RTL too. --_n is the slide-in. */
 .top, .bottom { left: 50%; translate: -50% var(--_n); }
 .left, .right { top: 50%; translate: var(--_n) -50%; }
-.top { bottom: calc(100% + var(--_gap)); --_n: 4px; --_b: 100% 0 -11px; }
-.bottom { top: calc(100% + var(--_gap)); --_n: -4px; --_b: -11px 0 100%; }
-.left { right: calc(100% + var(--_gap)); --_n: 4px; --_b: 0 -11px 0 100%; }
-.right { left: calc(100% + var(--_gap)); --_n: -4px; --_b: 0 100% 0 -11px; }
+.top { bottom: calc(100% + 10px); --_n: 4px; --_b: 100% 0 -11px; }
+.bottom { top: calc(100% + 10px); --_n: -4px; --_b: -11px 0 100%; }
+.left { right: calc(100% + 10px); --_n: 4px; --_b: 0 -11px 0 100%; }
+.right { left: calc(100% + 10px); --_n: -4px; --_b: 0 100% 0 -11px; }
 .top::after { top: 100%; }
 .bottom::after { top: auto; bottom: 100%; rotate: 180deg; }
 .left::after { left: calc(100% - 2px); rotate: -90deg; }
