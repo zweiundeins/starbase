@@ -26,6 +26,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Installation tabs: "This component" now pins everything it loads through the import map's `integrity` (a script tag covers only its own file, so code-editor's Prism was unchecked), and already-minified vendored files are no longer renamed to a non-existent `.min.min.js` — which had dropped ECharts from the Pinned tab's integrity and broken its Self-host link.
 - `sb-echarts` wrote a missing value as “undefined” in tooltips and labels (its number formatter stringified whatever it was given); it now writes “-”, as ECharts does. Axis tooltips also leave out the series that have no value at the hovered point – a projection before it starts, costs in a month not yet lived – instead of listing them as empty rows; an option with its own formatter keeps it.
 - `sb-odometer` `drum`: a digit sits high in its line box, so on a drum each rode above its face's centre and the neighbour above slid out of the window while the one below slid in. Digits and separators are trimmed to the cap height (`text-box`) and centred, so both neighbours show and the decimal mark keeps the baseline.
 - `sb-sparkline` and `sb-gauge` kept the old theme's colours after a pick on the theme switch (and after the system flipped under "auto") until their data next changed: they read colours at paint time but were never asked to paint. They now repaint on `sb-theme-change` and on `prefers-color-scheme` changes.

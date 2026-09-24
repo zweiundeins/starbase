@@ -128,6 +128,34 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	v.Autoloader = snippet(importMap(datastarCDN) +
 		fmt.Sprintf("<script type=\"module\" src=\"%s/c/autoloader.js\"></script>\n\n%s", base, preview))
 
+	// Integrity for everything the page will load: Datastar, and every file
+	// these components ship (the module, plus what it imports itself, like
+	// code-editor's Prism). A script tag's integrity covers only that file, so
+	// the imported ones are pinned through the import map.
+	var entries strings.Builder
+	fmt.Fprintf(&entries, "      %q: %q", datastarCDN, s.assets.datastarSRI)
+	for _, d := range all {
+		for _, f := range d.Sizes.Files {
+			p := catalog.MinOf(f.Name)
+			sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, p)
+			if err != nil {
+				return v, err
+			}
+			if sri != "" {
+				fmt.Fprintf(&entries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
+			}
+		}
+	}
+	pinnedMap := fmt.Sprintf(`<script type="importmap">
+  {
+    "imports": { "datastar": %q },
+    "integrity": {
+%s
+    }
+  }
+</script>
+`, datastarCDN, entries.String())
+
 	// This component (and what it renders), pinned to this version.
 	var scripts strings.Builder
 	for _, d := range all {
@@ -137,7 +165,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 		}
 		fmt.Fprintf(&scripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, script, sri)
 	}
-	v.Component = snippet(importMap(datastarCDN) + scripts.String() + "\n" + preview)
+	v.Component = snippet(pinnedMap + scripts.String() + "\n" + preview)
 
 	// Today's catalog snapshot: its autoloader, and integrity for Datastar
 	// and every file this component loads (importmap.json has them all).
@@ -147,31 +175,9 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	}
 	v.ImportMap = fmt.Sprintf("%s/c/@%s/importmap.json", base, s.catalog.Hash)
 	if snapshotSRI != "" {
-		var entries strings.Builder
-		fmt.Fprintf(&entries, "      %q: %q", datastarCDN, s.assets.datastarSRI)
-		for _, d := range all {
-			for _, f := range d.Sizes.Files {
-				p := catalog.MinPath(f.Name)
-				sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, p)
-				if err != nil {
-					return v, err
-				}
-				if sri != "" {
-					fmt.Fprintf(&entries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
-				}
-			}
-		}
-		v.Pinned = snippet(fmt.Sprintf(`<script type="importmap">
-  {
-    "imports": { "datastar": %q },
-    "integrity": {
-%s
-    }
-  }
-</script>
-<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
+		v.Pinned = snippet(pinnedMap + fmt.Sprintf(`<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
 
-%s`, datastarCDN, entries.String(), base, s.catalog.Hash, snapshotSRI, preview))
+%s`, base, s.catalog.Hash, snapshotSRI, preview))
 	}
 
 	// Self-host: the files, and an import map at your own Datastar.
@@ -180,7 +186,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 		g := ui.SelfHostGroup{Tag: d.Tag}
 		for _, f := range d.Sizes.Files {
 			u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
-			g.Files = append(g.Files, ui.SelfHostFile{Name: f.Name, Min: u + catalog.MinPath(f.Name), Readable: u + f.Name, Size: f.Size})
+			g.Files = append(g.Files, ui.SelfHostFile{Name: f.Name, Min: u + catalog.MinOf(f.Name), Readable: u + f.Name, Size: f.Size})
 		}
 		v.Files = append(v.Files, g)
 		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))

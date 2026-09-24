@@ -213,3 +213,50 @@ func TestInstallTabRemembered(t *testing.T) {
 		t.Errorf("another session sees selected %s, want 0", s)
 	}
 }
+
+// Every file a pinned tab loads is covered by integrity: a script tag's
+// integrity covers only that file, so what a module imports itself (Prism,
+// ECharts) must be in the import map's integrity, and every hash must match
+// the bytes served. Already-minified vendored files are their own .min.
+func TestInstallIntegrityCoversImports(t *testing.T) {
+	ts, c, bus, _ := newServerBus(t)
+	_ = bus
+	for slug, imported := range map[string]string{"code-editor": "vendor/prism.min.js", "echarts": "vendor/echarts.esm.min.js"} {
+		_, page := get(t, c, ts.URL+"/components/"+slug)
+		p := installPanels(t, page)
+		for _, tab := range []string{"this-component", "pinned"} {
+			m := integrityRe.FindStringSubmatch(p[tab])
+			if m == nil {
+				t.Errorf("%s %s: no integrity map:\n%s", slug, tab, p[tab])
+				continue
+			}
+			var entries map[string]string
+			if err := json.Unmarshal([]byte(m[1]), &entries); err != nil {
+				t.Fatalf("%s %s: %v", slug, tab, err)
+			}
+			found := false
+			for u, sri := range entries {
+				if strings.Contains(u, "datastar-rocket.js") {
+					continue // the CDN copy; its hash is checked in TestInstallSnippets
+				}
+				if strings.HasSuffix(u, "/"+imported) {
+					found = true
+				}
+				if got := servedSRI(t, c, strings.Replace(u, "http://localhost:7331", ts.URL, 1)); got != sri {
+					t.Errorf("%s %s: %s integrity %s, served %s", slug, tab, u, sri, got)
+				}
+			}
+			if !found {
+				t.Errorf("%s %s: %s is not pinned", slug, tab, imported)
+			}
+		}
+		for tab, snippet := range p {
+			if strings.Contains(snippet, ".min.min.") {
+				t.Errorf("%s %s mentions a file that does not exist (.min.min):\n%s", slug, tab, snippet)
+			}
+		}
+		if strings.Contains(page, ".min.min.") {
+			t.Errorf("%s: the page links a .min.min file", slug)
+		}
+	}
+}

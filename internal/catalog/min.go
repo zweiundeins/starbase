@@ -24,6 +24,15 @@ func MinPath(p string) string {
 	return strings.TrimSuffix(p, ext) + ".min" + ext
 }
 
+// MinOf is the minified file that ships for module file p: its .min sibling,
+// or p itself when p is already minified (a vendored "*.min.js").
+func MinOf(p string) string {
+	if IsMinPath(p) {
+		return p
+	}
+	return MinPath(p)
+}
+
 // IsMinPath reports whether p names a minified module file.
 func IsMinPath(p string) bool {
 	return strings.HasSuffix(p, ".min.js") || strings.HasSuffix(p, ".min.mjs")
