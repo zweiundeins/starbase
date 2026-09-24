@@ -21,11 +21,8 @@ const SPRITES = {
 	heart: ['.##.##.', '#+#####', '#######', '#######', '.#####.', '..###..', '...#...'],
 	star: ['...#...', '..###..', '#######', '.#+###.', '..###..', '.##.##.', '.#...#.'],
 }
-const path = (rows, ch) => {
-	let d = ''
-	rows.forEach((row, y) => [...row].forEach((c, x) => ch.includes(c) && (d += `M${x} ${y}h1v1h-1z`)))
-	return d
-}
+// One square per pixel whose character is in ch.
+const path = (rows, ch) => rows.map((row, y) => [...row].map((c, x) => (ch.includes(c) ? `M${x} ${y}h1v1h-1z` : '')).join('')).join('')
 
 // - Disabled is styled from the rendered row (aria-disabled), not
 //   :host([disabled]), which disabled="false" matches too.
@@ -57,19 +54,19 @@ const styles = /* css */ `
 .lg { --_size: 2.25rem; }
 .unit { position: relative; display: block; inline-size: var(--_size); block-size: var(--_size); }
 svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; fill: var(--_empty); }
-.full { fill: var(--_full); }
+.full { fill: var(--_full); clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0); }
 .shine { fill: var(--_shine); }
-.full { clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0); }
 :host(:dir(rtl)) .full { clip-path: inset(0 0 0 calc((1 - var(--fill, 0)) * 100%)); }
 .hot .full { filter: brightness(1.15); }
 `
 
 rocket('sb-rating', {
+	// oneOf() defaults to its first value.
 	props: ({ bool, number, oneOf, string }) => ({
 		value: number.min(0).docs({ description: 'The value. A new value from the server replaces it; the live value is the value property.' }),
 		max: number.clamp(1, 20).default(5).docs({ description: 'Number of hearts (or stars).' }),
-		precision: oneOf('1', '0.5').default('1').docs({ description: 'Step: whole or half units.' }),
-		icon: oneOf('heart', 'star').default('heart').docs({ description: 'Pixel sprite.' }),
+		precision: oneOf('1', '0.5').docs({ description: 'Step: whole or half units.' }),
+		icon: oneOf('heart', 'star').docs({ description: 'Pixel sprite.' }),
 		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Size.' }),
 		label: string.trim.docs({ description: 'Visible label (also the accessible name).' }),
 		readonly: bool.docs({ description: 'Show the value; no interaction.' }),
@@ -86,7 +83,7 @@ rocket('sb-rating', {
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		const step = () => Number(props.precision)
+		const step = () => +props.precision
 		const clamp = (v) => Math.min(props.max, Math.max(0, Math.round((Number(v) || 0) / step()) * step()))
 		$$.value = clamp(props.value)
 		$$.hover = -1 // preview while pointing, -1 when not
@@ -98,26 +95,25 @@ rocket('sb-rating', {
 		let served = host.hasAttribute('value') ? props.value : null
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				if (!host.hasAttribute('value')) return void (served = null)
-				if (props.value === served) return
-				served = props.value
-				$$.value = clamp(served)
+				if (!host.hasAttribute('value')) served = null
+				else if (props.value !== served) $$.value = clamp((served = props.value))
 			}),
 		)
 		watch.observe(host, { attributeFilter: ['value'] })
 		cleanup(() => watch.disconnect())
-		// A new max or precision re-clamps the current value.
-		observeProps(() => peek(() => ($$.value = clamp($$.value))), 'max', 'precision')
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(v))))
 		// Commands: the attribute is the server's value, $$.value the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.value !== clamp(props.value) ? states.add('pending') : states.delete('pending')))
-		effect(() => ($$.value, sync()))
-		observeProps(sync)
+		// $$.value is read first, so the effect always tracks it (props are not
+		// signals). Outside the effect, sync() is called inside peek().
+		const sync = () => ($$.value !== clamp(props.value) && props.confirm ? states.add('pending') : states.delete('pending'))
+		effect(sync)
+		// Any prop: a new max or precision re-clamps the current value (a no-op
+		// for the others: it is always clamped), and pending follows.
+		observeProps(() => peek(() => (($$.value = clamp($$.value)), sync())))
 		defineHostProp('revert', { value: () => peek(() => (($$.value = clamp(props.value)), sync())) })
-		$$.shown = () => ($$.hover >= 0 ? $$.hover : $$.value)
 
 		const commit = (v) => {
 			v = clamp(v)
@@ -140,7 +136,6 @@ rocket('sb-rating', {
 		const live = () => !props.readonly && !props.disabled
 		// A preview left from before readonly or disabled goes on the next move.
 		action('point', ({ evt }) => ($$.hover = live() ? at(evt) : -1))
-		action('leave', () => (($$.hover = -1), ($$.down = 0)))
 		// On pointerup, not click: a touch drag ends without a click. Only after
 		// a press on the row ($$down): a mouse drag that started elsewhere (e.g.
 		// selecting text) and ends over it picks nothing.
@@ -154,11 +149,10 @@ rocket('sb-rating', {
 		action('key', ({ evt }) => {
 			if (!live()) return
 			const s = rtl() ? -step() : step() // Left and Right follow the row
-			const keys = { ArrowRight: s, ArrowUp: step(), ArrowLeft: -s, ArrowDown: -step() }
-			if (evt.key in keys) commit($$.value + keys[evt.key])
-			else if (evt.key === 'Home') commit(0)
-			else if (evt.key === 'End') commit(props.max)
-			else return
+			// Home and End move by the whole range: commit() clamps to 0 and max.
+			const keys = { ArrowRight: s, ArrowUp: step(), ArrowLeft: -s, ArrowDown: -step(), Home: -props.max, End: props.max }
+			if (!(evt.key in keys)) return
+			commit($$.value + keys[evt.key])
 			$$.hover = -1
 			evt.preventDefault()
 		})
@@ -176,12 +170,12 @@ rocket('sb-rating', {
 				aria-label="${label ? null : 'Rating'}"
 				aria-valuemin="0"
 				aria-valuemax="${max}"
-				aria-readonly="${readonly ? 'true' : null}"
-				aria-disabled="${disabled ? 'true' : null}"
+				aria-readonly="${readonly && 'true'}"
+				aria-disabled="${disabled && 'true'}"
 				data-attr:aria-valuenow="$$value"
 				data-attr:aria-valuetext="$$value + ' of ${max}'"
 				data-on:pointermove="@point()"
-				data-on:pointerleave="@leave()"
+				data-on:pointerleave="$$hover = -1; $$down = 0"
 				data-on:pointerdown="$$down = 1"
 				data-on:pointerup="@pick()"
 				data-on:keydown="@key()"
@@ -194,7 +188,7 @@ rocket('sb-rating', {
 					// letters and digits.
 					(_, i) => html`<span class="unit" part="unit"
 						data-class:hot="$$hover > ${i}"
-						data-style:--fill="Math.max(0, Math.min(1, $$shown - ${i}))">${svg`<svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path data-attr:d="'${body}'"></path></svg><svg class="full" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path data-attr:d="'${body}'"></path><path class="shine" data-attr:d="'${shine}'"></path></svg>`}</span>`,
+						data-style:--fill="Math.max(0, Math.min(1, ($$hover >= 0 ? $$hover : $$value) - ${i}))">${svg`<svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path data-attr:d="'${body}'"></path></svg><svg class="full" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path data-attr:d="'${body}'"></path><path class="shine" data-attr:d="'${shine}'"></path></svg>`}</span>`,
 				)}
 			</div>
 		`
