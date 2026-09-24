@@ -111,7 +111,7 @@ rocket('sb-slider', {
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a form.' }),
 	}),
 	manifest: {
 		events: [
@@ -166,7 +166,17 @@ rocket('sb-slider', {
 		watch.observe(host, { attributeFilter: ['value'] })
 		cleanup(() => watch.disconnect())
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
-		defineHostProp('revert', { value: () => peek(() => ($$.value = clamp(props.value))) })
+		const revert = () => peek(() => ($$.value = clamp(props.value)))
+		defineHostProp('revert', { value: revert })
+		// Forms: until Rocket can make this element form-associated, join the
+		// submissions and resets of the form it sits in. `formdata` also fires
+		// for new FormData(form), so Datastar's contentType: 'form' posts
+		// include it. A reset is revert(): the server's value, no events.
+		const form = host.closest('form')
+		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
+		form?.addEventListener('formdata', onData)
+		form?.addEventListener('reset', revert)
+		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', revert)))
 		action('commit', () => {
 			states.has('pending') && sent.push($$.value)
 			emit('change')

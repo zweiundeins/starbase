@@ -108,7 +108,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in sb-change (e.g. the field of a command)."
+        "description": "Name reported in sb-change (e.g. the field of a command) and submitted with a form."
       }
     }
   ],
