@@ -35,19 +35,6 @@ const dedent = (text) => {
 let Prism
 const highlight = (src, lang) => (Prism ? Prism.highlight(src, Prism.languages[lang], lang) : src.replace(/&/g, '&amp;').replace(/</g, '&lt;')) + '\n'
 
-// The styles ship as written, so their notes live here:
-// - The scroller is a grid: its one child fills --sb-code-editor-min-height.
-// - Gutter | code. The grid is at least the viewport and grows with the
-//   longest line, so the textarea and <pre> always line up. The gutter is at
-//   least 3rem whatever the lines' length, so the code never shifts sideways
-//   (and the textarea has cols="1": its default 20 columns set a minimum width).
-// - One font, size and line height for the textarea, the highlighted <pre> and
-//   the gutter: the caret and the colours must line up. The browser gives
-//   <code> its own monospace font; a second font on every line makes each line
-//   box taller, and the highlighting drifts away from the caret and the line
-//   numbers. So <code> takes the <pre>'s font, size and line height.
-// - Prism tokens are coloured from theme tokens. Code inside attributes and
-//   templates keeps the base text colour.
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-inset, #0B1224);
@@ -64,6 +51,7 @@ const styles = /* css */ `
 }
 :host([hidden]) { display: none; }
 .label { display: block; margin-block-end: 0.4rem; color: var(--sb-text-2, #AEBBDD); font-size: 0.8125rem; font-weight: 600; }
+/* A grid, so its one child fills --sb-code-editor-min-height. */
 .scroller {
 	display: grid;
 	overflow: auto;
@@ -75,6 +63,10 @@ const styles = /* css */ `
 	scrollbar-width: thin;
 }
 .scroller:focus-within { border-color: var(--_brand); }
+/* Gutter | code. The grid is at least the viewport and grows with the
+   longest line, so the textarea and <pre> always line up. The gutter is at
+   least 3rem whatever the lines' length, so the code never shifts sideways
+   (and the textarea has cols="1": its default 20 columns set a minimum width). */
 .grid { display: grid; grid-template-columns: minmax(3rem, auto) 1fr; inline-size: max-content; min-inline-size: 100%; }
 .no-gutter .grid { grid-template-columns: 1fr; }
 .no-gutter .gutter { display: none; }
@@ -94,12 +86,16 @@ const styles = /* css */ `
 pre, textarea, .gutter {
 	margin: 0;
 	font-family: var(--_font);
+	/* One size for the textarea, the highlighted <pre> and the gutter: the caret and the colours must line up. */
 	font-size: var(--_code-size);
 	line-height: 1.6;
 	white-space: pre;
 	tab-size: inherit;
 	font-variant-ligatures: none;
 }
+/* The browser gives <code> its own monospace font: a second font on every
+   line makes each line box taller, and the highlighting drifts away from the
+   caret and the line numbers. It takes the <pre>'s font, size and line height. */
 pre code { font: inherit; }
 pre, textarea { padding: 0.75rem 1rem; border: 0; }
 pre { color: var(--_text); pointer-events: none; }
@@ -116,6 +112,7 @@ textarea {
 	-webkit-text-fill-color: transparent;
 }
 textarea::selection { background: var(--_sel); -webkit-text-fill-color: transparent; }
+/* Prism tokens, coloured from theme tokens. */
 .token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--_muted); font-style: italic; }
 .token.string, .token.attr-value, .token.url { color: var(--sb-code-string, #6EF59A); }
 .token.number, .token.boolean, .token.constant { color: var(--sb-code-number, #F5C451); }
@@ -123,6 +120,7 @@ textarea::selection { background: var(--_sel); -webkit-text-fill-color: transpar
 .token.function, .token.class-name, .token.attr-name, .token.property { color: var(--sb-code-function, #CBBEFF); }
 .token.tag, .token.selector { color: var(--sb-code-tag, #65BFFF); }
 .token.punctuation, .token.operator { color: var(--_muted); }
+/* Code inside attributes and templates keeps the base text colour. */
 .token.embedded-code, .token.script, .token.style, .token.interpolation, .token.value.javascript { color: var(--_text); }
 `
 
@@ -227,9 +225,10 @@ rocket('sb-code-editor', {
 				if (!e.shiftKey && s === t) return insert(area, '\t')
 				// (De)indent the selected lines, whole, but not a line the selection
 				// only reaches at its column 0. Shift+Tab alone outdents the caret's
-				// line and keeps the caret where it was in the text.
+				// line and keeps the caret where it was in the text. (At 0 the line
+				// starts at 0: lastIndexOf('\n', -1) would still find a newline at v[0].)
 				if (t > s && v[t - 1] === '\n') t--
-				const a = v.lastIndexOf('\n', s - 1) + 1
+				const a = s && v.lastIndexOf('\n', s - 1) + 1
 				const b = (v.indexOf('\n', t) + 1 || v.length + 1) - 1
 				const block = v.slice(a, b)
 				const next = e.shiftKey ? block.replace(/^(\t| {1,2})/gm, '') : block.replace(/^/gm, '\t')
