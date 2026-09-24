@@ -111,6 +111,16 @@
       "docs": {
         "description": "Decimals of the shown value."
       }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "What the chart shows, named first in its accessible label."
+      }
     }
   ],
   "slots": [],
