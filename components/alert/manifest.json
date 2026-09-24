@@ -52,6 +52,10 @@
     {
       "name": "default",
       "description": "The message."
+    },
+    {
+      "name": "icon",
+      "description": "Replaces the status light, e.g. with an icon per variant. Mark it aria-hidden=\"true\" when the text names the severity."
     }
   ],
   "events": [
