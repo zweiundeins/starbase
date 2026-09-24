@@ -42,7 +42,7 @@ const styles = /* css */ `
 }
 :host([hidden]) { display: none; }
 .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
-.label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
+label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 .control { display: flex; gap: 0.5rem; }
 input {
 	all: unset;
@@ -55,17 +55,15 @@ input {
 	border-radius: var(--_radius);
 	background: var(--_bg);
 	color: var(--_text);
-	font: inherit;
 	transition: border-color 120ms, box-shadow 120ms;
 }
 input::placeholder { color: var(--_placeholder); }
 input:hover { border-color: var(--_border-hover); }
 input:focus-visible { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); }
-/* Invisible, except in forced colors, where the box-shadows are dropped. */
-input:focus-visible, .go:focus-visible { outline: 2px solid transparent; outline-offset: 2px; }
-.invalid input { border-color: var(--_danger); }
-.invalid input:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--_danger) 20%, transparent); }
-.go {
+/* Invalid: aria-invalid follows the validation state. */
+input[aria-invalid=true] { border-color: var(--_danger); }
+input[aria-invalid=true]:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--_danger) 20%, transparent); }
+button {
 	all: unset;
 	display: grid;
 	place-items: center;
@@ -79,11 +77,14 @@ input:focus-visible, .go:focus-visible { outline: 2px solid transparent; outline
 	cursor: pointer;
 	transition: background 120ms, transform 120ms;
 }
-.go:hover { background: var(--_brand); color: var(--_on-brand); transform: translate(1px); }
+button:hover { background: var(--_brand); color: var(--_on-brand); transform: translate(1px); }
 /* Right to left, the arrow and its nudge point the other way. */
-:host(:dir(rtl)) .go { scale: -1 1; }
-.go:focus-visible { box-shadow: 0 0 0 2px var(--_bg), 0 0 0 4px var(--_brand-light); }
-.go svg { inline-size: 1.15rem; block-size: 1.15rem; }
+:host(:dir(rtl)) button { scale: -1 1; }
+button:focus-visible { box-shadow: 0 0 0 2px var(--_bg), 0 0 0 4px var(--_brand-light); }
+/* The input and the button (the only focusable elements): invisible, except
+   in forced colors, where the box-shadows are dropped. */
+:focus-visible { outline: 2px solid transparent; outline-offset: 2px; }
+svg { inline-size: 1.15rem; block-size: 1.15rem; }
 .hint, .error { font-size: 0.75rem; }
 .hint { color: var(--_placeholder); }
 .error { color: var(--_danger); }
@@ -192,8 +193,8 @@ rocket('sb-input', {
 	// error is a polite live region: it can change on every keystroke.
 	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action } }) => html`
 		<div class="field">
-			${label ? html`<label class="label" part="label" for="i">${label}</label>` : null}
-			<span class="control" data-class:invalid="$$invalid">
+			${label ? html`<label part="label" for="i">${label}</label>` : null}
+			<span class="control">
 				<input
 					id="i"
 					part="input"
@@ -210,7 +211,7 @@ rocket('sb-input', {
 					data-on:change="@commit()"
 					data-on:keydown="evt.keyCode == 13 && !evt.isComposing && @submit()"
 				/>
-				${action ? html`<button class="go" type="button" part="button" aria-label="Submit" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
+				${action ? html`<button type="button" part="button" aria-label="Submit" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
 			</span>
 			<span class="error" id="e" aria-live="polite" data-text="$$message"></span>
 			${hint ? html`<span class="hint" id="h" data-show="!$$invalid">${hint}</span>` : null}
