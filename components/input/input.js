@@ -118,8 +118,12 @@ rocket('sb-input', {
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		// The state kept from before a re-attach, or a fresh one.
-		;[$$.value, $$.touched, $$.invalid, $$.message] = kept.get(host) ?? [props.value, false, false, '']
+		let served = host.getAttribute('value')
+		let rev = host.getAttribute('rev')
+		// The state kept from before a re-attach, if the server's value and rev
+		// are still the ones it had seen; else a fresh one.
+		const k = kept.get(host)
+		;[$$.value, $$.touched, $$.invalid, $$.message] = k?.[4] === served && k[5] === rev ? k : [props.value, false, false, '']
 
 		const field = () => host.shadowRoot?.querySelector('input')
 		const validate = () => {
@@ -143,8 +147,6 @@ rocket('sb-input', {
 		// value wins even when it is the same as before. Why not observeProps:
 		// it only fires when the decoded value changes, so value="" on an element
 		// that had no value attribute would go unnoticed.
-		let served = host.getAttribute('value')
-		let rev = host.getAttribute('rev')
 		const watch = new MutationObserver(() =>
 			peek(() => {
 				const v = host.getAttribute('value')
@@ -155,7 +157,9 @@ rocket('sb-input', {
 			}),
 		)
 		watch.observe(host, { attributeFilter: ['value', 'rev'] })
-		cleanup(() => watch.disconnect())
+		// Detached: what the kept state had seen of the server. A change not yet
+		// observed, or made while detached, then starts afresh on re-attach.
+		cleanup(() => (watch.disconnect(), kept.get(host)?.push(served, rev)))
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => set(String(v ?? ''))))
 
 		// Commands: with confirm, :state(pending) marks an edit the server hasn't
