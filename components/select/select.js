@@ -364,7 +364,8 @@ rocket('sb-select', {
 			change()
 			input()?.focus()
 		})
-		action('blur', () => setTimeout(() => host.shadowRoot?.activeElement || setOpen(false), 0))
+		// Removing a focused select blurs it too: its signals are gone by then.
+		action('blur', () => setTimeout(() => host.isConnected && (host.shadowRoot.activeElement || setOpen(false)), 0))
 		let buf = '' // type-ahead, without searchable or remote
 		let typer = 0
 		action('key', ({ evt }) => {
@@ -403,7 +404,7 @@ rocket('sb-select', {
 				default: {
 					// Type-ahead: a letter moves to the next option that starts with
 					// it (the same letter again cycles), more letters refine the match.
-					if ($$.typing || evt.key.length > 1 || evt.ctrlKey || evt.metaKey) return
+					if ($$.typing || evt.key.length > 1 || evt.ctrlKey || evt.metaKey || evt.altKey) return
 					clearTimeout(typer)
 					typer = setTimeout(() => (buf = ''), 500)
 					const q = (buf += fold(evt.key)).replace(/^(.)\1+$/, '$1')
