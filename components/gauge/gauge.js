@@ -22,7 +22,8 @@ const W = 80, H = 44, CX = 40, CY = 40, R_OUT = 37, R_IN = 30
 // The <i> holds the dial's colours, which paint reads: CSS resolves the
 // tokens (fallbacks, light-dark()), and a change to any of them, from any
 // cause (a theme switch, a theme scoped to a container, the system's light or
-// dark mode), runs its transition, which repaints the dial. It is not a part,
+// dark mode), runs its transition, whose end repaints the dial (at
+// transitionrun a browser may still compute the old colour). It is not a part,
 // so a page's ::part() rules can't reach it, and never forced, like the canvas.
 const styles = /* css */ `
 :host {
@@ -82,7 +83,7 @@ rocket('sb-gauge', {
 	},
 	render: ({ html, props: { label, min, max } }) => html`
 		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true"></canvas>
-		<i data-on:transitionrun="@repaint()"></i>
+		<i data-on:transitionend="@repaint()"></i>
 		<div class="readout" role="meter" aria-valuemin="${min}" aria-valuemax="${max}" aria-label="${label || 'Gauge'}"
 			data-attr:aria-valuenow="$$now" data-attr:aria-valuetext="$$shown">
 			<span class="value" part="value" data-text="$$shown"></span>
