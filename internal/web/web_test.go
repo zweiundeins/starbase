@@ -2,8 +2,10 @@ package web_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/andybalholm/brotli"
 	"io"
 	"log/slog"
 	"net/http"
@@ -647,5 +649,36 @@ func TestUnlistedComponent(t *testing.T) {
 	_, sitemap := get(t, c, ts.URL+"/sitemap.xml")
 	if strings.Contains(sitemap, "/components/code-playground") {
 		t.Error("the sitemap lists an unlisted component")
+	}
+}
+
+// Immutable assets go out precompressed: brotli when accepted, decoding to
+// exactly the original bytes, and never compressed a second time by the
+// middleware.
+func TestPrecompressedAssets(t *testing.T) {
+	ts, _, _, cat := newServerBus(t)
+	button, _ := cat.Get("button")
+	client := &http.Client{Transport: &http.Transport{DisableCompression: true}} // see the raw encoding
+	for _, u := range []string{"/c/" + button.VersionedMinScript(), "/c/" + button.VersionedScript(), "/c/autoloader.js", "/c/bundle.js"} {
+		want, _ := func() ([]byte, error) {
+			req, _ := http.NewRequest("GET", ts.URL+u, nil)
+			res, err := client.Do(req) // identity
+			if err != nil {
+				return nil, err
+			}
+			defer res.Body.Close()
+			return io.ReadAll(res.Body)
+		}()
+		req, _ := http.NewRequest("GET", ts.URL+u, nil)
+		req.Header.Set("Accept-Encoding", "gzip, br")
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, _ := io.ReadAll(brotli.NewReader(res.Body))
+		res.Body.Close()
+		if res.Header.Get("Content-Encoding") != "br" || !bytes.Equal(got, want) || len(want) == 0 {
+			t.Errorf("%s: Content-Encoding %q, round trip ok=%v (%d bytes)", u, res.Header.Get("Content-Encoding"), bytes.Equal(got, want), len(want))
+		}
 	}
 }

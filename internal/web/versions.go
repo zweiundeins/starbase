@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"net/http"
 	"regexp"
+	"starbase/internal/precompress"
 	"strings"
 
 	"starbase/internal/catalog"
@@ -70,7 +71,7 @@ func (s *Server) serveVersioned(w http.ResponseWriter, r *http.Request, slug, ha
 		return
 	}
 	s.immutableModule(w, "text/javascript; charset=utf-8")
-	w.Write(body)
+	precompress.Write(w, r, body)
 }
 
 func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request, hash, file string) {
@@ -98,7 +99,7 @@ func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request, hash, fil
 	}
 	if file == "autoloader.js" {
 		s.immutableModule(w, "text/javascript; charset=utf-8")
-		w.Write([]byte(auto))
+		precompress.Write(w, r, []byte(auto))
 		return
 	}
 	// Merge "integrity" into your import map; browsers then refuse any
@@ -109,9 +110,8 @@ func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request, hash, fil
 		m[base+f.Slug+"@"+f.Hash+"/"+f.Path] = f.Integrity
 	}
 	s.immutableModule(w, "application/json")
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	enc.Encode(map[string]any{"integrity": m})
+	body, _ := json.MarshalIndent(map[string]any{"integrity": m}, "", "  ")
+	precompress.Write(w, r, append(body, '\n'))
 }
 
 func (s *Server) immutableModule(w http.ResponseWriter, contentType string) {

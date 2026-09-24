@@ -1,6 +1,8 @@
 package web
 
 import (
+	"path"
+
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"starbase/internal/precompress"
 	"strconv"
 	"strings"
 
@@ -70,6 +73,7 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 		"site.css":   a.bundleCSS(staticFS, siteStylesheets, css),
 		"runner.css": a.bundleCSS(staticFS, runnerStylesheets, ""),
 	}
+	go a.warm() // after every field is set: it reads them concurrently
 	return a
 }
 
@@ -144,13 +148,13 @@ func (a *assets) serveBundle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // the runner's opaque origin loads it
 	a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
-	w.Write(g.body)
+	precompress.Write(w, r, g.body)
 }
 
 func (a *assets) serveAutoTheme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	a.cacheHeader(w, r.URL.Query().Get("v") == a.autoTheme.hash)
-	w.Write(a.autoTheme.body)
+	precompress.Write(w, r, a.autoTheme.body)
 }
 
 func (a *assets) Static(name string) string { return "/static/" + a.static.HashName(name) }
@@ -213,8 +217,29 @@ func (a *assets) serveStatic() http.Handler {
 		case hash != "":
 			w = cacheWriter{w, immutable} // the name changes with the content
 		}
+		// Text assets go out precompressed (brotli -11); fonts and images are
+		// compressed formats already and keep the file server (ranges etc.).
+		name := strings.TrimPrefix(r.URL.Path, "/static/")
+		if ctype, ok := precompressedTypes[path.Ext(name)]; ok && fs.ValidPath(name) {
+			if body, err := fs.ReadFile(a.static, name); err == nil {
+				w.Header().Set("Content-Type", ctype)
+				precompress.Write(w, r, body)
+				return
+			}
+		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+// precompressedTypes are the static files served precompressed.
+var precompressedTypes = map[string]string{
+	".js":   "text/javascript; charset=utf-8",
+	".mjs":  "text/javascript; charset=utf-8",
+	".css":  "text/css; charset=utf-8",
+	".svg":  "image/svg+xml",
+	".json": "application/json",
+	".map":  "application/json",
+	".txt":  "text/plain; charset=utf-8",
 }
 
 // cacheWriter overrides hashfs's Cache-Control: no-store in development,
@@ -244,7 +269,7 @@ func (a *assets) serveArt(w http.ResponseWriter, r *http.Request) {
 	if !a.dev && r.URL.Query().Get("v") == "" {
 		w.Header().Set("Cache-Control", "public, max-age=86400") // e.g. linked from docs; art rarely changes
 	}
-	w.Write(g.body)
+	precompress.Write(w, r, g.body)
 }
 
 // serveComponents serves /c/index.js and /c/<slug>/<file>.js from the
@@ -255,7 +280,7 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*") // usable from any site
 		a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
-		w.Write(g.body)
+		precompress.Write(w, r, g.body)
 		return
 	}
 	// A component's own .js and .mjs files are public (its module, plus
@@ -281,5 +306,33 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // installable from other sites and the sandbox
 	a.cacheHeader(w, r.URL.Query().Get("v") == c.Hash)
-	w.Write(b)
+	precompress.Write(w, r, b)
+}
+
+// warm precompresses the generated and static text assets in the
+// background, one at a time (the service runs under a tight memory limit), so
+// the first request after a deploy doesn't wait for brotli -11. The component
+// modules are warm already: the catalog's size tables compressed them.
+func (a *assets) warm() {
+	for _, g := range []generated{a.components, a.autoloader, a.bundle, a.autoTheme} {
+		if g.body != nil {
+			precompress.Get(g.body)
+		}
+	}
+	for _, g := range a.bundles {
+		precompress.Get(g.body)
+	}
+	for _, g := range a.art {
+		precompress.Get(g.body)
+	}
+	fs.WalkDir(a.static, ".", func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			if _, ok := precompressedTypes[path.Ext(p)]; ok {
+				if b, err := fs.ReadFile(a.static, p); err == nil {
+					precompress.Get(b)
+				}
+			}
+		}
+		return nil
+	})
 }

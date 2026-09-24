@@ -1,15 +1,12 @@
 package catalog
 
 import (
-	"bytes"
-	"compress/gzip"
 	"io/fs"
-	"math/bits"
 	"slices"
 	"strings"
 	"sync"
 
-	"github.com/andybalholm/brotli"
+	"starbase/internal/precompress"
 )
 
 // Size is what a file (or a group of files) weighs over the wire. Min is
@@ -39,23 +36,16 @@ type Sizes struct {
 	Total Size        // Own plus Uses
 }
 
+// compressed measures b the way it is served: precompress keeps the brotli
+// and gzip bytes it computes here, so the server sends exactly these.
 func compressed(b []byte) Size {
-	var gz bytes.Buffer
-	zw, _ := gzip.NewWriterLevel(&gz, gzip.BestCompression)
-	zw.Write(b)
-	zw.Close()
-	return Size{Raw: len(b), Gzip: gz.Len(), Brotli: brotliLen(b)}
+	br, gz := precompress.Get(b)
+	return Size{Raw: len(b), Gzip: len(gz), Brotli: len(br)}
 }
 
 func brotliLen(b []byte) int {
-	var br bytes.Buffer
-	// A window just larger than the file compresses the same and keeps the
-	// encoder's memory small (the default window is 4 MB).
-	win := max(10, min(24, bits.Len(uint(len(b)))+1))
-	bw := brotli.NewWriterOptions(&br, brotli.WriterOptions{Quality: brotli.BestCompression, LGWin: win})
-	bw.Write(b)
-	bw.Close()
-	return br.Len()
+	br, _ := precompress.Get(b)
+	return len(br)
 }
 
 // Uses returns the catalog components c renders itself (found as <sb-… in

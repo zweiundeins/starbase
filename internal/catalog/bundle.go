@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -16,6 +17,19 @@ import (
 // instead of being inlined, so a library a component loads on demand (ECharts)
 // is not pulled into every page.
 func (cat *Catalog) Bundle() ([]byte, error) {
+	if b, ok := bundleCache.Load(cat.Hash); ok {
+		return b.([]byte), nil
+	}
+	b, err := cat.bundle()
+	if err == nil {
+		bundleCache.Store(cat.Hash, b)
+	}
+	return b, err
+}
+
+var bundleCache sync.Map // Catalog.Hash → bundle bytes (a process loads the same catalog many times)
+
+func (cat *Catalog) bundle() ([]byte, error) {
 	var entry strings.Builder
 	for _, c := range cat.Components {
 		fmt.Fprintf(&entry, "import %q\n", "./"+c.Script)
