@@ -98,6 +98,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /cmd/flight", s.cmdFlight) // the Showcase's commands demo
 	mux.HandleFunc("POST /cmd/theme-style/{style}", s.cmdThemeStyle)
 	mux.HandleFunc("POST /cmd/snippet", s.cmdSnippet)
+	mux.HandleFunc("POST /cmd/install-tab", s.cmdInstallTab)
 	mux.HandleFunc("POST /cmd/paint", s.cmdPaint)
 
 	// Auth.

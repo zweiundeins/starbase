@@ -1289,6 +1289,33 @@
 		}
 	}
 
+	/* Installation: one panel per way of loading a component. */
+	.install-tabs {
+		margin-block: var(--sb-space-4);
+	}
+
+	.install-panel {
+		display: grid;
+		gap: var(--sb-space-3);
+
+		& > p {
+			margin: 0;
+		}
+	}
+
+	.install-files {
+		margin: 0;
+		font-size: var(--sb-font-size-2);
+
+		& ul {
+			margin-block: var(--sb-space-1) 0;
+		}
+
+		& .muted {
+			font-variant-numeric: tabular-nums;
+		}
+	}
+
 	/* Numbers line up on the right; the total row stands out. */
 	.size-table {
 		& :is(th, td):not(:first-child) {

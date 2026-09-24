@@ -63,6 +63,25 @@ func (cat *Catalog) Uses(c *Component) []*Component {
 	return out
 }
 
+// Deps returns every catalog component c renders, transitively (depth
+// first, in order of first appearance): what a page needs besides c itself.
+func (cat *Catalog) Deps(c *Component) []*Component {
+	seen := map[*Component]bool{c: true}
+	var out []*Component
+	var walk func(*Component)
+	walk = func(d *Component) {
+		for _, u := range cat.Uses(d) {
+			if !seen[u] {
+				seen[u] = true
+				out = append(out, u)
+				walk(u)
+			}
+		}
+	}
+	walk(c)
+	return out
+}
+
 // ownSizes caches each component version's own Sizes by its content hash:
 // brotli -11 is slow, and a process (a test binary above all) loads the
 // same catalog many times.
@@ -123,19 +142,10 @@ func (cat *Catalog) computeSizes() error {
 	for _, c := range cat.Components {
 		s := own[c]
 		s.Total = s.Own
-		seen := map[*Component]bool{c: true}
-		var walk func(*Component)
-		walk = func(d *Component) {
-			for _, u := range cat.Uses(d) {
-				if !seen[u] {
-					seen[u] = true
-					s.Uses = append(s.Uses, NamedSize{u.Tag, own[u].Own})
-					s.Total = s.Total.Add(own[u].Own)
-					walk(u)
-				}
-			}
+		for _, u := range cat.Deps(c) {
+			s.Uses = append(s.Uses, NamedSize{u.Tag, own[u].Own})
+			s.Total = s.Total.Add(own[u].Own)
 		}
-		walk(c)
 		c.Sizes = s
 	}
 	return nil

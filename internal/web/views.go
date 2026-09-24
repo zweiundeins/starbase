@@ -68,17 +68,10 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	if card == nil {
 		return view{}, errNotFound
 	}
-	_, snapshotSRI, _, err := rc.r.Snapshot(rc.ctx, s.catalog.Hash)
+	install, err := s.install(rc, comp)
 	if err != nil {
 		return view{}, err
 	}
-	// The minified module's integrity is the frozen one, from when this
-	// version was first published (see catalog/min.go).
-	_, minSRI, _, err := rc.r.ComponentFile(rc.ctx, comp.Slug, comp.Hash, catalog.MinPath(strings.TrimPrefix(comp.Script, comp.Slug+"/")))
-	if err != nil {
-		return view{}, err
-	}
-	install := s.installSnippet(comp, snapshotSRI, minSRI)
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
 	repo := strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug
 	schema := map[string]any{
@@ -105,8 +98,7 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 				Card:       *card,
 				Component:  comp,
 				Playground: comp.Playground(),
-				Install:    catalog.Highlight(install, "html"),
-				InstallRaw: install,
+				Install:    install,
 				EditURL:    strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug,
 			})
 		},
@@ -117,42 +109,96 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 // byte-identical to static/vendor/datastar-rocket.js (so its SRI is ours).
 const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js"
 
-func (s *Server) installSnippet(c *catalog.Component, snapshotSRI, minSRI string) string {
+// install builds a component page's Installation tabs (model.InstallTabs).
+// Every snippet is exactly what to paste: the explanations are the page's.
+func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, error) {
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
-	script, sri := c.VersionedMinScript(), minSRI
-	if sri == "" { // this version isn't stored yet: offer the readable file
-		script, sri = c.VersionedScript(), c.Integrity
+	preview := strings.TrimSpace(c.Preview)
+	deps := s.catalog.Deps(c)
+	all := append([]*catalog.Component{c}, deps...)
+	v := ui.InstallView{Tab: rc.prefs.InstallTabOrDefault(), Datastar: datastarCDN}
+	for _, d := range deps {
+		v.Deps = append(v.Deps, d.Tag)
 	}
-	pinned := ""
+	snippet := func(raw string) ui.Snippet { return ui.Snippet{Raw: raw, HTML: catalog.Highlight(raw, "html")} }
+	importMap := func(datastar string) string {
+		return fmt.Sprintf("<script type=\"importmap\">\n  { \"imports\": { \"datastar\": %q } }\n</script>\n", datastar)
+	}
+
+	v.Autoloader = snippet(importMap(datastarCDN) +
+		fmt.Sprintf("<script type=\"module\" src=\"%s/c/autoloader.js\"></script>\n\n%s", base, preview))
+
+	// This component (and what it renders), pinned to this version.
+	var scripts strings.Builder
+	for _, d := range all {
+		script, sri, err := s.pinnedScript(rc, d)
+		if err != nil {
+			return v, err
+		}
+		fmt.Fprintf(&scripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, script, sri)
+	}
+	v.Component = snippet(importMap(datastarCDN) + scripts.String() + "\n" + preview)
+
+	// Today's catalog snapshot: its autoloader, and integrity for Datastar
+	// and every file this component loads (importmap.json has them all).
+	_, snapshotSRI, _, err := rc.r.Snapshot(rc.ctx, s.catalog.Hash)
+	if err != nil {
+		return v, err
+	}
+	v.ImportMap = fmt.Sprintf("%s/c/@%s/importmap.json", base, s.catalog.Hash)
 	if snapshotSRI != "" {
-		pinned = fmt.Sprintf(`
-
-<!-- In production, pin today's catalog instead of the latest: the browser then
-     refuses any file that changed. Add "integrity" to the import map above: the
-     hashes from %[1]s/c/@%[2]s/importmap.json and Datastar's, below. -->
-<!--
-<script type="importmap">
-  { "imports": { "datastar": "%[4]s" },
-    "integrity": { "%[4]s": "%[5]s", "…": "…from importmap.json" } }
+		var entries strings.Builder
+		fmt.Fprintf(&entries, "      %q: %q", datastarCDN, s.assets.datastarSRI)
+		for _, d := range all {
+			for _, f := range d.Sizes.Files {
+				p := catalog.MinPath(f.Name)
+				sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, p)
+				if err != nil {
+					return v, err
+				}
+				if sri != "" {
+					fmt.Fprintf(&entries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
+				}
+			}
+		}
+		v.Pinned = snippet(fmt.Sprintf(`<script type="importmap">
+  {
+    "imports": { "datastar": %q },
+    "integrity": {
+%s
+    }
+  }
 </script>
-<script type="module" src="%[1]s/c/@%[2]s/autoloader.js" integrity="%[3]s"></script>
--->`, base, s.catalog.Hash, snapshotSRI, datastarCDN, s.assets.datastarSRI)
+<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
+
+%s`, datastarCDN, entries.String(), base, s.catalog.Hash, snapshotSRI, preview))
 	}
-	return fmt.Sprintf(`<!-- Once per page: Datastar with Rocket, and the Starbase autoloader.
-     It loads every <sb-…> component the first time its tag appears. -->
-<script type="importmap">
-  { "imports": { "datastar": "%[5]s" } }
-</script>
-<script type="module" src="%[1]s/c/autoloader.js"></script>
-<!-- Optional, no flash of undefined elements: class="sb-cloak" on <html>, and -->
-<style>.sb-cloak :not(:defined) { visibility: hidden }</style>
 
-%[2]s%[6]s
+	// Self-host: the files, and an import map at your own Datastar.
+	var own strings.Builder
+	for _, d := range all {
+		g := ui.SelfHostGroup{Tag: d.Tag}
+		for _, f := range d.Sizes.Files {
+			u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
+			g.Files = append(g.Files, ui.SelfHostFile{Name: f.Name, Min: u + catalog.MinPath(f.Name), Readable: u + f.Name, Size: f.Size})
+		}
+		v.Files = append(v.Files, g)
+		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))
+	}
+	v.SelfHost = snippet(importMap("/js/datastar-rocket.js") + own.String() + "\n" + preview)
+	return v, nil
+}
 
-<!-- Or load just this component, pinned to this version. The minified module
-     is what the autoloader uses; the readable source is the same URL without .min. -->
-<!-- <script type="module" src="%[1]s/c/%[3]s" integrity="%[4]s"></script> -->`,
-		base, strings.TrimSpace(c.Preview), script, sri, datastarCDN, pinned)
+// pinnedScript is a component's module pinned to its version: the minified
+// file with its frozen integrity (from when this version was first
+// published, see catalog/min.go), or the readable file while this version
+// isn't stored yet.
+func (s *Server) pinnedScript(rc *renderCtx, c *catalog.Component) (script, sri string, err error) {
+	sri, err = rc.r.FileIntegrity(rc.ctx, c.Slug, c.Hash, catalog.MinPath(strings.TrimPrefix(c.Script, c.Slug+"/")))
+	if err != nil || sri == "" {
+		return c.VersionedScript(), c.Integrity, err
+	}
+	return c.VersionedMinScript(), sri, nil
 }
 
 func (s *Server) themesPage(rc *renderCtx) (view, error) {

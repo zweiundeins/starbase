@@ -70,6 +70,25 @@ func (r *Reader) Tab(ctx context.Context, sid, tabID string) (st model.TabState,
 	return st, true, nil
 }
 
+// Prefs returns the session's preferences (zero when nothing is stored).
+func (r *Reader) Prefs(ctx context.Context, sid string) (p model.SessionPrefs, err error) {
+	if sid == "" {
+		return p, nil
+	}
+	var raw string
+	err = r.tx.QueryRowContext(ctx, `SELECT data FROM session_prefs WHERE sid = ?`, sid).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return p, nil
+	}
+	if err != nil {
+		return p, err
+	}
+	if json.Unmarshal([]byte(raw), &p) != nil {
+		return model.SessionPrefs{}, nil
+	}
+	return p, nil
+}
+
 // Card is one component in the gallery.
 type Card struct {
 	Slug     string
@@ -270,6 +289,18 @@ func (r *Reader) ComponentFile(ctx context.Context, slug, hash, path string) (bo
 		return nil, "", false, nil
 	}
 	return body, integrity, err == nil, err
+}
+
+// FileIntegrity is the stored (frozen) SRI hash of one file of a component
+// version, or "" when that file isn't stored.
+func (r *Reader) FileIntegrity(ctx context.Context, slug, hash, path string) (string, error) {
+	var sri string
+	err := r.tx.QueryRowContext(ctx, `SELECT integrity FROM component_files WHERE slug = ? AND hash = ? AND path = ?`,
+		slug, hash, path).Scan(&sri)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return sri, err
 }
 
 // Snapshot is a published snapshot of the whole catalog.

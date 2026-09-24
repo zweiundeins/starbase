@@ -1,0 +1,68 @@
+package ui
+
+// Installation is a component page's install instructions: one tab per way
+// of loading it. The selected tab is a session preference (SetInstallTab),
+// so it carries across component pages and browser tabs.
+templ Installation(v InstallView) {
+	<h2 id="installation">Installation</h2>
+	<sb-tabs
+		class="install-tabs"
+		labels={ installLabels() }
+		selected={ installSelected(v.Tab) }
+		data-on:sb-change={ installChange() }
+	>
+		<div slot={ installSlot("autoloader") } class="install-panel">
+			<p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag: the autoloader imports each component the first time its tag appears, including tags a Datastar morph adds later.</p>
+			@snippetBlock(v.Autoloader)
+			<p class="muted">No flash of undefined elements: put <code>class="sb-cloak"</code> on <code>{ "<html>" }</code> and add <code>{ ".sb-cloak :not(:defined) { visibility: hidden }" }</code> to your CSS. The autoloader removes the class once the page's components are defined.</p>
+		</div>
+		<div slot={ installSlot("component") } class="install-panel">
+			<p>
+				Load just this component, pinned to this version: the minified module with its integrity hash, so the browser refuses it if a single byte changes.
+				if len(v.Deps) > 0 {
+					It renders
+					for i, t := range v.Deps {
+						<code>{ "<" + t + ">" }</code>{ depSep(i, len(v.Deps)) }
+					}
+				}
+			</p>
+			@snippetBlock(v.Component)
+		</div>
+		<div slot={ installSlot("pinned") } class="install-panel">
+			if v.Pinned.Raw != "" {
+				<p>In production, pin today's whole catalog: its autoloader and an import map with integrity hashes, so the browser refuses any file that changed. This map covers Datastar and this component; <a href={ safe(v.ImportMap) }>importmap.json</a> has the hashes of every component, to merge into yours.</p>
+				@snippetBlock(v.Pinned)
+			} else {
+				<p>Pinned URLs appear once this catalog version is published.</p>
+			}
+		</div>
+		<div slot={ installSlot("self-host") } class="install-panel">
+			<p>Components import only <code>datastar</code> and their own files, so copying the folder is enough: save these files, keeping each component's folder, and point the import map at your own copy of <a href={ safe(v.Datastar) }>datastar-rocket.js</a> (the <code>/js/</code> paths stand for yours).</p>
+			<ul class="install-files">
+				for _, g := range v.Files {
+					<li>
+						<code>{ "<" + g.Tag + ">" }</code>
+						<ul>
+							for _, f := range g.Files {
+								<li>
+									<code>{ f.Name }</code>
+									<a href={ safe(f.Min) }>minified</a> <span class="muted">{ fmtBytes(f.Size.Min) } brotli</span>
+									·
+									<a href={ safe(f.Readable) }>readable</a> <span class="muted">{ fmtBytes(f.Size.Raw) }, { fmtBytes(f.Size.Brotli) } brotli</span>
+								</li>
+							}
+						</ul>
+					</li>
+				}
+			</ul>
+			@snippetBlock(v.SelfHost)
+		</div>
+	</sb-tabs>
+}
+
+templ snippetBlock(sn Snippet) {
+	<div class="code-block">
+		<sb-copy-button class="code-copy" value={ sn.Raw }></sb-copy-button>
+		@templ.Raw(sn.HTML)
+	</div>
+}

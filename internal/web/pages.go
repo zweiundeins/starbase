@@ -43,7 +43,8 @@ type renderCtx struct {
 	sid   string
 	tabID string
 	user  *model.User
-	tab   model.TabState // stored state, or seeded from the query string
+	tab   model.TabState     // stored state, or seeded from the query string
+	prefs model.SessionPrefs // the session's preferences (known on the first GET too)
 }
 
 type pageFunc func(rc *renderCtx) (view, error)
@@ -73,7 +74,11 @@ func (s *Server) load(ctx context.Context, req *http.Request, tabID string, fn p
 		if !ok {
 			tab = model.TabState{Browse: model.BrowseFromQuery(req.URL.Query())}
 		}
-		v, err = fn(&renderCtx{ctx: ctx, r: r, req: req, sid: sid, tabID: tabID, user: user, tab: tab})
+		prefs, err := r.Prefs(ctx, sid)
+		if err != nil {
+			return err
+		}
+		v, err = fn(&renderCtx{ctx: ctx, r: r, req: req, sid: sid, tabID: tabID, user: user, tab: tab, prefs: prefs})
 		return err
 	})
 	return v, user, err

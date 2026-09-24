@@ -12,8 +12,7 @@ type ComponentView struct {
 	Card      queries.Card
 	Component *catalog.Component
 	Playground *catalog.Playground
-	Install   string // highlighted install snippet (HTML)
-	InstallRaw string
+	Install   InstallView
 	ScriptURL string
 	EditURL   string
 }
@@ -65,12 +64,7 @@ templ ComponentPage(s Shell, v ComponentView) {
 					@Playground(v.Playground)
 				}
 				@templ.Raw(v.Component.DocHTML)
-				<h2 id="installation">Installation</h2>
-				<p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag. The autoloader imports each component the first time its tag appears, including tags added later by a Datastar morph.</p>
-				<div class="code-block">
-					<sb-copy-button class="code-copy" value={ v.InstallRaw }></sb-copy-button>
-					@templ.Raw(v.Install)
-				</div>
+				@Installation(v.Install)
 				@SizeTable(v.Component.Sizes)
 				@APIReference(v.Component)
 			</article>

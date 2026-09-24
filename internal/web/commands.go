@@ -99,6 +99,19 @@ func (s *Server) cmdThemeStyle(w http.ResponseWriter, r *http.Request) {
 	s.send(w, r, commands.SetPreviewStyle{SID: sessionID(r), TabID: sig.TabID, Smooth: r.PathValue("style") == "smooth"})
 }
 
+// cmdInstallTab remembers the component pages' installation tab for the
+// session (a session preference: it carries across pages and browser tabs).
+func (s *Server) cmdInstallTab(w http.ResponseWriter, r *http.Request) {
+	var p struct {
+		Tab string `json:"tab"`
+	}
+	if err := datastar.ReadSignals(r, &p); err != nil {
+		http.Error(w, "bad payload", http.StatusBadRequest)
+		return
+	}
+	s.send(w, r, commands.SetInstallTab{SID: sessionID(r), Tab: p.Tab})
+}
+
 // cmdFlight is the Showcase's commands demo: one field per request, from a
 // component's sb-change ({name, value}). A short pause keeps the controls'
 // pending state visible.
