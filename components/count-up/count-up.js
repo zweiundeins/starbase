@@ -2,31 +2,31 @@ import { rocket } from 'datastar'
 
 // Counts a number up (or down) to its value when it scrolls into view.
 //
-// Three readers, three answers. Without JavaScript, and for search engines,
-// the server's text inside the element is the number. Screen readers always
-// get the final value, never the frames in between. Everyone else sees it
-// count, once, the first time it is on screen, and again from wherever it
-// stands whenever the server sends a new value while it is visible.
+// Three readers, three answers. Before the module loads, without JavaScript,
+// and for search engines, the server's text inside the element is the number.
+// Screen readers always get the final value, never the frames in between.
+// Everyone else sees it count, once, the first time it is on screen (moving
+// the element doesn't count it again), and again from wherever it stands
+// whenever the server sends a new value while it is visible.
 //
 // Ported from libretto.ch's <count-up>, which rendered nothing at all with
 // JavaScript off; here the server's text is the fallback.
 
-const formatters = new Map()
-const formatterFor = (lang, decimals, grouping) => {
-	const key = `${lang}|${decimals}|${grouping}`
-	let f = formatters.get(key)
-	if (!f) {
-		f = new Intl.NumberFormat(lang, { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouping })
-		formatters.set(key, f)
-	}
-	return f
-}
+// An invalid tag (en_US, a typo) would make Intl throw and render nothing.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 
-const easeOut = (t) => 1 - (1 - t) ** 3
+// Hosts that have counted: setup reruns on every connect.
+const seen = new WeakSet()
 
+// Both copies share one grid cell: the final value (invisible, for screen
+// readers) holds the width, so the line doesn't move while the digits grow.
+// Print has no scrolling to start a count: it shows the final value.
 const styles = /* css */ `
-:host { display: inline; font-variant-numeric: tabular-nums; }
-.sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+:host { display: inline-grid; justify-items: end; font-variant-numeric: tabular-nums; }
+:host([hidden]) { display: none; }
+span { grid-area: 1/1; }
+.sr { opacity: 0; }
+@media print { .sr { opacity: 1; } [part] { visibility: hidden; } }
 `
 
 rocket('sb-count-up', {
@@ -41,40 +41,43 @@ rocket('sb-count-up', {
 	renderOnPropChange: false,
 	setup: ({ $$, adoptStyles, cleanup, host, observeProps, props }) => {
 		adoptStyles(host, styles)
-		const format = (n) => formatterFor(props.lang || host.closest('[lang]')?.lang || navigator.language, props.decimals, props.grouping).format(n)
+		const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+		let nf
+		const update = () => {
+			// closest() stops at a shadow root: inside another component, the page's lang.
+			nf = new Intl.NumberFormat(locale(props.lang || host.closest('[lang]')?.lang || document.documentElement.lang), {
+				minimumFractionDigits: props.decimals,
+				maximumFractionDigits: props.decimals,
+				useGrouping: props.grouping,
+			})
+			$$.final = nf.format(props.value)
+		}
+		update()
 
-		$$.final = format(props.value)
-		$$.text = host.textContent.trim() || $$.final // the server's text, until counting takes over
-
-		let shown = props.from // the number on screen
+		let counted = still || seen.has(host) // reduced motion: the value, straight away
+		let shown // the number on screen
 		let raf = 0
 		let visible = false
-		let counted = false
-		const show = (n) => ((shown = n), ($$.text = format(n)))
+		const show = (n) => ((shown = n), ($$.text = nf.format(n)))
 		const settle = () => (cancelAnimationFrame(raf), (raf = 0), show(props.value))
 		const count = (a, b) => {
 			cancelAnimationFrame(raf)
 			if (!props.duration || a === b) return settle()
-			const start = performance.now()
+			let start
 			const step = (now) => {
-				const t = Math.min((now - start) / props.duration, 1)
-				show(a + (b - a) * easeOut(t))
+				// The frame's own clock: a frame can start before the change arrived.
+				const t = Math.min((now - (start ??= now)) / props.duration, 1)
+				show(a + (b - a) * (1 - (1 - t) ** 3))
 				raf = t < 1 ? requestAnimationFrame(step) : 0
 			}
 			raf = requestAnimationFrame(step)
 		}
 
-		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			settle()
-			observeProps(() => (($$.final = format(props.value)), settle()))
-			return
-		}
-
-		show(props.from)
+		show(counted ? props.value : props.from)
 		const io = new IntersectionObserver(
 			([e]) => {
 				visible = e.isIntersecting
-				if (visible && !counted) (counted = true), count(props.from, props.value)
+				if (visible && !counted) seen.add(host), (counted = true), count(props.from, props.value)
 			},
 			{ threshold: 0.4 },
 		)
@@ -82,9 +85,9 @@ rocket('sb-count-up', {
 		cleanup(() => (io.disconnect(), cancelAnimationFrame(raf)))
 
 		observeProps(() => {
-			$$.final = format(props.value)
+			update()
 			if (!counted) return show(props.from) // not seen yet: still waiting at the start
-			visible ? count(shown, props.value) : settle()
+			visible && !still ? count(shown, props.value) : settle()
 		})
 	},
 	render: ({ html }) => html`<span class="sr" data-text="$$final"></span><span part="value" aria-hidden="true" data-text="$$text"></span>`,
