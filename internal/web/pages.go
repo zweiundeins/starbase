@@ -100,6 +100,7 @@ func (s *Server) shell(req *http.Request, user *model.User, v view) ui.Shell {
 		Nonce:        nonce(req),
 		Boot:         s.boot,
 		Dev:          s.cfg.Dev,
+		LoadBundle:   req.URL.Query().Get("load") == "bundle",
 		ManifestTags: s.manifestTags(),
 		Version:      cmp.Or(s.cfg.Version, "dev"),
 		Theme:        siteTheme(req),

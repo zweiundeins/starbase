@@ -7,6 +7,7 @@ import (
 	"github.com/tdewolff/minify/v2"
 	mincss "github.com/tdewolff/minify/v2/css"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -25,6 +26,7 @@ type assets struct {
 	art         map[string]generated
 	catalog     *catalog.Catalog
 	components  generated            // /c/index.js: imports every component module
+	bundle      generated            // /c/bundle.js: every component in one file (loading experiment)
 	autoloader  generated            // /c/autoloader.js: loads <sb-*> modules on first use
 	autoTheme   generated            // /theme/auto.css: daylight's tokens for "auto" on light systems
 	datastarSRI string               // of the vendored bundle, identical to the jsDelivr release
@@ -53,6 +55,11 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 		fmt.Fprintf(&js, "import %q\n", a.ComponentScript(c))
 	}
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
+	if b, err := cat.Bundle(); err == nil {
+		a.bundle = generated{body: b, hash: hashOf(b)}
+	} else {
+		slog.Warn("component bundle", "err", err)
+	}
 	auto := catalog.AutoloaderJS(cat, "")
 	a.autoloader = generated{body: []byte(auto), hash: hashOf([]byte(auto))}
 	ds, _ := fs.ReadFile(staticFS, "vendor/datastar-rocket.js")
@@ -150,6 +157,10 @@ func (a *assets) Static(name string) string { return "/static/" + a.static.HashN
 func (a *assets) Datastar() string          { return a.Static("vendor/datastar-rocket.js") }
 func (a *assets) Components() string        { return "/c/autoloader.js?v=" + a.autoloader.hash }
 
+// Bundle is every component in one module: the ?load=bundle experiment,
+// measured against the autoloader (Components).
+func (a *assets) Bundle() string { return "/c/bundle.js?v=" + a.bundle.hash }
+
 // AllComponents is the module that imports every component (the gallery
 // and the dev manifest publisher need them all at once).
 func (a *assets) AllComponents() string { return "/c/index.js?v=" + a.components.hash }
@@ -240,7 +251,7 @@ func (a *assets) serveArt(w http.ResponseWriter, r *http.Request) {
 // catalog; nothing else in the component folders is public.
 func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 	p := r.PathValue("path")
-	if g, ok := map[string]generated{"index.js": a.components, "autoloader.js": a.autoloader}[p]; ok {
+	if g, ok := map[string]generated{"index.js": a.components, "autoloader.js": a.autoloader, "bundle.js": a.bundle}[p]; ok && g.body != nil {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*") // usable from any site
 		a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)

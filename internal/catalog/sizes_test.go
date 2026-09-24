@@ -1,6 +1,7 @@
 package catalog_test
 
 import (
+	"strings"
 	"testing"
 
 	"starbase/components"
@@ -35,5 +36,30 @@ func TestSizes(t *testing.T) {
 	}
 	if pg.Sizes.Total != pg.Sizes.Own.Add(editor.Sizes.Own) {
 		t.Errorf("total: %+v", pg.Sizes.Total)
+	}
+}
+
+// The single-file bundle (loading experiment): every component in one module,
+// 'datastar' left to the import map, and lazily loaded libraries left lazy.
+func TestBundle(t *testing.T) {
+	cat, err := catalog.Load(components.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := cat.Bundle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	for _, c := range cat.Components {
+		if !strings.Contains(s, c.Tag) {
+			t.Errorf("the bundle misses %s", c.Tag)
+		}
+	}
+	if !strings.Contains(s, `from"datastar"`) {
+		t.Error("datastar must stay external")
+	}
+	if strings.Contains(s, "Apache ECharts") || len(b) > 600_000 {
+		t.Errorf("a lazily imported library was inlined (%d bytes)", len(b))
 	}
 }
