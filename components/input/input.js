@@ -98,7 +98,7 @@ rocket('sb-input', {
 		rev: string.docs({ description: 'Revision of the server\'s value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it).' }),
 		label: string.trim.docs({ description: 'Visible label.' }),
 		placeholder: string.docs({ description: 'Placeholder text.' }),
-		type: oneOf('text', 'email', 'search', 'url', 'tel', 'password').default('text').docs({ description: 'Input type.' }),
+		type: oneOf('text', 'email', 'search', 'url', 'tel', 'password').docs({ description: 'Input type.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change and sb-submit (e.g. the field of a command).' }),
 		required: bool.docs({ description: 'Value must not be empty.' }),
 		minlength: number.min(0).docs({ description: 'Minimum length.' }),
@@ -125,9 +125,11 @@ rocket('sb-input', {
 		const k = kept.get(host)
 		;[$$.value, $$.touched, $$.invalid, $$.message] = k?.[4] === served && k[5] === rev ? k : [props.value, false, false, '']
 
-		const field = () => host.shadowRoot?.querySelector('input')
+		// Validation starts with the first commit or submit, and then follows
+		// every new value.
 		const validate = () => {
-			const el = field()
+			$$.touched = true
+			const el = host.shadowRoot?.querySelector('input')
 			if (!el) return true
 			const ok = el.checkValidity()
 			$$.invalid = !ok
@@ -169,13 +171,12 @@ rocket('sb-input', {
 		const sync = () => peek(() => (props.confirm && $$.value !== props.value ? states.add('pending') : states.delete('pending')))
 		// (Rocket clears the signals on disconnect, which runs this once more
 		// with no value: that is not a state to keep.)
-		effect(() => (typeof $$.value == 'string' && kept.set(host, [$$.value, $$.touched, $$.invalid, $$.message]), sync()))
+		effect(() => ($$.value != null && kept.set(host, [$$.value, $$.touched, $$.invalid, $$.message]), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => set(props.value)) })
 
 		action('input', ({ el }) => set(el.value))
 		action('commit', () => {
-			$$.touched = true
 			validate()
 			emit('change')
 			emit('sb-change', { name: props.name, value: $$.value })
@@ -184,7 +185,6 @@ rocket('sb-input', {
 		// follows. keyCode 13, not key: the Enter that picks a word in an input
 		// method is 229 (and isComposing, where the browser says so).
 		action('submit', () => {
-			$$.touched = true
 			if (validate()) emit('sb-submit', { name: props.name, value: $$.value })
 		})
 	},
