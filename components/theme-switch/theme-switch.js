@@ -1,4 +1,4 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Icons for the well-known names, as CSS masks painted in currentColor:
 // the markup only picks a class (no HTML injected). Other themes get the
@@ -55,7 +55,6 @@ const styles = /* css */ `
 	--_brand-subtle: var(--sb-brand-subtle, rgb(140 107 255 / 0.14));
 	--_focus: var(--sb-brand-light, #B09AFF);
 	--_radius: var(--sb-control-radius, 6px);
-	--_notch: var(--sb-notch, 1);
 	display: inline-flex;
 	vertical-align: middle;
 }
@@ -77,6 +76,7 @@ label {
 	border-radius: calc(var(--_radius) - 2px);
 	color: var(--_text);
 	font-size: 0.8125rem;
+	line-height: 1;
 	cursor: pointer;
 	transition: background 120ms, color 120ms;
 }
@@ -84,13 +84,13 @@ label:hover { color: var(--_active); }
 label:has(:checked) { background: var(--_brand-subtle); color: var(--_active); box-shadow: inset 0 0 0 1px var(--_brand); }
 label:has(:focus-visible) { outline: 2px solid var(--_focus); outline-offset: 1px; }
 input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: inherit; }
-label { line-height: 1; }
 .icon { display: block; flex: none; inline-size: 1.05rem; block-size: 1.05rem; background: currentColor; mask: var(--_mask) center / contain no-repeat; }
 .compact .text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .compact .iconless .text { position: static; inline-size: auto; block-size: auto; clip-path: none; }
 select {
 	min-block-size: 2rem;
-	padding: 0 2rem 0 0.75rem;
+	padding: 0;
+	padding-inline: 0.75rem 2rem;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
 	background: var(--_bg);
@@ -130,22 +130,30 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 .trigger:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 .trigger .icon { inline-size: 1.25rem; block-size: 1.25rem; }
 .menu {
-	margin: 0;
 	padding: 4px;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
 	background: var(--_bg);
 	color: var(--_text);
 	box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.6);
-	/* Below the button, right-aligned (anchor positioning; centred where unsupported). */
-	position-anchor: --sb-theme-trigger;
-	inset: auto;
-	position-area: bottom span-left;
-	margin-block-start: 6px;
-	position-try-fallbacks: flip-block, flip-inline;
+}
+/* Below the button, right-aligned (anchor positioning; centred where unsupported). */
+@supports (anchor-name: --a) {
+	.menu {
+		position-anchor: --sb-theme-trigger;
+		inset: auto;
+		position-area: bottom span-left;
+		margin: 0;
+		margin-block-start: 6px;
+		position-try-fallbacks: flip-block, flip-inline;
+	}
 }
 .menu:popover-open { display: grid; gap: 2px; min-inline-size: 10rem; }
 .menu label { justify-content: flex-start; padding-inline: 0.6rem 1rem; }
+@media (forced-colors: active) {
+	.icon, .picker::after { background: CanvasText; }
+	label:has(:checked) { outline: 2px solid Highlight; }
+}
 `
 
 rocket('sb-theme-switch', {
@@ -162,21 +170,33 @@ rocket('sb-theme-switch', {
 	manifest: {
 		events: [{ name: 'sb-theme-change', kind: 'custom-event', bubbles: true, composed: true, description: 'After the user picks a theme. detail: { theme, cookie, scheme }, where scheme is "light" or "dark": what the page now paints in.' }],
 	},
-	setup: ({ $$, action, adoptStyles, emit, host, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles + iconCSS)
 		const valid = (t) => props.themes.includes(t)
-		const fallback = () => (valid('auto') ? 'auto' : props.themes[0])
-		const saved = readCookie(props.cookie)
-		$$.theme = valid(saved) ? saved : fallback()
-		$$.options = props.themes.map((value, i) => ({ value, label: props.labels[i] || nameOf(value), icon: iconOf(value) }))
+		// A saved theme this switch doesn't list (another switch on the site has a
+		// longer list) stays: no option is checked, and the page is left alone.
+		$$.theme = readCookie(props.cookie) || (valid('auto') ? 'auto' : props.themes[0])
+		// Peeking: observeProps runs this inside the effect of whoever set the
+		// attribute (data-attr), which must not subscribe to $$.options.
+		const list = () => {
+			startPeeking()
+			try {
+				$$.options = props.themes.map((value, i) => ({ value, label: props.labels[i] || nameOf(value), icon: iconOf(value) }))
+			} finally {
+				stopPeeking()
+			}
+		}
+		list()
+		observeProps(list, 'themes', 'labels')
 		$$.icon = () => iconOf($$.theme) || 'palette'
-		$$.current = () => $$.options.find((o) => o.value === $$.theme)?.label ?? ''
+		// ?. because disconnecting clears $$ and this runs once more.
+		$$.current = () => $$.options?.find((o) => o.value === $$.theme)?.label ?? nameOf($$.theme || '')
 
 		const root = document.documentElement
 		const apply = (t) => (t === 'auto' ? root.removeAttribute(props.attribute) : root.setAttribute(props.attribute, t))
 		// Normally the server (or a head snippet, see the docs) already set the
 		// attribute before the first paint; this only repairs a page that didn't.
-		if ((root.getAttribute(props.attribute) ?? 'auto') !== $$.theme) apply($$.theme)
+		if (valid($$.theme) && (root.getAttribute(props.attribute) ?? 'auto') !== $$.theme) apply($$.theme)
 
 		// A domain widens the choice to every subdomain that shares it; without one
 		// the cookie stays on this host, which is the safe default. A domain the
@@ -205,11 +225,11 @@ rocket('sb-theme-switch', {
 			save(t)
 			emit('sb-theme-change', { theme: t, cookie: props.cookie, scheme: schemeOf(root) })
 		})
-		// Other switches for the same cookie follow along.
-		action('sync', ({ evt }) => {
-			const d = evt.detail
-			if (evt.target !== host && d?.cookie === props.cookie && valid(d.theme)) $$.theme = d.theme
-		})
+		// Other switches for the same cookie follow along, also to a theme this
+		// one doesn't list (it then shows no choice).
+		const sync = ({ detail: d, target }) => target !== host && d?.cookie === props.cookie && ($$.theme = d.theme)
+		addEventListener('sb-theme-change', sync)
+		cleanup(() => removeEventListener('sb-theme-change', sync))
 	},
 	render: ({ html, props: { variant, compact, label } }) =>
 		variant === 'menu'
@@ -218,38 +238,39 @@ rocket('sb-theme-switch', {
 					data-attr:aria-label="'${quote(label)}: ' + $$current" data-attr:title="'${quote(label)}: ' + $$current"
 					><span data-attr:class="'icon ' + $$icon" aria-hidden="true"></span></button>
 				<div id="menu" class="menu" part="menu" popover role="radiogroup" aria-label="${label}"
-					data-on:sb-theme-change__window="@sync()">
+					data-on:click="evt.detail && el.hidePopover()"
+					data-on:keyup="(evt.key == 'Enter' || evt.key == ' ') && (evt.target.click(), el.hidePopover())"
+					data-on:beforetoggle="el.matches(':focus-within') && el.previousElementSibling.focus()">
 					<template data-for="o in $$options">
 						<label data-attr:part="$$theme === o?.value ? 'option selected' : 'option'">
 							<input type="radio" name="theme"
-								data-attr:value="o.value"
-								data-effect="el.checked = $$theme === o.value"
-								data-on:change="@pick(); el.closest('[popover]').hidePopover()"/>
+								data-attr:value="o?.value"
+								data-effect="el.checked = $$theme === o?.value"
+								data-on:change="@pick()"/>
 							<span aria-hidden="true" data-show="o?.icon" data-attr:class="'icon ' + o?.icon"></span>
-							<span class="text" data-text="o.label"></span>
+							<span class="text" data-text="o?.label"></span>
 						</label>
 					</template>
 				</div>`
 			: variant === 'select'
 			? html`
 				<span class="picker"><select part="select" aria-label="${label}"
-					data-on:change="@pick()"
-					data-on:sb-theme-change__window="@sync()">
+					data-on:change="@pick()">
+					<option hidden></option>
 					<template data-for="o in $$options">
-						<option data-attr:value="o.value" data-text="o.label" data-effect="el.selected = $$theme === o.value"></option>
+						<option data-attr:value="o?.value" data-text="o?.label" data-effect="el.selected = $$theme === o?.value"></option>
 					</template>
 				</select></span>`
 			: html`
-				<div class="group ${compact ? 'compact' : ''}" part="group" role="radiogroup" aria-label="${label}"
-					data-on:sb-theme-change__window="@sync()">
+				<div class="group ${compact ? 'compact' : ''}" part="group" role="radiogroup" aria-label="${label}">
 					<template data-for="o in $$options">
-						<label data-class:iconless="!o.icon" data-attr:title="o.label" data-attr:part="$$theme === o?.value ? 'option selected' : 'option'">
+						<label data-class:iconless="!o?.icon" data-attr:title="o?.label" data-attr:part="$$theme === o?.value ? 'option selected' : 'option'">
 							<input type="radio" name="theme"
-								data-attr:value="o.value"
-								data-effect="el.checked = $$theme === o.value"
+								data-attr:value="o?.value"
+								data-effect="el.checked = $$theme === o?.value"
 								data-on:change="@pick()"/>
 							<span aria-hidden="true" data-show="o?.icon" data-attr:class="'icon ' + o?.icon"></span>
-							<span class="text" data-text="o.label"></span>
+							<span class="text" data-text="o?.label"></span>
 						</label>
 					</template>
 				</div>`,

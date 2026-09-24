@@ -35,7 +35,7 @@ Icons only; the names stay available to screen readers and as tooltips.
 
 ### Your own themes
 
-Any names work, and `labels` sets the visible names. `variant="select"` keeps a long list compact.
+Any names work, and `labels` sets the visible names. `variant="select"` keeps a long list compact. Switches for the same cookie can list different themes, say a short one in the header and the full set on a settings page: when the current theme is not in a switch's list, that switch shows no choice and leaves the page alone.
 
 ```html preview
 <sb-theme-switch variant="select" cookie="sb-theme-demo2" attribute="data-demo-theme"
@@ -105,7 +105,7 @@ addEventListener('sb-theme-change', repaint)
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repaint)
 ```
 
-Inside a Rocket component, the first one has an attribute form in the template, `data-on:sb-theme-change__window="@repaint()"`; `sb-sparkline` and `sb-gauge` do exactly this.
+Inside a Rocket component, add both listeners in `setup` and remove them in `cleanup`. A `data-on:sb-theme-change__window` attribute in the template is not removed with the element, and throws on the next pick.
 
 ## Why a cookie
 
@@ -131,4 +131,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The segmented variant and the menu are radio groups (arrow keys move between themes); the select is a native `<select>`. All carry `label` ("Theme") as their accessible name; the menu button also says the current theme. The menu is a native popover: Escape and clicking outside close it.
+The segmented variant and the menu are radio groups (arrow keys move between themes, and apply each one as they go); the select is a native `<select>`. All carry `label` ("Theme") as their accessible name; the menu button also says the current theme. The menu is a native popover: Enter, Space or a click on a theme closes it, and so do Escape and clicking outside; if focus was in the menu, it goes back to the button. In forced colours (Windows High Contrast) the icons use the text colour and the chosen theme is outlined in `Highlight`.
