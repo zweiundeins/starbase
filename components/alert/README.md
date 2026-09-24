@@ -65,10 +65,10 @@ So a new message needs a new element: give each message its own `id` (as above),
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts:** the heading and the message use your page's font.
-- **Colours:** each variant has a tone: `--sb-info`, `--sb-ok` (success), `--sb-warn` (warning) or `--sb-danger`. It colours the status light and the heading (on a light colour scheme the heading mixes it with `--sb-text-1`, for contrast), and tints the border and the background. The box is `--sb-surface-inset` with a `--sb-border` edge, the message `--sb-text-2` (the close button turns `--sb-text-1` on hover), the corners `--sb-radius`.
+- **Colours:** each variant has a tone: `--sb-info`, `--sb-ok` (success), `--sb-warn` (warning) or `--sb-danger`. It colours the status light and the heading (unless the page's `color-scheme` is dark, the heading mixes it with `--sb-text-1`, for contrast), and tints the border and the background. The box is `--sb-surface-inset` with a `--sb-border` edge, the message `--sb-text-2` (the close button turns `--sb-text-1` on hover), the corners `--sb-radius`.
 - **Status light:** a pixel shape notched by `--sb-notch`, a dot at `0`. The `icon` slot replaces it, e.g. with an icon per variant so the tone isn't told by colour alone; give your icon `aria-hidden="true"` when the text names the severity. In forced colours (Windows High Contrast) the light is drawn in `CanvasText`.
 - **Parts:** `alert` (the box), `heading` and `message`. Your page's `::part()` rules win over the component's own, without `!important`.
-- **State:** a dismissed or hidden alert matches `sb-alert:state(closed)` and takes no space in the layout, like one with the `hidden` attribute.
+- **State:** a closed alert (dismissed, `open="false"` or `hide()`) matches `sb-alert:state(closed)` and takes no space in the layout, like one with the `hidden` attribute.
 
 ```html preview
 <style>
