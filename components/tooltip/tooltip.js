@@ -81,14 +81,16 @@ rocket('sb-tooltip', {
 		cleanup(() => removeEventListener('keydown', esc))
 	},
 	// The anchor holds the trigger and the tip, so the pointer can move onto the
-	// tip. Only keyboard focus shows it: a mouse click's focus doesn't pin it.
-	// The live region announces the tip: a shadow-DOM tip can't be the trigger's
-	// aria-describedby. `open` is interpolated: a prop change re-renders.
+	// tip. Focus pins the tip, except a mouse click's (the pointer is on the
+	// trigger and it isn't :focus-visible); a tap's focus comes after its
+	// pointerleave, so it pins. The live region announces the tip: a shadow-DOM
+	// tip can't be the trigger's aria-describedby. `open` is interpolated: a
+	// prop change re-renders.
 	render: ({ html, props: { content, open, placement } }) => html`
 		<span class="anchor"
 			data-on:pointerenter="$$hover = true"
 			data-on:pointerleave="$$hover = false"
-			data-on:focusin="$$focus = evt.composedPath()[0].matches(':focus-visible')"
+			data-on:focusin="$$focus = !$$hover || evt.composedPath()[0].matches(':focus-visible')"
 			data-on:focusout="$$focus = false"
 		><slot></slot><span aria-live="polite"><span class="tip ${placement}" part="tip" role="tooltip" data-class:show="${open} || $$hover || $$focus">${content}</span></span></span>
 	`,
