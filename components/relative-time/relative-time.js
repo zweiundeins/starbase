@@ -28,16 +28,20 @@ const UNITS = [
 	['second', SECOND],
 ]
 
-// parse accepts ISO 8601 and Unix time (seconds or milliseconds).
+// parse accepts ISO 8601 and Unix time (seconds or milliseconds). Four
+// digits are a year, as in HTML's <time>.
 const parse = (v) => {
 	const s = String(v ?? '').trim()
 	if (!s) return NaN
-	if (/^-?\d+(\.\d+)?$/.test(s)) {
+	if (/^(?!\d{4}$)-?\d+(\.\d+)?$/.test(s)) {
 		const n = Number(s)
 		return Math.abs(n) < 1e11 ? n * 1000 : n
 	}
 	return Date.parse(s)
 }
+
+// A malformed tag (en_US) would make Intl throw: repair it, or use the default.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 
 const midnight = (t, h = 0) => new Date(t).setHours(h, 0, 0, 0)
 
@@ -81,14 +85,17 @@ rocket('sb-relative-time', {
 		const w = {}
 		w.update = (now = Date.now()) => {
 			const then = parse(props.datetime)
-			if (Number.isNaN(then)) {
+			const date = new Date(then)
+			if (isNaN(date)) {
 				$$.text = host.textContent.trim() // the server's fallback
 				$$.iso = $$.title = ''
 				w.next = Infinity
 				return
 			}
-			const lang = props.lang || host.closest('[lang]')?.lang || navigator.language
-			const date = new Date(then)
+			// the nearest lang, also outside the shadow roots of other components
+			let el = host, l
+			while (!(l = el.closest('[lang]')) && (el = el.getRootNode().host));
+			const lang = locale(l?.lang)
 			$$.iso = date.toISOString()
 			$$.title = new Intl.DateTimeFormat(lang, { dateStyle: 'full', timeStyle: 'short' }).format(date)
 			const t = props.threshold * DAY

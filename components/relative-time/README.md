@@ -31,7 +31,7 @@ Put a server-formatted date inside it: that is what shows before the component l
 
 ### Past and future
 
-`datetime` takes ISO 8601 or Unix time (seconds or milliseconds).
+`datetime` takes ISO 8601 or Unix time: a number is seconds below 10¹¹, milliseconds from there (March 1973 on). A four-digit number is a year (`2026`), as in HTML's `<time>`.
 
 ```html preview
 <ul>
@@ -43,7 +43,7 @@ Put a server-formatted date inside it: that is what shows before the component l
 
 ### Languages
 
-The page's `lang` (or the `lang` attribute) picks the words.
+The page's `lang` (or the `lang` attribute) picks the words, also from inside another component's shadow root. A tag written with an underscore (`de_DE`) works too; one the browser can't read falls back to its own language.
 
 ```html preview
 <ul>
