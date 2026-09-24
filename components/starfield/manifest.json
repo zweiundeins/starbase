@@ -8,7 +8,7 @@
       "default": 20,
       "required": false,
       "docs": {
-        "description": "Flight speed."
+        "description": "Flight speed (0 pauses the field)."
       }
     },
     {
@@ -45,6 +45,16 @@
       "required": false,
       "docs": {
         "description": "Draw streaks instead of dots."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Animated starfield",
+      "required": false,
+      "docs": {
+        "description": "Accessible label (empty for a decorative background)."
       }
     }
   ],

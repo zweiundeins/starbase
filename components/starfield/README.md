@@ -46,14 +46,14 @@ Stars fly toward you in chunky pixels. Every knob is an attribute, so a slider (
 
 ## Performance
 
-It renders at a third of the CSS resolution into one `ImageData`. It stops animating offscreen, when `speed` is 0, or under `prefers-reduced-motion`, where it shows a single still frame. Set the height with `--sb-starfield-height`.
+It renders at a third of the CSS resolution into one `ImageData`. It stops animating offscreen, when `speed` is 0, or under `prefers-reduced-motion`, where it shows a single still frame with every star. A resize stretches the field to the new size. Set the height with `--sb-starfield-height`.
 
 ## Styling
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given; `--sb-starfield-height` (default `12rem`) sets the height.
-- **Colours:** the sky is `--sb-surface-inset`. `tint` picks the stars' token, read on every frame: `white` is `--sb-text-1`, `violet` `--sb-brand-light`, `cyan` `--sb-accent`, `green` `--sb-datastar`. Corners are `--sb-radius`.
+- **Colours:** the sky is `--sb-surface-inset`. `tint` picks the stars' token, read whenever it paints (a still field repaints on `sb-theme-change` and when the system switches between light and dark): `white` is `--sb-text-1`, `violet` `--sb-brand-light`, `cyan` `--sb-accent`, `green` `--sb-datastar`. Corners are `--sb-radius`.
 - **Parts:** `canvas`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -65,4 +65,6 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-It is decorative motion: the canvas is labelled "Animated starfield". Don't rely on it to convey information.
+The canvas is an image named by `label` (default "Animated starfield"): translate it there, not with `aria-label` on the element. Where the field is a decorative background, set `label=""` and assistive technology skips it (so does `aria-hidden="true"` on the element). Don't rely on it to convey information.
+
+The motion stops under `prefers-reduced-motion`. It runs until you stop it, so give everyone else a way to pause it (WCAG 2.2.2): `speed="0"` holds it on a still frame.
