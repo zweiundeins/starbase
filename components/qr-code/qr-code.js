@@ -54,8 +54,9 @@ rocket('sb-qr-code', {
 			const { value, ecc, border, accent, label } = props
 			let qr = { size: 0, data: [] }, error = 0
 			// toWellFormed: uqr throws on a lone surrogate (text cut mid-emoji),
-			// so the only error left is too much data.
-			if (value) try { qr = encode(value.toWellFormed(), { ecc, border }) } catch { error = 1 }
+			// so the only error left is too much data. Optional: browsers that run
+			// Rocket but lack it (Chrome < 111, Firefox < 119) still get a code.
+			if (value) try { qr = encode(value.toWellFormed?.() ?? value, { ecc, border }) } catch { error = 1 }
 			$$.name = label || 'QR code' + (value ? ': ' + value : '')
 			$$.error = error
 			$$.n = qr.size

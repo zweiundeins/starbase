@@ -68,7 +68,7 @@ Server-rendered values work as they are: `<sb-qr-code value="https://example.com
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `10rem` square by default; set `inline-size` on the element and it stays square. Longer values need more modules, and a module needs about 3 CSS pixels to scan reliably: `10rem` fits about 150 characters at the default `ecc`. Give longer values more room (about `17rem` for 500 characters) or a lower `ecc`.
-- **Colours:** `--sb-qr-color` for the modules (near-black), `--sb-qr-background` behind them (white) and, with `accent`, `--sb-qr-accent` for the three corner squares (unless set, your `--sb-brand` at 50% lightness or less, same hue). Keep the contrast high: scanners find a code by those corners, so an accent you set needs about 4.5:1 against the background, like text.
+- **Colours:** `--sb-qr-color` for the modules (near-black), `--sb-qr-background` behind them (white) and, with `accent`, `--sb-qr-accent` for the three corner squares (unless set, your `--sb-brand` with its OKLCH lightness capped at 50%). Keep the contrast high: scanners find a code by those corners, so an accent you set needs about 4.5:1 against the background, like text.
 - **Parts:** `svg`, `background`, `modules` and `corners`, for anything the tokens don't cover (they are SVG shapes, so they take `fill`), and `error`, the box that replaces the code when the value doesn't fit (its text is the `error` slot). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
