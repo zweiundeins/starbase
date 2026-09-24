@@ -54,9 +54,19 @@ Talking to the backend works the same way: `data-on:click="@post('/launch')"`.
 <sb-button href="https://data-star.dev" variant="outline" caret>Read the Datastar docs</sb-button>
 ```
 
+### Icon only
+
+A button with nothing but an icon needs a name for screen readers: `aria-label` on `sb-button` is passed on to the inner button (or link).
+
+```html preview
+<sb-button variant="outline" aria-label="Close">
+  <svg slot="prefix" viewBox="0 0 12 12" stroke="currentColor"><path d="M3 3l6 6M9 3 3 9"/></svg>
+</sb-button>
+```
+
 ### While the action runs
 
-`loading` shows an inline spinner in the button, blocks clicks and Enter, and sets `aria-busy`. The button keeps its focus, so nobody is thrown out of the page mid-action, and it takes no extra space until it is loading.
+`loading` shows an inline spinner in the button, blocks its clicks (mouse, Enter and Space), and sets `aria-busy`. The button keeps its focus, so nobody is thrown out of the page mid-action, while Tab, Escape and the page's own shortcuts keep working. It takes no extra space until it is loading.
 
 ```html preview
 <div data-signals="{_sync: []}" style="display: flex; align-items: center; gap: 16px">
@@ -72,13 +82,17 @@ Talking to the backend works the same way: `data-on:click="@post('/launch')"`.
 
 `data-indicator` sets the signal while that element's request is in flight, and `data-preserve-attr` keeps the attribute through a server morph. For a wait that is not a button — a panel, a table, a whole region — use [`sb-busy`](/components/busy), which also knows `delay`, `min` and progress shapes.
 
+## Forms
+
+`sb-button` is not a submit button: in a `<form>` it neither submits nor resets it, and Enter in a field doesn't press it. Post the form from its click instead: `data-on:click="@post('/save', {contentType: 'form'})"` sends the fields of the form around it, once they pass the browser's validation.
+
 ## Styling
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `size` (`sm`, `md`, `lg`) sets the height, the padding and the text size. For anything in between, set `block-size`, `padding-inline` or `font-size` on `::part(button)`: icons and the loading spinner are sized in `em`, so they follow the text.
 - **Fonts:** the label uses your page's font. The `pixel` variant uses `--sb-font-display` when a site sets one (like Starbase's pixel font); set it on the button to choose that font on its own.
-- **Colours:** `primary` fills with `--sb-brand` (`--sb-brand-hover` on hover) and writes in `--sb-text-on-brand`; `outline` draws a `--sb-brand-light` border and hovers with `--sb-brand-subtle`; `ghost` hovers with `--sb-surface-hover`; `danger` fills with `--sb-danger` and writes in `--sb-text-on-danger`. The other variants write in `--sb-text-1`. `pixel` is a `--sb-text-1` plate with `--sb-bg` text in a `--sb-frame-color` frame, `--sb-frame-step` thick. Corners are `--sb-control-radius`, the focus ring `--sb-focus-ring`.
+- **Colours:** `primary` fills with `--sb-brand` (`--sb-brand-hover` on hover) and writes in `--sb-text-on-brand`; `outline` draws a `--sb-brand-light` border and hovers with `--sb-brand-subtle`; `ghost` hovers with `--sb-surface-hover`; `danger` fills with `--sb-danger`, writes in `--sb-text-on-danger` and brightens on hover. The other variants write in `--sb-text-1`. `pixel` is a `--sb-text-1` plate with `--sb-bg` text in a `--sb-frame-color` frame, `--sb-frame-step` thick. Corners are `--sb-control-radius`, the focus ring `--sb-focus-ring`.
 - **Parts:** `button` (the `<button>`, or the `<a>` with `href`) and `spinner` (while `loading`). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -93,4 +107,8 @@ A font you load yourself works inside the component too: load it in the page (a 
 
 ## Accessibility
 
-A native `<button>` (or `<a>`) inside the shadow root does the work: keyboard focus, Enter and Space, and screen reader semantics. Disabled buttons are removed from the tab order.
+A native `<button>` (or `<a>`) inside the shadow root does the work: keyboard focus, Enter and Space, and screen reader semantics. Disabled buttons are removed from the tab order and ignore clicks, a script's `el.click()` included.
+
+`aria-label` is passed on to the inner button, so give every icon-only button one. Other `aria-*` attributes stay on `sb-button` itself, where they don't describe the button.
+
+In forced colours (Windows High Contrast), where box shadows are not drawn, the focus ring becomes an outline, the `pixel` frame a thin edge, and the spinner keeps its dots.

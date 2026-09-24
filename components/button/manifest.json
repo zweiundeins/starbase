@@ -70,7 +70,17 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "The button's action is running: an inline spinner, clicks and Enter blocked, aria-busy. Bind it to data-indicator (and add data-preserve-attr=\"loading\")."
+        "description": "The button's action is running: an inline spinner, clicks (mouse, Enter, Space) blocked, aria-busy. Bind it to data-indicator (and add data-preserve-attr=\"loading\")."
+      }
+    },
+    {
+      "name": "ariaLabel",
+      "attribute": "aria-label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Accessible name, passed on to the inner button or link: set it on icon-only buttons."
       }
     }
   ],
