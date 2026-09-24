@@ -7,7 +7,7 @@ author: zweiundeins
 tags: [tree, hierarchy, lazy, navigation, file browser]
 since: 2026-09-22
 preview: |
-  <sb-tree style="inline-size: 13rem" value="earth" items='[{"id":"sol","label":"Sol","icon":"☀️","children":[{"id":"venus","label":"Venus","icon":"🟠"},{"id":"earth","label":"Earth","icon":"🌍","children":[{"id":"moon","label":"Moon","icon":"🌕"}]},{"id":"mars","label":"Mars","icon":"🔴"}]}]'></sb-tree>
+  <sb-tree style="inline-size: 13rem" value="earth" expanded="sol" items='[{"id":"sol","label":"Sol","icon":"☀️","children":[{"id":"venus","label":"Venus","icon":"🟠"},{"id":"earth","label":"Earth","icon":"🌍","children":[{"id":"moon","label":"Moon","icon":"🌕"}]},{"id":"mars","label":"Mars","icon":"🔴"}]}]'></sb-tree>
 usage: |
   <sb-tree label="Files" items='[{"id":"src","label":"src","children":[{"id":"main","label":"main.go"},{"id":"util","label":"util.go"}]},{"id":"readme","label":"README.md"}]'></sb-tree>
 playground:
@@ -52,12 +52,12 @@ func children(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-Without Datastar signals, the server can also re-render the element with a new `loaded` (or `items`, `value`, `expanded`) attribute: a changed attribute always wins.
+Without Datastar signals, the server can also re-render the element with a new `loaded` (or `items`, `value`, `expanded`) attribute: a changed attribute always wins, and a removed one is ignored. Children can come in either: a lazy item stops loading once `items` or `loaded` has its children. To clear the selection or close every branch, send `value=""` or `expanded=""`.
 
 ### Multiple selection
 
 ```html preview
-<sb-tree selection="multiple" value="io europa" style="inline-size: 16rem"
+<sb-tree selection="multiple" value="io europa" expanded="jupiter" style="inline-size: 16rem"
   items='[{"id":"jupiter","label":"Jupiter","icon":"🪐","children":[{"id":"io","label":"Io"},{"id":"europa","label":"Europa"},{"id":"ganymede","label":"Ganymede"},{"id":"callisto","label":"Callisto"}]}]'></sb-tree>
 ```
 
@@ -73,6 +73,10 @@ Each item is `{id, label, icon?, children?, lazy?}`:
 - `icon`: a short text or emoji.
 - `children`: nested items, given up front.
 - `lazy: true` without `children`: the item can be opened, and asks for its children with `sb-load`.
+
+## Forms
+
+`sb-tree` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -97,6 +101,6 @@ Style it from your page's CSS — no need to change the component or import anyt
 It follows the WAI-ARIA tree pattern:
 
 - **Structure:** `tree` and `treeitem` roles, with level, position and expanded state.
-- **Focus:** one item at a time is in the tab order.
+- **Focus:** one item at a time is in the tab order. Tab lands on the selected item (the first one visible), otherwise on the item focused last, or the first.
 - **Keys:** Up and Down move, Right opens (or moves to the first child), Left closes (or moves to the parent), Home and End jump, and Enter or Space selects.
 - **Loading:** a branch that is loading is marked `aria-busy`.

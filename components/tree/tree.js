@@ -53,8 +53,8 @@ const styles = /* css */ `
 	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
 	transition: rotate 120ms steps(2, end);
 }
-.open > .caret::before { rotate: 90deg; }
-.leaf > .caret::before { display: none; }
+[aria-expanded="true"] > .caret::before { rotate: 90deg; }
+:not([aria-expanded]) > .caret::before { display: none; }
 .icon { flex: none; inline-size: 1.1rem; text-align: center; }
 .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .busy { color: var(--_muted); font-size: 0.75rem; }
@@ -85,7 +85,7 @@ rocket('sb-tree', {
 	// Rendered once: everything that changes goes through signals, so a new
 	// `loaded` doesn't rebuild the DOM (and take the keyboard focus with it).
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		$$.label = props.label
 		$$.mode = props.selection
@@ -126,9 +126,11 @@ rocket('sb-tree', {
 					const kids = it.children ?? props.loaded[id]
 					const branch = !!(kids?.length || (it.lazy && !kids))
 					const isOpen = open.has(id) && branch
-					// An open lazy item without children asks for them (also when
-					// the server opened it through expanded).
-					if (isOpen && it.lazy && !kids && !loading.has(id)) {
+					// Children arrived (in items or loaded): done loading. An open
+					// lazy item without children asks for them (also when the server
+					// opened it through expanded).
+					if (kids) loading.delete(id)
+					else if (isOpen && it.lazy && !loading.has(id)) {
 						loading.add(id)
 						request(id)
 					}
@@ -147,31 +149,54 @@ rocket('sb-tree', {
 		rebuild()
 		// peek: attribute changes arrive inside the effect of whoever set them
 		// (e.g. data-attr:loaded); reading signals here must not subscribe it.
-		observeProps((_, changes) =>
+		observeProps(() =>
 			peek(() => {
-				// Children arrived: the lazy item is done loading.
-				for (const id of loading) if (props.loaded[id]) loading.delete(id)
-				// Attributes the server sends win when they change; removals are ignored
-				// (morphs also strip reflected attributes; see sb-slider).
-				if ('value' in changes && host.hasAttribute('value')) $$.selected = ids(props.value)
-				if ('expanded' in changes && host.hasAttribute('expanded')) (open.clear(), ids(props.expanded).forEach((id) => open.add(id)))
 				$$.label = props.label
 				$$.mode = props.selection
 				rebuild()
 			}),
 		)
+		// The server's value and expanded win whenever it sends new ones, also
+		// ones the props already decode to (value="" on an element that never
+		// had one: observeProps stays silent). The same attribute again keeps
+		// the user's edits, and a removed one is ignored (morphs also strip
+		// reflected attributes).
+		const served = { value: host.getAttribute('value'), expanded: host.getAttribute('expanded') }
+		const watch = new MutationObserver(() =>
+			peek(() => {
+				for (const a in served) {
+					const v = host.getAttribute(a)
+					if (v === served[a]) continue
+					served[a] = v
+					if (v === null) continue
+					if (a === 'value') $$.selected = ids(v)
+					else (open.clear(), ids(v).forEach((id) => open.add(id)))
+				}
+				rebuild()
+			}),
+		)
+		watch.observe(host, { attributeFilter: ['value', 'expanded'] })
+		cleanup(() => watch.disconnect())
 
 		const value = () => (props.selection === 'multiple' ? [...$$.selected] : $$.selected[0] ?? '')
 		overrideProp('value', () => peek(value), (v) => peek(() => ($$.selected = ids(v))))
-		// Commands: the attribute is the server's value, JSON.stringify($$.selected) the local one.
+		// Commands: the attribute is the server's value, $$.selected the local one
+		// (compared as sets: in multiple mode the click order doesn't matter).
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && JSON.stringify($$.selected) !== JSON.stringify(ids(props.value)) ? states.add('pending') : states.delete('pending')))
+		const key = (a) => a?.toSorted().join(' ')
+		const sync = () => peek(() => (props.confirm && key($$.selected) !== key(ids(props.value)) ? states.add('pending') : states.delete('pending')))
 		effect(() => (JSON.stringify($$.selected), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.selected = ids(props.value)), sync())) })
 		const row = (id) => $$.rows.find((r) => r.id === id)
+		// Tabbing in lands on the selected row (the first visible one). (rows?.:
+		// effects run once more with the signals gone when the element is removed.)
+		effect(() => {
+			const r = !$$.hasFocus && $$.rows?.find((r) => $$.selected.includes(r.id))
+			if (r) $$.focus = r.id
+		})
 
 		const setOpen = (id, wantOpen) => {
 			const r = row(id)
@@ -184,6 +209,7 @@ rocket('sb-tree', {
 		const select = (id) => {
 			if (props.selection === 'none') return
 			const has = $$.selected.includes(id)
+			if (has && props.selection === 'single') return
 			$$.selected = props.selection === 'multiple' ? (has ? $$.selected.filter((x) => x !== id) : [...$$.selected, id]) : [id]
 			emit('change')
 			emit('sb-change', { name: props.name, value: value() })
@@ -196,17 +222,19 @@ rocket('sb-tree', {
 			const id = evt.target.closest?.('[role="treeitem"]')?.dataset.id
 			if (id) $$.focus = id
 		})
-		action('focusout', ({ el, evt }) => {
-			// A row re-rendered away also "loses" focus: that's not leaving. The
-			// morph can park a row before removing it, so the row is still
-			// connected and only the empty relatedTarget gives it away; refocus()
-			// decides whether the focus really went somewhere else.
-			if (!evt.target.isConnected || evt.relatedTarget === null) return
-			if (!el.contains(evt.relatedTarget)) $$.hasFocus = false
+		action('focusout', ({ evt }) => {
+			// A row the server dropped also "loses" focus, but that's not leaving:
+			// its focusout comes while it is still connected and without a
+			// relatedTarget, just like a click on the page. So decide a frame
+			// later: a removed row is gone by then (refocus() hands the focus to
+			// its neighbour); otherwise the focus left, unless it is on another
+			// row. (Keep evt.target: it is cleared after dispatch.)
+			const t = evt.target
+			requestAnimationFrame(() => t.isConnected && !host.shadowRoot.activeElement && ($$.hasFocus = false))
 		})
 		action('click', ({ evt }, id) => {
 			$$.focus = id
-			if (evt.target.closest('.caret')) return setOpen(id, !row(id)?.open)
+			if (row(id)?.branch && evt.target.closest('.caret')) return setOpen(id, !row(id).open)
 			select(id)
 			if (row(id)?.branch && props.selection !== 'multiple') setOpen(id, !row(id).open)
 		})
@@ -222,7 +250,7 @@ rocket('sb-tree', {
 				case 'End': focus(rows.at(-1).id); break
 				case 'ArrowRight':
 					if (r.branch && !r.open) setOpen(r.id, true)
-					else if (r.open) focus(rows[i + 1]?.id)
+					else if (rows[i + 1]?.parent === r.id) focus(rows[i + 1].id)
 					break
 				case 'ArrowLeft':
 					if (r.open) setOpen(r.id, false)
@@ -255,8 +283,6 @@ rocket('sb-tree', {
 					data-attr:aria-selected="$$mode === 'none' ? null : String($$selected.includes(r?.id))"
 					data-attr:aria-busy="r?.loading ? 'true' : null"
 					data-attr:tabindex="r?.id === $$focus ? 0 : -1"
-					data-class:open="r?.open"
-					data-class:leaf="!r?.branch"
 					data-style:--depth="r?.depth"
 					data-on:click="@click(r?.id)">
 					<span class="caret" aria-hidden="true"></span>
