@@ -44,7 +44,7 @@
       "default": true,
       "required": false,
       "docs": {
-        "description": "Shown. The server can hide or re-show it by changing the attribute (open=\"false\")."
+        "description": "Shown. Any change the server makes to the attribute wins, over a dismissal too: open=\"false\" hides it, open or no attribute shows it. Unchanged markup keeps a dismissal. From script: host.open, show(), hide()."
       }
     }
   ],
@@ -56,11 +56,11 @@
   ],
   "events": [
     {
-      "kind": "custom-event",
+      "kind": "event",
       "name": "sb-close",
       "bubbles": true,
       "composed": true,
-      "description": "After the alert was dismissed."
+      "description": "The user pressed the close button (not sent for hide(), host.open or the server). No detail."
     }
   ]
 }

@@ -1,5 +1,10 @@
 import { rocket } from 'datastar'
 
+// The custom states of each element's ElementInternals: attachInternals() works
+// once, and setup runs again when the element is re-attached. :state(closed) is
+// styleable from the page, morph-proof, and survives a move.
+const statesOf = new WeakMap()
+
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-inset, #0B1224);
@@ -9,6 +14,9 @@ const styles = /* css */ `
 	--_radius: var(--sb-radius, 8px);
 	display: block;
 }
+:host([hidden]) { display: none; }
+/* No gap left in a stack; !important beats a page's display rule. */
+:host(:state(closed)) { display: none !important; }
 .alert {
 	--_tone: var(--sb-info, #65BFFF);
 	display: grid;
@@ -61,30 +69,42 @@ rocket('sb-alert', {
 		variant: oneOf('info', 'success', 'warning', 'danger').default('info').docs({ description: 'Tone of the message.' }),
 		heading: string.trim.docs({ description: 'Bold first line.' }),
 		closable: bool.docs({ description: 'Show a dismiss button.' }),
-		open: bool.default(true).docs({ description: 'Shown. The server can hide or re-show it by changing the attribute (open="false").' }),
+		open: bool.default(true).docs({
+			description: 'Shown. Any change the server makes to the attribute wins, over a dismissal too: open="false" hides it, open or no attribute shows it. Unchanged markup keeps a dismissal. From script: host.open, show(), hide().',
+		}),
 	}),
 	manifest: {
 		slots: [{ name: 'default', description: 'The message.' }],
-		events: [{ name: 'sb-close', kind: 'custom-event', bubbles: true, composed: true, description: 'After the alert was dismissed.' }],
+		events: [{ name: 'sb-close', kind: 'event', bubbles: true, composed: true, description: 'The user pressed the close button (not sent for hide(), host.open or the server). No detail.' }],
 	},
-	setup: ({ $$, action, adoptStyles, defineHostProp, emit, host, observeProps, props }) => {
+	setup: ({ action, adoptStyles, defineHostProp, emit, host, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		$$.open = props.open
-		observeProps(() => ($$.open = props.open), 'open')
+		let states = statesOf.get(host)
+		const set = (open) => void states[open ? 'delete' : 'add']('closed')
+		if (!states) {
+			statesOf.set(host, (states = host.attachInternals().states))
+			set(props.open)
+			// The attribute is the server's word, so every change to it wins, over
+			// a dismissal too (observeProps only fires when the decoded value
+			// changes, and absent, "" and "true" all decode to true). A morph
+			// writes only what differs, so markup sent again unchanged keeps a
+			// dismissal. Unlike sb-details, a removed attribute counts: it means
+			// the default, open (the Playground's switch shows it that way).
+			// Observes for the element's lifetime, while moved or detached too.
+			let served = host.getAttribute('open')
+			new MutationObserver(() => served !== (served = host.getAttribute('open')) && set(props.open)).observe(host, { attributeFilter: ['open'] })
+		}
+		// Local: never reflected, so a morph can't undo it.
+		overrideProp('open', () => !states.has('closed'), set)
+		defineHostProp('show', { value: () => set(true) })
+		defineHostProp('hide', { value: () => set(false) })
 		action('close', () => {
-			$$.open = false
+			set(false)
 			emit('sb-close')
 		})
-		defineHostProp('show', { value: () => ($$.open = true) })
-		defineHostProp('hide', { value: () => ($$.open = false) })
 	},
 	render: ({ html, props: { variant, heading, closable } }) => html`
-		<div
-			class="alert ${variant}"
-			part="alert"
-			role="${variant === 'danger' || variant === 'warning' ? 'alert' : 'status'}"
-			data-show="$$open"
-		>
+		<div class="alert ${variant}" part="alert" role="${variant === 'danger' || variant === 'warning' ? 'alert' : 'status'}">
 			<span class="light" aria-hidden="true"></span>
 			<div>
 				${heading ? html`<strong class="heading" part="heading">${heading}</strong>` : null}
