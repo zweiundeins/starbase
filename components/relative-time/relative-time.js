@@ -59,11 +59,6 @@ const relative = (then, now, fmt) => {
 	return { text: fmt.format(n, unit), next: now + wait }
 }
 
-const styles = /* css */ `
-:host { display: inline; }
-time { font: inherit; color: inherit; }
-`
-
 rocket('sb-relative-time', {
 	props: ({ bool, number, oneOf, string }) => ({
 		datetime: string.trim.docs({ description: 'The moment: ISO 8601 (2026-09-22T08:00:00Z) or Unix time (seconds or ms).' }),
@@ -74,16 +69,12 @@ rocket('sb-relative-time', {
 		sync: bool.default(true).docs({ description: 'Keep the text current while the page is open.' }),
 	}),
 	renderOnPropChange: false,
-	setup: ({ $$, adoptStyles, cleanup, host, observeProps, props }) => {
-		adoptStyles(host, styles)
-		$$.text = host.textContent.trim() // the server's fallback, until computed
-		$$.iso = ''
-		$$.title = ''
-		const w = { next: Infinity, update: () => {} }
+	setup: ({ $$, cleanup, host, observeProps, props }) => {
+		const w = {}
 		w.update = (now = Date.now()) => {
 			const then = parse(props.datetime)
 			if (Number.isNaN(then)) {
-				$$.text = host.textContent.trim()
+				$$.text = host.textContent.trim() // the server's fallback
 				$$.iso = $$.title = ''
 				w.next = Infinity
 				return
