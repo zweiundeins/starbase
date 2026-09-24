@@ -9,14 +9,11 @@ const ICON_PATHS = {
 	light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 	palette: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 21 9.8C21 6 17 3 12 3Z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7" r="1"/>',
 }
+// The SVG goes into the data URL as it is: inside url('…') a data URL takes
+// <, > and spaces literally, and these icons hold no ', #, % or \ to escape.
 const iconCSS = Object.entries(ICON_PATHS)
-	.map(([name, paths]) => {
-		const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`
-		return `.icon.${name} { --_mask: url("data:image/svg+xml,${encodeURIComponent(svg)}"); }`
-	})
-	.join('\n')
-// The select's arrow, as a mask too (see .picker::after).
-const CHEVRON = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>')}")`
+	.map(([name, paths]) => `.icon.${name} { --_mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>'); }`)
+	.join('')
 const iconOf = (theme) => (theme in ICON_PATHS && theme !== 'palette' ? theme : '')
 
 // Text inside a single-quoted string of a Datastar expression.
@@ -115,7 +112,7 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 	block-size: 1rem;
 	translate: 0 -50%;
 	background: var(--_text);
-	mask: ${CHEVRON} center / contain no-repeat;
+	mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>') center / contain no-repeat;
 	pointer-events: none;
 }
 .trigger {
