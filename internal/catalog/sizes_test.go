@@ -63,3 +63,23 @@ func TestBundle(t *testing.T) {
 		t.Errorf("a lazily imported library was inlined (%d bytes)", len(b))
 	}
 }
+
+// A tag a comment mentions is not a dependency: gauge, sparkline and
+// echarts explain in comments that they repaint on <sb-theme-switch>'s
+// events, and must not pull it in. Real uses still count.
+func TestUsesIgnoresComments(t *testing.T) {
+	cat, err := catalog.Load(components.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, slug := range []string{"gauge", "sparkline", "echarts"} {
+		c, _ := cat.Get(slug)
+		for _, u := range cat.Uses(c) {
+			t.Errorf("%s: %s is only mentioned in a comment", slug, u.Tag)
+		}
+	}
+	pg, _ := cat.Get("code-playground")
+	if uses := cat.Uses(pg); len(uses) != 1 || uses[0].Tag != "sb-code-editor" {
+		t.Errorf("code-playground renders sb-code-editor, got %v", uses)
+	}
+}

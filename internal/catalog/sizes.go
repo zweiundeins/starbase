@@ -49,9 +49,17 @@ func brotliLen(b []byte) int {
 }
 
 // Uses returns the catalog components c renders itself (found as <sb-… in
-// its module), in order of first appearance.
+// its module), in order of first appearance. It scans the minified module:
+// its comments are gone, so a tag a comment merely mentions (e.g. "a pick on
+// <sb-theme-switch> arrives as…") is not mistaken for a dependency, while the
+// templates and strings that really render tags are kept as they are.
 func (cat *Catalog) Uses(c *Component) []*Component {
 	src, _ := fs.ReadFile(cat.FS, c.Script)
+	if mins, err := cat.MinFiles(c); err == nil {
+		if m, ok := mins[MinOf(strings.TrimPrefix(c.Script, c.Slug+"/"))]; ok {
+			src = m
+		}
+	}
 	var out []*Component
 	for _, m := range usesTagRe.FindAllStringSubmatch(string(src), -1) {
 		for _, d := range cat.Components {
