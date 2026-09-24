@@ -26,9 +26,9 @@ const quote = (s) => s.replace(/[\\']/g, '\\$&')
 // theme names to pick its palette.
 const schemeOf = (el) => {
 	const cs = getComputedStyle(el).colorScheme
-	const light = /\blight\b/.test(cs), dark = /\bdark\b/.test(cs)
-	if (light !== dark) return dark ? 'dark' : 'light'
-	return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+	const dark = /\bdark\b/.test(cs)
+	const decided = dark !== /\blight\b/.test(cs)
+	return (decided ? dark : matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'
 }
 
 const nameOf = (t) => t.charAt(0).toUpperCase() + t.slice(1).replaceAll('-', ' ')
@@ -238,7 +238,7 @@ rocket('sb-theme-switch', {
 					><span data-attr:class="'icon ' + $$icon" aria-hidden="true"></span></button>
 				<div id="menu" class="menu" part="menu" popover role="radiogroup" aria-label="${label}"
 					data-on:click="evt.detail && el.hidePopover()"
-					data-on:keyup="(evt.key == 'Enter' || evt.key == ' ') && (evt.target.click(), el.hidePopover())"
+					data-on:keyup="['Enter', ' '].includes(evt.key) && (evt.target.click(), el.hidePopover())"
 					data-on:beforetoggle="el.matches(':focus-within') && el.previousElementSibling.focus()">
 					<template data-for="o in $$options">
 						<label data-attr:part="$$theme === o?.value ? 'option selected' : 'option'">
