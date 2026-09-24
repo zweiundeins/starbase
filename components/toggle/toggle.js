@@ -17,11 +17,6 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
-// What an element keeps when it is moved: Rocket drops $$ on disconnect and
-// setup runs again on re-attach. { on: the live state, served: the server's
-// last word }.
-const kept = new WeakMap()
-
 // Pixel corners: a polygon that notches every corner by one "pixel"
 // (times --sb-notch; 0 leaves the rectangle, rounded by border-radius).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -48,8 +43,8 @@ button {
 	background: var(--_track);
 	clip-path: ${notch('calc(var(--_u) * var(--_notch))')};
 	border-radius: calc(var(--_u) * 3 * (1 - var(--_notch)));
-	cursor: pointer;
-	transition: background 180ms steps(3, end);
+	/* cursor: the label's (all: unset inherits it) */
+	transition: background 180ms steps(3);
 }
 .sm { --_u: 3px; }
 .md { --_u: 4px; }
@@ -62,7 +57,7 @@ button {
 	background: var(--_knob);
 	clip-path: ${notch('calc(var(--_u) / 2 * var(--_notch))')};
 	border-radius: calc(var(--_u) * 2 * (1 - var(--_notch)));
-	transition: inset-inline-start 180ms steps(5, end);
+	transition: inset-inline-start 180ms steps(5);
 }
 button.on { background: var(--_on); }
 button.on .knob { inset-inline-start: calc(var(--_u) * 6); background: var(--_knob-on); }
@@ -93,7 +88,10 @@ rocket('sb-toggle', {
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		const keep = kept.get(host) ?? kept.set(host, {}).get(host)
+		// Kept across moves (Rocket drops $$ on disconnect, setup runs again on
+		// re-attach) on the element's own ElementInternals: { on: the live
+		// state, served: the server's last word }.
+		const keep = internalsOf(host)
 		// Interaction state lives in a local signal, never reflected.
 		$$.on = keep.on ?? props.checked
 		// A checked attribute sent by the server wins when it says something new
@@ -120,7 +118,7 @@ rocket('sb-toggle', {
 		// Commands: the attribute is the server's value, $$.on the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
-		const states = internalsOf(host).states
+		const states = keep.states
 		const sync = () => peek(() => (props.confirm && $$.on !== props.checked ? states.add('pending') : states.delete('pending')))
 		// Rocket's disconnect wipes $$ (re-running this) before a move re-attaches.
 		effect(() => ((keep.on = $$.on ?? keep.on), sync()))
