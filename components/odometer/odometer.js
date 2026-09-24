@@ -43,19 +43,8 @@ const wheels = new WeakMap()
 // the morph only matches ids, never uses them in a selector.
 const shapeKey = (s) => 'odo' + s.replace(/\d/g, 'd')
 
-// Formatters are cached per option set: Intl.NumberFormat is not cheap, and a
-// readout can change many times a second.
-const formatters = new Map()
-const formatterFor = (lang, decimals, grouping) => {
-	const key = `${lang}|${decimals}|${grouping}`
-	let f = formatters.get(key)
-	if (!f) {
-		// Latin digits always: a locale's own numerals would not be 0–9 strips.
-		f = new Intl.NumberFormat(lang, { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouping, numberingSystem: 'latn' })
-		formatters.set(key, f)
-	}
-	return f
-}
+// A tag Intl would throw on falls back to the default locale (en_US reads as en-US).
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 
 const styles = /* css */ `
 :host {
@@ -130,8 +119,12 @@ rocket('sb-odometer', {
 		adoptStyles(host, styles)
 	},
 	render: ({ html, host, props: { value, decimals, grouping, lang, drum } }) => {
-		const locale = lang || host.closest('[lang]')?.lang || navigator.language
-		const text = formatterFor(locale, decimals, grouping).format(value)
+		// The nearest lang, also outside the shadow roots it sits in, then the browser's.
+		let tag = lang
+		for (let el = host; !tag && el; el = el.getRootNode().host) tag = el.closest('[lang]')?.lang
+		// Latin digits always: a locale's own numerals would not be 0–9 strips. A
+		// new formatter per render costs a few µs, next to milliseconds of morph.
+		const text = new Intl.NumberFormat(locale(tag || navigator.language), { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouping, numberingSystem: 'latn' }).format(value)
 		// The mode is part of the shape: switching it builds fresh wheels.
 		const shape = shapeKey(text) + (drum ? '-drum' : '')
 		const digits = [...text].filter(isDigit).map(Number)
