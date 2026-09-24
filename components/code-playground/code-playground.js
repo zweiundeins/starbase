@@ -22,17 +22,23 @@ const kept = new WeakMap()
 // file tabs or the theme picker, so their box-sizing makes no difference).
 const styles = /* css */ `
 :host {
+	--_bg: var(--sb-surface-card, #141D32);
 	--_inset: var(--sb-surface-inset, #0B1224);
 	--_border: var(--sb-border, #283552);
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_text-2: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
 	--_brand: var(--sb-brand, #8C6BFF);
+	--_brand-light: var(--sb-brand-light, #B09AFF);
+	--_danger: var(--sb-danger, #F2777A);
+	--_warn: var(--sb-warn, #F5C451);
+	--_radius: var(--sb-radius-lg, 10px);
+	--_h: var(--sb-code-playground-height, 34rem);
 	display: block;
 	container-type: inline-size;
 }
 :host([hidden]) { display: none; }
-.pg { display: grid; grid-template-rows: auto 1fr; block-size: var(--sb-code-playground-height, 34rem); border: 1px solid var(--_border); border-radius: var(--sb-radius-lg, 10px); background: var(--sb-surface-card, #141D32); overflow: hidden; }
+.pg { display: grid; grid-template-rows: auto 1fr; block-size: var(--_h); border: 1px solid var(--_border); border-radius: var(--_radius); background: var(--_bg); overflow: hidden; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-block-end: 1px solid var(--_border); font-size: 0.8125rem; }
 [role="tablist"] { display: flex; gap: 0.25rem; margin-inline-end: auto; overflow-x: auto; }
 [role="tab"], .run, select {
@@ -46,7 +52,7 @@ const styles = /* css */ `
 }
 [role="tab"]:hover { color: var(--_text); background: color-mix(in oklch, var(--_text) 6%, transparent); }
 [role="tab"][aria-selected="true"], select { color: var(--_text); border-color: var(--_border); background: var(--_inset); }
-:is([role="tab"], .run, select):focus-visible { outline: 2px solid var(--sb-brand-light, #B09AFF); outline-offset: 2px; }
+:is([role="tab"], .run, select):focus-visible { outline: 2px solid var(--_brand-light); outline-offset: 2px; }
 .run { box-sizing: border-box; border-color: var(--_brand); background: var(--_brand); color: var(--sb-text-on-brand, #F3F4FA); font-weight: 700; }
 .run::before { content: ""; display: inline-block; block-size: 0.7em; margin-inline-end: 0.45em; border-left: 0.6em solid; clip-path: polygon(0 0, 100% 50%, 0 100%); }
 .run:hover { background: var(--sb-brand-hover, #A58BFF); }
@@ -65,8 +71,8 @@ iframe { inline-size: 100%; block-size: 100%; border: 0; background: var(--sb-bg
 .console { display: flex; flex-direction: column-reverse; overflow: auto; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
 .console > div { margin-block-end: auto; }
 .console > div:not(:has(div))::before { content: "Console"; color: var(--_muted); }
-.console .error { color: var(--sb-danger, #F2777A); }
-.console .warn { color: var(--sb-warn, #F5C451); }
+.console .error { color: var(--_danger); }
+.console .warn { color: var(--_warn); }
 .status { color: var(--_muted); font-size: 0.75rem; }
 `
 
