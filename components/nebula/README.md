@@ -53,7 +53,7 @@ Clouds of gas and a few twinkling stars, rendered by a fragment shader. The shad
 
 ### Palettes
 
-`palette` picks the colours and `seed` the clouds. Any number is a seed; seeds 101 apart give the same sky.
+`palette` picks the colours and `seed` the clouds. Any number is a seed; from 101 on the skies repeat (101 is the same as 0).
 
 ```html preview
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 12px; inline-size: 100%">

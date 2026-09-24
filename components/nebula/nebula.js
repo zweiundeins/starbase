@@ -157,7 +157,7 @@ rocket('sb-nebula', {
 			loc = {}
 			for (const n of ['res', 'ptr', 'time', 'p', 'c0', 'c1', 'c2', 'c3']) loc[n] = gl.getUniformLocation(prog, 'u_' + n)
 		}
-				const paint = () => {
+		const paint = () => {
 			if (!gl || gl.isContextLost()) return
 			const css = getComputedStyle(host)
 			const c = PALETTES[props.palette].map(([token, fallback]) => rgbOf(css.getPropertyValue(token).trim() || fallback))
