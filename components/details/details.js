@@ -25,9 +25,6 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // one. The registry is what makes the group work across hosts.
 const groups = new Map()
 
-// Two frames, long enough for the first paint to settle.
-const next = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn))
-
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-card, #141D32);
@@ -94,6 +91,7 @@ details.disabled summary:hover { background: none; }
 }
 summary:hover .marker { color: var(--_text); }
 details[open] .marker::before { rotate: 90deg; }
+:host(:dir(rtl)) details:not([open]) .marker::before { rotate: 180deg; }
 /*
  * The animation. ::details-content is the box the browser already wraps the
  * revealed content in, so the height it grows to is the content's own height.
@@ -108,11 +106,8 @@ details::details-content {
 	block-size: 0;
 	overflow: hidden;
 	transition: block-size var(--_dur) cubic-bezier(0.2, 0, 0, 1), content-visibility var(--_dur) allow-discrete;
-	transition-behavior: allow-discrete;
 }
 details[open]::details-content { block-size: auto; }
-/* The first paint, and anything the browser reveals itself: no animation. */
-details.instant::details-content { transition: none; }
 .body {
 	padding: 0.875rem;
 	border-block-start: 1px solid var(--_border);
@@ -150,36 +145,30 @@ rocket('sb-details', {
 		$$.summary = props.summary
 		$$.icon = props.icon
 		$$.disabled = props.disabled
-		// The open state lives here and is written to the inner <details>
-		// through data-effect. It is never written to the *host* attribute: that
-		// one belongs to the server. The <details> reflects its own state into
-		// its own open attribute, but that one is inside the shadow root, where
-		// no morph can see it.
+		// The open state lives here, and data-effect writes it to the inner
+		// <details> (the template renders it closed, so that effect is its one
+		// writer). It is never written to the *host* attribute: that one belongs
+		// to the server. The <details> reflects its own state into its own open
+		// attribute, but that one is inside the shadow root, where no morph can
+		// see it. The first paint never animates: Rocket renders and applies in
+		// connectedCallback, before any style is computed, and CSS transitions
+		// don't run on an element's first style.
 		$$.open = props.open
-		// The first paint never animates: an initially open panel is simply open.
-		$$.instant = true
-		next(() => ($$.instant = false))
-
-		const toggled = (open, defer) => {
-			const fire = () => emit('sb-toggle', { name: props.name, open })
-			// A change that came from the server arrives during a morph, and a
-			// @post the page starts in the handler would be tracked by whatever
-			// effect is running: let it out in a later task instead.
-			if (defer) setTimeout(fire)
-			else fire()
-		}
 
 		// The one place the open state changes, whoever asked: the native
 		// element's own toggle, host.open, show()/hide(), a sibling, the server.
-		const set = (want, { announce = true, defer = false } = {}) => {
+		// A server change arrives in a MutationObserver microtask, inside
+		// peek(): no effect is running, so a sibling's sb-toggle handler (and a
+		// @post it starts) can't be tracked by one.
+		const set = (want, announce = true) => {
 			if (want === $$.open) return
 			$$.open = want
-			if (want) closeSiblings(defer)
-			if (announce) toggled(want, defer)
+			if (want) closeSiblings()
+			if (announce) emit('sb-toggle', { name: props.name, open: want })
 		}
 
 		// --- accordion groups ----------------------------------------------
-		const rec = { host, close: (defer) => set(false, { defer }) }
+		const rec = { host, close: () => set(false) }
 		let group = ''
 		const leave = () => {
 			const members = groups.get(group)
@@ -195,12 +184,12 @@ rocket('sb-details', {
 			if (!groups.has(group)) groups.set(group, new Set())
 			groups.get(group).add(rec)
 		}
-		const closeSiblings = (defer) => {
+		const closeSiblings = () => {
 			if (!group) return
 			for (const other of [...(groups.get(group) ?? [])]) {
 				// Same document only: two previews on one page shouldn't fight over
 				// a group name, and a runner iframe is its own world.
-				if (other !== rec && other.host.isConnected && other.host.ownerDocument === host.ownerDocument) other.close(defer)
+				if (other !== rec && other.host.isConnected && other.host.ownerDocument === host.ownerDocument) other.close()
 			}
 		}
 		join(props.group)
@@ -228,8 +217,7 @@ rocket('sb-details', {
 				// sending the attribute again later counts as a change.
 				if (!host.hasAttribute('open')) return void (served = null)
 				if (props.open === served) return
-				served = props.open
-				set(props.open, { announce: false, defer: true })
+				set((served = props.open), false)
 			})
 		// Why not observeProps: it only fires when the decoded value changes, so
 		// adding open="false" to an element that had no open attribute at all
@@ -251,11 +239,9 @@ rocket('sb-details', {
 		// It is the default action of Enter and Space on it as well.
 		action('guard', ({ evt }) => $$.disabled && evt.preventDefault())
 	},
-	render: ({ html, props }) => html`
+	render: ({ html }) => html`
 		<details
 			part="details"
-			open="${props.open ? 'open' : null}"
-			data-class:instant="$$instant"
 			data-class:disabled="$$disabled"
 			data-effect="el.open !== $$open && (el.open = $$open)"
 			data-on:toggle="@sync()"

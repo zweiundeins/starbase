@@ -119,7 +119,7 @@ The panel is a real `<details>` and `<summary>`, inside the component's shadow r
 - **The shadow root keeps the server-owned attribute clean.** A `<details>` reflects its state into its own `open` attribute, which is exactly why a `<details>` in a morphed page needs `data-preserve-attr="open"`: the attribute is both the server's instruction and the browser's scratch space. Here the reflected attribute is *inside the shadow root*, where a morph never goes, while the **host's** `open` attribute is only ever read. The two never meet.
 - **The animation is the browser's box.** `::details-content` is the box the browser already wraps the revealed content in, so it grows from `block-size: 0` to `auto` (with `interpolate-size: allow-keywords`) and lands on the content's own height — nothing is measured, and `content-visibility` flips discretely at the ends, which is what keeps closed content out of the layout, out of the tab order and still findable.
 
-Where `::details-content` is not supported the animation rules are simply dropped and the panel opens and closes at once; everything else is unchanged.
+Where `::details-content` or `interpolate-size` is not supported, the panel simply opens and closes at once; everything else is unchanged.
 
 Only one thing is not native: `group`. `<details name="…">` groups exclusively within a single tree scope, and each host has its own shadow root, so no two panels are ever in the same one. A small module-level registry does it instead, which is also what lets a closing sibling emit its own `sb-toggle`.
 
@@ -145,7 +145,9 @@ Only one thing is not native: `group`. `<details name="…">` groups exclusively
 
 ## Styling
 
-Parts: `details` (the `<details>` box), `summary`, `icon`, `label`, `marker` (the pixel triangle) and `content` (the body inside the panel). The animated box itself is the browser's `::details-content`, which no part can name; its speed is `--sb-details-duration`.
+Parts: `details` (the `<details>` box), `summary`, `icon`, `label`, `marker` (the pixel triangle, mirrored in right-to-left text) and `content` (the body inside the panel). The animated box itself is the browser's `::details-content`, which no part can name; its speed is `--sb-details-duration`.
+
+The open panel is `sb-details::part(details):open`. Not `sb-details[open]`: the host's `open` attribute is the server's word, not the live state.
 
 It styles against the semantic tokens — `--sb-surface-card`, `--sb-surface-hover`, `--sb-border`, `--sb-text-1`, `--sb-text-2`, `--sb-text-muted`, `--sb-brand-light`, `--sb-radius` — and notches its corners by `--sb-notch` (at `0` the radius takes over). `--sb-details-duration` (220 ms) sets the animation, and `prefers-reduced-motion: reduce` turns it off, opening and closing at once.
 
