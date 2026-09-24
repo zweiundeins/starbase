@@ -223,9 +223,11 @@ rocket('sb-toast', {
 		const region = () => host.shadowRoot?.querySelector('.region')
 		const closes = () => host.shadowRoot?.querySelectorAll('.close') ?? []
 		const now = () => performance.now()
-		// Keyboard focus pauses; a button focused by a click does not, or a
-		// dismissal with the mouse would stop every other countdown.
-		const paused = () => hover || !!host.shadowRoot?.querySelector(':focus-visible')
+		// Keyboard focus pauses and is kept on its toast; a button focused by a
+		// click does neither, or a dismissal with the mouse would stop every other
+		// countdown and scroll an inline stack back into view as toasts go.
+		const kb = () => host.shadowRoot?.querySelector(':focus-visible')
+		const paused = () => hover || !!kb()
 
 		const hold = (id) => {
 			const s = timers.get(id)
@@ -255,7 +257,7 @@ rocket('sb-toast', {
 		const rebuild = () => {
 			// The focused row, by index: data-for reuses rows by index, so the
 			// focus has to follow its toast by hand.
-			const at = [...closes()].indexOf(host.shadowRoot?.activeElement)
+			const at = [...closes()].indexOf(kb())
 			const had = view[at]?.id
 			const list = normalize(props.toasts)
 			// A toast that is fading out keeps its slot until the fade is over, even
@@ -302,16 +304,17 @@ rocket('sb-toast', {
 			// the visual order (so Tab and screen readers follow the eye).
 			if (props.placement.startsWith('top')) rows.reverse()
 
-			// Focus stays on its toast, or moves to the neighbour (old index, clamped)
-			// when that one goes, and back to where it came from after the last one.
-			// Once before the rows change, so the focused row is never the one taken
-			// out, and once after, for a row that did not exist yet.
+			// Keyboard focus stays on its toast, or moves to the neighbour (old index,
+			// clamped) when that one goes, and back to where it came from after the
+			// last one. Once before the rows change, so the focused row is never the
+			// one taken out, and once after, for a row that did not exist yet (in a
+			// microtask: inside an effect, e.g. data-attr:toasts, data-for renders later).
 			const live = rows.filter((r) => !r.leaving)
 			const to = live.find((r) => r.id === had) ?? live[Math.min(at, live.length - 1)]
 			const move = () => at < 0 || (to ? closes()[rows.indexOf(to)] : from)?.focus()
 			move()
 			$$.rows = view = rows
-			move()
+			queueMicrotask(move)
 
 			// Announce what is new, politely or assertively.
 			const fresh = { polite: [], assertive: [] }
