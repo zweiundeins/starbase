@@ -17,12 +17,13 @@ import { rocket } from 'datastar'
 // that passes 9 → 0 while the number climbs rolls on into the turn below and
 // one passing 0 → 9 while it falls rolls back into the turn above, the way a
 // real odometer turns over, instead of spinning back through every digit. Before
-// the next change, a wheel left in an outer turn moves to the same digit in the
-// middle turn, which looks identical, so it always has room to roll either way.
+// the next change, a wheel sent into an outer turn moves a whole turn back
+// towards the middle one, which looks identical, so it always has room to roll
+// either way.
 const CELLS = Array.from({ length: 30 }, (_, i) => i % 10)
 const REST = 10 // the middle turn
 const isDigit = (c) => c >= '0' && c <= '9'
-const offset = (pos) => `translateY(-${(pos * 100) / CELLS.length}%)`
+const offset = (pos) => `translateY(${(pos * -100) / CELLS.length}%)`
 
 // With `drum`, each wheel is a cylinder instead: its ten digits sit on faces
 // 36° apart, and rolling turns the cylinder, so a digit foreshortens as it
@@ -137,20 +138,27 @@ rocket('sb-odometer', {
 
 		const last = wheels.get(host)
 		const same = last?.shape === shape
-		const up = same && value > last.value
-		const down = same && value < last.value
+		// The wheels show the magnitude, and the same shape has the same sign:
+		// below zero, they turn back as the number climbs.
+		const up = same && Math.abs(value) > Math.abs(last.value)
+		const down = same && Math.abs(value) < Math.abs(last.value)
 		if (same) {
-			// Settle wheels still standing in an outer turn onto the middle one:
-			// the same digit, so nothing visibly moves, but the roll that follows
-			// starts from the middle and can turn over in either direction.
+			// Settle wheels sent into an outer turn a whole turn back, from where
+			// they are now: the same digit, so nothing visibly moves and a roll
+			// still in flight carries on, but the roll that follows counts from
+			// the middle turn and can turn over in either direction. A wheel more
+			// than a turn behind (updates far faster than the roll) is caught up
+			// to the end of its strip rather than shown past it.
 			host.shadowRoot?.querySelectorAll('.strip').forEach((strip, i) => {
-				const pos = last.pos[i]
-				if (pos >= REST && pos < REST + 10) return
+				const shift = last.pos[i] - REST - (last.pos[i] % 10)
+				if (!shift) return
+				// Where it is now, from matrix(1, 0, 0, 1, 0, y) in px. Not rendered, the
+				// transform is none (or not a matrix): NaN, and the write is ignored.
+				const at = (parseFloat(getComputedStyle(strip).transform.split(',')[5]) * -CELLS.length) / strip.offsetHeight
 				strip.style.transition = 'none'
-				strip.style.transform = offset(REST + (pos % 10))
+				strip.style.transform = offset(Math.min(Math.max(at - shift, 0), 29))
 				void strip.offsetHeight
 				strip.style.transition = ''
-				last.pos[i] = REST + (pos % 10)
 			})
 		}
 		const pos = digits.map((d, i) => {

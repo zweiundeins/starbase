@@ -104,7 +104,7 @@ The digits inherit the surrounding font; a monospaced or tabular face keeps the 
 
 For a wheel you can see is round, add `drum` (see above).
 
-The speed is yours: `--sb-odometer-duration` (default `0.55s`) is how long a wheel takes to reach its new digit, and `--sb-odometer-easing` how it gets there. A quick ease-out suits a counter that jumps; for a value that climbs steadily, set the duration to the interval between updates and the easing to `linear`, and the wheels move continuously. A wheel always turns the way the number moves: forward over the top when it climbs (9 → 0), back when it falls.
+The speed is yours: `--sb-odometer-duration` (default `0.55s`) is how long a wheel takes to reach its new digit, and `--sb-odometer-easing` how it gets there. A quick ease-out suits a counter that jumps; for a value that climbs steadily, set the duration to the interval between updates and the easing to `linear`, and the wheels move continuously. A wheel always turns the way its digits count: forward over the top (9 → 0) when the number grows, back when it shrinks. Below zero that is its size, not its sign: −15 → −13 turns the units wheel back two digits, as 15 → 13 would. A value that arrives mid-roll takes over from where the wheels are.
 
 ## Accessibility
 
