@@ -168,4 +168,5 @@ It styles against the semantic tokens — `--sb-surface-card`, `--sb-surface-hov
 - **Panel:** `role="region"` named by the summary (`aria-labelledby`), which puts it in the landmark and rotor lists while it is open.
 - **Closed content:** the browser's own `content-visibility: hidden` on `::details-content` keeps it out of the accessibility tree and out of the tab order, and find-in-page still reaches it and opens the panel.
 - **Motion:** `prefers-reduced-motion: reduce` removes the height transition and the marker's rotation; the panel still opens and closes.
+- **Forced colours:** the marker is drawn in `CanvasText`, and the focus ring is an outline, which forced colours keep.
 - **Disabled:** `<summary>` has no disabled state, so the component sets `aria-disabled` and `tabindex="-1"` (out of the tab order) and cancels the default action of the click — which is also what Enter and Space trigger.

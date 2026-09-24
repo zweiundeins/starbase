@@ -50,6 +50,7 @@ const styles = /* css */ `
 	 * its own height without anything being measured. */
 	interpolate-size: allow-keywords;
 }
+:host([hidden]) { display: none; }
 details {
 	border: 1px solid var(--_border);
 	background: var(--_bg);
@@ -122,6 +123,9 @@ details[open]::details-content { block-size: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
 	details::details-content, .marker::before { transition: none; }
+}
+@media (forced-colors: active) {
+	.marker::before { forced-color-adjust: none; background: CanvasText; }
 }
 `
 
