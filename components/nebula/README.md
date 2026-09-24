@@ -53,6 +53,8 @@ Clouds of gas and a few twinkling stars, rendered by a fragment shader. The shad
 
 ### Palettes
 
+`palette` picks the colours and `seed` the clouds. Any number is a seed; seeds 101 apart give the same sky.
+
 ```html preview
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 12px; inline-size: 100%">
   <sb-nebula palette="violet" style="--sb-nebula-height: 7rem"></sb-nebula>
@@ -70,16 +72,27 @@ Clouds of gas and a few twinkling stars, rendered by a fragment shader. The shad
 <sb-nebula levels="0" pixel="2" speed="0.6" style="--sb-nebula-height: 9rem"></sb-nebula>
 ```
 
+### Decoration with a pause switch
+
+`label=""` makes it decoration, hidden from assistive technology. Motion that goes on for more than five seconds next to other content needs a way to stop it: here a switch sets `speed` to 0.
+
+```html preview
+<div data-signals:_paused="false" style="display: grid; gap: 12px; inline-size: 100%">
+  <sb-nebula label="" data-attr:speed="$_paused ? 0 : 1" data-preserve-attr="speed" style="--sb-nebula-height: 8rem"></sb-nebula>
+  <sb-toggle label="Pause the nebula" data-bind:_paused__prop.checked></sb-toggle>
+</div>
+```
+
 ## Performance
 
-One full-screen triangle and a single shader, rendered at a quarter of the CSS resolution by default (`pixel="4"`). It stops animating offscreen and when `speed` is 0. It frees its WebGL context when removed, and recovers when the browser takes the context away. Without WebGL it shows a still gradient in the same colours. Set the height with `--sb-nebula-height`.
+One full-screen triangle and a single shader, rendered at a quarter of the CSS resolution by default (`pixel="4"`). It stops animating offscreen and when `speed` is 0. Each nebula has its own WebGL context, and frees it when removed. Browsers keep only so many contexts live on a page (Chrome about 16) and take the oldest away beyond that; such a context doesn't come back, while one lost to a GPU reset does. Without WebGL, or once its context is gone, it shows a still `--sb-brand` glow. Set the height with `--sb-nebula-height`.
 
 ## Styling
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given; `--sb-nebula-height` (default `14rem`) sets the height.
-- **Colours:** the cloud is painted from theme tokens, read on every frame, so a theme change or your own override shows at once. `palette` picks them: `violet` uses `--sb-brand`, `--sb-accent` and `--sb-text-1`; `aurora` `--sb-accent`, `--sb-datastar` and `--sb-text-1`; `ember` `--sb-danger`, `--sb-warn` and `--sb-text-1`; `mono` `--sb-border-strong`, `--sb-text-muted` and `--sb-text-1`. All of them sit on `--sb-surface-inset`. Without WebGL it shows a still `--sb-brand` glow instead. Corners are `--sb-radius`.
+- **Colours:** the cloud is painted from theme tokens, read whenever it paints: every frame while it drifts, and at once on a theme change (a pick on `<sb-theme-switch>`, or the system turning light or dark), even when it is still. An override in your own CSS shows with the next paint. `palette` picks them: `violet` uses `--sb-brand`, `--sb-accent` and `--sb-text-1`; `aurora` `--sb-accent`, `--sb-datastar` and `--sb-text-1`; `ember` `--sb-danger`, `--sb-warn` and `--sb-text-1`; `mono` `--sb-border-strong`, `--sb-text-muted` and `--sb-text-1`. All of them sit on `--sb-surface-inset`. On a light theme, where `--sb-surface-inset` is lighter than `--sb-text-1`, it sorts the colours by lightness, so the sky stays dark and the stars light. Without WebGL, or with its context lost, it shows a still `--sb-brand` glow instead. Corners are `--sb-radius`.
 - **Parts:** `canvas`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -91,4 +104,4 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-It is decorative motion, labelled "Animated nebula" (change it with `label`). Under `prefers-reduced-motion` it shows one still frame and ignores the pointer.
+It is an image named "Animated nebula"; change the name with `label`. Where it is only decoration, set `label=""`: it is then hidden from assistive technology. Under `prefers-reduced-motion` it shows one still frame and ignores the pointer. Otherwise it drifts for as long as it is on screen, so next to other content give people a way to pause it (WCAG 2.2.2): `speed="0"` holds it still, as in [the pause switch above](#decoration-with-a-pause-switch).

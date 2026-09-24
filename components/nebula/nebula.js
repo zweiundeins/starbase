@@ -14,12 +14,14 @@ const rgbOf = (css) => {
 	rgbCache.set(css, rgb)
 	return rgb
 }
+const luma = ([r, g, b]) => 2 * r + 7 * g + b
 
 // Four stops per palette, darkest first: space, gas, glow, highlights/stars.
+// On a light theme space comes out lightest: paint() then sorts them by lightness.
 const PALETTES = {
 	violet: [['--sb-surface-inset', '#0B1224'], ['--sb-brand', '#8C6BFF'], ['--sb-accent', '#65BFFF'], ['--sb-text-1', '#F3F4FA']],
 	aurora: [['--sb-surface-inset', '#0B1224'], ['--sb-accent', '#65BFFF'], ['--sb-datastar', '#6EF59A'], ['--sb-text-1', '#F3F4FA']],
-	ember: [['--sb-surface-inset', '#0B1224'], ['--sb-danger', '#F2777A'], ['--sb-warn', '#F5C26B'], ['--sb-text-1', '#F3F4FA']],
+	ember: [['--sb-surface-inset', '#0B1224'], ['--sb-danger', '#F2777A'], ['--sb-warn', '#F5C451'], ['--sb-text-1', '#F3F4FA']],
 	mono: [['--sb-surface-inset', '#0B1224'], ['--sb-border-strong', '#3A4868'], ['--sb-text-muted', '#7785A8'], ['--sb-text-1', '#F3F4FA']],
 }
 
@@ -27,6 +29,7 @@ const VERT = `attribute vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }
 
 // Domain-warped fbm (after Inigo Quilez), posterized with a 4×4 Bayer
 // dither so it reads as pixel art, plus a twinkling star layer.
+// u_p is the props: seed, density, levels, stars.
 const FRAG = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -35,7 +38,8 @@ precision mediump float;
 #endif
 uniform vec2 u_res;
 uniform vec2 u_ptr;
-uniform float u_time, u_seed, u_density, u_levels, u_stars;
+uniform float u_time;
+uniform vec4 u_p;
 uniform vec3 u_c0, u_c1, u_c2, u_c3;
 
 float hash(vec2 p) {
@@ -61,12 +65,12 @@ float bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }
 void main() {
 	vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / u_res.y;
 	float t = u_time;
-	vec2 p = uv * 2.4 + u_ptr * 0.18 + u_seed * 7.31;
+	vec2 p = uv * 2.4 + u_ptr * 0.18 + u_p.x * 7.31;
 	vec2 q = vec2(fbm(p + 0.05 * t), fbm(p + vec2(5.2, 1.3) - 0.04 * t));
 	vec2 r = vec2(fbm(p + 3.5 * q + vec2(1.7, 9.2) + 0.08 * t), fbm(p + 3.5 * q + vec2(8.3, 2.8) + 0.06 * t));
 	float f = fbm(p + 3.0 * r);
 
-	float edge = mix(0.72, 0.28, u_density);
+	float edge = mix(0.72, 0.28, u_p.y);
 	float cloud = smoothstep(edge - 0.22, edge + 0.4, f);
 	vec3 col = mix(u_c0, u_c1, clamp(cloud * 1.3, 0.0, 1.0));
 	col = mix(col, u_c2, clamp(dot(q, q) * cloud * 1.1 - 0.15, 0.0, 1.0));
@@ -74,14 +78,16 @@ void main() {
 
 	// Stars sit behind the gas and move less with the pointer (parallax).
 	vec2 cell = floor(gl_FragCoord.xy + u_ptr * 4.0);
-	float s = hash(cell + u_seed * 13.0);
+	float s = hash(cell + u_p.x * 13.0);
 	float star = step(0.9965, s) * (0.6 + 0.4 * sin(t * 2.0 + s * 6283.0));
-	col = mix(col, u_c3, star * u_stars * (1.0 - cloud * 0.8));
+	col = mix(col, u_c3, star * u_p.w * (1.0 - cloud * 0.8));
 
-	if (u_levels > 0.5) col = floor(col * u_levels + bayer4(gl_FragCoord.xy)) / u_levels;
+	if (u_p.z > 0.5) col = floor(col * u_p.z + bayer4(gl_FragCoord.xy)) / u_p.z;
 	gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`
 
+// The host's background shows wherever the canvas doesn't paint: without
+// WebGL, or once the context is lost. Where it paints, it is opaque.
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-inset, #0B1224);
@@ -92,16 +98,11 @@ const styles = /* css */ `
 	block-size: var(--sb-nebula-height, 14rem);
 	border-radius: var(--_radius);
 	overflow: hidden;
-	background: var(--_bg);
+	background: radial-gradient(ellipse at 35% 45%, color-mix(in oklch, var(--_glow) 55%, transparent), transparent 60%), var(--_bg);
 	contain: strict;
 }
 canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: pixelated; touch-action: pan-y; }
-/* Without WebGL: a still gradient in the same colours. */
-.nogl { background: radial-gradient(ellipse at 35% 45%, color-mix(in oklch, var(--_glow) 55%, transparent), transparent 60%), var(--_bg); }
 `
-
-// Per-instance renderer, shared by setup (actions) and onFirstRender (canvas).
-const renderers = new WeakMap()
 
 rocket('sb-nebula', {
 	props: ({ bool, number, oneOf, string }) => ({
@@ -116,15 +117,24 @@ rocket('sb-nebula', {
 		label: string.default('Animated nebula').docs({ description: 'Accessible label.' }),
 	}),
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, cleanup, host, observeProps, props }) => {
+	render: ({ html }) => html`
+		<canvas
+			part="canvas"
+			role="img"
+			data-ref:canvas
+			data-on:pointermove="@point()"
+			data-on:pointerleave="@leave()"
+		></canvas>
+	`,
+	// All of it runs here rather than in setup: onFirstRender gets the same
+	// context plus the canvas, and runs again on every connect.
+	onFirstRender: ({ action, adoptStyles, cleanup, host, observeProps, props, refs: { canvas } }) => {
 		adoptStyles(host, styles)
-		$$.nogl = false
-		$$.tx = 0 // pointer target, -1..1
-		$$.ty = 0
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
-		let canvas, gl, prog, loc
+		const scheme = matchMedia('(prefers-color-scheme: dark)')
+		let gl, loc
 		let raf = 0, last = 0, time = 0, visible = true
-		let px = 0, py = 0 // eased pointer
+		let px = 0, py = 0, tx = 0, ty = 0 // eased pointer and its target, -1..1
 
 		const compile = () => {
 			const sh = (type, src) => {
@@ -134,36 +144,31 @@ rocket('sb-nebula', {
 				if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !gl.isContextLost()) throw new Error('sb-nebula: ' + gl.getShaderInfoLog(s))
 				return s
 			}
-			prog = gl.createProgram()
+			const prog = gl.createProgram()
 			gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT))
 			gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG))
+			gl.bindAttribLocation(prog, 0, 'a')
 			gl.linkProgram(prog)
 			gl.useProgram(prog)
 			gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
 			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
 			gl.enableVertexAttribArray(0)
-			gl.bindAttribLocation(prog, 0, 'a')
 			gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
 			loc = {}
-			for (const n of ['res', 'ptr', 'time', 'seed', 'density', 'levels', 'stars', 'c0', 'c1', 'c2', 'c3']) loc[n] = gl.getUniformLocation(prog, 'u_' + n)
+			for (const n of ['res', 'ptr', 'time', 'p', 'c0', 'c1', 'c2', 'c3']) loc[n] = gl.getUniformLocation(prog, 'u_' + n)
 		}
-		const resize = () => {
-			if (!canvas) return
-			canvas.width = Math.max(1, Math.ceil(host.clientWidth / props.pixel))
-			canvas.height = Math.max(1, Math.ceil(host.clientHeight / props.pixel))
-		}
-		const paint = () => {
+				const paint = () => {
 			if (!gl || gl.isContextLost()) return
 			const css = getComputedStyle(host)
-			PALETTES[props.palette].forEach(([token, fallback], i) => gl.uniform3fv(loc['c' + i], rgbOf(css.getPropertyValue(token).trim() || fallback)))
+			const c = PALETTES[props.palette].map(([token, fallback]) => rgbOf(css.getPropertyValue(token).trim() || fallback))
+			if (luma(c[0]) > luma(c[3])) c.sort((a, b) => luma(a) - luma(b))
+			c.forEach((rgb, i) => gl.uniform3fv(loc['c' + i], rgb))
 			gl.viewport(0, 0, canvas.width, canvas.height)
 			gl.uniform2f(loc.res, canvas.width, canvas.height)
 			gl.uniform2f(loc.ptr, px, py)
 			gl.uniform1f(loc.time, time)
-			gl.uniform1f(loc.seed, props.seed)
-			gl.uniform1f(loc.density, props.density)
-			gl.uniform1f(loc.levels, props.levels)
-			gl.uniform1f(loc.stars, props.stars ? 1 : 0)
+			// Any seed picks a nebula: large ones would run out of float precision.
+			gl.uniform4f(loc.p, props.seed % 101, props.density, props.levels, props.stars)
 			gl.drawArrays(gl.TRIANGLES, 0, 3)
 		}
 		const tick = (t) => {
@@ -173,83 +178,78 @@ rocket('sb-nebula', {
 			const still = reduced.matches
 			if (!still) time += dt * props.speed
 			// Ease toward the pointer; stop once settled.
-			const tx = props.parallax && !still ? $$.tx : 0, ty = props.parallax && !still ? $$.ty : 0
+			const on = props.parallax && !still, gx = on ? tx : 0, gy = on ? ty : 0
 			const k = 1 - Math.exp(-dt * 6)
-			px += (tx - px) * k
-			py += (ty - py) * k
-			const easing = Math.abs(tx - px) + Math.abs(ty - py) > 0.002
+			px += (gx - px) * k
+			py += (gy - py) * k
+			const easing = Math.abs(gx - px) + Math.abs(gy - py) > 0.002
 			paint()
 			if (visible && ((!still && props.speed > 0) || easing)) raf = requestAnimationFrame(tick)
 			else last = 0
 		}
 		const kick = () => {
-			if (!raf && visible && gl) raf = requestAnimationFrame(tick)
+			if (!raf && visible && gl && !gl.isContextLost()) raf = requestAnimationFrame(tick)
 		}
-		// A lost context (GPU reset, too many contexts) comes back on its own.
-		// These two are addEventListener, not data-on: cleanup() below frees the
-		// GPU slot with loseContext(), which fires webglcontextlost on an element
-		// Rocket has already torn down, and the declarative binding would then
-		// resolve an action that no longer exists (Datastar logs UndefinedAction).
-		const onLost = (evt) => {
+		// Resizing the canvas clears it: paint again before the frame shows.
+		const refresh = () => {
+			canvas.width = Math.max(1, Math.ceil(host.clientWidth / props.pixel))
+			canvas.height = Math.max(1, Math.ceil(host.clientHeight / props.pixel))
+			paint()
+			kick()
+		}
+		// An empty label makes it decoration, hidden from assistive technology.
+		const name = () => {
+			canvas.ariaLabel = props.label
+			canvas.ariaHidden = !props.label || null
+		}
+
+		// After a GPU reset the context comes back (webglcontextrestored); one
+		// the browser took for its cap on live contexts stays lost, and the
+		// host's background shows. addEventListener, not data-on: cleanup()'s
+		// loseContext() fires webglcontextlost after Rocket has torn the
+		// element down, when a declarative binding would find no action.
+		canvas.addEventListener('webglcontextlost', (evt) => {
 			evt.preventDefault()
 			cancelAnimationFrame(raf)
 			raf = 0
-		}
-		const onRestored = () => {
-			compile()
-			kick()
-		}
-		const start = (el) => {
-			canvas = el
-			canvas.addEventListener('webglcontextlost', onLost)
-			canvas.addEventListener('webglcontextrestored', onRestored)
-			gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'low-power' })
-			if (!gl) return void ($$.nogl = true)
-			compile()
-			resize()
-			kick()
-		}
-		renderers.set(host, start)
+		})
+		canvas.addEventListener('webglcontextrestored', () => (compile(), kick()))
+		gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'low-power' })
+		if (gl) compile()
+		name()
+
 		action('point', ({ el, evt }) => {
 			const r = el.getBoundingClientRect()
-			$$.tx = ((evt.clientX - r.left) / r.width) * 2 - 1
-			$$.ty = 1 - ((evt.clientY - r.top) / r.height) * 2
+			tx = ((evt.clientX - r.left) / r.width) * 2 - 1
+			ty = 1 - ((evt.clientY - r.top) / r.height) * 2
 			kick()
 		})
 		action('leave', () => {
-			$$.tx = $$.ty = 0
+			tx = ty = 0
 			kick()
 		})
 
-		const ro = new ResizeObserver(() => (resize(), kick()))
+		const ro = new ResizeObserver(refresh) // also the first paint
 		ro.observe(host)
 		const io = new IntersectionObserver(([e]) => {
 			visible = e.isIntersecting
 			kick()
 		})
 		io.observe(host)
-		reduced.addEventListener('change', kick)
-		observeProps(() => (resize(), kick()))
+		// Colours are read at paint time: repaint a still nebula when they
+		// change (a pick on <sb-theme-switch>, or the system's scheme for "auto").
+		addEventListener('sb-theme-change', kick)
+		for (const m of [reduced, scheme]) m.addEventListener('change', kick)
+		observeProps(name, 'label')
+		observeProps(refresh)
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			ro.disconnect()
 			io.disconnect()
-			reduced.removeEventListener('change', kick)
-			canvas?.removeEventListener('webglcontextlost', onLost)
-			canvas?.removeEventListener('webglcontextrestored', onRestored)
+			removeEventListener('sb-theme-change', kick)
+			for (const m of [reduced, scheme]) m.removeEventListener('change', kick)
 			gl?.getExtension('WEBGL_lose_context')?.loseContext() // free the slot
+			canvas.remove() // a lost context stays lost: the next connect renders a new canvas
 		})
 	},
-	render: ({ html, props: { label } }) => html`
-		<canvas
-			part="canvas"
-			role="img"
-			aria-label="${label}"
-			data-ref:canvas
-			data-class:nogl="$$nogl"
-			data-on:pointermove="@point()"
-			data-on:pointerleave="@leave()"
-		></canvas>
-	`,
-	onFirstRender: ({ host, refs }) => renderers.get(host)(refs.canvas),
 })
