@@ -6,18 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-24
+
+Nine new components (35 in total), leaner delivery (minified modules, one precompressed bundle, brotli -11 everywhere), installation as tabs with pinned integrity, a Styling section for every component, and live sizes in the playground.
+
 ### Added
 
+- **9 new components** (26 → 35; 34 in the gallery, since `sb-code-playground` is now unlisted):
+  - `sb-dropdown`: an actions menu whose items are commands (`sb-select {name, value}`), with submenus up to five levels, and radio groups for a menu that shows a current choice, also in its trigger. A native `popover` in the top layer, placed with CSS anchor positioning.
+  - `sb-radio-group`: one choice out of a handful, with pixel radios, under the command contract. Choices come from `sb-radio` children or from the server's `options`, and the keyboard stays put when the server drops the focused choice.
+  - `sb-details`: a disclosure that animates to its content's height, alone or as an exclusive accordion (`group`), built on a native `<details>`. `open` is view state the server may own.
+  - `sb-toast`: a toast region the server fills. It stacks, announces and dismisses the server's list, while closing, countdowns and pausing stay with the viewer, so a morph never brings back a closed toast.
+  - `sb-busy`: a spinner, bar or skeleton that shows itself while the Datastar requests it watches are in flight (no signal needed), or while the server says `busy`.
+  - `sb-odometer`: a number that rolls its digit wheels to each new value. Only the digits that change turn, each the way the number moves (over the top when it climbs), separators follow the locale, and `drum` draws the wheels as 3D cylinders. Screen readers get the value once, as text. From Libretto's live-drive readout.
+  - `sb-echarts`: Apache ECharts driven by an option the server sends as JSON. Colours come from the `--sb-*` tokens and follow a theme change without restarting, numbers and dates follow the page's language, and a slotted table is the fallback for readers without the chart. ECharts 6.1.0 is vendored unmodified from npm and loaded only when a chart comes near the screen. From Libretto, where it draws every chart.
+  - `sb-count-up`: counts a number up the first time it is on screen, and on from where it stands when the server sends a new one. The server's text inside is what search engines and people without JavaScript see. From libretto.ch.
+  - `sb-autoloader`: the site's autoloader as a component, for any web components: a tag map and/or a URL pattern, loading each tag the first time it appears (morphs included), with dependencies and an optional un-cloak.
 - The playground shows what your component weighs while you type: its `component.js` minified and compressed at brotli -11 (what a page downloads), with the components it renders and the files it imports, plus the minified and raw sizes. The server measures each edit with the same esbuild and brotli settings as the catalog, so the numbers match the component pages' size tables. When the code doesn't parse, the last good numbers stay, dimmed. On a narrow screen the line keeps only the downloaded size. `sb-code-playground` takes extra content for its top bar (`slot="bar"`).
 - Every component's docs have a Styling section, like `sb-gauge`'s: size, fonts, colour tokens and parts, reachable from the page's CSS (no shadow `mode` changes or `@import`s), with a live example. A test checks that every `::part()` and `--sb-…` property a section names exists in the component's source. `sb-echarts`' Theming section is folded into it.
 - More styling hooks, each documented in its Styling section and unchanged by default: `sb-card` has a `heading` part, `sb-alert` `heading` and `message`; the selected tab (`sb-tabs`) and row (`sb-tree`) are also part `selected`, following the selection; `sb-theme-switch`'s options are part `option` (`option selected` when chosen); `--sb-code-editor-font-size`, `--sb-slider-thumb` / `--sb-slider-thumb-edge`, `--sb-toggle-knob` and `--sb-pixel-board-grid`; `sb-copy-button`'s icon scales with the button.
-- `sb-odometer`: a number that rolls its digit wheels to each new value. Only the digits that change turn, and a wheel turns the way the number moves: over the top when it climbs (9 → 0), back when it falls. A gained digit (9.9 → 10.0) snaps to the new layout, separators follow the locale while the digits stay 0–9, with a linear roll as long as the update interval the wheels move continuously, like a car's, and `drum` draws each wheel as a 3D cylinder whose digits curve away and foreshorten as they turn. Screen readers get the value once, as text. From Libretto, where it runs the live-drive distance readout.
 - `sb-button` takes `loading`: an inline pixel spinner (the same one `sb-busy` draws), clicks and Enter blocked against double submits, `aria-busy`, and focus kept. It costs no space until it is loading; bind it to `data-indicator`.
-- `sb-echarts`: Apache ECharts driven by an option the server sends as JSON. It colours the chart from the `--sb-*` tokens (a string that is exactly `var(--token)` becomes that colour) and repaints on a theme change without starting again, writes numbers, months and weekdays in the page's language, keeps a wrapping legend clear of the axes, and animates each new option into place. Charts whose shape is code (a custom series' `renderItem`) are named kinds the page defines; a slotted table is the fallback for readers without the chart. ECharts 6.1.0 is vendored unmodified from npm and loaded only when a chart comes near the screen. From Libretto, where it draws every chart.
 - `sb-theme-switch` takes a `domain`, so one theme choice can cover every subdomain. A domain the browser refuses falls back to this host instead of dropping the choice silently.
 - `sb-theme-change` carries `scheme` (`"light"` or `"dark"`): what the page now paints in, worked out from the theme's own `color-scheme`, so code that draws needs no list of theme names. The theme switch's docs gain a section on following the theme from a canvas.
-- `sb-autoloader`: the generic version of the site's autoloader, as a component. It takes a tag map and/or a URL pattern, loads any custom element the first time its tag appears (morphs included), pre-loads dependencies, and can un-cloak the page when the first round is defined.
-- `sb-count-up`: counts a number to its value the first time it is on screen, and on from where it stands when the server sends a new one. The server's text inside it is what search engines and people without JavaScript see; screen readers get the final value, never the frames. From libretto.ch, whose version rendered nothing without JavaScript.
 
 ### Changed
 
@@ -29,6 +39,7 @@ All notable changes to this project are documented here. The format follows
 - Installation on component pages is four tabs instead of one long block: Autoloader (the default), This component (its minified module pinned with its frozen integrity, plus every component it renders), Pinned (today's catalog snapshot with an integrity import map) and Self-host (each file's minified and readable link with its size, and an import map at your own Datastar). Each tab has one sentence and a snippet that is exactly what to paste, with its own copy button. The chosen tab is remembered for the session, across component pages and browser tabs, through a new kind of state: session preferences (`session_prefs`), for choices that should outlive a page.
 - Component modules are minified (esbuild) next to the readable source: every `x.js` has an `x.min.js`, and the autoloader and the site load those — about 23% less over the wire across the catalog. The readable file stays the default URL for the docs and the playground. Minified bytes are frozen per version, so an esbuild upgrade can never change a pinned URL. Size tables add a minified column, and gallery cards show the minified size.
 - `sb-code-playground` is no longer listed in the gallery: it is the machinery behind `/playground` rather than a community component. It stays served, versioned and documented, through a new `unlisted:` front-matter flag.
+- The main domain is now [starbase.zweiundeins.gmbh](https://starbase.zweiundeins.gmbh); rocket.libretto.ch redirects there.
 - Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
 
 ### Fixed
@@ -45,6 +56,11 @@ All notable changes to this project are documented here. The format follows
 ### Security
 
 - Dependencies updated (brotli 1.2.4, x/text 0.42), the container base image moved to distroless Debian 13, and Dependabot now watches the Dockerfile as well as the actions and Go modules.
+
+### Known issues
+
+- Datastar's morph is not re-entrant with Rocket components that are reordered by id ([starfederation/datastar#1209](https://github.com/starfederation/datastar/issues/1209), still open). Starbase avoids the pattern.
+- Rocket's `observeProps` ignores an attribute write whose decoded value is unchanged, so a server can't clear a value the user edited locally by re-sending the old one. Components that need it watch the attribute themselves; a reproduction is in `docs/repro/rocket-observeprops-equal-value/`.
 
 ## [0.2.0] - 2026-09-22
 
@@ -122,6 +138,7 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/zweiundeins/starbase/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/zweiundeins/starbase/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zweiundeins/starbase/releases/tag/v0.1.0
