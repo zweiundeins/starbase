@@ -177,16 +177,20 @@ rocket('sb-range', {
 		// Forms: until Rocket can make this element form-associated, join the
 		// submissions and resets of the form it sits in. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Both are heard on the root (document or shadow root), once every
+		// listener on the form has run: a reset the page cancelled (whenever its
+		// listener was added) leaves the value, as it leaves native fields, and a
+		// form nested in this one by a script, whose events bubble through it,
+		// isn't taken for it. setup reruns on a re-attach, so a move follows.
 		// The entry is the local range in the value attribute's JSON; a reset is
-		// revert(): the server's range, no events, like a native reset. Like
-		// native fields, it keeps the range when a listener before this one
-		// (e.g. onreset) canceled the reset.
+		// revert(): the server's range, no change events.
 		const form = host.closest('form')
-		const onData = (evt) => props.name && !props.disabled && evt.formData.append(props.name, JSON.stringify(cur()))
-		const onReset = (evt) => evt.defaultPrevented || revert()
-		form?.addEventListener('formdata', onData)
-		form?.addEventListener('reset', onReset)
-		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
+		const root = host.getRootNode()
+		const onData = (evt) => evt.target === form && peek(() => props.name && !props.disabled && evt.formData.append(props.name, JSON.stringify(cur())))
+		const onReset = (evt) => evt.target === form && !evt.defaultPrevented && revert()
+		root.addEventListener('formdata', onData)
+		root.addEventListener('reset', onReset)
+		cleanup(() => (root.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 		// Both inputs report here. A pointer that grabs the thumbs where they
 		// meet ($$tie) picks the part with its first move: down moves the start,
 		// up the end. When that is the other input's part, the inputs swap what

@@ -169,17 +169,21 @@ rocket('sb-slider', {
 		const revert = () => peek(() => ($$.value = clamp(props.value)))
 		defineHostProp('revert', { value: revert })
 		// Forms: until Rocket can make this element form-associated, join the
-		// submissions and resets of the form it sits in. `formdata` also fires
-		// for new FormData(form), so Datastar's contentType: 'form' posts
-		// include it. A reset is revert(): the server's value, no events; one
-		// that an earlier listener cancelled (onreset="return confirm(…)")
-		// leaves the value, as it leaves native controls.
+		// submissions and resets of the form it sits in. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Both are heard on the root (document or shadow root), once every
+		// listener on the form has run: a reset the page cancelled (whenever its
+		// listener was added) leaves the value, as it leaves native fields, and a
+		// form nested in this one by a script, whose events bubble through it,
+		// isn't taken for it. setup reruns on a re-attach, so a move follows.
+		// A reset is revert(): the server's value, no change events.
 		const form = host.closest('form')
-		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
-		const onReset = (evt) => evt.defaultPrevented || revert()
-		form?.addEventListener('formdata', onData)
-		form?.addEventListener('reset', onReset)
-		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
+		const root = host.getRootNode()
+		const onData = (evt) => evt.target === form && peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
+		const onReset = (evt) => evt.target === form && !evt.defaultPrevented && revert()
+		root.addEventListener('formdata', onData)
+		root.addEventListener('reset', onReset)
+		cleanup(() => (root.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 		action('commit', () => {
 			states.has('pending') && sent.push($$.value)
 			emit('change')

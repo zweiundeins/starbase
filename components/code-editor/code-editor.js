@@ -197,19 +197,21 @@ rocket('sb-code-editor', {
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.code = server()), sync())) })
 		// Forms: until Rocket can make this element form-associated, join the
-		// submissions and resets of the form it sits in, like a <textarea>.
-		// `formdata` also fires for new FormData(form), so Datastar's
-		// contentType: 'form' posts include it; it bubbles, so a form nested in
-		// ours (built by a script) fires it too, and that one isn't ours. A reset
-		// brings back the server's value without events (revert()), unless a
-		// listener before this one cancelled it (e.g. onreset="return confirm()").
-		// setup reruns on a re-attach, so a move into another form follows.
+		// submissions and resets of the form it sits in. `formdata` also fires for
+		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Both are heard on the root (document or shadow root), once every
+		// listener on the form has run: a reset the page cancelled (whenever its
+		// listener was added) leaves the value, as it leaves native fields, and a
+		// form nested in this one by a script, whose events bubble through it,
+		// isn't taken for it. setup reruns on a re-attach, so a move follows.
+		// Like a textarea. A reset is revert(): the server's value, no events.
 		const form = host.closest('form')
-		const onData = (evt) => peek(() => evt.target == form && props.name && !props.disabled && evt.formData.append(props.name, $$.code))
-		const onReset = (evt) => evt.defaultPrevented || host.revert()
-		form?.addEventListener('formdata', onData)
-		form?.addEventListener('reset', onReset)
-		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
+		const root = host.getRootNode()
+		const onData = (evt) => evt.target === form && peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.code))
+		const onReset = (evt) => evt.target === form && !evt.defaultPrevented && host.revert()
+		root.addEventListener('formdata', onData)
+		root.addEventListener('reset', onReset)
+		cleanup(() => (root.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 		// The host isn't focusable: focus() goes to the textarea.
 		defineHostProp('focus', { value: (o) => host.shadowRoot.querySelector('textarea').focus(o) })
 

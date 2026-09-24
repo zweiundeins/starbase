@@ -132,22 +132,22 @@ rocket('sb-toggle', {
 			emit('sb-change', { name: props.name, value: $$.on, checked: $$.on })
 		})
 		// Forms: until Rocket can make this element form-associated, join the
-		// submissions and resets of the form it sits in. Like a checkbox without
-		// a value: name=on when on, nothing when off. `formdata` also fires for
+		// submissions and resets of the form it sits in. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Both are heard on the root (document or shadow root), once every
+		// listener on the form has run: a reset the page cancelled (whenever its
+		// listener was added) leaves the value, as it leaves native fields, and a
+		// form nested in this one by a script, whose events bubble through it,
+		// isn't taken for it. setup reruns on a re-attach, so a move follows.
+		// Like a checkbox without a value: name=on when on, nothing when off. A
+		// reset is revert(): the server's value, no change events.
 		const form = host.closest('form')
 		const root = host.getRootNode()
-		const onData = (evt) => peek(() => props.name && !props.disabled && $$.on && evt.formData.append(props.name, 'on'))
-		// A reset is revert() (the server's value, no change events), unless the
-		// page cancelled it (e.g. a confirm() in data-on:reset), like a native
-		// reset. Heard once it has bubbled up to the document (or shadow root),
-		// so every listener on the form has run, whichever was bound first (a
-		// form patched in binds its data-on:reset after this); a listener that
-		// stops the reset's propagation hides it.
-		const onReset = (evt) => evt.target == form && !evt.defaultPrevented && revert()
-		form?.addEventListener('formdata', onData)
+		const onData = (evt) => evt.target === form && peek(() => props.name && !props.disabled && $$.on && evt.formData.append(props.name, 'on'))
+		const onReset = (evt) => evt.target === form && !evt.defaultPrevented && revert()
+		root.addEventListener('formdata', onData)
 		root.addEventListener('reset', onReset)
-		cleanup(() => (form?.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
+		cleanup(() => (root.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 	},
 	render: ({ html, props: { label, size, disabled } }) => html`
 		<label>

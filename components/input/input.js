@@ -180,14 +180,20 @@ rocket('sb-input', {
 		// Forms: until Rocket can make this element form-associated, join the
 		// submissions and resets of the form it sits in. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
+		// Both are heard on the root (document or shadow root), once every
+		// listener on the form has run: a reset the page cancelled (whenever its
+		// listener was added) leaves the value, as it leaves native fields, and a
+		// form nested in this one by a script, whose events bubble through it,
+		// isn't taken for it. setup reruns on a re-attach, so a move follows.
 		// A reset starts afresh, like a native one: the server's value, no error
 		// (validation starts again with the next commit), and no events.
 		const form = host.closest('form')
-		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
-		const onReset = () => peek(() => ([$$.value, $$.touched, $$.invalid, $$.message] = [props.value, false, false, '']))
-		form?.addEventListener('formdata', onData)
-		form?.addEventListener('reset', onReset)
-		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
+		const root = host.getRootNode()
+		const onData = (evt) => evt.target === form && peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.value))
+		const onReset = (evt) => evt.target === form && !evt.defaultPrevented && peek(() => ([$$.value, $$.touched, $$.invalid, $$.message] = [props.value, false, false, '']))
+		root.addEventListener('formdata', onData)
+		root.addEventListener('reset', onReset)
+		cleanup(() => (root.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 
 		action('input', ({ el }) => set(el.value))
 		action('commit', () => {
