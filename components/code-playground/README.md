@@ -79,7 +79,7 @@ The iframe (`sandbox="allow-scripts allow-modals"`) loads `runner` and exchanges
 
 The runner should import the edited `component.js` (for example from a `blob:` URL) **before** the dependencies, then `datastar`, and resolve `'datastar'` through an import map. A `blob:` module has no folder, so the runner resolves relative imports (`./vendor/lib.js`) against `base`, the `base` attribute as an absolute URL (empty when unset).
 
-"Ran in … ms" is the time from `ready` to `done`. If a run has not sent `done` 5 s after its runner page loaded, the console says so (an endless loop?); the next run replaces the frame, which stops it. This site's runner stops endless loops itself: every `while` and `for (…; …; …)` in `component.js` checks the time, and a task that spends a second in loops throws "Endless loop? Stopped after 1 s" (with the loop's line).
+"Ran in … ms" is the time from `ready` to `done`. If a run has not sent `done` 5 s after its runner page loaded, the console says so: "No answer after 5 s: an endless loop?", or "The runner did not answer" when not even `ready` came. The next run replaces the frame, which stops it. This site's runner stops endless loops itself: every `while` and `for (…; …; …)` in `component.js` checks the time, and a task that spends a second in loops throws "Endless loop? Stopped after 1 s" (with the loop's line).
 
 ## Styling
 
@@ -87,7 +87,7 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 - **Size:** `--sb-code-playground-height` (default `34rem`) is the height of the whole playground. It fills the width it is given; the editor and the preview sit side by side, and stack below `48rem`.
 - **Fonts:** the toolbar uses your page's font. The console and the code use `--sb-font-ui` when a site sets one, else a monospace font.
-- **Colours:** the frame is `--sb-surface-card` with `--sb-border` lines; the selected file tab, the console and the theme picker are `--sb-surface-inset`. Text is `--sb-text-2` (`--sb-text-1` when active), the status `--sb-text-muted`. The Run button fills with `--sb-brand` and writes (and draws its triangle) in `--sb-text-on-brand`; focus rings are `--sb-brand-light`. Console errors are `--sb-danger`, warnings `--sb-warn`, and the preview's background is `--sb-bg`. Corners are `--sb-radius-lg`. The editors are `sb-code-editor`s, so their syntax colours (`--sb-code-tag`, `--sb-code-keyword`…) reach them too.
+- **Colours:** the frame is `--sb-surface-card` with `--sb-border` lines; the selected file tab, the console and the theme picker are `--sb-surface-inset`. Text is `--sb-text-2` (`--sb-text-1` when active), the status `--sb-text-muted`. The Run button fills with `--sb-brand` (`--sb-brand-hover` on hover) and writes (and draws its triangle) in `--sb-text-on-brand`; focus rings are `--sb-brand-light`. Console errors are `--sb-danger`, warnings `--sb-warn`, and the preview's background is `--sb-bg`. Corners are `--sb-radius-lg`. The editors are `sb-code-editor`s, so their syntax colours (`--sb-code-tag`, `--sb-code-keyword`…) reach them too.
 - **Parts:** `playground` (the frame), `run`, `preview` (the iframe) and `console`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

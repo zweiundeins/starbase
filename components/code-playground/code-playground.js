@@ -35,6 +35,7 @@ const styles = /* css */ `
 	display: block;
 	container-type: inline-size;
 }
+:host([hidden]) { display: none; }
 .pg { display: grid; grid-template-rows: auto 1fr; block-size: var(--_h); border: 1px solid var(--_border); border-radius: var(--_radius); background: var(--_bg); overflow: hidden; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-block-end: 1px solid var(--_border); font-size: 0.8125rem; }
 [role="tablist"] { display: flex; gap: 0.25rem; margin-inline-end: auto; overflow-x: auto; }
@@ -55,7 +56,7 @@ const styles = /* css */ `
 select { border-color: var(--_border); background: var(--_inset); color: var(--_text); }
 .run { border-color: var(--_brand); background: var(--_brand); color: var(--sb-text-on-brand, #F3F4FA); font-weight: 700; }
 .run::before { content: ""; display: inline-block; block-size: 0.7em; margin-inline-end: 0.45em; border-left: 0.6em solid; clip-path: polygon(0 0, 100% 50%, 0 100%); }
-.run:hover { background: color-mix(in oklch, var(--_brand), white 12%); }
+.run:hover { background: var(--sb-brand-hover, #A58BFF); }
 label.auto { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--_text-2); cursor: pointer; }
 label.auto input { accent-color: var(--_brand); }
 .panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-block-size: 0; }
@@ -122,11 +123,13 @@ rocket('sb-code-playground', {
 		let pending, started, done, timer, raf, buf = []
 
 		const run = () => {
+			const old = frame()
+			if (!old) return // a files write before the first render: onFirstRender runs
 			clearTimeout(timer)
 			buf = []
 			$$.lines = []
 			$$.status = 'Running…'
-			done = 0
+			done = started = 0
 			// Skip stock modules for tags the edited code defines.
 			const own = new Set()
 			for (const code of files.values()) for (const m of code.matchAll(TAGS_RE)) own.add(m[1])
@@ -138,9 +141,9 @@ rocket('sb-code-playground', {
 			// A fresh frame for every run: custom elements can't be redefined, a
 			// navigation would add a history entry, and removing the old frame
 			// stops whatever it still runs (in Chrome, even an endless loop).
-			const old = frame(), f = old.cloneNode()
+			const f = old.cloneNode()
 			f.src = props.runner
-			f.onload = () => setTimeout(() => f.isConnected && !done && log('warn', 'No answer after 5 s: an endless loop?'), 5e3)
+			f.onload = () => setTimeout(() => f.isConnected && !done && log('warn', started ? 'No answer after 5 s: an endless loop?' : 'The runner did not answer'), 5e3)
 			old.replaceWith(f)
 			emit('sb-run', { files: all() })
 		}
