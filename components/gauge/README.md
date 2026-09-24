@@ -19,7 +19,7 @@ playground:
   values: {value: 64, label: Thrust, unit: "%"}
 ---
 
-A half-dial drawn in pixels. The needle eases toward `value` on a slightly bouncy spring, and the arc behind it is coloured by zone: ok, warn or danger. When `danger` is below `warn`, low values are the bad ones, as with fuel.
+A half-dial drawn in pixels. The needle eases toward `value` on a slightly bouncy spring, and the arc behind it is coloured by zone: ok, warn or danger. When `danger` is below `warn`, low values are the bad ones, as with fuel. The dial only animates while it is on screen: one that scrolls back in eases to the latest value.
 
 ## Examples
 
@@ -56,7 +56,7 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 - **Size:** `--sb-gauge-size` (default `12rem`) sets the width. The dial keeps its proportions and the value and label scale with it (never below a readable size).
 - **Fonts:** the value and the label use your page's font. A site that sets a display font (`--sb-font-display`, like Starbase's pixel font) gets it for the value; set `--sb-font-display` on the gauge to choose the value's font on its own.
-- **Colours:** the dial reads theme tokens when it paints, and repaints when the theme changes: `--sb-ok`, `--sb-warn` and `--sb-danger` for the zones, `--sb-border` for the track, `--sb-text-1` for the needle and the value, `--sb-brand` for the hub. The label is `--sb-text-2`.
+- **Colours:** the dial paints with theme tokens and repaints whenever one of them changes, whatever changed it: a theme switch, a theme scoped to a container, the system's light or dark mode, or your own override on the gauge. `--sb-ok`, `--sb-warn` and `--sb-danger` colour the zones, `--sb-border` the track, `--sb-text-1` the needle and the value, `--sb-brand` the hub, in any colour syntax, `light-dark()` included. The label is `--sb-text-2`.
 - **Parts:** `value`, `label` and `dial` (the canvas), for anything the tokens don't cover. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
@@ -75,4 +75,4 @@ A font you load yourself works inside the component too: load it in the page (a 
 
 ## Accessibility
 
-The readout is a `role="meter"` with min, max and current value. The dial canvas is decorative. Under `prefers-reduced-motion` the needle jumps straight to the value.
+The readout is a `role="meter"` with min, max and current value. Like a native `<meter>`, the current value it reports stays within min and max; its text is the reading as shown, with the unit. The dial canvas is decorative. Under `prefers-reduced-motion` the needle jumps straight to the value.

@@ -4,20 +4,26 @@ const probe = document.createElement('canvas').getContext('2d', { willReadFreque
 const rgbCache = new Map()
 // Per-instance repaint, so setup's actions can reach the canvas code.
 const kicks = new WeakMap()
+// css is a computed colour, so always one the canvas can parse. Returns
+// [r, g, b, a]; the dial uses r, g and b.
 const rgbOf = (css) => {
-	if (rgbCache.has(css)) return rgbCache.get(css)
-	probe.clearRect(0, 0, 1, 1)
-	probe.fillStyle = '#000'
-	probe.fillStyle = css
-	probe.fillRect(0, 0, 1, 1)
-	const [r, g, b] = probe.getImageData(0, 0, 1, 1).data
-	rgbCache.set(css, [r, g, b])
-	return [r, g, b]
+	if (!rgbCache.has(css)) {
+		probe.clearRect(0, 0, 1, 1)
+		probe.fillStyle = css
+		probe.fillRect(0, 0, 1, 1)
+		rgbCache.set(css, probe.getImageData(0, 0, 1, 1).data)
+	}
+	return rgbCache.get(css)
 }
 
 // Dial raster size; scaled up with crisp pixels.
 const W = 80, H = 44, CX = 40, CY = 40, R_OUT = 37, R_IN = 30
 
+// The <i> holds the dial's colours, which paint reads: CSS resolves the
+// tokens (fallbacks, light-dark()), and a change to any of them, from any
+// cause (a theme switch, a theme scoped to a container, the system's light or
+// dark mode), runs its transition, which repaints the dial. It is not a part,
+// so a page's ::part() rules can't reach it, and never forced, like the canvas.
 const styles = /* css */ `
 :host {
 	--_text: var(--sb-text-1, #F3F4FA);
@@ -32,6 +38,14 @@ const styles = /* css */ `
 	container-type: inline-size;
 }
 canvas { inline-size: 100%; aspect-ratio: ${W} / ${H}; image-rendering: pixelated; }
+i {
+	position: absolute;
+	forced-color-adjust: none;
+	color: var(--sb-ok, #6EF59A);
+	border-color: var(--sb-warn, #F5C451) var(--sb-danger, #F2777A) var(--sb-border, #283552) var(--_text);
+	outline-color: var(--sb-brand, #8C6BFF);
+	transition: 1ms;
+}
 .readout { display: grid; justify-items: center; line-height: 1.2; }
 /* 1.5rem and 0.75rem at the default 12rem, in proportion otherwise, never
    smaller than stays readable. The value's font is the page's unless a theme
@@ -51,20 +65,24 @@ rocket('sb-gauge', {
 		unit: string.docs({ description: 'Unit after the value, e.g. "%" or " km/s".' }),
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals shown in the readout.' }),
 	}),
-	renderOnPropChange: ({ changes }) => 'label' in changes || 'unit' in changes,
+	// The template reads label, min and max; the readout follows value, decimals
+	// and unit through $$.
+	renderOnPropChange: ({ changes }) => 'label' in changes || 'min' in changes || 'max' in changes,
 	setup: ({ $$, action, adoptStyles, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		// Colours are read at paint time, so a new theme only needs a repaint.
 		action('repaint', () => kicks.get(host)?.())
 		const sync = () => {
-			$$.now = props.value
+			// aria-valuenow stays in range, like a <meter>; the text is the reading.
+			$$.now = Math.min(props.max, Math.max(props.min, props.value))
 			$$.shown = Number(props.value).toFixed(props.decimals) + props.unit
 		}
 		sync()
-		observeProps(sync, 'value', 'decimals', 'unit')
+		observeProps(sync)
 	},
 	render: ({ html, props: { label, min, max } }) => html`
-		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true" data-on:sb-theme-change__window="@repaint()"></canvas>
+		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true"></canvas>
+		<i data-on:transitionrun="@repaint()"></i>
 		<div class="readout" role="meter" aria-valuemin="${min}" aria-valuemax="${max}" aria-label="${label || 'Gauge'}"
 			data-attr:aria-valuenow="$$now" data-attr:aria-valuetext="$$shown">
 			<span class="value" part="value" data-text="$$shown"></span>
@@ -73,11 +91,12 @@ rocket('sb-gauge', {
 	`,
 	onFirstRender: ({ cleanup, host, observeProps, props }) => {
 		const canvas = host.shadowRoot.querySelector('canvas')
+		const colours = host.shadowRoot.querySelector('i')
 		const ctx = canvas.getContext('2d')
 		const img = ctx.createImageData(W, H)
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
 		const frac = (v) => Math.max(0, Math.min(1, (v - props.min) / (props.max - props.min || 1)))
-		let pos = frac(props.value), vel = 0, raf = 0, last = 0
+		let pos = frac(props.value), vel = 0, raf = 0, last = 0, seen = false
 
 		const tone = (v) => {
 			const { warn, danger } = props
@@ -85,15 +104,14 @@ rocket('sb-gauge', {
 			return bad[0] ? 'danger' : bad[1] ? 'warn' : 'ok'
 		}
 		const paint = () => {
-			const cs = getComputedStyle(host)
-			const col = (t, f) => rgbOf(cs.getPropertyValue(t).trim() || f)
+			const cs = getComputedStyle(colours)
 			const C = {
-				ok: col('--sb-ok', '#6EF59A'),
-				warn: col('--sb-warn', '#F5C451'),
-				danger: col('--sb-danger', '#F2777A'),
-				track: col('--sb-border', '#283552'),
-				needle: col('--sb-text-1', '#F3F4FA'),
-				hub: col('--sb-brand', '#8C6BFF'),
+				ok: rgbOf(cs.color),
+				warn: rgbOf(cs.borderTopColor),
+				danger: rgbOf(cs.borderRightColor),
+				track: rgbOf(cs.borderBottomColor),
+				needle: rgbOf(cs.borderLeftColor),
+				hub: rgbOf(cs.outlineColor),
 			}
 			const d = img.data
 			d.fill(0)
@@ -107,7 +125,9 @@ rocket('sb-gauge', {
 					const dx = x + 0.5 - CX, dy = CY - (y + 0.5)
 					const r = Math.hypot(dx, dy)
 					if (dy < -0.5 || r < R_IN || r > R_OUT) continue
-					const f = 1 - Math.atan2(dy, dx) / Math.PI // 0 at left, 1 at right
+					// 0 at left, 1 at right; the row just below the centre mirrors the
+					// one above it, so the arc's ends light up like the rest.
+					const f = 1 - Math.atan2(Math.abs(dy), dx) / Math.PI
 					const v = props.min + f * (props.max - props.min)
 					// Zone colours are dim ahead of the needle and bright behind it.
 					const lit = f <= pos
@@ -135,28 +155,26 @@ rocket('sb-gauge', {
 				vel += (-(pos - target) * k - vel * c) * dt
 				pos += vel * dt
 			}
-			last = t
 			paint()
-			if (Math.abs(pos - target) > 0.0005 || Math.abs(vel) > 0.0005) raf = requestAnimationFrame(tick)
-			else last = 0
+			if (Math.abs(pos - target) > 0.0005 || Math.abs(vel) > 0.0005) kick()
+			last = raf ? t : 0 // stopped (settled or offscreen): the next run starts afresh
 		}
+		// Frames run only while the gauge is on screen; scrolling in catches up.
 		const kick = () => {
-			if (!raf) raf = requestAnimationFrame(tick)
+			if (seen && !raf) raf = requestAnimationFrame(tick)
 		}
 		observeProps(kick)
 		kicks.set(host, kick)
-		// Theme tokens are re-read on every paint; repaint when scrolled in, and when
-		// the system flips under "auto" (a pick on <sb-theme-switch> arrives as
-		// sb-theme-change, see the template).
-		const io = new IntersectionObserver(([e]) => e.isIntersecting && kick())
+		// The last entry is the current state: one callback can hold an enter and a leave.
+		const io = new IntersectionObserver((es) => {
+			seen = es.at(-1).isIntersecting
+			kick()
+		})
 		io.observe(host)
-		const scheme = matchMedia('(prefers-color-scheme: dark)')
-		scheme.addEventListener('change', kick)
 		paint()
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			io.disconnect()
-			scheme.removeEventListener('change', kick)
 		})
 	},
 })
