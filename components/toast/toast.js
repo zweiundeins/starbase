@@ -21,19 +21,26 @@ const ANNOUNCE_MAX = 200 // characters handed to the live region
 // Warnings and errors interrupt; everything else waits its turn.
 const assertive = (variant) => variant === 'warn' || variant === 'danger'
 
+const clip = (s) => (s.length > ANNOUNCE_MAX ? `${s.slice(0, ANNOUNCE_MAX - 1)}…` : s)
+
 // A toast is {id, title?, text, variant?, duration?}; strings are allowed too.
-const normalize = (list) =>
-	(Array.isArray(list) ? list : []).flatMap((t, i) => {
+// Without an id, the message is the id ("#2", "#3"… on repeats): a position
+// would hand a dismissal on to the next toast once the server drops one.
+const normalize = (list) => {
+	const seen = { __proto__: null }
+	return (Array.isArray(list) ? list : []).flatMap((t) => {
 		const o = typeof t === 'object' && t !== null ? t : { text: t }
 		const text = String(o.text ?? o.message ?? '')
 		const title = String(o.title ?? '')
 		if (!text && !title) return []
+		const msg = title ? `${title}. ${text}` : text
+		const n = (seen[msg] = (seen[msg] || 0) + 1)
 		const variant = ['info', 'ok', 'warn', 'danger'].includes(o.variant) ? o.variant : 'info'
-		const duration = Number.isFinite(Number(o.duration)) && o.duration !== '' && o.duration !== null ? Math.max(0, Number(o.duration)) : null
-		return [{ id: String(o.id ?? `t${i}`), title, text, variant, duration }]
+		// Capped where setTimeout overflows (it takes anything longer as 0).
+		const duration = Number.isFinite(Number(o.duration)) && o.duration !== '' && o.duration !== null ? Math.min(2 ** 31 - 1, Math.max(0, Number(o.duration))) : null
+		return [{ id: String(o.id ?? (n > 1 ? `${msg}#${n}` : msg)), title, text, msg: clip(msg), variant, duration }]
 	})
-
-const clip = (s) => (s.length > ANNOUNCE_MAX ? `${s.slice(0, ANNOUNCE_MAX - 1)}…` : s)
+}
 
 const styles = /* css */ `
 :host {
@@ -94,6 +101,9 @@ const styles = /* css */ `
 [data-variant="ok"] { --_tone: var(--sb-ok, #6EF59A); }
 [data-variant="warn"] { --_tone: var(--sb-warn, #F5C451); }
 [data-variant="danger"] { --_tone: var(--sb-danger, #F2777A); }
+/* Rows are reused by index: each rebuild flips the names to restart them. */
+.alt { animation-name: sb-toast-in2; }
+.alt .bar { animation-name: sb-toast-bar2; }
 .leaving { animation: sb-toast-out ${LEAVE}ms ease-in both; }
 /* A pixel "status light", like sb-alert's. */
 .light {
@@ -147,8 +157,10 @@ const styles = /* css */ `
 	white-space: nowrap;
 }
 @keyframes sb-toast-in { from { opacity: 0; translate: 0 var(--_from); } }
+@keyframes sb-toast-in2 { from { opacity: 0; translate: 0 var(--_from); } }
 @keyframes sb-toast-out { to { opacity: 0; scale: 1 0.96; } }
 @keyframes sb-toast-bar { to { scale: 0 1; } }
+@keyframes sb-toast-bar2 { to { scale: 0 1; } }
 @media (prefers-reduced-motion: reduce) {
 	.toast, .leaving { animation: none; }
 	.bar { animation-timing-function: steps(5); }
@@ -193,12 +205,13 @@ rocket('sb-toast', {
 		const seenAt = new Map() // id -> when it first appeared (entrance)
 		const timers = new Map() // id -> {total, left, at, t}
 		const leaving = new Map() // id -> timeout that takes it out after the fade
+		let last = [] // the list as last shown, fading toasts included
+		let view = [] // the rows as last rendered, in DOM order
 		let hover = false
-		let focused = false
-		let flip = 0 // alternates an invisible marker so repeats re-announce
+		let gen = false // flips on every rebuild: fresh animations for every row
+		let from // where the keyboard focus came from before it entered the stack
 
 		const reduced = matchMedia('(prefers-reduced-motion: reduce)')
-		const leaveMs = () => (reduced.matches ? 0 : LEAVE)
 
 		$$.rows = []
 		$$.label = props.label
@@ -208,8 +221,11 @@ rocket('sb-toast', {
 		$$.assertive = ''
 
 		const region = () => host.shadowRoot?.querySelector('.region')
+		const closes = () => host.shadowRoot?.querySelectorAll('.close') ?? []
 		const now = () => performance.now()
-		const paused = () => hover || focused
+		// Keyboard focus pauses; a button focused by a click does not, or a
+		// dismissal with the mouse would stop every other countdown.
+		const paused = () => hover || !!host.shadowRoot?.querySelector(':focus-visible')
 
 		const hold = (id) => {
 			const s = timers.get(id)
@@ -233,20 +249,25 @@ rocket('sb-toast', {
 			timers.delete(id)
 			seenAt.delete(id)
 			announced.delete(id)
-			const t = leaving.get(id)
-			if (t) clearTimeout(t), leaving.delete(id)
 		}
 
 		// The visible stack, in the order it is painted.
 		const rebuild = () => {
+			// The focused row, by index: data-for reuses rows by index, so the
+			// focus has to follow its toast by hand.
+			const at = [...closes()].indexOf(host.shadowRoot?.activeElement)
+			const had = view[at]?.id
 			const list = normalize(props.toasts)
+			// A toast that is fading out keeps its slot until the fade is over, even
+			// when the server has dropped it already.
+			last.forEach((t, i) => leaving.has(t.id) && !list.some((u) => u.id === t.id) && list.splice(i, 0, t))
+			last = list
 			const ids = new Set(list.map((t) => t.id))
 			// An id the server no longer sends is forgotten everywhere, so a
 			// dismissal can never leak onto a later toast with the same id.
 			for (const id of [...dismissed]) if (!ids.has(id)) dismissed.delete(id)
 			for (const id of [...seenAt.keys()]) if (!ids.has(id)) forget(id)
 
-			// A toast that is fading out still has its slot.
 			const alive = list.filter((t) => !dismissed.has(t.id) || leaving.has(t.id))
 			const shown = alive.slice(-props.max)
 			const shownIds = new Set(shown.map((t) => t.id))
@@ -254,42 +275,58 @@ rocket('sb-toast', {
 			for (const id of timers.keys()) if (!shownIds.has(id)) hold(id)
 
 			const t0 = now()
+			gen = !gen
 			const rows = shown.map((t) => {
 				const going = leaving.has(t.id)
 				if (!seenAt.has(t.id)) seenAt.set(t.id, t0)
 				const total = t.duration ?? props.duration
 				if (total > 0 && !going && !timers.has(t.id)) timers.set(t.id, { total, left: total, at: t0, t: 0 })
 				const s = timers.get(t.id)
-				const spent = s ? s.total - s.left - (s.t ? t0 - s.at : 0) : 0
+				const spent = s ? s.total - s.left + (s.t ? t0 - s.at : 0) : 0
 				return {
 					id: t.id,
 					title: t.title,
 					text: t.text,
 					variant: t.variant,
 					leaving: going,
+					alt: gen,
 					timed: !!s && !going,
 					dur: `${s?.total ?? 0}ms`,
 					bd: `-${Math.max(0, Math.round(spent))}ms`,
 					enter: `-${Math.max(0, Math.round(t0 - seenAt.get(t.id)))}ms`,
 					// The button says which toast it closes.
-					close: `Dismiss: ${clip(t.title ? `${t.title}. ${t.text}` : t.text)}`,
+					close: `Dismiss: ${t.msg}`,
 				}
 			})
 			// Newest nearest the edge the region is pinned to, and the DOM order is
 			// the visual order (so Tab and screen readers follow the eye).
-			$$.rows = props.placement.startsWith('top') ? rows.reverse() : rows
+			if (props.placement.startsWith('top')) rows.reverse()
+
+			// Focus stays on its toast, or moves to the neighbour (old index, clamped)
+			// when that one goes, and back to where it came from after the last one.
+			// Once before the rows change, so the focused row is never the one taken
+			// out, and once after, for a row that did not exist yet.
+			const live = rows.filter((r) => !r.leaving)
+			const to = live.find((r) => r.id === had) ?? live[Math.min(at, live.length - 1)]
+			const move = () => at < 0 || (to ? closes()[rows.indexOf(to)] : from)?.focus()
+			move()
+			$$.rows = view = rows
+			move()
 
 			// Announce what is new, politely or assertively.
 			const fresh = { polite: [], assertive: [] }
 			for (const t of shown) {
 				if (announced.has(t.id) || leaving.has(t.id)) continue
 				announced.add(t.id)
-				fresh[assertive(t.variant) ? 'assertive' : 'polite'].push(clip(t.title ? `${t.title}. ${t.text}` : t.text))
+				fresh[assertive(t.variant) ? 'assertive' : 'polite'].push(t.msg)
 			}
-			// An invisible marker alternates, so two identical messages are both read.
-			const mark = (s) => ((flip = 1 - flip) ? `${s} ` : s)
-			if (fresh.polite.length) $$.polite = mark(fresh.polite.join('. '))
-			if (fresh.assertive.length) $$.assertive = mark(fresh.assertive.join('. '))
+			for (const k in fresh) {
+				const s = fresh[k].join('. ')
+				// A little later: a live region is not read when it is inserted with
+				// its text (toasts in the first render). A trailing space alternates
+				// per region, so the same message twice is read twice.
+				if (s) setTimeout(() => ($$[k] = $$[k] === s ? `${s} ` : s), 100)
+			}
 
 			// The pointer may have been left behind by a toast that went away.
 			syncPause(region()?.matches(':hover') ?? hover)
@@ -300,20 +337,20 @@ rocket('sb-toast', {
 			hover = next
 			$$.paused = paused()
 			if (paused()) for (const id of timers.keys()) hold(id)
-			else for (const r of $$.rows) if (!r.leaving) arm(r.id)
+			else for (const r of view) if (!r.leaving) arm(r.id)
 		}
 
 		// Dismissing is view state: it happens here and now, and the server hears
-		// about it so it can drop the toast from its own list.
+		// about it so it can drop the toast from its own list (after the local
+		// rebuild, so a page that drops it at once still sees it fade).
 		function dismiss(id, reason) {
 			if (!id || dismissed.has(id)) return
 			dismissed.add(id)
 			hold(id)
 			timers.delete(id)
-			emit('sb-dismiss', { id, reason })
-			const ms = leaveMs()
-			if (ms) leaving.set(id, setTimeout(() => (leaving.delete(id), rebuild()), ms))
+			if (!reduced.matches) leaving.set(id, setTimeout(() => (leaving.delete(id), rebuild()), LEAVE))
 			rebuild()
+			emit('sb-dismiss', { id, reason })
 		}
 
 		rebuild()
@@ -330,20 +367,15 @@ rocket('sb-toast', {
 		action('dismiss', (_, id) => dismiss(id, 'user'))
 		action('enter', () => syncPause(true))
 		action('leave', () => syncPause(false))
-		action('focusin', () => {
-			focused = true
-			syncPause(hover)
-		})
-		action('focusout', ({ el, evt }) => {
-			// A toast that re-rendered away also "loses" focus: that is not leaving.
-			if (!evt.target.isConnected) return
-			if (el.contains(evt.relatedTarget)) return
-			focused = false
+		action('focus', ({ el }, evt) => {
+			// Entering from outside: only the keyboard gets its focus handed back.
+			if (evt && !el.contains(evt.relatedTarget)) from = evt.target.matches(':focus-visible') ? evt.relatedTarget : null
 			syncPause(hover)
 		})
 
 		defineHostProp('dismiss', { value: (id) => peek(() => dismiss(String(id), 'user')) })
-		defineHostProp('clear', { value: () => peek(() => [...$$.rows].forEach((r) => dismiss(r.id, 'user'))) })
+		// Everything, the toasts waiting behind max included.
+		defineHostProp('clear', { value: () => peek(() => normalize(props.toasts).forEach((t) => dismiss(t.id, 'user'))) })
 
 		cleanup(() => {
 			for (const id of [...timers.keys()]) hold(id)
@@ -361,8 +393,8 @@ rocket('sb-toast', {
 			data-class:paused="$$paused"
 			data-on:pointerenter="@enter()"
 			data-on:pointerleave="@leave()"
-			data-on:focusin="@focusin()"
-			data-on:focusout="@focusout()"
+			data-on:focusin="@focus(evt)"
+			data-on:focusout="@focus()"
 		>
 			<!-- No id on a repeated element (Datastar's morph is not re-entrant), and
 			     r?. everywhere: data-for can re-evaluate a removed row once with r undefined. -->
@@ -372,6 +404,7 @@ rocket('sb-toast', {
 					part="toast"
 					data-attr:data-variant="r?.variant"
 					data-attr:aria-hidden="r?.leaving ? 'true' : null"
+					data-class:alt="r?.alt"
 					data-class:leaving="r?.leaving"
 					data-style:--dur="r?.dur"
 					data-style:--bd="r?.bd"

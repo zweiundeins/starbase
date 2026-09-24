@@ -51,7 +51,7 @@ Local signals stand in for the server here, which is all a docs page needs. A re
 </div>
 ```
 
-Hover a toast, or tab into its dismiss button, and every countdown stops until you leave. The danger toast carries `duration: 0`, so it waits for a human.
+Hover a toast, or tab into its dismiss button, and every countdown stops until you leave. The danger toast carries `duration: 0`, so it waits for a human. A dismissed toast fades out even though the page drops it from the list at once.
 
 ### In a corner
 
@@ -92,9 +92,9 @@ If the page drives `toasts` from a signal instead of rendering the attribute, ad
 
 Each entry of `toasts` is `{id, title?, text, variant?, duration?}`:
 
-- `id`: stable and unique in the list. It is the only thing that ties a dismissal to a toast, so reuse it for the same message and never for a different one.
+- `id`: stable and unique in the list. It is the only thing that ties a dismissal to a toast, so reuse it for the same message and never for a different one. Without an id, the message is the id (`"Title. Text"`, or just the text), with `#2`, `#3`… for repeats of the same message.
 - `title`: an optional bold first line, in the tone colour.
-- `text`: the message. A plain string in the array is read as `{text}` with a positional id.
+- `text`: the message. A plain string in the array is read as `{text}`, so its id is the string itself.
 - `variant`: `info` (the default), `ok`, `warn` or `danger`. It sets the tone colour and how the message is announced.
 - `duration`: ms for this toast, overriding the `duration` prop. `0` makes it sticky.
 
@@ -103,7 +103,7 @@ Only the newest `max` toasts are rendered, and only rendered toasts count down. 
 ## Methods
 
 - `dismiss(id)`: dismiss one toast, exactly as the button does (including `sb-dismiss`).
-- `clear()`: dismiss everything on the stack.
+- `clear()`: dismiss every toast, including those waiting behind `max` (each one emits `sb-dismiss`).
 
 ## Styling
 
@@ -117,6 +117,6 @@ Corners notch with `--sb-notch`, so the 8-bit look can be turned off per theme. 
 ## Accessibility
 
 - **Announcing is separate from the visible stack.** The stack moves, fades and reorders, which a live region would read out again and again. So the toasts sit in a plain `role="region"` with `label` as its accessible name, and two visually hidden live regions do the announcing: a polite `role="status"` for `info` and `ok`, an assertive `role="alert"` for `warn` and `danger`. An urgent message interrupts, an ordinary one waits for a pause.
-- **Focus is never stolen.** Nothing is focused when a toast appears. Each toast has a dismiss button named after its message ("Dismiss: Saved. Mission plan stored."), reachable with Tab in the order the toasts are shown.
-- **Time can be stopped.** Every countdown pauses while the pointer is over the region or the keyboard focus is inside it, so a toast cannot vanish while it is being read or its button is being aimed at. A toast that must not disappear at all gets `duration: 0`.
+- **Focus is never stolen.** Nothing is focused when a toast appears. Each toast has a dismiss button named after its message ("Dismiss: Saved. Mission plan stored."), reachable with Tab in the order the toasts are shown. Focus stays with its toast while the stack changes. When the focused toast goes, focus moves to its neighbour; after the last one, keyboard focus goes back to where it came from.
+- **Time can be stopped.** Every countdown pauses while the pointer is over the region or the keyboard focus is inside it, so a toast cannot vanish while it is being read or its button is being aimed at. (A button focused by a mouse click does not pause anything, or dismissing one toast would stop all the others.) A toast that must not disappear at all gets `duration: 0`.
 - **The countdown is decoration.** The bar is `aria-hidden`; it never carries information that is not in the text.
