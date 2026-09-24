@@ -18,30 +18,25 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 
 // Options come as strings or {value, label?, description?, disabled?}.
 const normalize = (list) =>
-	(Array.isArray(list) ? list : []).map((o) =>
-		typeof o === 'object' && o !== null
-			? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), description: o.description ? String(o.description) : '', disabled: !!o.disabled }
-			: { value: String(o), label: String(o), description: '', disabled: false },
-	)
+	(Array.isArray(list) ? list : []).map((o) => {
+		if (typeof o !== 'object' || !o) o = { value: String(o) }
+		return { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), description: String(o.description || ''), disabled: !!o.disabled }
+	})
 
 // Case- and accent-insensitive matching.
 const fold = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
-const anchors = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name: --a')
+const anchors = CSS.supports('anchor-name: --a')
 
 // The list sits under the control, as wide as it: CSS anchor positioning in
-// @supports, a JS fallback (place) elsewhere. An empty .note stays rendered
+// @supports, a JS fallback (in setOpen) elsewhere. An empty .note stays rendered
 // (no padding) as a status region, so a new note is announced.
 const styles = /* css */ `
 :host {
-	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
-	--_border-hover: var(--sb-control-border-hover, #3A4868);
 	--_text: var(--sb-control-text, #F3F4FA);
 	--_placeholder: var(--sb-control-placeholder, #7785A8);
-	--_label: var(--sb-text-2, #AEBBDD);
 	--_muted: var(--sb-text-muted, #7785A8);
-	--_panel: var(--sb-surface-raised, #10182B);
 	--_hover: var(--sb-surface-hover, #1A2540);
 	--_brand: var(--sb-brand, #8C6BFF);
 	--_brand-light: var(--sb-brand-light, #B09AFF);
@@ -54,7 +49,7 @@ const styles = /* css */ `
 :host([hidden]) { display: none; }
 .field:has(:disabled) { opacity: 0.5; pointer-events: none; }
 .field { display: grid; gap: 0.4rem; }
-.label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
+.label { color: var(--sb-text-2, #AEBBDD); font-size: 0.8125rem; font-weight: 600; }
 .control {
 	display: flex;
 	flex-wrap: wrap;
@@ -66,13 +61,13 @@ const styles = /* css */ `
 	box-sizing: border-box;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
-	background: var(--_bg);
+	background: var(--sb-control-bg, #0B1224);
 	cursor: text;
 	position: relative;
 	anchor-name: --sb-select;
 	transition: border-color 120ms, box-shadow 120ms;
 }
-.control:hover { border-color: var(--_border-hover); }
+.control:hover { border-color: var(--sb-control-border-hover, #3A4868); }
 .control:focus-within { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); outline: 2px solid transparent; }
 .control::after {
 	content: "";
@@ -97,8 +92,8 @@ const styles = /* css */ `
 	color: var(--_text);
 	font-size: 0.8125rem;
 }
-.chip button { all: unset; display: grid; place-items: center; inline-size: 1.1rem; block-size: 1.1rem; border-radius: 3px; color: var(--_muted); cursor: pointer; }
-.chip button:hover { color: var(--_text); background: var(--_hover); }
+.chip button, .clear { all: unset; display: grid; place-items: center; inline-size: 1.1rem; block-size: 1.1rem; border-radius: 3px; color: var(--_muted); cursor: pointer; }
+.chip button:hover, .clear:hover { color: var(--_text); background: var(--_hover); }
 input {
 	all: unset;
 	flex: 1;
@@ -106,12 +101,10 @@ input {
 	block-size: 2rem;
 	padding-inline: 0.35rem;
 	color: var(--_text);
-	font: inherit;
 }
 input::placeholder { color: var(--_placeholder); }
 input[readonly] { cursor: pointer; }
-.clear { all: unset; position: absolute; inset-inline-end: 2rem; display: grid; place-items: center; inline-size: 1.25rem; block-size: 1.25rem; border-radius: 3px; color: var(--_muted); cursor: pointer; }
-.clear:hover { color: var(--_text); background: var(--_hover); }
+.clear { position: absolute; inset-inline-end: 2rem; inline-size: 1.25rem; block-size: 1.25rem; }
 .spin { position: absolute; inset-inline-end: 2rem; inline-size: 12px; block-size: 12px; background: var(--_brand-light); animation: spin 0.6s steps(4) infinite; clip-path: polygon(0 0, 4px 0, 4px 4px, 0 4px, 0 0, 8px 8px, 12px 8px, 12px 12px, 8px 12px, 8px 8px); }
 @keyframes spin { to { rotate: 360deg; } }
 [popover] {
@@ -119,7 +112,7 @@ input[readonly] { cursor: pointer; }
 	padding: 4px;
 	border: 1px solid var(--_border);
 	border-radius: var(--_radius);
-	background: var(--_panel);
+	background: var(--sb-surface-raised, #10182B);
 	color: var(--_text);
 	box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
 	max-block-size: min(18rem, 50dvh);
@@ -136,11 +129,11 @@ input[readonly] { cursor: pointer; }
 		position-try-fallbacks: flip-block;
 	}
 }
-[role="option"] { display: grid; gap: 0.1rem; padding: 0.45rem 0.6rem; border-radius: calc(var(--_radius) - 2px); cursor: pointer; }
-[role="option"][aria-disabled="true"] { opacity: 0.45; cursor: default; }
-[role="option"].active { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
-[role="option"].active:dir(rtl) { box-shadow: inset -2px 0 0 var(--_brand); }
-[role="option"][aria-selected="true"] { color: var(--_brand-light); font-weight: 600; }
+[role=option] { display: grid; gap: 0.1rem; padding: 0.45rem 0.6rem; border-radius: calc(var(--_radius) - 2px); cursor: pointer; }
+[role=option][aria-disabled=true] { opacity: 0.45; cursor: default; }
+[role=option].active { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
+[role=option].active:dir(rtl) { box-shadow: inset -2px 0 0 var(--_brand); }
+[role=option][aria-selected=true] { color: var(--_brand-light); font-weight: 600; }
 .desc { color: var(--_muted); font-size: 0.75rem; font-weight: 400; }
 .note { padding: 0.6rem; color: var(--_muted); font-size: 0.8125rem; }
 .note:empty { padding: 0; }
@@ -193,9 +186,13 @@ rocket('sb-select', {
 		// when remote results move on.
 		const labels = new Map()
 		let options = [] // what the list offers: options, or results when remote
+		// Take in the props: the options, and the signals the template reads
+		// (it is rendered once).
 		const learn = () => {
 			options = normalize(props.remote ? props.results : props.options)
 			for (const o of options) labels.set(o.value, o.label)
+			for (const k of ['label', 'placeholder', 'multiple', 'loading', 'clearable', 'disabled']) $$[k] = props[k]
+			$$.typing = props.searchable || props.remote
 		}
 		learn()
 
@@ -205,20 +202,12 @@ rocket('sb-select', {
 		$$.active = -1 // index into $$.view
 		$$.view = []
 		$$.note = ''
-		$$.label = props.label
-		$$.placeholder = props.placeholder
-		$$.multiple = props.multiple
-		$$.typing = props.searchable || props.remote
-		$$.loading = props.loading
-		$$.clearable = props.clearable
-		$$.disabled = props.disabled
 		$$.pending = false // remote: typed, waiting for the debounce
 
-		const chipsOf = () => $$.selected.map((v) => ({ value: v, label: labels.get(v) ?? v }))
-		$$.chips = chipsOf()
 		// What the input shows: the query while typing, else (single) the label.
 		// Never read a missing index of a signal array: that creates it ("" at [0]
 		// of an empty list). And signals are gone while the element is detached.
+		// (Computed lazily: $$.chips comes from the refresh() below.)
 		$$.text = () => ($$.typing && ($$.open || $$.multiple) ? $$.query : $$.multiple || !$$.chips?.length ? '' : $$.chips[0].label)
 		const at = () => $$.view?.find((_, i) => i === $$.active) // the highlighted option
 
@@ -230,7 +219,7 @@ rocket('sb-select', {
 			$$.view = view.map((o, i) => ({ ...o, id: 'o' + i, selected: $$.selected.includes(o.value) }))
 			if ($$.active >= view.length) $$.active = view.length ? 0 : -1
 			$$.note = short ? 'Type to search' : view.length ? '' : props.loading || $$.pending ? 'Searching…' : 'No results'
-			$$.chips = chipsOf()
+			$$.chips = $$.selected.map((v) => ({ value: v, label: labels.get(v) ?? v }))
 		}
 		refresh()
 
@@ -238,13 +227,6 @@ rocket('sb-select', {
 		observeProps(() =>
 			peek(() => {
 				learn()
-				$$.label = props.label
-				$$.placeholder = props.placeholder
-				$$.multiple = props.multiple
-				$$.typing = props.searchable || props.remote
-				$$.loading = props.loading
-				$$.clearable = props.clearable
-				$$.disabled = props.disabled
 				if (props.disabled) setOpen(false)
 				if (props.remote && $$.open && $$.active < 0 && options.length) $$.active = 0
 				refresh()
@@ -277,26 +259,25 @@ rocket('sb-select', {
 		)
 		watch.observe(host, { attributeFilter: ['value'] })
 		cleanup(() => watch.disconnect())
+		// sync() too: inside a Datastar expression the effect runs only at its end.
 		defineHostProp('revert', { value: () => peek(() => (($$.selected = parseValue(props.value), refresh()), sync())) })
 
-		const popover = () => host.shadowRoot?.querySelector('[popover]')
-		const input = () => host.shadowRoot?.querySelector('input')
-		const place = () => {
-			// Without CSS anchor positioning: put the list under the control.
-			if (anchors) return
-			const r = host.shadowRoot.querySelector('.control').getBoundingClientRect()
-			const p = popover()
-			Object.assign(p.style, { position: 'fixed', inset: 'auto', left: r.left + 'px', top: r.bottom + 4 + 'px', width: r.width + 'px' })
-		}
+		const $ = (s) => host.shadowRoot?.querySelector(s) // in the rendered template
 		// Keep the highlighted option in view.
 		const show = () => requestAnimationFrame(() => host.shadowRoot?.getElementById(at()?.id)?.scrollIntoView({ block: 'nearest' }))
 		const setOpen = (open) => {
 			if (open === $$.open || (open && props.disabled)) return
 			$$.open = open
-			const p = popover()
+			const p = $('[popover]')
 			try {
-				if (open) (p.showPopover(), place())
-				else p.hidePopover()
+				if (open) {
+					p.showPopover()
+					// Without CSS anchor positioning: put the list under the control.
+					if (!anchors) {
+						const r = $('.control').getBoundingClientRect()
+						Object.assign(p.style, { position: 'fixed', inset: 'auto', left: r.left + 'px', top: r.bottom + 4 + 'px', width: r.width + 'px' })
+					}
+				} else p.hidePopover()
 			} catch {}
 			if (!open && !props.multiple) $$.query = ''
 			if (open) ($$.active = Math.max(0, $$.view.findIndex((o) => o.selected))), search(), show()
@@ -343,9 +324,9 @@ rocket('sb-select', {
 			$$.active = 0 // the first match, after setOpen's selected one
 			refresh()
 		})
-		action('toggle', ({ evt }) => {
-			if (evt.target.closest('button')) return
-			input()?.focus()
+		// Clicks on the chips' and the clear button never get here: they stop there.
+		action('toggle', () => {
+			$('input')?.focus()
 			setOpen(!$$.open)
 		})
 		action('pick', ({ evt }, v) => {
@@ -362,7 +343,7 @@ rocket('sb-select', {
 			$$.selected = []
 			$$.query = ''
 			change()
-			input()?.focus()
+			$('input')?.focus()
 		})
 		// Removing a focused select blurs it too: its signals are gone by then.
 		action('blur', () => setTimeout(() => host.isConnected && (host.shadowRoot.activeElement || setOpen(false)), 0))
@@ -373,12 +354,9 @@ rocket('sb-select', {
 			// Space opens and picks like Enter, unless it is typed text.
 			switch (evt.key === ' ' && !$$.typing && !buf ? 'Enter' : evt.key) {
 				case 'ArrowDown':
-					if (!$$.open) setOpen(true)
-					else if (n) $$.active = ($$.active + 1) % n
-					break
 				case 'ArrowUp':
 					if (!$$.open) setOpen(true)
-					else if (n) $$.active = ($$.active - 1 + n) % n
+					else if (n) $$.active = ($$.active + (evt.key === 'ArrowUp' ? n - 1 : 1)) % n
 					break
 				case 'Home':
 				case 'End':
@@ -386,8 +364,8 @@ rocket('sb-select', {
 					$$.active = evt.key === 'Home' ? 0 : n - 1
 					break
 				case 'Enter':
-					if ($$.open && at()) pick(at().value)
-					else if (!$$.open) setOpen(true)
+					if (!$$.open) setOpen(true)
+					else pick(at()?.value) // nothing highlighted: picks nothing
 					break
 				case 'Escape':
 					if (!$$.open) return
