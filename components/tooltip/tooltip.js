@@ -26,15 +26,21 @@ const styles = /* css */ `
 	font-size: 0.8125rem;
 	font-weight: 600;
 	line-height: 1.4;
-	pointer-events: none;
+	/* Hidden also leaves the accessibility tree; the fade-out still plays. */
 	opacity: 0;
-	transition: opacity 120ms, translate 120ms;
+	visibility: hidden;
+	transition: opacity 120ms, translate 120ms, visibility 120ms;
 	box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.6);
 }
+.tip:empty { display: none; }
+.tip::before, .tip::after { content: ""; position: absolute; }
+/* The pointer can move onto a shown tip: this bridges the gap (and the
+   border) on the trigger's side (--_b), once the tip has slid into place,
+   so it never covers the trigger. */
+.tip::before { inset: var(--_b); visibility: hidden; }
+.show::before { visibility: visible; transition: 0s 120ms; }
 /* A pixel arrow. */
 .tip::after {
-	content: "";
-	position: absolute;
 	left: calc(50% - 4px);
 	top: calc(50% - 2px);
 	inline-size: 8px;
@@ -45,15 +51,15 @@ const styles = /* css */ `
 /* Physical sides, in RTL too. --_n is the slide-in. */
 .top, .bottom { left: 50%; translate: -50% var(--_n); }
 .left, .right { top: 50%; translate: var(--_n) -50%; }
-.top { bottom: calc(100% + var(--_gap)); --_n: 4px; }
-.bottom { top: calc(100% + var(--_gap)); --_n: -4px; }
-.left { right: calc(100% + var(--_gap)); --_n: 4px; }
-.right { left: calc(100% + var(--_gap)); --_n: -4px; }
+.top { bottom: calc(100% + var(--_gap)); --_n: 4px; --_b: 100% 0 -11px; }
+.bottom { top: calc(100% + var(--_gap)); --_n: -4px; --_b: -11px 0 100%; }
+.left { right: calc(100% + var(--_gap)); --_n: 4px; --_b: 0 -11px 0 100%; }
+.right { left: calc(100% + var(--_gap)); --_n: -4px; --_b: 0 100% 0 -11px; }
 .top::after { top: 100%; }
 .bottom::after { top: auto; bottom: 100%; rotate: 180deg; }
 .left::after { left: calc(100% - 2px); rotate: -90deg; }
 .right::after { left: auto; right: calc(100% - 2px); rotate: 90deg; }
-.show { opacity: 1; --_n: 0px; }
+.show { opacity: 1; visibility: visible; --_n: 0px; }
 @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
 `
 
@@ -66,20 +72,24 @@ rocket('sb-tooltip', {
 	manifest: {
 		slots: [{ name: 'default', description: 'The trigger element.' }],
 	},
-	setup: ({ $$, adoptStyles, host }) => {
+	setup: ({ $$, adoptStyles, cleanup, host }) => {
 		adoptStyles(host, styles)
-		$$.hover = false
+		$$.hover = $$.focus = false
+		// Escape dismisses the tip wherever focus is.
+		const esc = (e) => e.key === 'Escape' && ($$.hover = $$.focus = false)
+		addEventListener('keydown', esc)
+		cleanup(() => removeEventListener('keydown', esc))
 	},
-	// Events from the slotted trigger bubble through the anchor. `open` is
-	// interpolated: a prop change re-renders.
+	// The anchor holds the trigger and the tip, so the pointer can move onto the
+	// tip. Only keyboard focus shows it: a mouse click's focus doesn't pin it.
+	// The live region announces the tip: a shadow-DOM tip can't be the trigger's
+	// aria-describedby. `open` is interpolated: a prop change re-renders.
 	render: ({ html, props: { content, open, placement } }) => html`
 		<span class="anchor"
 			data-on:pointerenter="$$hover = true"
 			data-on:pointerleave="$$hover = false"
-			data-on:focusin="$$hover = true"
-			data-on:focusout="$$hover = false"
-			data-on:keydown="evt.key === 'Escape' && ($$hover = false)"
-		><slot></slot></span>
-		<span class="tip ${placement}" part="tip" role="tooltip" data-class:show="${open} || $$hover">${content}</span>
+			data-on:focusin="$$focus = evt.composedPath()[0].matches(':focus-visible')"
+			data-on:focusout="$$focus = false"
+		><slot></slot><span aria-live="polite"><span class="tip ${placement}" part="tip" role="tooltip" data-class:show="${open} || $$hover || $$focus">${content}</span></span></span>
 	`,
 })

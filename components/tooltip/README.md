@@ -9,13 +9,13 @@ since: 2026-09-21
 preview: |
   <sb-tooltip content="More info" open><img src="/art/info.svg" alt="Info" width="32" height="32" style="image-rendering: pixelated"></sb-tooltip>
 usage: |
-  <sb-tooltip content="More info"><button type="button">?</button></sb-tooltip>
+  <sb-tooltip content="More info"><button type="button" aria-label="Help">?</button></sb-tooltip>
 playground:
   content: <sb-button variant="outline" size="sm">Hover me</sb-button>
   values: {content: More info, open: true}
 ---
 
-A short hint that appears on hover and keyboard focus, with a small pixel arrow. Wrap any trigger element.
+A short hint that appears on hover and keyboard focus, with a small pixel arrow. Wrap a focusable trigger, such as a button or a link, that has an accessible name of its own.
 
 ## Examples
 
@@ -64,4 +64,9 @@ Style it from your page's CSS — no need to change the component or import anyt
 
 ## Accessibility
 
-The tooltip shows on focus as well as hover, and Escape dismisses it. Keep tooltips short and supplementary: never put the only copy of important information in one.
+- **Shown on hover and keyboard focus.** Keyboard focus keeps the tip up while the pointer comes and goes. A mouse click focuses the trigger without pinning the tip: it still goes when the pointer leaves.
+- **Dismissible, hoverable, persistent** ([WCAG 1.4.13](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus)). Escape hides it wherever the focus is; the pointer can move from the trigger onto the tip, which stays until the pointer leaves both, the focus moves on or Escape is pressed. A shown tip takes the pointer, so it covers what is under it.
+- **Announced when it appears.** The tip lives in the component's shadow root, so it can't be the trigger's `aria-describedby`. Instead it appears inside a polite live region, which screen readers announce after the trigger's own name. While hidden it is out of the accessibility tree, so it isn't read as stray text.
+- **The trigger carries the name.** Give it a name of its own: an icon button needs an `aria-label`, because the tip is read after the name, never as the name. A trigger that can't take focus, like a plain image, is out of reach for keyboard users.
+
+Keep tooltips short and supplementary: never put the only copy of important information in one.
