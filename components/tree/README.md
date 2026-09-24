@@ -52,7 +52,7 @@ func children(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-Without Datastar signals, the server can also re-render the element with a new `loaded` (or `items`, `value`, `expanded`) attribute: a changed attribute always wins, and a removed one is ignored. Children can come in either: a lazy item stops loading once `items` or `loaded` has its children. To clear the selection or close every branch, send `value=""` or `expanded=""`.
+Without Datastar signals, the server can also re-render the element with a new `loaded` (or `items`, `value`, `expanded`) attribute: a changed attribute always wins, and a removed `value` or `expanded` is ignored. Children can come in either: a lazy item stops loading once `items` or `loaded` has its children. To clear the selection or close every branch, send `value=""` or `expanded=""`.
 
 ### Multiple selection
 

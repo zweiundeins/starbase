@@ -209,8 +209,9 @@ rocket('sb-tree', {
 		}
 		const select = (id) => {
 			if (props.selection === 'none') return
+			// Choosing the selected item again is no change.
+			if (props.selection === 'single' && key($$.selected) === id) return
 			const has = $$.selected.includes(id)
-			if (has && props.selection === 'single') return
 			$$.selected = props.selection === 'multiple' ? (has ? $$.selected.filter((x) => x !== id) : [...$$.selected, id]) : [id]
 			emit('change')
 			emit('sb-change', { name: props.name, value: value() })
