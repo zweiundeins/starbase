@@ -11,10 +11,11 @@ const styles = /* css */ `
 	display: inline-flex;
 	vertical-align: middle;
 }
+:host([hidden]) { display: none; }
 .anchor { display: inline-flex; }
 .tip {
 	position: absolute;
-	z-index: 70;
+	z-index: var(--sb-z-tooltip, 70);
 	inline-size: max-content;
 	max-inline-size: 16rem;
 	padding: 0.4rem 0.75rem;
@@ -34,21 +35,25 @@ const styles = /* css */ `
 .tip::after {
 	content: "";
 	position: absolute;
+	left: calc(50% - 4px);
+	top: calc(50% - 2px);
 	inline-size: 8px;
 	block-size: 4px;
 	background: var(--_border);
 	clip-path: polygon(0 0, 100% 0, 75% 50%, 50% 100%, 25% 50%);
 }
-.top { inset-block-end: calc(100% + var(--_gap)); inset-inline-start: 50%; translate: -50% 4px; }
-.top::after { inset-block-start: 100%; inset-inline-start: calc(50% - 4px); }
-.bottom { inset-block-start: calc(100% + var(--_gap)); inset-inline-start: 50%; translate: -50% -4px; }
-.bottom::after { inset-block-end: 100%; inset-inline-start: calc(50% - 4px); rotate: 180deg; }
-.left { inset-inline-end: calc(100% + var(--_gap)); inset-block-start: 50%; translate: 4px -50%; }
-.left::after { inset-inline-start: 100%; inset-block-start: calc(50% - 2px); rotate: -90deg; translate: -2px 0; }
-.right { inset-inline-start: calc(100% + var(--_gap)); inset-block-start: 50%; translate: -4px -50%; }
-.right::after { inset-inline-end: 100%; inset-block-start: calc(50% - 2px); rotate: 90deg; translate: 2px 0; }
-.show.top, .show.bottom { opacity: 1; translate: -50% 0; }
-.show.left, .show.right { opacity: 1; translate: 0 -50%; }
+/* Physical sides, in RTL too. --_n is the slide-in. */
+.top, .bottom { left: 50%; translate: -50% var(--_n); }
+.left, .right { top: 50%; translate: var(--_n) -50%; }
+.top { bottom: calc(100% + var(--_gap)); --_n: 4px; }
+.bottom { top: calc(100% + var(--_gap)); --_n: -4px; }
+.left { right: calc(100% + var(--_gap)); --_n: 4px; }
+.right { left: calc(100% + var(--_gap)); --_n: -4px; }
+.top::after { top: 100%; }
+.bottom::after { top: auto; bottom: 100%; rotate: 180deg; }
+.left::after { left: calc(100% - 2px); rotate: -90deg; }
+.right::after { left: auto; right: calc(100% - 2px); rotate: 90deg; }
+.show { opacity: 1; --_n: 0px; }
 @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
 `
 
@@ -61,14 +66,13 @@ rocket('sb-tooltip', {
 	manifest: {
 		slots: [{ name: 'default', description: 'The trigger element.' }],
 	},
-	setup: ({ $$, adoptStyles, host, observeProps, props }) => {
+	setup: ({ $$, adoptStyles, host }) => {
 		adoptStyles(host, styles)
-		$$.forced = props.open
 		$$.hover = false
-		observeProps(() => ($$.forced = props.open), 'open')
 	},
-	// Events from the slotted trigger bubble through the anchor.
-	render: ({ html, props: { content, placement } }) => html`
+	// Events from the slotted trigger bubble through the anchor. `open` is
+	// interpolated: a prop change re-renders.
+	render: ({ html, props: { content, open, placement } }) => html`
 		<span class="anchor"
 			data-on:pointerenter="$$hover = true"
 			data-on:pointerleave="$$hover = false"
@@ -76,6 +80,6 @@ rocket('sb-tooltip', {
 			data-on:focusout="$$hover = false"
 			data-on:keydown="evt.key === 'Escape' && ($$hover = false)"
 		><slot></slot></span>
-		<span class="tip ${placement}" part="tip" role="tooltip" data-class:show="$$forced || $$hover">${content}</span>
+		<span class="tip ${placement}" part="tip" role="tooltip" data-class:show="${open} || $$hover">${content}</span>
 	`,
 })
