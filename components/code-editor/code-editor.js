@@ -199,12 +199,14 @@ rocket('sb-code-editor', {
 		// Forms: until Rocket can make this element form-associated, join the
 		// submissions and resets of the form it sits in, like a <textarea>.
 		// `formdata` also fires for new FormData(form), so Datastar's
-		// contentType: 'form' posts include it. A reset brings back the server's
-		// value without events (revert()). setup reruns on a re-attach, so a
-		// move into another form follows.
+		// contentType: 'form' posts include it; it bubbles, so a form nested in
+		// ours (built by a script) fires it too, and that one isn't ours. A reset
+		// brings back the server's value without events (revert()), unless a
+		// listener before this one cancelled it (e.g. onreset="return confirm()").
+		// setup reruns on a re-attach, so a move into another form follows.
 		const form = host.closest('form')
-		const onData = (evt) => peek(() => props.name && !props.disabled && evt.formData.append(props.name, $$.code))
-		const onReset = () => host.revert()
+		const onData = (evt) => peek(() => evt.target == form && props.name && !props.disabled && evt.formData.append(props.name, $$.code))
+		const onReset = (evt) => evt.defaultPrevented || host.revert()
 		form?.addEventListener('formdata', onData)
 		form?.addEventListener('reset', onReset)
 		cleanup(() => (form?.removeEventListener('formdata', onData), form?.removeEventListener('reset', onReset)))
