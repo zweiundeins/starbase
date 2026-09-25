@@ -7,6 +7,7 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,7 @@ import (
 //	  style: "inline-size: 18rem" # inline style of the live element
 //	  attrs: {values: "[1,2,3]"}   # static attributes (e.g. props the controls skip)
 //	  exclude: [href]
+//	  sync: {sb-orbit: [yaw, pitch]} # an event whose detail moves these controls
 type PlaygroundMeta struct {
 	Props   map[string]PlaygroundRange `yaml:"props"`
 	Values  map[string]any             `yaml:"values"`
@@ -26,6 +28,7 @@ type PlaygroundMeta struct {
 	Style   string                     `yaml:"style"`
 	Attrs   map[string]string          `yaml:"attrs"`
 	Exclude []string                   `yaml:"exclude"`
+	Sync    map[string][]string        `yaml:"sync"`
 }
 
 type PlaygroundRange struct {
@@ -63,6 +66,7 @@ type Playground struct {
 	Content  string
 	Style    string
 	Attrs    map[string]string
+	Sync     map[string][]string // event → props its detail reports (only on the live element)
 }
 
 // Playground derives controls from the manifest; nil if nothing is tweakable.
@@ -70,7 +74,7 @@ func (c *Component) Playground() *Playground {
 	if c.Manifest == nil {
 		return nil
 	}
-	pg := &Playground{Tag: c.Tag, Content: c.Meta.Playground.Content, Style: c.Meta.Playground.Style, Attrs: c.Meta.Playground.Attrs}
+	pg := &Playground{Tag: c.Tag, Content: c.Meta.Playground.Content, Style: c.Meta.Playground.Style, Attrs: c.Meta.Playground.Attrs, Sync: c.Meta.Playground.Sync}
 	excluded := map[string]bool{}
 	for _, e := range c.Meta.Playground.Exclude {
 		excluded[e] = true
@@ -207,8 +211,42 @@ func (pg *Playground) Element() string {
 			fmt.Fprintf(&b, ` data-attr:%s="$_pg.%s"`, c.Attr, c.Prop)
 		}
 	}
+	// When the user changes a synced prop on the element itself (a drag), the
+	// event's detail moves its controls, snapped to their steps. Only here, not
+	// in Markup: the copied snippet has no controls to move.
+	for _, ev := range slices.Sorted(maps.Keys(pg.Sync)) {
+		var sets []string
+		for _, prop := range pg.Sync[ev] {
+			for _, c := range pg.Controls {
+				if c.Prop != prop || c.Kind != ControlNumber {
+					continue
+				}
+				v := "evt.detail." + prop
+				if c.Step == 1 {
+					v = "Math.round(" + v + ")"
+				} else if c.Step > 0 {
+					v = fmt.Sprintf("+(Math.round(%s / %s) * %s).toFixed(%d)", v, fmtFloat(c.Step), fmtFloat(c.Step), decimals(c.Step))
+				}
+				sets = append(sets, "$_pg."+prop+" = "+v)
+			}
+		}
+		if len(sets) > 0 {
+			fmt.Fprintf(&b, ` data-on:%s="%s"`, ev, html.EscapeString(strings.Join(sets, "; ")))
+		}
+	}
 	b.WriteString(">" + pg.Content + "</" + pg.Tag + ">")
 	return b.String()
+}
+
+func fmtFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+// decimals is how many decimals a step has (0.05 → 2).
+func decimals(step float64) int {
+	s := fmtFloat(step)
+	if i := strings.IndexByte(s, '.'); i >= 0 {
+		return len(s) - i - 1
+	}
+	return 0
 }
 
 // Markup is a Datastar expression that evaluates to the element's HTML for

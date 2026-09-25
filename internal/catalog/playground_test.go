@@ -88,6 +88,22 @@ func TestPlaygroundControls(t *testing.T) {
 	}
 }
 
+// An event named in sync moves the controls of the props its detail
+// reports, snapped to their steps, on the live element only.
+func TestPlaygroundSync(t *testing.T) {
+	pg := pgComponent(t, `playground:
+  props: {zoom: {min: 0.5, max: 3, step: 0.05}}
+  sync: {sb-orbit: [yaw, zoom, spin, nope]}
+`).Playground()
+	want := ` data-on:sb-orbit="$_pg.yaw = Math.round(evt.detail.yaw); $_pg.zoom = +(Math.round(evt.detail.zoom / 0.05) * 0.05).toFixed(2)"`
+	if !strings.Contains(pg.Element(), want) {
+		t.Errorf("element lacks %q:\n%s", want, pg.Element())
+	}
+	if strings.Contains(pg.Markup(), "sb-orbit") {
+		t.Errorf("the shown markup has the sync listener: %s", pg.Markup())
+	}
+}
+
 func TestPlaygroundMarkupKeepsStaticAttrs(t *testing.T) {
 	pg := pgComponent(t, "playground:\n  attrs: {items: \"[1,2]\"}\n").Playground()
 	if !strings.Contains(pg.Markup(), `sb-widget items='[1,2]'`) {

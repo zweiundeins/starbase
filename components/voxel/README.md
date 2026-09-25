@@ -18,6 +18,7 @@ playground:
     spin: {min: -180, max: 180, step: 5}
     light: {min: 0, max: 360, step: 5}
   values: {spin: 30}
+  sync: {sb-orbit: [yaw, pitch]}
 ---
 
 A software 3D renderer for voxel models: a rocket, a satellite and a ringed planet. It rasterises into a 128×128 buffer with a z-buffer, uses flat, stepped shading and a pixel outline, and is scaled up with crisp edges. Drag it or use the arrow keys to orbit. Every angle is an attribute, so Datastar signals can steer it: the user's orbit is local, and the next angle the page sends replaces it.

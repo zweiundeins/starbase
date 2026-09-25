@@ -65,7 +65,7 @@ A fenced block tagged `html preview` renders twice: live on the page and as copy
 ```
 ````
 
-Your page automatically gets a **Playground** built from the manifest. Add a `playground:` block to the front matter to set slider ranges (`props`), starting `values`, slotted `content`, a `style` or static `attrs` for the live element (useful for arrays and JSON props, which get no control), or to `exclude` props.
+Your page automatically gets a **Playground** built from the manifest. Add a `playground:` block to the front matter to set slider ranges (`props`), starting `values`, slotted `content`, a `style` or static `attrs` for the live element (useful for arrays and JSON props, which get no control), or to `exclude` props. When the user can change a prop on the element itself (dragging `sb-voxel` turns it), `sync` names the event that reports it and the props in its detail, e.g. `sync: {sb-orbit: [yaw, pitch]}`, and the controls follow.
 
 ## House rules
 
