@@ -26,13 +26,14 @@ A software 3D renderer for voxel models: a rocket, a satellite and a ringed plan
 
 ### Steered by sliders
 
-Each slider is bound to a local signal, and each signal drives an attribute with `data-attr`. `data-preserve-attr` keeps those attributes when a server frame morphs the page. Drag the model, then move a slider: that angle follows the slider again.
+Each slider is bound to a local signal, and each signal drives an attribute with `data-attr`. `data-preserve-attr` keeps those attributes when a server frame morphs the page. Drag the model and the sliders follow when you let go: `sb-orbit` reports the angles, and writing them back into the signals is safe, because a new angle only replaces the user's turn with the same one.
 
 ```html preview
 <div data-signals="{_yaw: 30, _pitch: 15, _zoom: 1, _light: 45}" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; inline-size: 100%">
   <sb-voxel
     data-attr:yaw="$_yaw" data-attr:pitch="$_pitch" data-attr:zoom="$_zoom" data-attr:light="$_light"
-    data-preserve-attr="yaw pitch zoom light"></sb-voxel>
+    data-preserve-attr="yaw pitch zoom light"
+    data-on:sb-orbit="$_yaw = Math.round(evt.detail.yaw); $_pitch = Math.round(evt.detail.pitch)"></sb-voxel>
   <div style="display: grid; gap: 16px; flex: 1; min-inline-size: 14rem">
     <sb-slider label="Yaw" min="-180" max="180" unit="°" data-bind:_yaw__prop.value></sb-slider>
     <sb-slider label="Pitch" min="-89" max="89" unit="°" data-bind:_pitch__prop.value></sb-slider>
