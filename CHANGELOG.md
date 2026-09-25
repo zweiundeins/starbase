@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-25
+
+A review of all 35 components: smaller downloads (the bundle every page loads is 22% smaller), about a hundred bugs fixed, form participation for the form-like components, and browser tests for the value contract, forms and shrinking.
+
 ### Changed
 
 - Component modules are shrunk before they are minified: the `.docs()` text, the `manifest:` block passed to `rocket()`, and comments and needless whitespace in CSS and HTML templates no longer ship. Modules are 18% smaller and the bundle 16%. Every component gets a new version once (the shrinking is part of the version hash), so pinned URLs keep working and the new files replace nothing. `manifest.json` is now published from the readable modules.
@@ -67,9 +71,15 @@ All notable changes to this project are documented here. The format follows
 - `sb-toggle`'s label takes the colour of the text around it (it was unreadable on light pages without Starbase's tokens), an on toggle's knob uses `--sb-text-on-brand` and stays readable on the brand track (Terminal: 1.28:1 → 12.46:1), `aria-label` names the switch, and a moved toggle keeps its state and pending mark.
 - `sb-tooltip`'s hidden tips are no longer read as stray text, and a shown tip is announced. Escape dismisses it wherever the focus is, the pointer passing over a focused trigger no longer hides its tip, and a shown tip takes the pointer, so it can be hovered (WCAG 1.4.13) and covers what is under it. A tooltip without content no longer shows an empty box.
 - `sb-tree` no longer takes the focus back (and scrolls the page to itself) when the server updates it after a click elsewhere, puts Tab on the selected item instead of the first row, and no longer stays "Loading" for good when a lazy branch's children arrive in `items`. In multiple mode the same selection in another order is no longer pending, and choosing the selected item again sends nothing.
-- `sb-voxel`: a new `yaw` or `pitch` from the page replaces the user's turn, so sliders and a write-back of `sb-orbit` stay in step. Only the first finger and the main mouse button drag (a pinch or a right click spun the model), `sb-orbit` fires once per turn, the pitch stops at ±89° without a dead zone, and the planet draws about 30% faster.
+- `sb-voxel`: a new `yaw` or `pitch` from the page replaces the user's turn, so sliders and a write-back of `sb-orbit` stay in step. Only the first finger and the main mouse button drag (a pinch or a right click spun the model), `sb-orbit` fires once per turn, the pitch stops at ±89° without a dead zone, and the planet draws about 30% faster. In its docs, the angle sliders follow a drag.
 - Component pages: switching a boolean control off in the Playground switches the preview off too (e.g. `sb-toggle`'s `checked`), so it matches the markup shown.
 - The site's autoloader no longer waits forever for a module that loads but never defines its tag: after 10 s it reports it, so `ready` and the cloak don't hang on it. Mission Control's altitude chart has an accessible name, and its starfield is decoration for screen readers.
+
+### Known issues
+
+- Datastar's morph is not re-entrant with Rocket components that are reordered by id ([starfederation/datastar#1209](https://github.com/starfederation/datastar/issues/1209), still open). Starbase avoids the pattern.
+- The form-like components are not form-associated yet (Rocket can't declare it): validity and `required`, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach them.
+- Rocket's `observeProps` ignores an attribute write whose decoded value is unchanged; the value components watch their value attribute themselves. A reproduction is in `docs/repro/rocket-observeprops-equal-value/`.
 
 ## [0.3.0] - 2026-09-24
 
@@ -203,7 +213,8 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/zweiundeins/starbase/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/zweiundeins/starbase/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/zweiundeins/starbase/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zweiundeins/starbase/releases/tag/v0.1.0
