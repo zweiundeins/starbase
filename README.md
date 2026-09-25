@@ -9,11 +9,11 @@
 
 Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node, no bundler.
 
-![mockup](docs/design/mockup.png)
+![The Starbase homepage: the hero with a pixel rocket, and the component gallery](docs/screenshot.png)
 
 ## Features
 
-- **18 components** (forms, feedback, layout, data display, 3D/pixel experiments), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
+- **34 components** (forms, navigation, feedback, layout, media, data, utilities, and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
 - **Code playground:** edit a component's JS and HTML in a sandboxed live preview, save and share immutable links, submit the result as a component.
 - **Submissions without tools:** a GitHub issue form (paste code, link a repo or a playground link); a bot validates it and opens a pull request.
 - **Autoloader:** one `<script>` loads each `<sb-*>` component on first use, on any site.
