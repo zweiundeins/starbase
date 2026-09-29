@@ -60,9 +60,19 @@ const wall = (t, tz) => {
 // The calendar date t falls on in the zone (days since 1970-01-01), and when the next one starts.
 const day = (t, tz) => Math.floor(wall(t, tz) / DAY)
 const nextDay = (t, tz) => {
-	const start = (day(t, tz) + 1) * DAY
-	const guess = t + start - wall(t, tz)
-	return guess + start - wall(guess, tz) // the zone's offset may change before midnight
+	const d = day(t, tz) + 1
+	const guess = t + d * DAY - wall(t, tz)
+	let lo = guess + d * DAY - wall(guess, tz) // the zone's offset may change before midnight
+	if (day(lo, tz) >= d) return lo
+	// Midnight falls in a DST gap (America/Santiago): the date starts at the jump.
+	let hi = guess
+	while (day(hi, tz) < d) (lo = hi), (hi += HOUR)
+	while (hi - lo > 1) {
+		const mid = Math.floor((lo + hi) / 2)
+		if (day(mid, tz) < d) lo = mid
+		else hi = mid
+	}
+	return hi
 }
 
 const TITLES = {
