@@ -11,5 +11,8 @@ Applied to the Datastar v1.0.4 tag by `go tool task vendor` (`scripts/vendor-roc
 | 0005 clean up the shadow tree's attributes on disconnect | [#1221](https://github.com/starfederation/datastar/issues/1221) |
 | 0006 instances share one constructed stylesheet per CSS text | [#1222](https://github.com/starfederation/datastar/issues/1222) |
 | 0007 observers hear an attribute write whose value decodes the same | [#1223](https://github.com/starfederation/datastar/issues/1223) |
+| 0008 a morph that starts inside another keeps the outer one's pantry and id maps | [#1209](https://github.com/starfederation/datastar/issues/1209) |
+
+Upstream fixed #1209 for its next release without a public commit, so 0008 is Starbase's own fix (the one proposed in `docs/repro/rocket-morph-reentrancy/`, plus restoring the outer morph's id maps). Drop it with the release that has upstream's.
 
 The issue texts as filed are in `docs/upstream/`.

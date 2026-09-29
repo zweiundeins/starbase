@@ -115,7 +115,7 @@ Make the pantry lifecycle re-entrant: only the outermost `morph` inserts and rem
 The `try`/`finally` keeps an exception from leaving the counter raised. The fuzz test below ran the
 same counter patched into the minified v1.0.4 bundle (without the `try`).
 
-A fuzz test ran 30 random patches, each reordering, adding and dropping 2–9 keyed
+A fuzz test ran 30 random patches, each reordering, adding and dropping 2 to 9 keyed
 items that contain Rocket elements:
 
 | Bundle | exceptions | frames with wrong result |
@@ -128,7 +128,14 @@ A cleaner upstream fix would also scope the id maps per call, or defer Rocket's
 first render out of `connectedCallback`, for example to a microtask. Nested
 morphs would then never run inside an outer one.
 
-## Workaround used in Starbase
+## In Starbase
 
-Don't put `id`s on repeated or reordered elements that contain Rocket components
-(the gallery cards). Without ids nothing is parked, and the morph goes positional.
+Starbase's pages run a patched build with this fix (`patches/rocket/0008`), where a
+nested morph also gives the outer one its id maps back, so the gallery cards have ids
+again. On the official v1.0.4, don't put `id`s on repeated or reordered elements that
+contain Rocket components: without ids nothing is parked, and the morph goes positional.
+
+With the fix, a fuzz test of 30 random patches (reorders, adds and drops of 2 to 9 keyed
+items with Rocket elements, wrapped and as the keyed elements themselves) gives no
+exceptions and no wrong result; v1.0.4 gives 10,296 and 200 exceptions and 2 wrong
+results in each mode.
