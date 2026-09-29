@@ -103,9 +103,17 @@ rocket('sb-virtual-scroll', {
 		adoptStyles(host, styles)
 		const states = internalsOf(host).states
 		// view: the height the rows get (the scroller minus the header). have: the
-		// items in the window. last: the request on its way (wait), sent at `sent`.
-		let view = 0, have = 0, last = '', lastCount = 0, sent = 0, wait = false, timer = 0
+		// items in the window. last: the last request (on its way while wait), sent
+		// at `sent`. cap: the most items the server sends at once, once it sent
+		// fewer than asked for before the end of the list (0: no cap seen).
+		let view = 0, have = 0, last = '', lastCount = 0, sent = 0, wait = false, timer = 0, cap = 0
 		const rows = (n) => Math.ceil(n / props.columns)
+		// Buffer rows on each side of v rows in view: with a cap, as many as fit
+		// in it around the view, so a window still covers the view.
+		const buffer = (v) => {
+			const b = Math.ceil(props.buffer / props.itemSize)
+			return cap ? Math.min(b, Math.max(0, Math.floor((rows(cap) - v) / 2))) : b
+		}
 
 		$$.head = 0
 		const sync = () => {
@@ -126,13 +134,13 @@ rocket('sb-virtual-scroll', {
 		// The window for the scroll position: the visible rows plus the buffer on
 		// both sides, clamped to the list.
 		const want = () => {
-			const size = props.itemSize, b = Math.ceil(props.buffer / size), v = Math.ceil(view / size) + 1
+			const size = props.itemSize, v = Math.ceil(view / size) + 1, b = buffer(v)
 			const r = Math.max(0, Math.min(Math.round(scroller.scrollTop / size) - b, rows(props.total) - v - 2 * b))
 			return [r * props.columns, (v + 2 * b) * props.columns]
 		}
 		// The viewport went past half the buffer, on a side where the list goes on.
 		const outside = () => {
-			const top = scroller.scrollTop, y = $$.y, half = props.buffer / 2
+			const top = scroller.scrollTop, y = $$.y, half = (buffer(Math.ceil(view / props.itemSize) + 1) * props.itemSize) / 2
 			return (props.offset > 0 && top < y + half) || (props.offset + have < props.total && top > y + $$.win - view - half)
 		}
 		const ask = () => {
@@ -141,11 +149,13 @@ rocket('sb-virtual-scroll', {
 			// A new count (connect, resize, new geometry) or no total yet (a morph
 			// emptied the host) asks without a threshold.
 			if (n === lastCount && host.hasAttribute('total') && !outside()) return
-			// The window we want is the one we have.
-			if (offset === props.offset && (props.total ? Math.min(n, props.total - offset) : n) === have) return
-			// One request at a time, unless it got lost.
+			// The window we want is in the one we have (total="0": an empty list).
+			const end = offset + (host.hasAttribute('total') ? Math.min(n, props.total - offset) : n)
+			if (offset >= props.offset && end <= props.offset + have) return
+			// One request at a time, unless it got lost, and a window only once:
+			// the same one again would bring the same answer.
 			const key = offset + ' ' + n
-			if (wait && (key === last || performance.now() - sent < 1000)) return
+			if (key === last || (wait && performance.now() - sent < 1000)) return
 			last = key
 			lastCount = n
 			wait = true
@@ -161,6 +171,10 @@ rocket('sb-virtual-scroll', {
 			wait = false
 			states.delete('loading')
 			sync()
+			// Short of the request before the end of the list: the server's cap.
+			// Without a total the host holds a new list, asked for afresh.
+			if (have < lastCount && props.offset + have < props.total) cap = have
+			if (!host.hasAttribute('total')) last = ''
 			ask()
 		})
 		watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true })
