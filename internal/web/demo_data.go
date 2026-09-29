@@ -50,6 +50,7 @@ func demoItems(bodies []queries.DemoBody) []demoItem {
 	return out
 }
 
+// demoChildren answers with the children of ?parent= (the top level without one).
 func (s *Server) demoChildren(w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get("parent")
 	var bodies []queries.DemoBody
@@ -68,6 +69,7 @@ func (s *Server) demoChildren(w http.ResponseWriter, r *http.Request) {
 	s.demoAnswer(w, r, "_tree", items, patch)
 }
 
+// demoSearch answers with the bodies whose name matches ?q=, at most ?limit=.
 func (s *Server) demoSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))

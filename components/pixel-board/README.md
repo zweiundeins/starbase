@@ -45,6 +45,74 @@ This is the wiring the multiplayer board on the [Showcase](/showcase) page uses.
 
 `requestCancellation: 'disabled'` matters: a stroke posts every 80 ms, and by default Datastar cancels a request that is still running when the next one goes to the same URL, which would drop pixels mid-stroke on a slow connection. No `data-preserve-attr` here: `cells` belongs to the server, and every morph brings the latest board.
 
+On the server, `/cmd/paint` checks the rate limits and sends a command, and the command writes the cells in the single writer's transaction:
+
+```go source=internal/web/board.go#Server.cmdPaint
+// cmdPaint paints cells of the shared board (anyone may paint, rate-limited).
+func (s *Server) cmdPaint(w http.ResponseWriter, r *http.Request) {
+	var p struct {
+		Color int   `json:"color"`
+		Cells []int `json:"cells"`
+	}
+	if err := datastar.ReadSignals(r, &p); err != nil {
+		http.Error(w, "bad payload", http.StatusBadRequest)
+		return
+	}
+	now := time.Now()
+	if !s.paintLimit.allow(sessionID(r), len(p.Cells), now) || !s.paintLimitIP.allow(clientIP(r), len(p.Cells), now) {
+		http.Error(w, "painting too fast", http.StatusTooManyRequests)
+		return
+	}
+	s.send(w, r, commands.PaintPixels{Board: commands.BoardName, Color: p.Color, Cells: p.Cells})
+}
+```
+
+```go source=internal/commands/board.go#PaintPixels,PaintPixels.Validate,PaintPixels.Apply
+// PaintPixels paints cells of the shared board. Not Scoped: every viewer's
+// stream re-renders (pages without the board produce identical frames,
+// which the stream skips).
+type PaintPixels struct {
+	Board string
+	Color int
+	Cells []int
+}
+
+func (c PaintPixels) Validate() error {
+	if c.Board != BoardName {
+		return errors.New("unknown board")
+	}
+	if c.Color < 0 || c.Color > 15 {
+		return errors.New("colour must be 0-15")
+	}
+	if len(c.Cells) == 0 || len(c.Cells) > MaxPaint {
+		return errors.New("paint 1 to 64 cells at a time")
+	}
+	for _, i := range c.Cells {
+		if i < 0 || i >= BoardSize*BoardSize {
+			return errors.New("cell out of range")
+		}
+	}
+	return nil
+}
+
+func (c PaintPixels) Apply(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now().Unix()
+	for _, i := range c.Cells {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO board_cells (board, idx, color, painted_at) VALUES (?, ?, ?, ?)
+			ON CONFLICT (board, idx) DO UPDATE SET color = excluded.color, painted_at = excluded.painted_at`,
+			c.Board, i, c.Color, now); err != nil {
+			return err
+		}
+	}
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO boards (board, version, pixels) VALUES (?, 1, ?)
+		ON CONFLICT (board) DO UPDATE SET version = version + 1, pixels = pixels + excluded.pixels`,
+		c.Board, len(c.Cells))
+	return err
+}
+```
+
 ### Watch only
 
 ```html preview

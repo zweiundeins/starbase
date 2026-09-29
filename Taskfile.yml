@@ -51,6 +51,11 @@ tasks:
     cmds:
       - go run -tags dev ./cmd/manifests
 
+  listings:
+    desc: Rewrite the Go listings in the docs (```go source=path#Name) from their source
+    cmds:
+      - go run ./cmd/listings {{.CLI_ARGS}}
+
   new:
     desc: "Scaffold a component: task new -- my-widget --category forms"
     cmds:

@@ -51,14 +51,61 @@ Type a star, planet or moon ("or", "sat", "eu"…), from the site's example data
 </div>
 ```
 
-The server side is a plain Datastar handler (Go here; any language works):
+The handler behind this demo is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. `demoAnswer` also serves plain JSON and the demo's `delay`:
 
-```go
-func search(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{
-		"_found": find(q), // [{value, label, description?}], at most a few
-	})
+```go source=internal/web/demo_data.go#Server.demoSearch,Server.demoAnswer
+// demoSearch answers with the bodies whose name matches ?q=, at most ?limit=.
+func (s *Server) demoSearch(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	limit = min(max(limit, 1), 50)
+	if q.Get("limit") == "" {
+		limit = 8
+	}
+	var kinds []string
+	for _, k := range strings.Split(q.Get("kind"), ",") {
+		if k = strings.TrimSpace(k); k != "" {
+			kinds = append(kinds, k)
+		}
+	}
+	var bodies []queries.DemoBody
+	if err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
+		bodies, err = rd.DemoSearch(r.Context(), q.Get("q"), kinds, limit)
+		return
+	}); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	items := demoItems(bodies)
+	s.demoAnswer(w, r, "_found", items, items)
+}
+
+// demoAnswer writes the list as JSON, or patches it into the requested signal.
+func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
+		select {
+		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
+		case <-r.Context().Done():
+			return
+		}
+	}
+	// Datastar's own requests accept JSON too: they always get the patch.
+	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		json.NewEncoder(w).Encode(list)
+		return
+	}
+	into := r.URL.Query().Get("into")
+	if into == "" {
+		into = defaultSignal
+	}
+	if !signalNameRe.MatchString(into) {
+		http.Error(w, "into must be a signal name", http.StatusBadRequest)
+		return
+	}
+	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{into: patch})
 }
 ```
 

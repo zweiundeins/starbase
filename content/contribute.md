@@ -65,6 +65,13 @@ A fenced block tagged `html preview` renders twice: live on the page and as copy
 ```
 ````
 
+Server code in your docs can be a listing of Starbase's own handlers, so it never drifts from what the demo runs: name the file and the declarations (`Type.Method` for methods) after the language, leave the block empty, and run `go tool task listings` to fill it in. A test fails when a listing no longer matches its source.
+
+````markdown
+```go source=internal/web/demo.go#Server.demoTelemetry
+```
+````
+
 Your page automatically gets a **Playground** built from the manifest. Add a `playground:` block to the front matter to set slider ranges (`props`), starting `values`, slotted `content`, a `style` or static `attrs` for the live element (useful for arrays and JSON props, which get no control), or to `exclude` props. When the user can change a prop on the element itself (dragging `sb-voxel` turns it), `sync` names the event that reports it and the props in its detail, e.g. `sync: {sb-orbit: [yaw, pitch]}`, and the controls follow.
 
 ## House rules
@@ -94,14 +101,113 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
 
 `datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a rejected command.
 
+On the server, the handler reads the payload and sends a command, which answers 204, or 400 when the command is invalid:
+
+```go source=internal/web/commands.go#Server.cmdFlight,Server.send
+// cmdFlight is the Showcase's commands demo: one field per request, from a
+// component's sb-change ({name, value}). A short pause keeps the controls'
+// pending state visible.
+func (s *Server) cmdFlight(w http.ResponseWriter, r *http.Request) {
+	var p struct {
+		TabID string `json:"tabid"`
+		Name  string `json:"name"`
+		Value any    `json:"value"`
+	}
+	if err := datastar.ReadSignals(r, &p); err != nil {
+		http.Error(w, "bad payload", http.StatusBadRequest)
+		return
+	}
+	select {
+	case <-time.After(400 * time.Millisecond):
+	case <-r.Context().Done():
+		return
+	}
+	s.send(w, r, commands.SetFlight{SID: sessionID(r), TabID: p.TabID, Name: p.Name, Value: fmt.Sprint(p.Value)})
+}
+
+// send enqueues a command and answers 204. The tab's render stream shows
+// the outcome; commands never return HTML.
+func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd cqrs.Command) {
+	err := s.bus.Send(cmd)
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, cqrs.ErrInvalid):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	default:
+		s.log.Warn("command rejected", "err", err)
+		http.Error(w, "busy, try again", http.StatusServiceUnavailable)
+	}
+}
+```
+
+The command validates, then applies the change in the single writer's transaction. `Scope` limits the re-render to this session's streams, and the page shows the stored value, normalized or not:
+
+```go source=internal/commands/flight.go#SetFlight,SetFlight.Validate,SetFlight.Scope,SetFlight.Apply
+// SetFlight sets one field of the Showcase's flight plan (the commands demo).
+// The server validates and normalizes; the page re-renders from the stored
+// plan, which is what confirms (or corrects) the control that sent it.
+type SetFlight struct {
+	SID, TabID  string
+	Name, Value string
+}
+
+func (c SetFlight) Validate() error {
+	if err := validTab(c.SID, c.TabID); err != nil {
+		return err
+	}
+	switch c.Name {
+	case "thrust":
+		n, err := strconv.Atoi(c.Value)
+		if err != nil || n < 0 || n > 100 {
+			return errors.New("thrust is 0 to 100")
+		}
+		if n > 90 {
+			return ErrThrust
+		}
+	case "shields":
+		if c.Value != "true" && c.Value != "false" {
+			return errors.New("shields are true or false")
+		}
+	case "callsign":
+		if !callsignRe.MatchString(strings.ToUpper(strings.TrimSpace(c.Value))) {
+			return errors.New("a call sign is 2 to 16 letters, digits or dashes")
+		}
+	default:
+		return errors.New("unknown field")
+	}
+	return nil
+}
+
+func (c SetFlight) Scope() string { return c.SID }
+
+func (c SetFlight) Apply(ctx context.Context, tx *sql.Tx) error {
+	return updateTab(ctx, tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
+		f := st.Flight.OrDefault()
+		switch c.Name {
+		case "thrust":
+			f.Thrust, _ = strconv.Atoi(c.Value)
+		case "shields":
+			f.Shields = c.Value == "true"
+		case "callsign":
+			f.Callsign = strings.ToUpper(strings.TrimSpace(c.Value)) // the server normalizes
+			f.CallsignRev++                                          // answered, even when nothing changed
+		}
+		st.Flight = f
+	})
+}
+```
+
+The Showcase uses Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way.
+
 **No optimistic updates.** Never show a result the server hasn't produced: counts, lists, derived values and success messages come only from its render. The user's own input stays as they left it, marked pending (`:state(pending)`, or a faded item for operations) until the server confirms it, and goes back with `revert()` if the command is rejected. This is the [Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar#optimistic-updates) applied to components.
 
 ### Lists that hold the keyboard
 
 A component whose rows can be replaced by the server (a tree, a menu, a group of choices) has to defend the focus, or a morph throws the user out of it:
 
-- The morph (or `data-for`) can **park a row before removing it**, so `focusout` fires while the row is still connected and `relatedTarget` is `null` — exactly like a click on the page's text. Decide it **a moment later** (a microtask, or a frame): if the row is gone, the server dropped it, so keep your "focus is inside" flag and move the focus to its neighbour; if the row is still there, the user left, so clear the flag (and never pull the focus back). A switch to another window or tab isn't leaving (`document.hasFocus()` is false then).
-- Restore the DOM focus after a re-render only when it **fell on the floor** — `document.activeElement` is the body or the host. If the user moved on to something else, leave it there; a component that grabs focus back is worse than one that loses it.
+- The morph (or `data-for`) can **park a row before removing it**, so `focusout` fires while the row is still connected and `relatedTarget` is `null`, exactly like a click on the page's text. Decide it **a moment later** (a microtask, or a frame): if the row is gone, the server dropped it, so keep your "focus is inside" flag and move the focus to its neighbour; if the row is still there, the user left, so clear the flag (and never pull the focus back). A switch to another window or tab isn't leaving (`document.hasFocus()` is false then).
+- Restore the DOM focus after a re-render only when it **fell on the floor**: `document.activeElement` is the body or the host. If the user moved on to something else, leave it there; a component that grabs focus back is worse than one that loses it.
 - When the focused row is **gone from the new list**, focus its neighbour (the old index, clamped into the new list, skipping disabled rows), not the first row: jumping to the top turns one arrow key into a trip to the other end of the list.
 
 `sb-tree`, `sb-radio-group` and `sb-dropdown` all do this; copy from whichever is closest in shape.

@@ -69,7 +69,7 @@ With `confirm`, it sets `:state(pending)` while the local value differs from the
 
 A server that answers with the value it already had (it upper-cased `starbase-1` back to `STARBASE-1`, or ignored a no-op) sends identical markup, so the edit would stay pending. Render `rev`, a revision that changes with every applied command for this field (a counter will do): a new `rev` means the server has answered, and its value wins even when it is unchanged. The same clears a chat-style field after its message was sent: `value=""` with a new `rev`.
 
-See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase), which runs this call sign.
+[Commands and components](/contribute#commands-and-components) lists the handler and the command behind this call sign, and the [Showcase](/showcase) runs it.
 
 ## Forms
 

@@ -41,14 +41,54 @@ Every branch below loads when you first open it, from the site's example dataset
 </div>
 ```
 
-The server side is a plain Datastar handler (Go here; any language works):
+The handler behind this demo is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. `demoAnswer` also serves plain JSON and the demo's `delay`:
 
-```go
-func children(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("parent")
-	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{
-		"_sky": map[string]any{id: childrenOf(id)}, // [{id, label, icon?, lazy?}]
-	})
+```go source=internal/web/demo_data.go#Server.demoChildren,Server.demoAnswer
+// demoChildren answers with the children of ?parent= (the top level without one).
+func (s *Server) demoChildren(w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get("parent")
+	var bodies []queries.DemoBody
+	if err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
+		bodies, err = rd.DemoChildren(r.Context(), parent)
+		return
+	}); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	items := demoItems(bodies)
+	var patch any = items
+	if parent != "" {
+		patch = map[string]any{parent: items}
+	}
+	s.demoAnswer(w, r, "_tree", items, patch)
+}
+
+// demoAnswer writes the list as JSON, or patches it into the requested signal.
+func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
+		select {
+		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
+		case <-r.Context().Done():
+			return
+		}
+	}
+	// Datastar's own requests accept JSON too: they always get the patch.
+	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		json.NewEncoder(w).Encode(list)
+		return
+	}
+	into := r.URL.Query().Get("into")
+	if into == "" {
+		into = defaultSignal
+	}
+	if !signalNameRe.MatchString(into) {
+		http.Error(w, "into must be a signal name", http.StatusBadRequest)
+		return
+	}
+	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{into: patch})
 }
 ```
 

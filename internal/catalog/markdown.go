@@ -24,6 +24,8 @@ import (
 // Fenced code blocks tagged "html preview" render twice: once live, inside a
 // demo stage, and once as highlighted, copyable source. Every other fenced
 // block is highlighted with chroma using CSS classes (styled in code.css).
+// A block with source=<path>#<names> (a listing, see internal/listings) gets
+// a caption linking to that file.
 var Markdown = goldmark.New(
 	goldmark.WithExtensions(
 		extension.GFM,
@@ -35,6 +37,9 @@ var Markdown = goldmark.New(
 		renderer.WithNodeRenderers(util.Prioritized(&codeRenderer{}, 100)),
 	),
 )
+
+// SourceURL is where listing captions link to: the repository's files on main.
+var SourceURL = "https://github.com/zweiundeins/starbase/blob/main/"
 
 type codeRenderer struct{}
 
@@ -70,6 +75,16 @@ func (r *codeRenderer) render(w util.BufWriter, src []byte, node ast.Node, enter
 		w.WriteString(`</div><div class="demo-code">`)
 	} else {
 		w.WriteString(`<div class="code-block">`)
+	}
+	for _, f := range fields[min(1, len(fields)):] {
+		if src, ok := strings.CutPrefix(f, "source="); ok {
+			file, _, _ := strings.Cut(src, "#")
+			w.WriteString(`<div class="code-source"><a href="`)
+			w.WriteString(html.EscapeString(SourceURL + file))
+			w.WriteString(`">`)
+			w.WriteString(html.EscapeString(file))
+			w.WriteString(`</a></div>`)
+		}
 	}
 	w.WriteString(`<sb-copy-button class="code-copy" value="`)
 	w.WriteString(html.EscapeString(strings.TrimRight(source, "\n")))

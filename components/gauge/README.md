@@ -50,6 +50,31 @@ This site's demo endpoint streams telemetry as signal patches. The gauge follows
 </div>
 ```
 
+The endpoint is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. `TelemetryAt` computes the sample from the clock, so every viewer watches the same flight:
+
+```go source=internal/web/demo.go#Server.demoTelemetry
+// demoTelemetry streams the demo mission as signal patches ($_tm): a pure
+// query stream, no commands, no database.
+func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	sse := datastar.NewSSE(w, r)
+	tick := time.NewTicker(250 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		if err := sse.MarshalAndPatchSignals(map[string]any{"_tm": TelemetryAt(time.Now())}); err != nil {
+			return
+		}
+		select {
+		case <-tick.C:
+		case <-r.Context().Done():
+			return
+		case <-s.ctx.Done():
+			return
+		}
+	}
+}
+```
+
 ## Styling
 
 Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

@@ -1204,6 +1204,20 @@
 		overflow: hidden;
 	}
 
+	/* A listing's source file; the copy button sits at its end. */
+	.code-source {
+		display: flex;
+		align-items: center;
+		min-block-size: var(--sb-space-12);
+		padding: var(--sb-space-2) var(--sb-space-3);
+		padding-inline-end: var(--sb-space-12);
+		border-block-end: var(--sb-border-width) solid var(--sb-border);
+		background: var(--sb-surface-inset);
+		color: var(--sb-text-2);
+		font-size: var(--sb-font-size-0);
+		overflow-wrap: anywhere;
+	}
+
 	.code-copy {
 		position: absolute;
 		inset-block-start: var(--sb-space-2);
