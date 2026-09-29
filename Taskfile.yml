@@ -67,9 +67,6 @@ tasks:
       - sh scripts/vendor-prism.sh
 
   vendor:
-    desc: Re-download the pinned Datastar + Rocket bundle
-    vars:
-      DATASTAR_VERSION: v1.0.4
+    desc: Rebuild the vendored Datastar + Rocket bundle (the pinned release with patches/rocket applied)
     cmds:
-      - curl -sSfL -o static/vendor/datastar-rocket.js https://cdn.jsdelivr.net/gh/starfederation/datastar@{{.DATASTAR_VERSION}}/bundles/datastar-rocket.js
-      - curl -sSfL -o static/vendor/datastar-rocket.js.map https://cdn.jsdelivr.net/gh/starfederation/datastar@{{.DATASTAR_VERSION}}/bundles/datastar-rocket.js.map
+      - DATASTAR_VERSION=v1.0.4 sh scripts/vendor-rocket.sh

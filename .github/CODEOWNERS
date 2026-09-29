@@ -5,3 +5,5 @@
 /deploy/                     @mbolli
 /components/**/vendor/       @mbolli
 /components/**/vendor.json   @mbolli
+/static/vendor/              @mbolli
+/patches/                    @mbolli

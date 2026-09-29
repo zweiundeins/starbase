@@ -105,9 +105,12 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	}, nil
 }
 
-// datastarCDN is the Datastar + Rocket bundle the snippets load. It is
-// byte-identical to static/vendor/datastar-rocket.js (so its SRI is ours).
-const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js"
+// DatastarVersion is the Datastar + Rocket release the snippets load from
+// jsDelivr; static/vendor/datastar-rocket-<version>.js is a copy of it (for its
+// integrity). Pages load a patched build of it (scripts/vendor-rocket.sh).
+const DatastarVersion = "v1.0.4"
+
+const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@" + DatastarVersion + "/bundles/datastar-rocket.js"
 
 // install builds a component page's Installation tabs (model.InstallTabs).
 // Every snippet is exactly what to paste: the explanations are the page's.

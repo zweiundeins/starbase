@@ -13,6 +13,7 @@ import (
 
 	"starbase/internal/catalog"
 	"starbase/internal/commands"
+	"starbase/internal/web"
 	"starbase/static"
 )
 
@@ -103,7 +104,7 @@ func TestInstallSnippets(t *testing.T) {
 	_, mapJSON := get(t, c, ts.URL+"/c/@"+cat.Hash+"/importmap.json")
 	var full struct{ Integrity map[string]string }
 	json.Unmarshal([]byte(mapJSON), &full)
-	ds, _ := fs.ReadFile(static.FS, "vendor/datastar-rocket.js")
+	ds, _ := fs.ReadFile(static.FS, "vendor/datastar-rocket-"+web.DatastarVersion+".js")
 	if entries[datastarCDN] != catalog.SRI(ds) {
 		t.Error("pinned import map lacks Datastar's integrity")
 	}
