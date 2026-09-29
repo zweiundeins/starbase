@@ -128,7 +128,7 @@ rocket('sb-checkbox', {
 		// same observer hands the host's aria-label to the box.
 		const attrs = () =>
 			peek(() => {
-				$$.aria = host.getAttribute('aria-label')
+				$$.aria = host.getAttribute('aria-label') ?? '' // a null would delete the signal
 				if (props.indeterminate !== keep.said) $$.mixed = keep.said = props.indeterminate
 				if (!host.hasAttribute('checked')) return void (keep.served = null)
 				if (props.checked !== keep.served) $$.on = keep.served = props.checked
@@ -184,7 +184,7 @@ rocket('sb-checkbox', {
 			data-attr:tabindex="$$disabled ? null : 0"
 			data-attr:aria-checked="$$mixed ? 'mixed' : String($$on)"
 			data-attr:aria-disabled="$$disabled ? 'true' : null"
-			data-attr:aria-label="$$label ? null : $$aria"
+			data-attr:aria-label="($$label ? '' : $$aria) || null"
 			data-class:on="$$on"
 			data-class:mixed="$$mixed"
 			data-on:click="@toggle()"
