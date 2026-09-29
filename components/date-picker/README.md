@@ -159,10 +159,10 @@ It follows the ARIA date picker dialog pattern:
   - Page Up and Page Down move a month, with Shift a year.
   - Home and End go to the first and last day of the week.
   - Enter or Space picks the day; a day that can't be picked is skipped by picking, but can still be focused and read.
-  - Escape closes the calendar and puts the focus back on the button (inline, it drops a half-picked range). Tab moves between the paging buttons and the grid, and stays in the calendar while it is open.
+  - Escape closes the calendar, also from the field, and puts the focus back on the button (inline, it drops a half-picked range). In a drawer, a modal or a popover, the first Escape closes only the calendar. Tab moves between the paging buttons and the grid, and stays in the calendar while it is open.
 - **Opening:** the focus goes to the picked day, else to today. Picking a date closes the calendar and returns the focus to the button.
 - **Invalid text:** the field is `aria-invalid`, and the `error` message is announced (a live region).
 - **Disabled:** `disabled` takes the field, the button and the calendar out of the tab order.
 - **Forced colours:** focus rings, the arrows and today's mark use system colours, and picked days `Highlight`.
 
-The calendar is a native popover, so it is never clipped by a scrolling container.
+The calendar is a native popover (`popover="auto"`), so it is never clipped by a scrolling container, and a click outside it closes it.
