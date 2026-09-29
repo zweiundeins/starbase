@@ -21,7 +21,7 @@ playground:
 
 A table for rows the server keeps: a sticky header, sorting on the server, row selection, and a virtual scroll the server drives. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
 
-Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. A spacer gives the scroller the height of all rows, and the rows at hand sit where they belong. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders. The design follows the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith).
+The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith). Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders.
 
 ## Examples
 
@@ -29,10 +29,10 @@ Every row has the same height (`row-height`), so the scroll position alone tells
 
 The first 100,000 stars of the site's made-up star catalog, stored in SQLite so the server can sort them (`/demo/data/rows`). Scroll, drag the scrollbar to the middle, click a header to sort, and pick rows. The page never holds more than a few hundred rows:
 
-1. On connect, and whenever the view needs rows it doesn't have, the table emits `sb-window` with `{offset, count}` and the order it shows (`key`, `dir`).
+1. On connect, and whenever the view needs rows it doesn't have, the table emits `sb-window` with `{offset, count}` and the order to send them in (`key`, `dir`).
 2. A header click emits `sb-sort` with the order asked for (`key`, `dir`) and the window to answer with (`offset` 0, `count`).
 3. Both run `@get('/demo/data/rows?…&into=_stars')`, and the server patches `$_stars` with `{rows, offset, total, sort}`.
-4. `data-attr` hands them back. A new `sort` scrolls to the top.
+4. `data-attr` hands them back. A new `sort` scrolls to the top. Answers can land out of order: after a header click, the table takes rows only in the order it asked for, and drops late answers in the order it replaced.
 
 `data-indicator` sets `loading` while a request is in flight.
 
@@ -177,10 +177,12 @@ A new `selected` from the server always wins, and `selected="[]"` clears it. Mar
 
 ## Columns and rows
 
-- `columns`: `[{key, label?, width?, align?, sortable?}]`. `width` is a CSS grid track (`"8rem"`, `"2fr"`, a number for px; default `minmax(6rem, 1fr)`). Fixed and `fr` widths keep the columns steady while rows come and go. `align` is `start`, `center` or `end`.
+- `columns`: `[{key, label?, width?, align?, sortable?}]`. `width` is a CSS grid track (`"8rem"`, `"minmax(4rem, 2fr)"`, a number for px; default `minmax(6rem, 1fr)`). Widths whose minimum is a length keep the columns steady while rows come and go; a table wider than its box scrolls sideways. `align` is `start`, `center` or `end`.
 - `rows`: objects keyed by column. Numbers show in the reader's format (`4,242.5`), everything else as text. The field named by `row-key` (default `id`) identifies a row.
 - `offset` is the index of the first row in `rows`, and `total` the number of rows there are. Without `total`, the table has what it was given.
-- `row-height` is fixed (default `36` px), and `buffer` (default `4000` px of rows) is how much the table keeps ready above and below the view. Above 10 million px of rows, the scrollbar stays that tall and the rows move a little faster than it: browsers cap how tall an element can be.
+- `row-height` is fixed (default `36` px), and `buffer` (default `4000` px of rows) is how much the table keeps ready above and below the view.
+- A server that sends fewer rows than asked for (a cap) still fills the view: the table then asks for windows that fit the cap.
+- Browsers cap how tall an element can be, Firefox at about 17.9 million px (Chrome and Safari at about 33.5 million). Keep rows × `row-height` under that: 100,000 rows of 36 px are 3.6 million px.
 
 ## Forms
 
@@ -192,8 +194,8 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** it fills the width it is given and is at most `24rem` tall; set `block-size` or `max-block-size` on the element to change that. Rows are `row-height` tall. Set `font-size` on the element (default `0.875rem`) to scale the text.
 - **Fonts:** the header and the cells use your page's font.
-- **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, which also draw the placeholders. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1.
-- **Parts:** `grid` (the scrolling box), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, and placeholders are sb-virtual-scroll's `--sb-surface-hover` bars. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1.
+- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -210,6 +212,6 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 It follows the WAI-ARIA grid pattern:
 
-- **Structure:** a `grid` with `aria-rowcount` for every row there is (plus the header), and `aria-rowindex` on each rendered row, so a screen reader knows where it is in the whole table, not in the few rows the page holds. Sorted headers have `aria-sort`; with a `selection`, rows have `aria-selected`. The grid is `aria-busy` while rows are on their way (`loading`, or rows in view that haven't arrived).
-- **Focus:** one cell at a time is in the tab order: the first header, then the cell focused last, or the first row in view once that cell has scrolled away. Sortable headers are buttons.
-- **Keys:** the arrows move between cells, Home and End to the first and last cell of the row, Ctrl+Home to the first header, Ctrl+End to the last cell of the last row, Page Up and Page Down by a view. Moving past the rendered rows scrolls there, and the focus lands when the rows arrive. Space selects or unselects the row, Enter emits `sb-row-activate` (so does a double click). On a sortable header, Enter or Space sorts.
+- **Structure:** a `grid` with `aria-rowcount` for every row there is (plus the header), and `aria-rowindex` on each rendered row, so a screen reader knows where it is in the whole table, not in the few rows the page holds. Sorted headers have `aria-sort`; with a `selection`, rows have `aria-selected`. The grid is `aria-busy` while `loading` is set.
+- **Focus:** one cell at a time is in the tab order: the first header, then the cell focused last, or the header again once that cell's row is gone. Sortable headers are buttons.
+- **Keys:** the arrows move between cells, Home and End to the first and last cell of the row, Ctrl+Home to the first header, Ctrl+End to the last cell of the last row, Page Up and Page Down by a view. Moving past the rendered rows scrolls there, and the focus lands when the rows arrive. Space selects or unselects the row, Enter emits `sb-row-activate` (so does a double click, which selects only once). On a sortable header, Enter or Space sorts.

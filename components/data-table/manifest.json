@@ -88,7 +88,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Rows are on their way (bind it to data-indicator): the placeholders pulse."
+        "description": "Rows are on their way (bind it to data-indicator): the table is aria-busy."
       }
     },
     {
@@ -154,7 +154,7 @@
       "name": "sb-window",
       "bubbles": true,
       "composed": true,
-      "description": "The view needs rows the table doesn't have (also on connect and on resize): detail { offset, count }, plus key and dir of the current sort. Answer with rows from that offset, offset and total."
+      "description": "The view needs rows the table doesn't have (also on connect and on resize): detail { offset, count }, plus key and dir of the order to send them in. Answer with rows from that offset, offset and total."
     },
     {
       "kind": "custom-event",
