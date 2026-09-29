@@ -49,6 +49,7 @@ const cases = [
 	{ tag: 'sb-dropdown', attrs: { type: 'radio', items: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
 	{ tag: 'sb-tabs', prop: 'selected', attr: 'selected', local: 2, server: '0', want: 0 },
 	{ tag: 'sb-details', prop: 'open', attr: 'open', local: true, server: 'false', want: false },
+	{ tag: 'sb-popover', prop: 'open', attr: 'open', local: true, server: 'false', want: false },
 ]
 const settle = () => new Promise((r) => setTimeout(r, 60))
 const rows = []
