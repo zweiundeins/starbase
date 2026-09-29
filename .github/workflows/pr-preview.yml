@@ -1,0 +1,50 @@
+# Comments a playground link for every component a pull request changes, on
+# each revision pushed to one of the repository's own component/* branches
+# (the only ones /playground?preview= serves, see internal/web/preview.go).
+# Submission PRs get theirs from component-from-issue.yml: its pushes use
+# GITHUB_TOKEN, which starts no workflows. Nothing here runs the PR's code.
+name: Playground preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: ['components/**']
+
+permissions: {}
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  comment:
+    if: startsWith(github.head_ref, 'component/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment the playground links
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          SITE: ${{ vars.STARBASE_URL }}
+        run: |
+          [ -n "$SITE" ] || exit 0
+          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate \
+            --jq '.[] | select(.status != "removed") | .filename')
+          slugs=$(sed -n 's#^components/\([a-z0-9-]*\)/.*#\1#p' <<<"$files" | sort -u)
+          [ -n "$slugs" ] || exit 0
+          body="🔭 Try this revision (\`${SHA:0:7}\`) in the playground:"
+          for s in $slugs; do
+            body="$body
+          - \`sb-$s\`: ${SITE%/}/playground?preview=$SHA/$s"
+          done
+          # The preview runs on the deployed site, without this PR's Go code.
+          if grep -E '^(internal|cmd)/.*\.go$' <<<"$files" | grep -qv '_test\.go$'; then
+            body="$body
+
+          This PR also changes server code, so examples that load data from endpoints it adds or changes work only once it is deployed."
+          fi
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "$body"
