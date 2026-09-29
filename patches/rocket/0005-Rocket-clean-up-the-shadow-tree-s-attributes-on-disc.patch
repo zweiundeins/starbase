@@ -1,4 +1,4 @@
-From 1a2ec7ba488c28b0fb351b3058458200211156b4 Mon Sep 17 00:00:00 2001
+From d45b5f34d78bb0d67bb9a09d5160112c04b8549a Mon Sep 17 00:00:00 2001
 From: Michael Bolli <michael@zweiundeins.gmbh>
 Date: Tue, 29 Sep 2026 04:14:29 +0000
 Subject: [PATCH 5/7] Rocket: clean up the shadow tree's attributes on
@@ -26,7 +26,7 @@ index 5db457b..bc723e6 100644
  const aliasedIgnoreAttr = `[${aliasedIgnore}]`
  const shouldIgnore = (el: HTMLOrSVG) =>
 diff --git a/library/src/rocket/runtime.ts b/library/src/rocket/runtime.ts
-index d85cd8e..edc3149 100644
+index bb97099..d2ed6b4 100644
 --- a/library/src/rocket/runtime.ts
 +++ b/library/src/rocket/runtime.ts
 @@ -2,6 +2,7 @@ import {
@@ -37,7 +37,7 @@ index d85cd8e..edc3149 100644
    isDocumentObserverActive,
    action as registerAction,
  } from '@engine'
-@@ -1655,6 +1656,8 @@ export function rocket<
+@@ -1662,6 +1663,8 @@ export function rocket<
          this.#propObservers = []
          this.#actions.clear()
          for (const handlers of Object.values(this.#form)) handlers.length = 0

@@ -1,17 +1,17 @@
-From 6ab8b47765fd640f480df57d2addc47a7e25d859 Mon Sep 17 00:00:00 2001
+From 11f4c8cba8d77fa858ec5256eaead51fe2831fb4 Mon Sep 17 00:00:00 2001
 From: Michael Bolli <michael@zweiundeins.gmbh>
 Date: Tue, 29 Sep 2026 04:14:29 +0000
 Subject: [PATCH 3/7] Rocket: form-associated components and focus delegation
 
 ---
- library/src/rocket/runtime.ts | 47 +++++++++++++++++++++++++++++++++++
- 1 file changed, 47 insertions(+)
+ library/src/rocket/runtime.ts | 54 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
 
 diff --git a/library/src/rocket/runtime.ts b/library/src/rocket/runtime.ts
-index b62c349..f31eccd 100644
+index b62c349..f5e8768 100644
 --- a/library/src/rocket/runtime.ts
 +++ b/library/src/rocket/runtime.ts
-@@ -138,6 +138,13 @@ type SetupContext<Props extends Record<string, any>> = {
+@@ -138,6 +138,15 @@ type SetupContext<Props extends Record<string, any>> = {
      setter?: PropOverrideSetter<Props, Name>,
    ): void
    defineHostProp(name: string, descriptor: HostPropDescriptor): void
@@ -21,11 +21,13 @@ index b62c349..f31eccd 100644
 +  onFormReset(fn: () => void): void
 +  onFormDisabled(fn: (disabled: boolean) => void): void
 +  onFormAssociated(fn: (form: HTMLFormElement | null) => void): void
-+  onFormStateRestore(fn: (state: unknown, mode: 'restore' | 'autocomplete') => void): void
++  onFormStateRestore(
++    fn: (state: unknown, mode: 'restore' | 'autocomplete') => void,
++  ): void
    render: SetupRender<Props>
    host: RocketHostWithProps<Props>
  }
-@@ -211,6 +218,10 @@ type RocketDefinition<
+@@ -211,6 +220,10 @@ type RocketDefinition<
    onFirstRender?: (context: FirstUpdateContext<InferProps<Defs>, Refs>) => void
    render?: RocketRender<InferProps<Defs>>
    mode?: 'open' | 'closed' | 'light'
@@ -36,7 +38,7 @@ index b62c349..f31eccd 100644
    renderOnPropChange?:
      | boolean
      | ((context: {
-@@ -575,6 +586,8 @@ export function rocket<
+@@ -575,6 +588,8 @@ export function rocket<
    const {
      manifest,
      mode,
@@ -45,7 +47,7 @@ index b62c349..f31eccd 100644
      props,
      render,
      renderOnPropChange,
-@@ -688,6 +701,14 @@ export function rocket<
+@@ -688,6 +703,16 @@ export function rocket<
    ]
  
    class RocketElement extends HTMLElement {
@@ -55,12 +57,14 @@ index b62c349..f31eccd 100644
 +      reset: [] as Array<() => void>,
 +      disabled: [] as Array<(disabled: boolean) => void>,
 +      associated: [] as Array<(form: HTMLFormElement | null) => void>,
-+      restore: [] as Array<(state: unknown, mode: 'restore' | 'autocomplete') => void>,
++      restore: [] as Array<
++        (state: unknown, mode: 'restore' | 'autocomplete') => void
++      >,
 +    }
      #instanceId = ''
      #signalPathBase = ''
      #props = Object.fromEntries(
-@@ -1231,6 +1252,7 @@ export function rocket<
+@@ -1231,6 +1256,7 @@ export function rocket<
              : (this.shadowRoot ??
                this.attachShadow({
                  mode: mode === 'closed' ? 'closed' : 'open',
@@ -68,7 +72,7 @@ index b62c349..f31eccd 100644
                }))
        }
        if (!this.#hostTreeScoped) {
-@@ -1496,6 +1518,11 @@ export function rocket<
+@@ -1496,6 +1522,11 @@ export function rocket<
          defineHostProp: (name, descriptor) => {
            this.#defineHostProp(name, descriptor)
          },
@@ -80,18 +84,21 @@ index b62c349..f31eccd 100644
          render: ((
            overrides: RenderContextOverrides<InferProps<Defs>>,
            ...args: any[]
-@@ -1508,6 +1535,10 @@ export function rocket<
+@@ -1508,6 +1539,13 @@ export function rocket<
          ...context,
          refs: refs as unknown as InstancesOf<Refs>,
        }
 +      // Lazy, so a component that never asks (or attaches its own) isn't affected.
-+      const internals = { get: () => (this.#internals ??= this.attachInternals()), enumerable: true }
++      const internals = {
++        get: () => (this.#internals ??= this.attachInternals()),
++        enumerable: true,
++      }
 +      Object.defineProperty(context, 'internals', internals)
 +      Object.defineProperty(firstUpdateContext, 'internals', internals)
  
        setup?.(context)
        this.#render({})
-@@ -1580,6 +1611,21 @@ export function rocket<
+@@ -1580,6 +1618,21 @@ export function rocket<
      // connected: no teardown, no second setup, nothing lost.
      connectedMoveCallback() {}
  
@@ -113,7 +120,7 @@ index b62c349..f31eccd 100644
      disconnectedCallback() {
        // Deleting the signals re-runs their effects, which can throw; the teardown
        // must still finish, or the element stays mounted and setup never reruns.
-@@ -1603,6 +1649,7 @@ export function rocket<
+@@ -1603,6 +1656,7 @@ export function rocket<
          for (const name of Object.keys(this.#refs)) delete this.#refs[name]
          this.#propObservers = []
          this.#actions.clear()
