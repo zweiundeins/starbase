@@ -11,8 +11,8 @@ const peek = (fn) => {
 	}
 }
 
-// One ElementInternals per element: attachInternals() works once, and setup
-// runs again when the element is re-attached. Its custom states
+// One ElementInternals per element: attachInternals() works once, and
+// onFirstRender runs again when the element is re-attached. Its custom states
 // (:state(pending)) are styleable from the page and morph-proof.
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
@@ -202,11 +202,69 @@ rocket('sb-date-picker', {
 	// Rendered once: the grid holds the keyboard focus, so everything flows
 	// through signals.
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
+	render: ({ html }) => {
+		const seven = [...Array(7).keys()]
+		return html`
+			<label part="label" for="i" data-show="$$label" data-text="$$label"></label>
+			<div class="control" part="control" data-ref:control data-show="!$$inline" data-class:invalid="$$invalid"
+				data-on:keydown="evt.key === 'Escape' && $$open && evt.stopPropagation()">
+				<input id="i" part="input" autocomplete="off" spellcheck="false" aria-describedby="e"
+					data-attr:aria-label="$$label ? null : $$aria"
+					data-attr:placeholder="$$ph"
+					data-attr:disabled="$$disabled"
+					data-attr:aria-invalid="String($$invalid)"
+					data-bind:text
+					data-on:input="evt.stopPropagation()"
+					data-on:change="@typed()"/>
+				<button type="button" part="button" data-ref:button popovertarget="cal" aria-label="Choose date" aria-haspopup="dialog" aria-controls="cal"
+					data-attr:aria-expanded="String(!!$$open)"
+					data-attr:disabled="$$disabled"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M2 3h12v11H2zM3 7h10v6H3zM4 1h2v2H4zm6 0h2v2h-2zM5 9h2v2H5z"/></svg></button>
+			</div>
+			<span class="error" part="error" id="e" aria-live="polite" data-text="$$invalid && $$error || ''"></span>
+			<div id="cal" data-ref:cal
+				data-attr:popover="$$inline ? null : 'auto'"
+				data-attr:role="$$inline ? 'group' : 'dialog'"
+				data-attr:aria-modal="$$inline ? null : 'true'"
+				data-attr:aria-label="$$label || 'Choose date'"
+				data-effect="el.popover && el.togglePopover(!!$$open)"
+				data-on:beforetoggle="@before()"
+				data-on:toggle="@toggled()"
+				data-on:keydown="@key()">
+				<div class="cal" part="calendar">
+					<div class="head">
+						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" aria-label="Previous year" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-12)"><i></i><i></i></button>
+						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" aria-label="Previous month" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-1)"><i></i></button>
+						<div class="title" part="title" id="t" aria-live="polite" data-text="$$title"></div>
+						<button type="button" part="nav" data-attr:disabled="$$disabled" aria-label="Next month" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(1)"><i></i></button>
+						<button type="button" part="nav" data-attr:disabled="$$disabled" aria-label="Next year" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(12)"><i></i><i></i></button>
+					</div>
+					<table role="grid" part="grid" aria-labelledby="t" data-class:picking="$$picking">
+						<thead><tr>${seven.map((d) => html`<th scope="col" data-attr:abbr="$$w${d}.l" data-text="$$w${d}.s"></th>`)}</tr></thead>
+						<tbody data-ref:days>
+							${[...Array(6).keys()].map(
+								(w) => html`<tr>${seven.map(
+									(d) => html`<td
+										data-attr:part="$$c${w * 7 + d}.p"
+										data-attr:tabindex="$$c${w * 7 + d}.f"
+										data-attr:aria-selected="$$c${w * 7 + d}.s"
+										data-attr:aria-disabled="$$c${w * 7 + d}.d"
+										data-attr:aria-current="$$c${w * 7 + d}.k"
+										data-attr:aria-label="$$c${w * 7 + d}.l"
+										data-text="$$c${w * 7 + d}.t"
+										data-on:click="@tap(${w * 7 + d})"
+										data-on:pointerover="@over(${w * 7 + d})"></td>`,
+								)}</tr>`,
+							)}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		`
+	},
+	onFirstRender: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props, refs: { control, button, cal, days } }) => {
 		adoptStyles(host, styles)
 		const states = internalsOf(host).states
 		const range = () => props.mode === 'range'
-		const $ = (s) => host.shadowRoot?.querySelector(s)
 
 		// The value as one string, so values compare: "" or an ISO date, or with
 		// range "" or {"start","end"} JSON in order (what a form submits).
@@ -222,10 +280,11 @@ rocket('sb-date-picker', {
 		const ends = (v) => (range() ? (v ? Object.values(JSON.parse(v)) : []) : [v]).map(day).filter((n) => n != null)
 		const text = (v) => ends(v).map((n) => fmt.format(n * DAY)).join(' – ')
 
-		// Locale, bounds and disabled dates. The typed format is the locale's
-		// numeric one (dd.mm.yyyy, mm/dd/yyyy, yyyy/mm/dd…), in its own digits.
+		// The language: formats, the first day of the week, the typed order and
+		// the placeholder. The typed format is the locale's numeric one
+		// (dd.mm.yyyy, mm/dd/yyyy, yyyy/mm/dd…), in its own digits.
 		let fmt, full, title, num, digits, order, first, lo, hi, off
-		const learn = () => {
+		const speak = () => {
 			let el = host, l
 			while (!(l = el.closest('[lang]')) && (el = el.getRootNode().host));
 			const lang = locale(l?.lang)
@@ -251,14 +310,22 @@ rocket('sb-date-picker', {
 				const s = wd('short', d)
 				$$['w' + d] = { s: s.length > 4 ? wd('narrow', d) : s, l: wd('long', d) }
 			}
+		}
+		// Bounds and ruled-out days.
+		const bound = () => {
 			lo = day(props.min) ?? -Infinity
 			hi = day(props.max) ?? Infinity
 			off = new Set([props.disabledDates].flat().map(day))
+		}
+		// The other props the template reads.
+		const mirror = () => {
 			for (const k of ['label', 'error', 'inline', 'disabled']) $$[k] = props[k]
 			$$.aria = host.getAttribute('aria-label') || 'Date'
 			states[props.disabled ? 'add' : 'delete']('disabled')
 		}
-		learn()
+		speak()
+		bound()
+		mirror()
 		const ok = (n) => n >= lo && n <= hi && !off.has(n)
 		const clamp = (n) => Math.min(Math.max(n, lo), hi)
 		// Typed text: an ISO date, or three numbers in the locale's order with a
@@ -275,11 +342,11 @@ rocket('sb-date-picker', {
 		}
 
 		// The month shown, the day with the grid's focus (always in that month),
-		// the first pick of a range and the day the pointer is on.
+		// the grid's first day, the first pick of a range and the day pointed at.
 		let vy, vm, focus, g, f1, len
 		let pick1 = null
 		let hover = null
-		let isOpen = false
+		const here = (n) => n >= f1 && n < f1 + len
 		const show = (n, quiet) => {
 			const [y, m] = parts(n)
 			if (y === vy && m === vm) return
@@ -303,25 +370,24 @@ rocket('sb-date-picker', {
 				for (let i = 0; i < 42; i++) {
 					const n = g + i
 					const sel = pick1 != null ? n === pick1 : R ? n === a || n === b : n === b
-					$$['c' + i] =
-						n < f1 || n >= f1 + len
-							? { t: '', l: false, p: false, f: false, s: false, d: false, k: false }
-							: {
-									t: num.format(n - f1 + 1),
-									l: full.format(n * DAY),
-									p: ['day', n === t && 'today', sel && 'selected', R && n >= a && n <= b && 'range', R && n === a && 'start', R && n === b && 'end', !ok(n) && 'disabled'].filter(Boolean).join(' '),
-									f: n === focus && !props.disabled ? '0' : '-1',
-									s: sel && 'true',
-									d: !ok(n) && 'true',
-									k: n === t && 'date',
-								}
+					$$['c' + i] = !here(n)
+						? { t: '', l: false, p: false, f: false, s: false, d: false, k: false }
+						: {
+								t: num.format(n - f1 + 1),
+								l: full.format(n * DAY),
+								p: ['day', n === t && 'today', sel && 'selected', R && n >= a && n <= b && 'range', R && n === a && 'start', R && n === b && 'end', !ok(n) && 'disabled'].filter(Boolean).join(' '),
+								f: n === focus && !props.disabled ? '0' : '-1',
+								s: sel && 'true',
+								d: !ok(n) && 'true',
+								k: n === t && 'date',
+							}
 				}
 				$$.title = title.format(f1 * DAY)
 				$$.back = lo < f1
 				$$.on = hi >= f1 + len
 				$$.picking = pick1 != null
 			})
-		const cell = () => host.shadowRoot?.querySelectorAll('td')[focus - g]
+		const cell = () => days.rows[((focus - g) / 7) | 0]?.cells[(focus - g) % 7]
 		// Moves the grid's focus (and the month with it), within min and max.
 		const move = (n, quiet) => {
 			focus = clamp(n)
@@ -362,39 +428,44 @@ rocket('sb-date-picker', {
 
 		const sync = () => peek(() => states[props.confirm && $$.v !== norm(props.value) ? 'add' : 'delete']('pending'))
 		effect(() => $$.v != null && sync())
-
-		// The popover. Opening shows the value's month (or today's) with the
-		// focus on its day; Escape and a pick hand the focus back to the button.
-		const onDown = (evt) => evt.composedPath().includes(host) || setOpen(false)
-		const setOpen = (o, server, back) => {
-			o = !!o && !props.inline && !props.disabled
-			if (o === isOpen) return
-			$$.open = isOpen = o
-			pick1 = null
-			if (o && !server) move(ends($$.v)[0] ?? today())
-			paint()
-			const p = $('[popover]')
-			back ||= p?.contains(host.shadowRoot.activeElement)
-			try {
-				p.togglePopover(o)
-				if (o && !anchors) {
-					const r = $('.control').getBoundingClientRect()
-					Object.assign(p.style, { position: 'fixed', inset: 'auto', top: r.bottom + 4 + 'px', left: (host.matches(':dir(rtl)') ? r.right - p.offsetWidth : r.left) + 'px' })
-				}
-			} catch {}
-			document[o ? 'addEventListener' : 'removeEventListener']('pointerdown', onDown, true)
-			if (o && !server) queueMicrotask(() => cell()?.focus())
-			if (!o && back) $('button')?.focus()
-			server || emit('sb-toggle', { name: props.name, open: o })
-		}
+		// Only what a prop changes is rebuilt, and the grid is painted once.
 		observeProps((p, changes) =>
 			peek(() => {
-				learn()
-				if ('mode' in changes) set(norm(p.value))
-				else $$.invalid || ($$.text = text($$.v)) // a new locale reformats it
-				if (p.disabled || p.inline) setOpen(false, true)
-				paint()
+				const has = (...k) => k.some((x) => x in changes)
+				if (has('lang', 'placeholder', 'mode')) speak()
+				if (has('min', 'max', 'disabledDates')) bound()
+				if (p.disabled || p.inline) $$.open = false
+				mirror()
+				if (has('lang')) $$.invalid || ($$.text = text($$.v))
+				if (has('mode')) set(norm(p.value))
+				else if (has('lang', 'min', 'max', 'disabledDates', 'disabled')) paint()
 				sync()
+			}),
+		)
+
+		// The popover (auto: light dismiss and Escape are the browser's). $$.open
+		// follows it, and the server's open drives it through the data-effect: a
+		// toggle that finds $$.open already there is the server's, and quiet.
+		action('before', ({ evt }) =>
+			peek(() => {
+				pick1 = null
+				// Closing with the focus inside: it goes back to the button.
+				if (evt.newState !== 'open') return cal.contains(host.shadowRoot.activeElement) && button.focus()
+				// The user's open shows the value's month (or today's).
+				$$.open ? paint() : move(ends($$.v)[0] ?? today())
+				if (anchors) return
+				const r = control.getBoundingClientRect()
+				const rtl = host.matches(':dir(rtl)')
+				Object.assign(cal.style, { position: 'fixed', inset: 'auto', top: r.bottom + 4 + 'px', [rtl ? 'right' : 'left']: (rtl ? document.documentElement.clientWidth - r.right : r.left) + 'px' })
+			}),
+		)
+		action('toggled', ({ evt }) =>
+			peek(() => {
+				const o = evt.newState === 'open'
+				if (o === !!$$.open) return
+				$$.open = o
+				emit('sb-toggle', { name: props.name, open: o })
+				o && cell()?.focus()
 			}),
 		)
 
@@ -413,7 +484,7 @@ rocket('sb-date-picker', {
 		const watch = new MutationObserver(() =>
 			peek(() => {
 				if (heard('value')) set(norm(props.value))
-				if (heard('open')) setOpen(props.open, true)
+				if (heard('open')) $$.open = props.open && !props.inline && !props.disabled
 				if (!heard('month') || mon(props.month) == null) return
 				const had = host.shadowRoot.activeElement?.localName === 'td'
 				toMonth(mon(props.month))
@@ -421,11 +492,9 @@ rocket('sb-date-picker', {
 			}),
 		)
 		watch.observe(host, { attributeFilter: ['value', 'open', 'month'] })
-		// A calendar the server rendered open shows once it is rendered.
-		queueMicrotask(() => peek(() => host.isConnected && props.open && setOpen(true, true)))
 
 		overrideProp('value', () => peek(() => out($$.v)), (v) => peek(() => set(norm(v))))
-		overrideProp('open', () => isOpen, (v) => peek(() => setOpen(v)))
+		overrideProp('open', () => peek(() => !!$$.open), (v) => peek(() => cal.popover && !props.disabled && cal.togglePopover(!!v)))
 		overrideProp('month', () => iso(ymd(vy, vm, 1)).slice(0, 7), (v) => peek(() => mon(v) != null && toMonth(mon(v))))
 		const revert = () => peek(() => (set(norm(props.value)), sync()))
 		defineHostProp('revert', { value: revert })
@@ -443,11 +512,7 @@ rocket('sb-date-picker', {
 		cleanup(() => {
 			root.removeEventListener('formdata', onData)
 			root.removeEventListener('reset', onReset)
-			document.removeEventListener('pointerdown', onDown, true)
 			watch.disconnect()
-			try {
-				$('[popover]')?.hidePopover()
-			} catch {}
 		})
 
 		const choose = (n) => {
@@ -455,7 +520,7 @@ rocket('sb-date-picker', {
 			if (range() && pick1 == null) return (pick1 = n), paint()
 			const [a, b] = lohi(pick1 ?? n, n)
 			commit(range() ? JSON.stringify({ start: iso(a), end: iso(b) }) : iso(n))
-			setOpen(false, false, true)
+			$$.open && cal.hidePopover()
 		}
 		// The typed text, committed on change (Enter or leaving the field).
 		action('typed', () =>
@@ -467,33 +532,29 @@ rocket('sb-date-picker', {
 				commit(!ns.length ? '' : range() ? JSON.stringify({ start: iso(a), end: iso(b) }) : iso(ns[0]))
 			}),
 		)
-		action('toggle', () => setOpen(!isOpen))
 		action('page', (_, k) => move(addMonths(focus, k)))
-		// Clicks and hovers on the days, by the cell's place in the table.
-		const at = (evt) => {
-			const td = evt.target.closest('td')
-			return td?.textContent ? g + (td.parentElement.rowIndex - 1) * 7 + td.cellIndex : null
-		}
-		action('tap', ({ evt }) => {
-			const n = at(evt)
-			if (n == null) return
-			focus = n
-			paint()
-			choose(n)
-		})
-		action('over', ({ evt }) => {
-			const n = at(evt)
-			if (pick1 != null && n != null && n !== hover) (hover = n), paint()
-		})
+		// The days: i is the cell's place in the grid.
+		action('tap', (_, i) =>
+			peek(() => {
+				if (!here(g + i)) return
+				focus = g + i
+				paint()
+				choose(focus)
+			}),
+		)
+		action('over', (_, i) => peek(() => pick1 != null && here(g + i) && g + i !== hover && ((hover = g + i), paint())))
 		action('key', ({ el, evt }) =>
 			peek(() => {
 				const k = evt.key
 				if (k === 'Escape') {
-					if (isOpen) setOpen(false, false, true)
-					else if (pick1 == null) return
+					// The browser closes the popover. Stopped here, the Escape can't also
+					// close a drawer or popover the picker sits in. Inline, it drops a
+					// half-picked range.
+					if ($$.open) return evt.stopPropagation()
+					if (pick1 == null) return
 					pick1 = null
 					paint()
-				} else if (k === 'Tab' && isOpen) {
+				} else if (k === 'Tab' && $$.open) {
 					// A dialog: the focus stays in it.
 					const f = [...el.querySelectorAll('button, [tabindex="0"]')]
 					f[(f.indexOf(host.shadowRoot.activeElement) + (evt.shiftKey ? -1 : 1) + f.length) % f.length]?.focus()
@@ -509,54 +570,8 @@ rocket('sb-date-picker', {
 				evt.preventDefault()
 			}),
 		)
-	},
-	render: ({ html }) => {
-		const seven = [...Array(7).keys()]
-		return html`
-			<label part="label" for="i" data-show="$$label" data-text="$$label"></label>
-			<div class="control" part="control" data-show="!$$inline" data-class:invalid="$$invalid">
-				<input id="i" part="input" autocomplete="off" spellcheck="false" aria-describedby="e"
-					data-attr:aria-label="$$label ? null : $$aria"
-					data-attr:placeholder="$$ph"
-					data-attr:disabled="$$disabled"
-					data-attr:aria-invalid="String($$invalid)"
-					data-effect="el.value !== $$text && (el.value = $$text)"
-					data-on:input="evt.stopPropagation(); $$text = el.value"
-					data-on:change="@typed()"/>
-				<button type="button" part="button" aria-label="Choose date" aria-haspopup="dialog" aria-controls="cal"
-					data-attr:aria-expanded="String($$open)"
-					data-attr:disabled="$$disabled"
-					data-on:click="@toggle()"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M2 3h12v11H2zM3 7h10v6H3zM4 1h2v2H4zm6 0h2v2h-2zM5 9h2v2H5z"/></svg></button>
-			</div>
-			<span class="error" part="error" id="e" aria-live="polite" data-text="$$invalid && $$error || ''"></span>
-			<div id="cal" data-attr:popover="$$inline ? null : 'manual'" data-attr:role="$$inline ? 'group' : 'dialog'" data-attr:aria-modal="$$inline ? null : 'true'" data-attr:aria-label="$$label || 'Choose date'" data-on:keydown="@key()">
-				<div class="cal" part="calendar">
-					<div class="head">
-						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" aria-label="Previous year" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-12)"><i></i><i></i></button>
-						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" aria-label="Previous month" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-1)"><i></i></button>
-						<div class="title" part="title" id="t" aria-live="polite" data-text="$$title"></div>
-						<button type="button" part="nav" data-attr:disabled="$$disabled" aria-label="Next month" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(1)"><i></i></button>
-						<button type="button" part="nav" data-attr:disabled="$$disabled" aria-label="Next year" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(12)"><i></i><i></i></button>
-					</div>
-					<table role="grid" part="grid" aria-labelledby="t" data-class:picking="$$picking">
-						<thead><tr>${seven.map((d) => html`<th scope="col" data-attr:abbr="$$w${d}.l" data-text="$$w${d}.s"></th>`)}</tr></thead>
-						<tbody data-on:click="@tap()" data-on:pointerover="@over()">
-							${[...Array(6).keys()].map(
-								(w) => html`<tr>${seven.map(
-									(d) => html`<td
-										data-attr:part="$$c${w * 7 + d}.p"
-										data-attr:tabindex="$$c${w * 7 + d}.f"
-										data-attr:aria-selected="$$c${w * 7 + d}.s"
-										data-attr:aria-disabled="$$c${w * 7 + d}.d"
-										data-attr:aria-current="$$c${w * 7 + d}.k"
-										data-attr:aria-label="$$c${w * 7 + d}.l"
-										data-text="$$c${w * 7 + d}.t"></td>`,
-								)}</tr>`,
-							)}
-						</tbody>
-					</table>
-				</div>
-			</div>
-		`
+		// A calendar the server rendered open shows (the data-effect), now that the
+		// actions its toggle events call are there.
+		$$.open = props.open && !props.inline && !props.disabled
 	},
 })
