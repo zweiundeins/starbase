@@ -1,0 +1,190 @@
+{
+  "tag": "sb-date-picker",
+  "props": [
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "The date, ISO: 2026-09-29. With mode=\"range\", JSON: {\"start\":\"2026-09-29\",\"end\":\"2026-10-03\"}. A new value from the server replaces it (value=\"\" clears); the live value is the value property."
+      }
+    },
+    {
+      "name": "mode",
+      "attribute": "mode",
+      "type": "oneOf",
+      "default": "single",
+      "required": false,
+      "values": [
+        "single",
+        "range"
+      ],
+      "docs": {
+        "description": "One date, or a start and an end, committed together as one value."
+      }
+    },
+    {
+      "name": "min",
+      "attribute": "min",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Earliest date that can be picked (ISO)."
+      }
+    },
+    {
+      "name": "max",
+      "attribute": "max",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Latest date that can be picked (ISO)."
+      }
+    },
+    {
+      "name": "disabledDates",
+      "attribute": "disabled-dates",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Server data: dates that can't be picked, as a JSON array of ISO dates (e.g. booked days). They can still be focused and read."
+      }
+    },
+    {
+      "name": "month",
+      "attribute": "month",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "The month shown, YYYY-MM (view state). A changed attribute from the server moves the calendar there; the user paging months emits sb-month."
+      }
+    },
+    {
+      "name": "open",
+      "attribute": "open",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The calendar popover is open. View state: a changed attribute from the server opens or closes it (open=\"false\" closes); local toggling never reflects it."
+      }
+    },
+    {
+      "name": "inline",
+      "attribute": "inline",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show the calendar on the page, always visible, without the text field."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label, and the accessible name of the calendar."
+      }
+    },
+    {
+      "name": "placeholder",
+      "attribute": "placeholder",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Placeholder text (default: the locale's date pattern, e.g. dd.mm.yyyy)."
+      }
+    },
+    {
+      "name": "error",
+      "attribute": "error",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Message shown when the typed text is not a date that can be picked."
+      }
+    },
+    {
+      "name": "lang",
+      "attribute": "lang",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Locale for month and weekday names, the first day of the week and the typed format (default: the page's lang, then the browser's)."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable the field and the calendar. A form leaves it out."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change, sb-month and sb-toggle (e.g. the field of a command), and submitted with its form."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The value changed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "A date was picked or typed. detail: { name, value }: an ISO date (\"\" when cleared), or with mode=\"range\" { start, end } (null when cleared). Ready for a command."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-month",
+      "bubbles": true,
+      "composed": true,
+      "description": "The user moved the calendar to another month. detail: { name, year, month } (month from 1): the moment to send that month's disabled-dates."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-toggle",
+      "bubbles": true,
+      "composed": true,
+      "description": "The popover opened or closed. detail: { name, open }. View state: not emitted for a change the server made."
+    }
+  ]
+}
