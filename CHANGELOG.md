@@ -6,6 +6,48 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-29
+
+Seven new components (a drawer, a popover, checkboxes, a date picker, a virtual scroll and a data table), docs that show the real server code behind their demos, and Starbase's pages on a patched Rocket until its fixes land upstream.
+
+### Added
+
+- `sb-drawer`: a `<dialog>` panel that slides in from the start, end, top or bottom edge, modal or not (`modal="false"`), with a `header` slot, a scrolling body and a fixed footer. The server owns `open` as on `sb-modal`; `show()`, `hide()` and `sb-open` / `sb-close {reason, value}` are the page's.
+- `sb-popover`: a panel anchored to a trigger, as a click dialog or a hover card (WCAG 1.4.13), in the top layer. It has 12 logical placements that flip and shift to stay on screen (CSS anchor positioning, with a JS fallback), an optional pixel arrow, and a server-owned `open`.
+- `sb-checkbox`, a pixel checkbox with a label and a mixed state (`indeterminate`), and `sb-checkbox-group`, several choices as one JSON array value from `options` or `<sb-check>` children, with an optional select-all. Both follow the command contract and submit like native checkboxes.
+- `sb-date-picker`: a date field with a calendar in a popover (or `inline`), for one ISO date or a `{start, end}` range committed as one value. It shows and reads dates in the page's language, starts the week on the locale's first day, takes `min`, `max` and `disabled-dates` from the server, and emits `sb-month`, so a page can send each month's disabled dates when they are needed.
+- `sb-virtual-scroll`: a list of any length that holds only the rows in view. The server renders each window as plain HTML (`sb-window {offset, count}`), and the list has a sticky `header` slot, `columns` for grids and `scrollToIndex()`. A server that answers fewer rows than asked for (a page-size cap) still fills the view.
+- `sb-data-table`: a table that scrolls in `sb-virtual-scroll`, with a sticky header, sorting, row selection as a command value (`selected`, `confirm`, `revert()`), `sb-row-activate` and the WAI-ARIA grid keyboard. A table that holds every row sorts it itself on a header click; one that holds a window asks the server (`sb-sort`).
+- The new layers close innermost first on Escape, nested in each other or in `sb-modal`, `sb-dropdown` and `sb-select`.
+- Docs show the real server code behind their demos. A fenced block named by its source (`go source=internal/web/demo.go#Server.demoTelemetry`) holds those declarations, `go tool task listings` fills it, and a test fails when it no longer matches the code; on the site it links to the file. The docs of `sb-tree`, `sb-select`, `sb-gauge`, `sb-meter`, `sb-sparkline`, `sb-pixel-board`, `sb-virtual-scroll` and `sb-data-table`, and "Commands and components" on the contribute page, have one.
+- Demo data for long lists: a million-star catalog computed from each star's index (`GET /demo/data/list` renders windows of it for `sb-virtual-scroll`), and its first 100,000 stars in SQLite, sortable by every column (`GET /demo/data/rows` for `sb-data-table`; migration 009, seeded once at startup).
+- Every component pull request gets a playground link for each revision, not only the ones the submission bot opens.
+
+### Changed
+
+- Starbase's pages run a patched build of Rocket: the v1.0.4 release with eight fixes, each filed upstream (`patches/rocket`, built into `static/vendor/datastar-rocket.js` by `go tool task vendor`). Install snippets load it too, pinned at `/c/datastar@<build>/datastar-rocket.js` and kept for good like component versions, so a page gets the same fixes; every component keeps working on the official release, and a patch goes once a Datastar release has its fix.
+  - [#1217](https://github.com/starfederation/datastar/issues/1217): an effect that throws during disconnect no longer leaves the element dead.
+  - [#1218](https://github.com/starfederation/datastar/issues/1218): moving an element keeps its state instead of running its setup again.
+  - [#1219](https://github.com/starfederation/datastar/issues/1219): `bool` props follow HTML boolean attributes: `checked="checked"` reads as true, and false removes the attribute instead of writing `"false"`.
+  - [#1220](https://github.com/starfederation/datastar/issues/1220): components can be form-associated.
+  - [#1221](https://github.com/starfederation/datastar/issues/1221): `data-on:*__window` inside a shadow root goes with its element.
+  - [#1222](https://github.com/starfederation/datastar/issues/1222): instances share one stylesheet per CSS text instead of parsing their own.
+  - [#1223](https://github.com/starfederation/datastar/issues/1223): `observeProps` hears an attribute write that decodes to the current value.
+  - [#1209](https://github.com/starfederation/datastar/issues/1209): a morph that starts inside another (a Rocket element rendering while the morph connects it) no longer breaks the outer one, so elements with Rocket components inside can have ids. Upstream fixed it for its next release without a public commit, so this one is Starbase's own fix.
+- Gallery cards have ids again: a sort or a search moves them with their live previews instead of morphing one card into another.
+- Go modules updated, among them SQLite (modernc 1.60.1) and brotli 1.2.5.
+- The README shows a screenshot of the site instead of a mockup.
+
+### Fixed
+
+- `sb-modal`: a `data-sb-close` button in an `sb-drawer` nested in the modal closes only the drawer.
+- Long dashes are gone from the components' docs.
+
+### Known issues
+
+- On the official v1.0.4, ids on repeated or reordered elements that contain Rocket components still break Datastar's morph ([#1209](https://github.com/starfederation/datastar/issues/1209)). The build the install snippets load has the fix; with the official release, leave the ids off until a release has it.
+- The form-like components are not form-associated yet ([#1220](https://github.com/starfederation/datastar/issues/1220)): validity and `required`, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach them. The patched build can declare form association, but the components keep joining forms with listeners until a release can, so they behave the same on the official release.
+
 ## [0.4.0] - 2026-09-25
 
 A review of all 35 components: smaller downloads (the bundle every page loads is 22% smaller), about a hundred bugs fixed, form participation for the form-like components, and browser tests for the value contract, forms and shrinking.
@@ -30,7 +72,7 @@ A review of all 35 components: smaller downloads (the bundle every page loads is
 - `sb-input` takes `rev`: when it changes, the server's value wins even if it is the same, so a command the server normalises back to the stored value (or ignores) no longer leaves the field pending. The Showcase call sign uses it.
 - `sb-busy` no longer sets `aria-busy` on itself: on an ancestor of its status region it could hold the announcement back, and a morph stripped it. Set it on the content that is loading; `:state(busy)` stays the styling hook.
 - `sb-modal` ignores a removed `open` attribute, like the other server-driven attributes: to close, the server sends `open="false"`. Inline panels no longer show a close button that did nothing, the close button is part `close`, and the corners follow the theme's `--sb-radius`.
-- `sb-meter`'s default warn and danger thresholds are 70% and 90% of its `min`–`max` range instead of the absolute values 70 and 90 (the same on 0–100). Its tone is `:state(ok|warn|danger)`, and its blocks are part `segment`, lit ones also `lit`.
+- `sb-meter`'s default warn and danger thresholds are 70% and 90% of the way from `min` to `max` instead of the absolute values 70 and 90 (the same on a 0 to 100 meter). Its tone is `:state(ok|warn|danger)`, and its blocks are part `segment`, lit ones also `lit`.
 - `sb-dropdown`'s `menu` part (with `role="menu"`) is now the panel inside each level's popover, which casts the drop shadow. Its Styling docs set tokens on the element, since a token set on `::part(menu)` never reached the panel.
 - `sb-toast` identifies a toast without an `id` by its message (`#2`, `#3`… for repeats), which is the id `sb-dismiss` reports, so dismissing the first plain-string toast no longer hides the next one. `sb-dismiss` fires after the toast is hidden locally.
 - New hooks: `sb-alert` has an `icon` slot (in place of the status light) and `:state(closed)`, and `host.open` reads and sets whether it shows; `sb-qr-code`'s "Too much data" is an `error` slot in an `error` part, to translate and restyle it; `sb-sparkline` and `sb-starfield` take a `label` for their accessible name (`label=""` makes a starfield decoration); `sb-range`'s thumbs follow `--sb-slider-thumb` and `--sb-slider-thumb-edge`, like `sb-slider`'s; `sb-tooltip` stacks at `--sb-z-tooltip` (default 70).
@@ -107,12 +149,12 @@ Nine new components (35 in total), leaner delivery (minified modules, one precom
 ### Changed
 
 - Components follow your page's font. Where one uses a font token (`sb-gauge`'s value, `sb-button variant="pixel"`, `sb-echarts`), it now falls back to the page's font instead of a hard-coded monospace, so outside Starbase they match the page without any configuration. `sb-gauge`'s value and label now scale with `--sb-gauge-size`, and its docs have a Styling section.
-- Pages load every component as one file (`/c/bundle.js`, 66 kB) instead of one module per component. Measured on production over slow 4G, a visit that includes the homepage is 250–450 ms faster, at the cost of about 265 ms for a visitor who only sees one component page. Once the bundle grows past 100 kB (brotli), pages go back to the autoloader on their own.
+- Pages load every component as one file (`/c/bundle.js`, 66 kB) instead of one module per component. Measured on production over slow 4G, a visit that includes the homepage is 250 to 450 ms faster, at the cost of about 265 ms for a visitor who only sees one component page. Once the bundle grows past 100 kB (brotli), pages go back to the autoloader on their own.
 - The Themes page remembers the previewed theme and the 8-bit switch for the session: they carry across pages and browser tabs, and render from the first paint. The gallery's sort is a session default too: a sort in the URL still wins (shared links show what was shared); without one, the gallery uses the last sort you chose. Search and category keep the sort and never change the default.
 - Installation snippets end with a copyable `usage:` instead of the gallery card's `preview:`. It is a new optional front-matter field: the smallest markup that shows how you'd use the component in your own page (no card sizing, demo signals or timers, forced `open`, or images that only exist on Starbase), with `preview:` as the fallback. 30 components have one; a copied `sb-theme-switch`, for one, now themes the page instead of a demo attribute. A test keeps demo wiring and Starbase-only paths out of every component's installation markup.
 - Assets are served precompressed at brotli -11 (gzip -9 as the fallback) instead of being compressed per request at level 5: every component module, the autoloader, the CSS bundles, the vendored Datastar build and the art. The size tables now show exactly the bytes a browser receives.
 - Installation on component pages is four tabs instead of one long block: Autoloader (the default), This component (its minified module pinned with its frozen integrity, plus every component it renders), Pinned (today's catalog snapshot with an integrity import map) and Self-host (each file's minified and readable link with its size, and an import map at your own Datastar). Each tab has one sentence and a snippet that is exactly what to paste, with its own copy button. The chosen tab is remembered for the session, across component pages and browser tabs, through a new kind of state: session preferences (`session_prefs`), for choices that should outlive a page.
-- Component modules are minified (esbuild) next to the readable source: every `x.js` has an `x.min.js`, and the autoloader and the site load those — about 23% less over the wire across the catalog. The readable file stays the default URL for the docs and the playground. Minified bytes are frozen per version, so an esbuild upgrade can never change a pinned URL. Size tables add a minified column, and gallery cards show the minified size.
+- Component modules are minified (esbuild) next to the readable source: every `x.js` has an `x.min.js`, and the autoloader and the site load those: about 23% less over the wire across the catalog. The readable file stays the default URL for the docs and the playground. Minified bytes are frozen per version, so an esbuild upgrade can never change a pinned URL. Size tables add a minified column, and gallery cards show the minified size.
 - `sb-code-playground` is no longer listed in the gallery: it is the machinery behind `/playground` rather than a community component. It stays served, versioned and documented, through a new `unlisted:` front-matter flag.
 - The main domain is now [starbase.zweiundeins.gmbh](https://starbase.zweiundeins.gmbh); rocket.libretto.ch redirects there.
 - Live demos stand on a pixel grid: in the gallery the preview panel is visibly the component itself (and says "live demo" on hover), which is why it is the one part of a card that isn't the link to the component page. Demo stages in the docs use the same grid.
@@ -121,8 +163,8 @@ Nine new components (35 in total), leaner delivery (minified modules, one precom
 
 - `sb-code-editor`'s highlighted text no longer drifts away from the caret and the line numbers: the `<code>` inside it had the browser's own monospace font, a second font that made every line 1 px taller (two rows off after 40 lines). It takes the editor's font, size and line height now, and a browser test (`TestCodeEditorLinesAlign`) measures the first and the last line against the caret and the gutter at two sizes. `sb-theme-switch`'s select arrow follows the theme (it was a fixed light grey, faint on light themes), and `sb-pixel-board`'s grid lines follow the blank cell colour, so they show on a light board.
 - `sb-gauge`, `sb-sparkline` and `sb-echarts` no longer pull in `sb-theme-switch`: a comment mentioning it was read as a dependency, so the autoloader loaded it, the size tables counted it and the install tab added a script for it. Dependencies are now found in the minified module, where comments are gone.
-- Installation tabs: "This component" now pins everything it loads through the import map's `integrity` (a script tag covers only its own file, so code-editor's Prism was unchecked), and already-minified vendored files are no longer renamed to a non-existent `.min.min.js` — which had dropped ECharts from the Pinned tab's integrity and broken its Self-host link.
-- `sb-echarts` wrote a missing value as “undefined” in tooltips and labels (its number formatter stringified whatever it was given); it now writes “-”, as ECharts does. Axis tooltips also leave out the series that have no value at the hovered point – a projection before it starts, costs in a month not yet lived – instead of listing them as empty rows; an option with its own formatter keeps it.
+- Installation tabs: "This component" now pins everything it loads through the import map's `integrity` (a script tag covers only its own file, so code-editor's Prism was unchecked), and already-minified vendored files are no longer renamed to a non-existent `.min.min.js`, which had dropped ECharts from the Pinned tab's integrity and broken its Self-host link.
+- `sb-echarts` wrote a missing value as “undefined” in tooltips and labels (its number formatter stringified whatever it was given); it now writes “-”, as ECharts does. Axis tooltips also leave out the series that have no value at the hovered point (a projection before it starts, costs in a month not yet lived) instead of listing them as empty rows; an option with its own formatter keeps it.
 - `sb-odometer` `drum`: a digit sits high in its line box, so on a drum each rode above its face's centre and the neighbour above slid out of the window while the one below slid in. Digits and separators are trimmed to the cap height (`text-box`) and centred, so both neighbours show and the decimal mark keeps the baseline.
 - `sb-sparkline` and `sb-gauge` kept the old theme's colours after a pick on the theme switch (and after the system flipped under "auto") until their data next changed: they read colours at paint time but were never asked to paint. They now repaint on `sb-theme-change` and on `prefers-color-scheme` changes.
 - `sb-tree` lost the keyboard when the server dropped the focused row: the morph parks a row before removing it, so the focusout looked like the user leaving. Focus now moves to the neighbouring row, and is only given up when it really went somewhere else.
@@ -213,7 +255,8 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/zweiundeins/starbase/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zweiundeins/starbase/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/zweiundeins/starbase/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/zweiundeins/starbase/compare/v0.1.0...v0.2.0
