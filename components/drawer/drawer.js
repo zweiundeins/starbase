@@ -1,4 +1,14 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// A page effect that calls show() or hide() must not subscribe to our state.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 const styles = /* css */ `
 :host {
@@ -114,20 +124,37 @@ rocket('sb-drawer', {
 		})
 		watch.observe(host, { attributeFilter: ['open'] })
 		cleanup(() => watch.disconnect())
-		const show = () => {
-			if ($$.open) return
-			$$.open = true
-			emit('sb-open')
-		}
-		const close = (reason = 'api', value) => {
-			if (!$$.open) return
-			$$.open = false
-			emit('sb-close', { reason, value })
-		}
+		const show = () =>
+			peek(() => {
+				if ($$.open) return
+				$$.open = true
+				emit('sb-open')
+			})
+		const close = (reason = 'api', value) =>
+			peek(() => {
+				if (!$$.open) return
+				$$.open = false
+				emit('sb-close', { reason, value })
+			})
 		defineHostProp('show', { value: show })
 		defineHostProp('hide', { value: close })
 		defineHostProp('close', { value: close })
-		defineHostProp('isOpen', { get: () => $$.open })
+		defineHostProp('isOpen', { get: () => peek(() => $$.open) })
+
+		// Escape in a non-modal drawer (a modal one gets the dialog's cancel,
+		// which the browser sends to the top layer). On window, so a control or
+		// popover inside that uses the key has had it first; not from inside an
+		// open layer nested in the drawer.
+		const onKey = (evt) => {
+			if (evt.key !== 'Escape' || evt.defaultPrevented || props.modal || !$$.open) return
+			const dlg = host.shadowRoot.querySelector('dialog')
+			for (const el of evt.composedPath()) {
+				if (el === dlg) return evt.preventDefault(), close('escape')
+				if (el.matches?.(':popover-open, dialog[open]')) return
+			}
+		}
+		addEventListener('keydown', onKey)
+		cleanup(() => removeEventListener('keydown', onKey))
 
 		action('close', (_, reason = 'button') => close(reason))
 		// Only our own data-sb-close: one inside a nested drawer or modal is in
@@ -151,12 +178,9 @@ rocket('sb-drawer', {
 		return inline
 			? html`<section class="panel ${side}" part="panel" role="group" aria-label=${heading} data-on:click="@click()">${inner}</section>`
 			: // data-preserve-attr and the backdrop's pointerdown: see sb-modal.
-			  // Escape inside the drawer closes it in both modes, unless a
-			  // control in it used the key (a select's open list).
 			  html`<dialog class="panel ${side}" part="panel" aria-labelledby="title" data-preserve-attr="open"
 				data-effect="$$open ? el.open && el.matches(':modal') == ${modal} || (el.close(), el[${modal} ? 'showModal' : 'show']()) : el.close()"
 				data-on:cancel="evt.preventDefault(); @close('escape')"
-				data-on:keydown="evt.key == 'Escape' && !evt.defaultPrevented && (evt.preventDefault(), @close('escape'))"
 				data-on:pointerdown="$$down = evt.target === el"
 				data-on:click="$$down && evt.target === el ? @close('backdrop') : @click()">${inner}</dialog>`
 	},
