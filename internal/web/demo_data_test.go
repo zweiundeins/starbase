@@ -77,3 +77,38 @@ func TestDemoPreflight(t *testing.T) {
 		t.Errorf("command preflight must fail: %d %v", res.StatusCode, res.Header)
 	}
 }
+
+// The list patches an sb-virtual-scroll: offset, total and the window's items.
+func TestDemoList(t *testing.T) {
+	ts, c := newServer(t)
+	_, body := get(t, c, ts.URL+"/demo/data/list?id=stars&offset=999998&count=10&header")
+	for _, want := range []string{
+		"datastar-patch-elements",
+		`<sb-virtual-scroll id="stars" offset="999998" total="1000000" data-preserve-attr="`,
+		`<div slot="header" aria-hidden="true">`,
+		`<div role="listitem" aria-posinset="1000000" aria-setsize="1000000"><b>SB 1000000</b>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %q in\n%.600s", want, body)
+		}
+	}
+	// The window stops at the end of the list.
+	if n := strings.Count(body, `role="listitem"`); n != 2 {
+		t.Errorf("%d items at the end, want 2", n)
+	}
+	// A smaller list, and the pixels.
+	_, body = get(t, c, ts.URL+"/demo/data/list?id=wall&total=100&offset=96&count=10&kind=pixels&columns=8")
+	if n := strings.Count(body, `class="p`); n != 4 || !strings.Contains(body, `total="100"`) || strings.Contains(body, "<b>") {
+		t.Errorf("pixels: %d cells\n%.400s", n, body)
+	}
+	// The window is capped.
+	_, body = get(t, c, ts.URL+"/demo/data/list?id=stars&count=100000")
+	if n := strings.Count(body, `role="listitem"`); n != 5000 {
+		t.Errorf("%d items, want the cap of 5000", n)
+	}
+	for _, bad := range []string{"", "1x", "x%22onload%3D%22y"} {
+		if r, _ := get(t, c, ts.URL+"/demo/data/list?id="+bad); r.StatusCode != 400 {
+			t.Errorf("id %q = %d, want 400", bad, r.StatusCode)
+		}
+	}
+}

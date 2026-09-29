@@ -136,6 +136,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /demo/telemetry", s.demoTelemetry)
 	mux.HandleFunc("GET /demo/data/children", s.demoChildren) // the example dataset (demo_data.go)
 	mux.HandleFunc("GET /demo/data/search", s.demoSearch)
+	mux.HandleFunc("GET /demo/data/list", s.demoList)
 	mux.HandleFunc("OPTIONS /demo/", demoPreflight)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

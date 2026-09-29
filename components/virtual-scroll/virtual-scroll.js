@@ -1,0 +1,193 @@
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// A host method may be called from an effect: its reads must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
+
+// One ElementInternals per element: attachInternals() works once, and
+// onFirstRender runs again when the element is re-attached. Its custom state
+// (:state(loading)) survives morphs.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
+// Items with something to focus take Tab themselves; otherwise the scroller does.
+const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]'
+
+// Notes on the styles, kept here where the minifier drops them:
+// - The scroller is contained (strict): a new window never lays out the page.
+// - The window is not: rows wider than the list overflow it, and the scroller
+//   scrolls sideways (a table), with the sticky header.
+// - The bars above and below the window stand for rows the server hasn't sent.
+const styles = /* css */ `
+:host {
+	--_ph: var(--sb-surface-hover, #1A2540);
+	--_focus: var(--sb-brand-light, #B09AFF);
+	display: block;
+	box-sizing: border-box;
+	inline-size: 100%;
+	block-size: 20rem;
+}
+:host([hidden]) { display: none; }
+.scroller {
+	block-size: 100%;
+	overflow: auto;
+	overflow-anchor: none;
+	overscroll-behavior: contain;
+	contain: strict;
+	outline: none;
+}
+.scroller:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
+.header { position: sticky; inset-block-start: 0; z-index: 1; }
+.spacer { position: relative; }
+.window {
+	position: absolute;
+	inset-block-start: 0;
+	inset-inline: 0;
+	block-size: var(--_h);
+	translate: 0 var(--_y);
+	display: grid;
+	grid-template-columns: repeat(var(--_cols), minmax(0, 1fr));
+	grid-auto-rows: var(--_size);
+}
+.spacer::before, .spacer::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	background: linear-gradient(transparent 30%, var(--_ph) 0 70%, transparent 0) 0 0 / 100% var(--_size);
+}
+.spacer::before { inset-block-start: 0; block-size: var(--_y); }
+.spacer::after { inset-block: calc(var(--_y) + var(--_h)) 0; }
+@media (forced-colors: active) {
+	.spacer::before, .spacer::after { forced-color-adjust: none; --_ph: GrayText; }
+}
+`
+
+rocket('sb-virtual-scroll', {
+	props: ({ number, string }) => ({
+		total: number.min(0).docs({ description: 'Server data: how many items the whole list has.' }),
+		offset: number.min(0).docs({ description: 'Server data: the index of the first child in the whole list (from 0, a multiple of columns).' }),
+		itemSize: number.min(1).default(32).docs({ description: 'Row height in px. Every item is exactly one row high.' }),
+		columns: number.clamp(1, 1000).step(1).default(1).docs({ description: 'Items per row: more than 1 lays them out as a grid.' }),
+		buffer: number.min(0).default(4000).docs({ description: 'How far a window reaches past the viewport, above and below, in px.' }),
+		label: string.trim.docs({ description: 'Accessible name of the list.' }),
+	}),
+	manifest: {
+		slots: [
+			{ name: 'default', description: 'The items of the current window, one element each, in order. The server renders them.' },
+			{ name: 'header', description: 'Stays at the top while the items scroll under it, and scrolls sideways with them (column headings).' },
+		],
+		events: [
+			{ name: 'sb-window', kind: 'custom-event', bubbles: true, composed: true, description: 'Asks for a window of items. detail: { offset, count }. Answer by re-rendering the host with those items as children and the new offset and total.' },
+		],
+	},
+	// Rendered once: the geometry goes through signals.
+	renderOnPropChange: false,
+	render: ({ html }) => html`
+		<div class="scroller" part="scroller" data-ref:scroller data-on:scroll__passive="@scroll()"
+			data-attr:role="$$role" data-attr:aria-label="($$role && $$label) || false" data-attr:tabindex="$$tab"
+			data-style:scroll-padding-block-start="$$head + 'px'">
+			<div class="header" part="header" data-ref:header><slot name="header"></slot></div>
+			<div class="spacer" data-style:block-size="$$height + 'px'" data-style:--_y="$$y + 'px'"
+				data-style:--_h="$$win + 'px'" data-style:--_size="$$size + 'px'" data-style:--_cols="$$cols">
+				<div class="window" part="window"><slot data-ref:items></slot></div>
+			</div>
+		</div>
+	`,
+	onFirstRender: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, props, refs: { scroller, header, items } }) => {
+		adoptStyles(host, styles)
+		const states = internalsOf(host).states
+		// view: the height the rows get (the scroller minus the header). have: the
+		// items in the window. last: the request on its way (wait), sent at `sent`.
+		let view = 0, have = 0, last = '', lastCount = 0, sent = 0, wait = false, timer = 0
+		const rows = (n) => Math.ceil(n / props.columns)
+
+		$$.head = 0
+		const sync = () => {
+			const size = props.itemSize
+			// A <template data-for> that renders the items is no item.
+			have = items.assignedElements().filter((el) => el.localName != 'template').length
+			$$.size = size
+			$$.cols = props.columns
+			$$.height = rows(props.total) * size
+			$$.y = Math.floor(props.offset / props.columns) * size
+			$$.win = rows(have) * size
+			// A role on the host hands the semantics to the page (a grid, a feed).
+			$$.role = !host.hasAttribute('role') && 'list'
+			$$.label = props.label
+			$$.tab = !host.querySelector(FOCUSABLE) && 0
+		}
+
+		// The window for the scroll position: the visible rows plus the buffer on
+		// both sides, clamped to the list.
+		const want = () => {
+			const size = props.itemSize, b = Math.ceil(props.buffer / size), v = Math.ceil(view / size) + 1
+			const r = Math.max(0, Math.min(Math.round(scroller.scrollTop / size) - b, rows(props.total) - v - 2 * b))
+			return [r * props.columns, (v + 2 * b) * props.columns]
+		}
+		// The viewport went past half the buffer, on a side where the list goes on.
+		const outside = () => {
+			const top = scroller.scrollTop, y = $$.y, half = props.buffer / 2
+			return (props.offset > 0 && top < y + half) || (props.offset + have < props.total && top > y + $$.win - view - half)
+		}
+		const ask = () => {
+			if (!view) return
+			const [offset, n] = want()
+			// A new count (connect, resize, new geometry) or no total yet (a morph
+			// emptied the host) asks without a threshold.
+			if (n === lastCount && host.hasAttribute('total') && !outside()) return
+			// The window we want is the one we have.
+			if (offset === props.offset && (props.total ? Math.min(n, props.total - offset) : n) === have) return
+			// One request at a time, unless it got lost.
+			const key = offset + ' ' + n
+			if (wait && (key === last || performance.now() - sent < 1000)) return
+			last = key
+			lastCount = n
+			wait = true
+			sent = performance.now()
+			states.add('loading')
+			emit('sb-window', { offset, count: n })
+		}
+
+		sync()
+		action('scroll', ask)
+		// A morph (the server's answer) changes the children and the attributes.
+		const watch = new MutationObserver(() => {
+			wait = false
+			states.delete('loading')
+			sync()
+			ask()
+		})
+		watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true })
+		// The first size asks right away, later ones once the resizing stops.
+		const resize = new ResizeObserver(() => {
+			clearTimeout(timer)
+			timer = setTimeout(() => {
+				$$.head = header.offsetHeight
+				view = Math.max(0, scroller.clientHeight - $$.head)
+				ask()
+			}, view ? 150 : 0)
+		})
+		resize.observe(scroller)
+		resize.observe(header)
+		cleanup(() => {
+			watch.disconnect()
+			resize.disconnect()
+			clearTimeout(timer)
+		})
+
+		defineHostProp('scrollToIndex', {
+			value: (i, { block = 'start' } = {}) =>
+				peek(() => {
+					const size = props.itemSize, y = Math.floor(i / props.columns) * size, top = scroller.scrollTop, end = y + size - view
+					scroller.scrollTo({ top: block === 'end' ? end : block !== 'nearest' || y < top ? y : Math.max(top, end) })
+					ask()
+				}),
+		})
+	},
+})
