@@ -86,7 +86,7 @@ The command clears the flag, and the next render sends `open="false"`. Without i
 
 ### Buttons that close it
 
-Any element in the dialog with `data-sb-close` closes it and reports `data-sb-close`'s value as `detail.value` (an empty `data-sb-close` reports the element's text). `detail.reason` says what closed it: `action` for these, `button` for the close button, `escape`, `backdrop`, or `api` for `close()`. `sb-open` and `sb-close` fire for `show()`, `close()` and the user, never for a change the server made. In a nested `sb-modal`, `data-sb-close` closes only the dialog it belongs to.
+Any element in the dialog with `data-sb-close` closes it and reports `data-sb-close`'s value as `detail.value` (an empty `data-sb-close` reports the element's text). `detail.reason` says what closed it: `action` for these, `button` for the close button, `escape`, `backdrop`, or `api` for `close()`. `sb-open` and `sb-close` fire for `show()`, `close()` and the user, never for a change the server made. In a nested `sb-modal` or `sb-drawer`, `data-sb-close` closes only the one it belongs to.
 
 A `<form>` in the body can't close the dialog with `method="dialog"`: the `<dialog>` is in the component's shadow root. Give a submit button in the footer `form="…"` (the form's `id`), and close the dialog from the form's submit handler or let the server close it.
 
