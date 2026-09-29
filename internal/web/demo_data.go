@@ -2,6 +2,8 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
+	"html"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -29,6 +31,10 @@ import (
 //
 // Items: {id, value, label, description, icon, kind, lazy}: value is the id
 // (select options), lazy means it has children (tree items).
+//
+//	GET /demo/data/list?id=<host id>&offset=&count=   a window of a million-item list
+//
+// patches an sb-virtual-scroll instead (see demoList).
 
 var signalNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,40}$`)
 
@@ -121,4 +127,78 @@ func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSigna
 		return
 	}
 	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{into: patch})
+}
+
+var elementIDRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}$`)
+
+// demoListKeep are the host attributes the page sets. This endpoint serves any
+// page, so it sends only offset, total and the items, and the morph keeps these
+// as the page has them. data-ignore-morph keeps the page's own frames, which
+// know nothing of the window, away from the list.
+const demoListKeep = "item-size columns buffer label role style class data-ignore-morph data-on:sb-window"
+
+// demoList answers an sb-virtual-scroll's sb-window with ?count= items from
+// ?offset= (at most 5000), patched into the host with the id ?id=. The list is
+// the star catalog: its million stars, or the first ?total=. &header adds the
+// column headings; &kind=pixels&columns=<n> sends pixels of a nebula n wide.
+func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	id := q.Get("id")
+	if !elementIDRe.MatchString(id) {
+		http.Error(w, "id must be an element id", http.StatusBadRequest)
+		return
+	}
+	total, _ := strconv.Atoi(q.Get("total"))
+	if total <= 0 || total > demo.CatalogSize {
+		total = demo.CatalogSize
+	}
+	offset, _ := strconv.Atoi(q.Get("offset"))
+	count, _ := strconv.Atoi(q.Get("count"))
+	offset = min(max(offset, 0), total)
+	count = min(max(count, 0), 5000, total-offset)
+	cols := 0
+	if q.Get("kind") == "pixels" {
+		cols, _ = strconv.Atoi(q.Get("columns"))
+		cols = max(cols, 1)
+	}
+
+	// The whole host: the morph patches it like any other markup.
+	var b strings.Builder
+	fmt.Fprintf(&b, `<sb-virtual-scroll id="%s" offset="%d" total="%d" data-preserve-attr="%s">`, id, offset, total, demoListKeep)
+	if q.Has("header") {
+		b.WriteString(`<div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span></div>`)
+	}
+	for i := offset; i < offset+count; i++ {
+		// aria-posinset and aria-setsize: the item's place in the whole list.
+		attrs, content := demoListItem(i, cols)
+		fmt.Fprintf(&b, `<div role="listitem" aria-posinset="%d" aria-setsize="%d"%s>%s</div>`, i+1, total, attrs, content)
+	}
+	b.WriteString(`</sb-virtual-scroll>`)
+
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli(datastar.WithBrotliLevel(5)), datastar.WithGzip()))
+	sse.PatchElements(b.String())
+}
+
+// demoListItem is item i: a line of the star catalog, or with cols > 0 a pixel
+// of a nebula cols pixels wide.
+func demoListItem(i, cols int) (attrs, content string) {
+	if cols > 0 {
+		p := demo.Pixel(i%cols, i/cols)
+		return fmt.Sprintf(` class="p%d" aria-label="%s"`, p, pixelNames[p]), ""
+	}
+	st := demo.Star(i)
+	return "", fmt.Sprintf(`<b>%s</b> <span>%s</span> <span>%s</span> <span>%.2f mag</span> <span>%s ly</span>`,
+		st.Name, st.Class, html.EscapeString(st.Constellation), st.Magnitude, thousands(st.Distance))
+}
+
+var pixelNames = [...]string{"Space", "Dust", "Gas", "Glow", "Core", "Star"}
+
+// thousands formats 12345 as 12,345.
+func thousands(n int) string {
+	s := strconv.Itoa(n)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
 }
