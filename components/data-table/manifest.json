@@ -1,0 +1,188 @@
+{
+  "tag": "sb-data-table",
+  "props": [
+    {
+      "name": "columns",
+      "attribute": "columns",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "The columns: [{key, label?, width?, align?, sortable?}]. width is a CSS grid track (a number is px; default minmax(6rem, 1fr)); align is start, center or end."
+      }
+    },
+    {
+      "name": "rows",
+      "attribute": "rows",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "The rows at hand, objects keyed by column: all of them, or the window the server sent, starting at row offset."
+      }
+    },
+    {
+      "name": "offset",
+      "attribute": "offset",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Index of the first row in rows."
+      }
+    },
+    {
+      "name": "total",
+      "attribute": "total",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "How many rows there are (at least offset plus the rows given)."
+      }
+    },
+    {
+      "name": "rowKey",
+      "attribute": "row-key",
+      "type": "string",
+      "default": "id",
+      "required": false,
+      "docs": {
+        "description": "The field that identifies a row, for the selection and sb-row-activate."
+      }
+    },
+    {
+      "name": "rowHeight",
+      "attribute": "row-height",
+      "type": "number",
+      "default": 36,
+      "required": false,
+      "docs": {
+        "description": "The height of every row, in px: fixed, so the scroll position tells which rows are in view."
+      }
+    },
+    {
+      "name": "buffer",
+      "attribute": "buffer",
+      "type": "number",
+      "default": 4000,
+      "required": false,
+      "docs": {
+        "description": "How much to keep ready above and below the view, in px of rows."
+      }
+    },
+    {
+      "name": "sort",
+      "attribute": "sort",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "The order the rows are in: {key, dir: \"asc\" | \"desc\"}. The server sends it with the rows; a header click only asks for it (sb-sort)."
+      }
+    },
+    {
+      "name": "loading",
+      "attribute": "loading",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Rows are on their way (bind it to data-indicator): the placeholders pulse."
+      }
+    },
+    {
+      "name": "selection",
+      "attribute": "selection",
+      "type": "oneOf",
+      "default": "none",
+      "required": false,
+      "values": [
+        "none",
+        "single",
+        "multiple"
+      ],
+      "docs": {
+        "description": "How many rows can be selected."
+      }
+    },
+    {
+      "name": "selected",
+      "attribute": "selected",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "The selection: a JSON array of row keys. A new list from the server replaces it; the live value is the selected property."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Table",
+      "required": false,
+      "docs": {
+        "description": "Accessible name."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed selection: :state(pending) while the local selection differs from the server's selected attribute (see revert())."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change (e.g. the field of a command)."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-window",
+      "bubbles": true,
+      "composed": true,
+      "description": "The view needs rows the table doesn't have (also on connect and on resize): detail { offset, count }, plus key and dir of the current sort. Answer with rows from that offset, offset and total."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-sort",
+      "bubbles": true,
+      "composed": true,
+      "description": "A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-row-activate",
+      "bubbles": true,
+      "composed": true,
+      "description": "Enter or a double click on a row. detail: { key }."
+    },
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The selection changed."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "The selection changed. detail: { name, value } (an array of row keys): ready for a command."
+    }
+  ]
+}
