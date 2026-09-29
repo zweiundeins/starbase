@@ -24,6 +24,17 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // stays in front in right-to-left text; the rest as text.
 const format = new Intl.NumberFormat()
 const text = (v) => (typeof v === 'number' ? '⁨' + format.format(v) + '⁩' : String(v ?? ''))
+// Local sorting: numbers by value, the rest as text in the reader's order
+// (numeric: "Io 2" before "Io 10"); missing values last in both directions.
+const collator = new Intl.Collator(undefined, { numeric: true })
+const missing = (v) => v == null || v === ''
+const compare =
+	({ key, dir }) =>
+	([a], [b]) => {
+		const x = a?.[key], y = b?.[key]
+		if (missing(x) || missing(y)) return missing(x) - missing(y)
+		return (dir === 'desc' ? -1 : 1) * (typeof x === 'number' && typeof y === 'number' ? x - y : collator.compare(String(x), String(y)))
+	}
 const align = (a) => (a === 'end' || a === 'right' ? 'end' : a === 'center' ? 'center' : 'start')
 
 // The windowing is sb-virtual-scroll's: the rows are its children, the header
@@ -119,7 +130,7 @@ rocket('sb-data-table', {
 		rowKey: string.trim.default('id').docs({ description: 'The field that identifies a row, for the selection and sb-row-activate.' }),
 		rowHeight: number.clamp(16, 200).default(36).docs({ description: 'The height of every row, in px: fixed, so the scroll position tells which rows are in view.' }),
 		buffer: number.clamp(0, 20000).default(4000).docs({ description: 'How much to keep ready above and below the view, in px of rows.' }),
-		sort: json.default(() => ({})).docs({ description: 'The order the rows are in: {key, dir: "asc" | "desc"}. The server sends it with the rows; a header click only asks for it (sb-sort).' }),
+		sort: json.default(() => ({})).docs({ description: 'The order the rows are in: {key, dir: "asc" | "desc"}. The server sends it with the rows. When the table holds every row (offset 0, no more than total), a header click sorts them here too; otherwise it asks for the order (sb-sort). A new sort from the server wins.' }),
 		loading: bool.docs({ description: 'Rows are on their way (bind it to data-indicator): the table is aria-busy.' }),
 		selection: oneOf('none', 'single', 'multiple').default('none').docs({ description: 'How many rows can be selected.' }),
 		selected: json.default(() => []).docs({ description: 'The selection: a JSON array of row keys. A new list from the server replaces it; the live value is the selected property.' }),
@@ -130,7 +141,7 @@ rocket('sb-data-table', {
 	manifest: {
 		events: [
 			{ name: 'sb-window', kind: 'custom-event', bubbles: true, composed: true, description: 'The view needs rows the table doesn\'t have (also on connect and on resize): detail { offset, count }, plus key and dir of the order to send them in. Answer with rows from that offset, offset and total.' },
-			{ name: 'sb-sort', kind: 'custom-event', bubbles: true, composed: true, description: 'A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort.' },
+			{ name: 'sb-sort', kind: 'custom-event', bubbles: true, composed: true, description: 'A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort; a table that holds every row has sorted them already.' },
 			{ name: 'sb-row-activate', kind: 'custom-event', bubbles: true, composed: true, description: 'Enter or a double click on a row. detail: { key }.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The selection changed.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The selection changed. detail: { name, value } (an array of row keys): ready for a command.' },
@@ -146,12 +157,29 @@ rocket('sb-data-table', {
 		// asked: the order an sb-sort of ours asked for, until rows in it arrive;
 		// olds: the orders it replaced, until `until`; dropped: the rows of the
 		// last answer not taken, which stay dropped.
+		// shown: the rows as rendered, [row, index in the server's order]; said:
+		// the server's last order, so only a new one replaces a local one.
 		let data = [], off = 0, cols = [], sort = { key: '', dir: '' }, sorted, asked = null, expire = 0
-		let olds = new Set(), until = 0, dropped
+		let olds = new Set(), until = 0, dropped, shown = [], said
 		const orderOf = (o) => o.key + ' ' + o.dir
 		const keyAt = (i) => {
-			const r = data[i - off]
-			return r && String(r[props.rowKey] ?? i)
+			const [r, j] = shown[i - off] ?? []
+			return r && String(r[props.rowKey] ?? j)
+		}
+		// Every row is here: the table sorts them itself.
+		const whole = () => off === 0 && data.length >= props.total
+		const show = () => {
+			shown = data.map((r, j) => [r, off + j])
+			if (whole() && sort.key) shown.sort(compare(sort))
+			// As JSON: data-for clones plain rows fast, and a signal's rows would
+			// be proxies, which structuredClone refuses (a slow fallback).
+			$$.rows = JSON.stringify(shown.map(([r], j) => ({ i: off + j, k: keyAt(off + j), c: cols.map((c) => text(r?.[c.key])) })))
+			$$.cols = JSON.stringify(cols.map((c) => ({ ...c, sort: sort.key === c.key ? (sort.dir === 'desc' ? 'descending' : 'ascending') : '' })))
+		}
+		// A new order starts at the top.
+		const top = () => {
+			if (sorted !== undefined && orderOf(sort) !== sorted) $('.grid')?.scrollToIndex?.(0)
+			sorted = orderOf(sort)
 		}
 		$$.rows = '[]'
 		$$.fr = -1 // the focus cell (roving tabindex): row (-1 the header), column
@@ -195,24 +223,19 @@ rocket('sb-data-table', {
 			else if (props.rows !== dropped) {
 				asked = null
 				clearTimeout(expire)
-				sort = now
+				if (order !== said) (said = order), (sort = now)
 				data = Array.isArray(props.rows) ? props.rows : []
 				off = props.offset
-				// As JSON: data-for clones plain rows fast, and a signal's rows would
-				// be proxies, which structuredClone refuses (a slow fallback).
-				$$.rows = JSON.stringify(data.map((r, j) => ({ i: off + j, k: keyAt(off + j), c: cols.map((c) => text(r?.[c.key])) })))
+				show()
 				$$.n = Math.max(props.total, off + data.length)
 				$$.off = off
 				// No rows: no total, so the list asks for its first window.
 				$$.tot = $$.n || false
 				// Out of focus, the tab stop stays on a row that is rendered.
 				if (!$$.hasFocus && ($$.fr < off || $$.fr >= off + data.length)) $$.fr = -1
-				// A new order from the server starts at the top.
-				if (sorted !== undefined && order !== sorted) $('.grid')?.scrollToIndex?.(0)
-				sorted = order
+				top()
 				refocus()
-			}
-			$$.cols = JSON.stringify(cols.map((c) => ({ ...c, sort: sort.key === c.key ? (sort.dir === 'desc' ? 'descending' : 'ascending') : '' })))
+			} else show() // new columns
 		}
 		take()
 		// One take() for every attribute a morph or a signal patch changes at once.
@@ -273,16 +296,20 @@ rocket('sb-data-table', {
 			$$.fr = -1
 			$$.fc = j
 			if (!c?.sortable) return
+			const next = { key: c.key, dir: sort.key === c.key && sort.dir === 'asc' ? 'desc' : 'asc' }
+			// The window to answer with: the top one, the view and its buffers.
+			const count = inView() + 1 + 2 * Math.ceil(props.buffer / props.rowHeight)
+			// With every row here, sort them now; the page still hears of it.
+			if (whole()) return (sort = next), show(), top(), refocus(), emit('sb-sort', { ...next, offset: 0, count })
 			olds.add(orderOf(sort)).add(orderOf(asked ?? sort))
-			asked = { key: c.key, dir: sort.key === c.key && sort.dir === 'asc' ? 'desc' : 'asc' }
+			asked = next
 			olds.delete(orderOf(asked))
 			until = performance.now() + 10000
 			// A sort that never comes back (or comes back in another order) stops
 			// holding the rows up after a while.
 			clearTimeout(expire)
 			expire = setTimeout(() => peek(() => ((asked = null), take())), 5000)
-			// The window to answer with: the top one, the view and its buffers.
-			emit('sb-sort', { ...asked, offset: 0, count: inView() + 1 + 2 * Math.ceil(props.buffer / props.rowHeight) })
+			emit('sb-sort', { ...asked, offset: 0, count })
 		})
 		// Clicks on rows, heard on the grid (a cell's focusin moved the focus
 		// there). The clicks of a double click don't select twice.

@@ -23,7 +23,7 @@ playground:
   exclude: [offset, total, rowKey, buffer, confirm, name]
 ---
 
-A table for rows the server keeps: a sticky header, sorting on the server, row selection, and a virtual scroll the server drives. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
+A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
 
 The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith). Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders.
 
@@ -58,11 +58,11 @@ Without Datastar signals, the server can also render the element with the first 
 
 ### A small table
 
-With all rows given and no `total`, the table has everything and never asks the server. Its columns aren't sortable: a sortable header only emits `sb-sort`, and the order comes from the server.
+With all rows given and no `total`, the table has everything and never asks the server. A click on a sortable header sorts the rows right here, and the table still emits `sb-sort` for a page that wants to keep the choice.
 
 ```html preview
 <sb-data-table label="Moons of Jupiter" selection="single" style="inline-size: min(100%, 30rem)"
-  columns='[{"key":"name","label":"Moon"},{"key":"radius","label":"Radius (km)","align":"end"},{"key":"found","label":"Found","align":"end","width":"5rem"}]'
+  columns='[{"key":"name","label":"Moon","sortable":true},{"key":"radius","label":"Radius (km)","align":"end","sortable":true},{"key":"found","label":"Found","align":"end","width":"6rem","sortable":true}]'
   rows='[{"id":"io","name":"Io","radius":1821.6,"found":1610},{"id":"europa","name":"Europa","radius":1560.8,"found":1610},{"id":"ganymede","name":"Ganymede","radius":2634.1,"found":1610},{"id":"callisto","name":"Callisto","radius":2410.3,"found":1610},{"id":"amalthea","name":"Amalthea","radius":83.5,"found":1892}]'></sb-data-table>
 ```
 
@@ -184,6 +184,7 @@ A new `selected` from the server always wins, and `selected="[]"` clears it. Mar
 - `columns`: `[{key, label?, width?, align?, sortable?}]`. `width` is a CSS grid track (`"8rem"`, `"minmax(4rem, 2fr)"`, a number for px; default `minmax(6rem, 1fr)`). Widths whose minimum is a length keep the columns steady while rows come and go; a table wider than its box scrolls sideways. `align` is `start`, `center` or `end`.
 - `rows`: objects keyed by column. Numbers show in the reader's format (`4,242.5`), everything else as text. The field named by `row-key` (default `id`) identifies a row.
 - `offset` is the index of the first row in `rows`, and `total` the number of rows there are. Without `total`, the table has what it was given.
+- Sorting: a table that holds every row (`offset` 0, and no `total` or one no larger than the rows given) sorts them itself when a sortable header is clicked. Numbers sort by value, text in the reader's order (with numbers inside it by value, so "Io 2" comes before "Io 10"), and missing values last. It still emits `sb-sort`, a new `sort` from the server wins, and rows the server sends in are sorted the same way, so their order doesn't jump. A table that holds only a window asks, and the server sends the rows in the new order.
 - `row-height` is fixed (default `36` px), and `buffer` (default `4000` px of rows) is how much the table keeps ready above and below the view.
 - A server that sends fewer rows than asked for (a cap) still fills the view: the table then asks for windows that fit the cap.
 - Browsers cap how tall an element can be, Firefox at about 17.9 million px (Chrome and Safari at about 33.5 million). Keep rows × `row-height` under that: 100,000 rows of 36 px are 3.6 million px.

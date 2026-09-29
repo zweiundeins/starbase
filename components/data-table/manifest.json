@@ -78,7 +78,7 @@
       "default": {},
       "required": false,
       "docs": {
-        "description": "The order the rows are in: {key, dir: \"asc\" | \"desc\"}. The server sends it with the rows; a header click only asks for it (sb-sort)."
+        "description": "The order the rows are in: {key, dir: \"asc\" | \"desc\"}. The server sends it with the rows. When the table holds every row (offset 0, no more than total), a header click sorts them here too; otherwise it asks for the order (sb-sort). A new sort from the server wins."
       }
     },
     {
@@ -161,7 +161,7 @@
       "name": "sb-sort",
       "bubbles": true,
       "composed": true,
-      "description": "A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort."
+      "description": "A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort; a table that holds every row has sorted them already."
     },
     {
       "kind": "custom-event",
