@@ -176,11 +176,11 @@ templ Collection(s Shell, v GalleryView) {
 	</section>
 }
 
-// Card deliberately has no id: Datastar's morph parks id-matched nodes while
-// reordering, and parked Rocket elements re-render re-entrantly inside the
-// morph (upstream bug). Positional morphing avoids the parking entirely.
+// Card's id lets the morph match cards across a sort or a search, so it moves
+// them, live previews and all, instead of morphing one card into another. It
+// needs the re-entrant morph of patches/rocket 0008 (upstream #1209).
 templ Card(s Shell, c queries.Card, preview string, size catalog.Size) {
-	<li class="card" data-slug={ c.Slug } style={ templ.SafeCSS("view-transition-name: card-" + c.Slug) }>
+	<li class="card" id={ "card-" + c.Slug } data-slug={ c.Slug } style={ templ.SafeCSS("view-transition-name: card-" + c.Slug) }>
 		<div class="card__preview">
 			@templ.Raw(preview)
 		</div>
