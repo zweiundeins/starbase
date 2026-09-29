@@ -12,10 +12,14 @@ usage: |
   <sb-data-table label="Planets" columns='[{"key":"name","label":"Planet"},{"key":"moons","label":"Moons","align":"end"}]' rows='[{"id":"earth","name":"Earth","moons":1},{"id":"mars","name":"Mars","moons":2}]'></sb-data-table>
 playground:
   attrs:
-    columns: '[{"key":"name","label":"Planet","sortable":true},{"key":"type","label":"Type"},{"key":"moons","label":"Moons","align":"end","width":"6rem"}]'
-    rows: '[{"id":"mercury","name":"Mercury","type":"Rocky","moons":0},{"id":"venus","name":"Venus","type":"Rocky","moons":0},{"id":"earth","name":"Earth","type":"Rocky","moons":1},{"id":"mars","name":"Mars","type":"Rocky","moons":2},{"id":"jupiter","name":"Jupiter","type":"Gas giant","moons":95},{"id":"saturn","name":"Saturn","type":"Gas giant","moons":146},{"id":"uranus","name":"Uranus","type":"Ice giant","moons":28},{"id":"neptune","name":"Neptune","type":"Ice giant","moons":16}]'
+    columns: '[{"key":"name","label":"Name","sortable":true},{"key":"class","label":"Class","width":"6rem","sortable":true},{"key":"constellation","label":"Constellation","sortable":true},{"key":"magnitude","label":"Magnitude","align":"end","width":"7.5rem","sortable":true}]'
+    "data-signals:_pgstars": '{rows: [], offset: 0, total: 0, sort: {key: "", dir: ""}}'
+    data-attr: '{rows: JSON.stringify($_pgstars.rows), offset: $_pgstars.offset, total: $_pgstars.total, sort: JSON.stringify($_pgstars.sort)}'
+    "data-on:sb-window": '@get(`/demo/data/rows?into=_pgstars&${new URLSearchParams(evt.detail)}`)'
+    "data-on:sb-sort": '@get(`/demo/data/rows?into=_pgstars&${new URLSearchParams(evt.detail)}`)'
+  style: "block-size: 18rem"
   props: {rowHeight: {min: 24, max: 64}}
-  values: {selection: single}
+  values: {selection: single, label: Star catalog}
   exclude: [offset, total, rowKey, buffer, confirm, name]
 ---
 
