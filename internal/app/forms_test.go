@@ -47,6 +47,10 @@ const cases = [
 	{ tag: 'sb-slider', attrs: { value: '30' }, local: 70, server: [['f', '30']], mine: [['f', '70']] },
 	{ tag: 'sb-rating', attrs: { value: '2' }, local: 4, server: [['f', '2']], mine: [['f', '4']] },
 	{ tag: 'sb-range', attrs: { value: '{"start":20,"end":60}' }, local: { start: 10, end: 30 }, server: [['f', '{"start":20,"end":60}']], mine: [['f', '{"start":10,"end":30}']] },
+	{ tag: 'sb-checkbox', prop: 'checked', attrs: { checked: '' }, local: false, server: [['f', 'on']], mine: [] },
+	{ tag: 'sb-checkbox', prop: 'checked', attrs: { value: 'yes' }, local: true, server: [], mine: [['f', 'yes']] },
+	{ tag: 'sb-checkbox-group', attrs: { options: '["a","b","c"]', value: '["a","c"]' }, local: ['b'], server: [['f', 'a'], ['f', 'c']], mine: [['f', 'b']] },
+	{ tag: 'sb-checkbox-group', attrs: { options: '["a","b"]' }, local: ['b', 'a'], server: [], mine: [['f', 'a'], ['f', 'b']] },
 ]
 const settle = () => new Promise((r) => setTimeout(r, 60))
 const rows = []

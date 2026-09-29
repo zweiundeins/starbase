@@ -39,6 +39,8 @@ const contractJS = `
 const cases = [
 	{ tag: 'sb-input', attr: 'value', local: 'typed', server: '', want: '' },
 	{ tag: 'sb-toggle', prop: 'checked', attr: 'checked', local: true, server: 'false', want: false },
+	{ tag: 'sb-checkbox', prop: 'checked', attr: 'checked', local: true, server: 'false', want: false },
+	{ tag: 'sb-checkbox-group', attrs: { options: '["a","b"]' }, attr: 'value', local: ['b'], server: '[]', want: [] },
 	{ tag: 'sb-slider', attr: 'value', local: 70, server: '0', want: 0 },
 	{ tag: 'sb-rating', attr: 'value', local: 3, server: '0', want: 0 },
 	{ tag: 'sb-range', attr: 'value', local: { start: 10, end: 20 }, server: '{"start":0,"end":100}', want: { start: 0, end: 100 } },
