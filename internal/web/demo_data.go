@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"math"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -21,12 +22,14 @@ import (
 //
 //	GET /demo/data/children?parent=<id>   a body's children ("" or no parent: the top level)
 //	GET /demo/data/search?q=…&kind=a,b&limit=8
+//	GET /demo/data/rows?offset=0&count=100&key=name&dir=desc   a window of the star catalog, in an order
 //
 // They answer Datastar requests with a signal patch into the signal named by
-// &into= (default _tree and _found): the top level and search results as a
-// list, children as {"<parent>": [...]} (patches merge, so a lazy tree's
-// branches accumulate). Other clients sending Accept: application/json get
-// the list as JSON.
+// &into= (default _tree, _found and _rows): the top level and search results
+// as a list, children as {"<parent>": [...]} (patches merge, so a lazy tree's
+// branches accumulate), rows as {rows, offset, total, sort: {key, dir}}.
+// Other clients sending Accept: application/json get the list (or the
+// window) as JSON.
 // &delay=<ms> (up to 1500) makes loading states visible in demos.
 //
 // Items: {id, value, label, description, icon, kind, lazy}: value is the id
@@ -101,6 +104,36 @@ func (s *Server) demoSearch(w http.ResponseWriter, r *http.Request) {
 	s.demoAnswer(w, r, "_found", items, items)
 }
 
+// demoRows answers a table's window and sort requests (sb-data-table's
+// sb-window and sb-sort) with ?count= stars from ?offset= (at most 500) in the
+// order asked for (?key=, ?dir=), and says which order it used.
+func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	offset, _ := strconv.Atoi(q.Get("offset"))
+	count, err := strconv.Atoi(q.Get("count"))
+	if err != nil {
+		count = 100
+	}
+	offset, count = max(offset, 0), min(max(count, 1), 500)
+	key, dir := q.Get("key"), q.Get("dir")
+	if !queries.DemoStarSortable(key) {
+		key, dir = "", ""
+	} else if dir != "desc" {
+		dir = "asc"
+	}
+	var stars []demo.Star
+	var total int
+	if err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
+		stars, total, err = rd.DemoStars(r.Context(), key, dir == "desc", offset, count)
+		return
+	}); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}}
+	s.demoAnswer(w, r, "_rows", window, window)
+}
+
 // demoAnswer writes the list as JSON, or patches it into the requested signal.
 func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
@@ -166,7 +199,7 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	fmt.Fprintf(&b, `<sb-virtual-scroll id="%s" offset="%d" total="%d" data-preserve-attr="%s">`, id, offset, total, demoListKeep)
 	if q.Has("header") {
-		b.WriteString(`<div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span></div>`)
+		b.WriteString(`<div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span> <span>Planets</span></div>`)
 	}
 	for i := offset; i < offset+count; i++ {
 		// aria-posinset and aria-setsize: the item's place in the whole list.
@@ -187,9 +220,9 @@ func demoListItem(i, cols int) (attrs, content string) {
 		p := demo.Pixel(i%cols, i/cols)
 		return fmt.Sprintf(` class="p%d" aria-label="%s"`, p, pixelNames[p]), ""
 	}
-	st := demo.Star(i)
-	return "", fmt.Sprintf(`<b>%s</b> <span>%s</span> <span>%s</span> <span>%.2f mag</span> <span>%s ly</span>`,
-		st.Name, st.Class, html.EscapeString(st.Constellation), st.Magnitude, thousands(st.Distance))
+	st := demo.StarAt(i)
+	return "", fmt.Sprintf(`<b>%s</b> <span>%s</span> <span>%s</span> <span>%.2f mag</span> <span>%s ly</span> <span>%d</span>`,
+		st.Name, st.Class, html.EscapeString(st.Constellation), st.Magnitude, thousands(int(math.Round(st.Distance))), st.Planets)
 }
 
 var pixelNames = [...]string{"Space", "Dust", "Gas", "Glow", "Core", "Star"}

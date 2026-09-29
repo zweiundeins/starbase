@@ -62,6 +62,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 	bus.Send(commands.PruneSessionPrefs{OlderThan: 400 * 24 * time.Hour})
 	bus.Send(commands.SeedBoard{})
 	bus.Send(commands.SeedDemo{})
+	bus.Send(commands.SeedStars{})
 	log.Info("catalog synced", "components", len(cat.Components), "hash", cat.Hash)
 
 	srv := web.New(ctx, web.Deps{

@@ -7,7 +7,7 @@ author: zweiundeins
 tags: [virtual, list, infinite scroll, windowing, large data, grid, hyperlith]
 since: 2026-09-29
 preview: |
-  <sb-virtual-scroll label="Stars" item-size="24" total="40" style="block-size: 8rem; inline-size: 13rem"><div role="listitem">SB 0000001 · K3V</div><div role="listitem">SB 0000002 · M1V</div><div role="listitem">SB 0000003 · G2V</div><div role="listitem">SB 0000004 · A0III</div></sb-virtual-scroll>
+  <sb-virtual-scroll label="Stars" item-size="24" total="40" style="block-size: 8rem; inline-size: 13rem"><div role="listitem">Mornis · K3V</div><div role="listitem">Gararin · G0V</div><div role="listitem">Nebanox · M4IV</div><div role="listitem">Dabalis · G3IV</div></sb-virtual-scroll>
 usage: |
   <sb-virtual-scroll id="stars" label="Stars" item-size="32"
     data-on:sb-window="@get('/stars?offset=' + evt.detail.offset + '&count=' + evt.detail.count)"></sb-virtual-scroll>
@@ -55,13 +55,13 @@ The `header` slot stays at the top while the rows scroll under it, and scrolls s
 ```html preview
 <style>
   #catalog { block-size: 16rem; }
-  #catalog > div { display: grid; grid-template-columns: 6.5rem 3.5rem 10rem 6rem 6rem; gap: 1rem; align-items: center; inline-size: max-content; min-inline-size: 100%; padding-inline: 0.75rem; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  #catalog > div { display: grid; grid-template-columns: 6.5rem 3.5rem 10rem 6rem 6rem 4rem; gap: 1rem; align-items: center; inline-size: max-content; min-inline-size: 100%; padding-inline: 0.75rem; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
   #catalog > [slot="header"] { block-size: 2rem; background: var(--sb-surface-card); border-block-end: 1px solid var(--sb-border); color: var(--sb-text-muted); font-size: 0.75rem; }
 </style>
 <div style="display: grid; gap: 12px; inline-size: 100%">
   <sb-virtual-scroll id="catalog" label="Star catalog" item-size="28" data-ignore-morph
     data-on:sb-window="@get('/demo/data/list?id=catalog&total=100000&header&offset=' + evt.detail.offset + '&count=' + evt.detail.count)">
-    <div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span></div>
+    <div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span> <span>Planets</span></div>
   </sb-virtual-scroll>
   <div style="display: flex; gap: 8px">
     <sb-button size="sm" variant="outline" data-on:click="document.getElementById('catalog').scrollToIndex(0)">First</sb-button>
@@ -130,7 +130,7 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	fmt.Fprintf(&b, `<sb-virtual-scroll id="%s" offset="%d" total="%d" data-preserve-attr="%s">`, id, offset, total, demoListKeep)
 	if q.Has("header") {
-		b.WriteString(`<div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span></div>`)
+		b.WriteString(`<div slot="header" aria-hidden="true"><span>Star</span> <span>Class</span> <span>Constellation</span> <span>Brightness</span> <span>Distance</span> <span>Planets</span></div>`)
 	}
 	for i := offset; i < offset+count; i++ {
 		// aria-posinset and aria-setsize: the item's place in the whole list.
