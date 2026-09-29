@@ -92,7 +92,7 @@ A `<form>` in the body can't close the dialog with `method="dialog"`: the `<dial
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** the dialog is `28rem` wide (less on small screens); set `inline-size` on `::part(panel)` for another width.
 - **Fonts:** the heading and the body use your page's font.

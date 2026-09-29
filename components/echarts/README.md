@@ -123,7 +123,7 @@ setNumberFormat((n, lang) => myFormat(n, lang))
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** set `block-size` (or `height`) on the element; it defaults to `18rem` and fills the width it is given.
 - **Fonts:** labels and the legend use `--sb-font-body` when a site sets one, numbers (the value axis, the tooltip) `--sb-font-ui`. Without them the chart draws in the element's own font, inherited from your page, so `font-family` on the element is enough.

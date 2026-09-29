@@ -41,7 +41,7 @@ A surface with optional media, heading, body and footer. Sections that get no co
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given (a grid cell, say) and tightens its padding when that is under `14rem`; in a flex row or any other fit-content layout it takes the width of its content. Set `max-inline-size` on the card to cap it. Cards in one grid row stretch to the same height, with their footers at the bottom.
 - **Body:** normal flow, like a `<div>`: inline markup stays in its line, and block children (paragraphs, lists) keep their own margins.

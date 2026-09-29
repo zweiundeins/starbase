@@ -83,7 +83,7 @@ The runner should import the edited `component.js` (for example from a `blob:` U
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `--sb-code-playground-height` (default `34rem`) is the height of the whole playground. It fills the width it is given; the editor and the preview sit side by side, and stack below `48rem`.
 - **Fonts:** the toolbar uses your page's font. The console and the code use `--sb-font-ui` when a site sets one, else a monospace font.

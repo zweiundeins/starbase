@@ -120,7 +120,7 @@ Each item is `{id, label, icon?, children?, lazy?}`:
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** set `font-size` on the element (default `0.875rem`) to scale the text; rows are at least `2rem` tall (`min-block-size` on `::part(item)`).
 - **Fonts:** the rows use your page's font.

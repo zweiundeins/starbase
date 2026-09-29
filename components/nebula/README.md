@@ -89,7 +89,7 @@ One full-screen triangle and a single shader, rendered at a quarter of the CSS r
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given; `--sb-nebula-height` (default `14rem`) sets the height.
 - **Colours:** the cloud is painted from theme tokens, read whenever it paints: every frame while it drifts, and at once on a theme change (a pick on `<sb-theme-switch>`, or the system turning light or dark), even when it is still. An override in your own CSS shows with the next paint. `palette` picks them: `violet` uses `--sb-brand`, `--sb-accent` and `--sb-text-1`; `aurora` `--sb-accent`, `--sb-datastar` and `--sb-text-1`; `ember` `--sb-danger`, `--sb-warn` and `--sb-text-1`; `mono` `--sb-border-strong`, `--sb-text-muted` and `--sb-text-1`. All of them sit on `--sb-surface-inset`. On a light theme, where `--sb-surface-inset` is lighter than `--sb-text-1`, it sorts the colours by lightness, so the sky stays dark and the stars light. Without WebGL, or with its context lost, it shows a still `--sb-brand` glow instead. Corners are `--sb-radius`.

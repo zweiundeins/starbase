@@ -44,7 +44,7 @@ A short hint that appears on hover and keyboard focus, with a small pixel arrow.
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** the tip is at most `16rem` wide; set `max-inline-size` on `::part(tip)` for another limit.
 - **Fonts:** the tip uses your page's font.

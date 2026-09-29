@@ -60,7 +60,7 @@ When the server sends a new `value` while the number is on screen, it counts fro
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts and colours:** it is text: it takes the font, size, weight and colour of wherever you put it, and only switches the digits to equal widths (`tabular-nums`) so the number doesn't jitter while it counts. It keeps room for the final value from the start, so the text around it stays put while the digits grow.
 - **Parts:** `value`, the number you see while it counts. An invisible copy of the final value holds the width; screen readers read it, and print shows it instead of `value`. `::part(value)` rules don't reach that copy, so put what changes the width (`letter-spacing`, `font-size`) on the element itself. Your page's `::part()` rules win over the component's own, without `!important`.

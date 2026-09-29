@@ -127,7 +127,7 @@ Only the primary button of one pointer paints: a right click doesn't, and a seco
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `--sb-pixel-board-size` (default `24rem`) is the width of the board, which stays square, with the palette below it. `size` sets the number of cells per side, not the size on screen.
 - **Colours:** the paint colours are the `palette` prop (16 hex colours), not theme tokens. The board has a `--sb-border` frame around a `--sb-surface-inset` background; the chosen colour and the focus ring are `--sb-brand-light`. With `grid`, the cell lines are `--sb-pixel-board-grid`. They lie on the cells, not on the page, so by default they follow the blank cell colour (the palette's first): faint white on a dark board, faint black on a light one. The swatches are edged in `--sb-text-1` at 12%, so they stand out on light and dark pages alike.

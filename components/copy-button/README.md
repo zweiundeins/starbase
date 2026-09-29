@@ -57,7 +57,7 @@ Browsers can refuse the clipboard: in an iframe without the `clipboard-write` pe
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** the button is a `2rem` square inside a 1px border; set `inline-size` and `block-size` on `::part(button)` for another (the border comes on top), and the icon stays half of it.
 - **Fonts:** the "Copied!" tip uses your page's font.

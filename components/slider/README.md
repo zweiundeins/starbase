@@ -61,7 +61,7 @@ Inside a `<form>`, `sb-slider` submits its value under its `name` (`name=72`: th
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
 - **Direction:** in right-to-left text the minimum is on the right, and the track fills from there.

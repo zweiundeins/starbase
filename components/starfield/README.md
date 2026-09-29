@@ -50,7 +50,7 @@ It renders at a third of the CSS resolution into one `ImageData`. It stops anima
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given; `--sb-starfield-height` (default `12rem`) sets the height.
 - **Colours:** the sky is `--sb-surface-inset`. `tint` picks the stars' token, read whenever it paints (a still field repaints on `sb-theme-change` and when the system switches between light and dark): `white` is `--sb-text-1`, `violet` `--sb-brand-light`, `cyan` `--sb-accent`, `green` `--sb-datastar`. Corners are `--sb-radius`.

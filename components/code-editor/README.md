@@ -81,7 +81,7 @@ Inside a `<form>`, `sb-code-editor` submits its code under its `name` (`name=…
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given. `--sb-code-editor-height` (default `28rem`) is the most it grows before it scrolls, `--sb-code-editor-min-height` (default `0`) the least it shrinks to. `--sb-code-editor-font-size` (default `0.8125rem`) sets the size of the code and the line numbers.
 - **Fonts:** the code uses `--sb-font-ui` when a site sets one, else JetBrains Mono or the system's monospace font; set `--sb-font-ui` on the editor to choose it. The label uses your page's font. The highlighted code is drawn under a transparent textarea, and the two must line up to the pixel, so change the code's font and size through `--sb-font-ui` and `--sb-code-editor-font-size`, which set both, not with `::part(textarea)`.

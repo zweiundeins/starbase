@@ -88,7 +88,7 @@ Also set `<meta name="color-scheme" content="light dark">`, so the browser's own
 <sb-theme-switch domain=".example.com"></sb-theme-switch>
 ```
 
-Only a domain the page itself belongs to is accepted, and every subdomain can then read and overwrite the value — fine for a preference, so keep anything else out of this cookie. A domain the browser refuses would otherwise drop the choice without a word, so the component reads the cookie back and falls back to this host, reporting the mismatch through `reportError`.
+Only a domain the page itself belongs to is accepted, and every subdomain can then read and overwrite the value. That is fine for a preference, so keep anything else out of this cookie. A domain the browser refuses would otherwise drop the choice without a word, so the component reads the cookie back and falls back to this host, reporting the mismatch through `reportError`.
 
 ## Following the theme from a canvas
 
@@ -113,7 +113,7 @@ A cookie reaches the server with the request, so the server can render the theme
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts:** the options use your page's font.
 - **Colours:** the control is `--sb-control-bg` with a `--sb-control-border` edge. Options are `--sb-text-2` (`--sb-text-1` when hovered or chosen); the chosen one fills with `--sb-brand-subtle` inside a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-control-radius`. The `menu` variant's list uses the same tokens, and the select's arrow is drawn in `--sb-text-2`, so it follows the theme.

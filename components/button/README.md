@@ -80,7 +80,7 @@ A button with nothing but an icon needs a name for screen readers: `aria-label` 
 </div>
 ```
 
-`data-indicator` sets the signal while that element's request is in flight, and `data-preserve-attr` keeps the attribute through a server morph. For a wait that is not a button — a panel, a table, a whole region — use [`sb-busy`](/components/busy), which also knows `delay`, `min` and progress shapes.
+`data-indicator` sets the signal while that element's request is in flight, and `data-preserve-attr` keeps the attribute through a server morph. For a wait that is not a button (a panel, a table, a whole region), use [`sb-busy`](/components/busy), which also knows `delay`, `min` and progress shapes.
 
 ## Forms
 
@@ -88,7 +88,7 @@ A button with nothing but an icon needs a name for screen readers: `aria-label` 
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `size` (`sm`, `md`, `lg`) sets the height, the padding and the text size. For anything in between, set `block-size`, `padding-inline` or `font-size` on `::part(button)`: icons and the loading spinner are sized in `em`, so they follow the text.
 - **Fonts:** the label uses your page's font. The `pixel` variant uses `--sb-font-display` when a site sets one (like Starbase's pixel font); set it on the button to choose that font on its own.

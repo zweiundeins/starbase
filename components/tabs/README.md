@@ -43,7 +43,7 @@ Give it a `name`, and it emits `sb-change` with `{ name, value, label }` (`value
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts:** the tab labels use your page's font.
 - **Colours:** the strip is `--sb-surface-inset` with a `--sb-border` edge. Tabs are `--sb-text-2` (`--sb-text-1` on hover) with a `--sb-border` outline; the selected tab fills with `--sb-brand-light` and writes in `--sb-bg`. The focus ring is `--sb-focus-ring`, corners `--sb-control-radius`. When the tabs don't fit, the strip scrolls sideways with a thin `--sb-border` scrollbar, and the selected tab scrolls into view.

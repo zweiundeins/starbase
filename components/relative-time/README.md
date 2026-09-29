@@ -71,7 +71,7 @@ The `datetime` attribute belongs to the server. When a Datastar stream re-render
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts and colours:** it is text: it takes the font, size and colour of wherever you put it.
 - **Parts:** `time`, the `<time>` element (its `title` shows the full date on hover). The component sets no styles of its own, so your `::part()` rules need no `!important`.

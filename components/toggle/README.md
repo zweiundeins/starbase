@@ -57,7 +57,7 @@ Inside a `<form>`, `sb-toggle` submits like a checkbox: `name=on` when it is on,
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `size` (`sm`, `md`, `lg`) sets the switch.
 - **Fonts:** the label uses your page's font, size and colour.

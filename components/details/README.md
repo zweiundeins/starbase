@@ -73,7 +73,7 @@ The buttons below stand in for the server: they change the `open` **attribute**,
   </div>
   <sb-details name="brief" summary="Mission brief" data-attr:open="$_open" data-preserve-attr="open">
     Toggle the panel by hand, then press a button: the attribute wins. Press the same button
-    twice and nothing happens — re-sent identical markup is not a change.
+    twice and nothing happens: re-sent identical markup is not a change.
   </sb-details>
 </div>
 ```
@@ -109,15 +109,15 @@ Local toggling never writes the attribute back, which is what makes the table ab
 
 That last row is also why the playground above has no `open` switch: its boolean switches *remove* the attribute for `false`, and removal is exactly the case `sb-details` ignores. Click the summary, or use the example below.
 
-One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host), not the decoded prop. Rocket's `observeProps` only fires when the decoded value changes, so a server adding `open="false"` to an element that never carried the attribute — a real change of mind — would otherwise go unnoticed.
+One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host), not the decoded prop. Rocket's `observeProps` only fires when the decoded value changes, so a server adding `open="false"` to an element that never carried the attribute (a real change of mind) would otherwise go unnoticed.
 
 ## A native `<details>` in the shadow root
 
 The panel is a real `<details>` and `<summary>`, inside the component's shadow root. That is the whole design:
 
-- **Native semantics for free.** The disclosure role and expanded state, Enter and Space on the summary, the browser's own find-in-page reaching closed content and opening the panel — none of it is re-implemented, so none of it can drift from what the platform does.
+- **Native semantics for free.** The disclosure role and expanded state, Enter and Space on the summary, the browser's own find-in-page reaching closed content and opening the panel: none of it is re-implemented, so none of it can drift from what the platform does.
 - **The shadow root keeps the server-owned attribute clean.** A `<details>` reflects its state into its own `open` attribute, which is exactly why a `<details>` in a morphed page needs `data-preserve-attr="open"`: the attribute is both the server's instruction and the browser's scratch space. Here the reflected attribute is *inside the shadow root*, where a morph never goes, while the **host's** `open` attribute is only ever read. The two never meet.
-- **The animation is the browser's box.** `::details-content` is the box the browser already wraps the revealed content in, so it grows from `block-size: 0` to `auto` (with `interpolate-size: allow-keywords`) and lands on the content's own height — nothing is measured, and `content-visibility` flips discretely at the ends, which is what keeps closed content out of the layout, out of the tab order and still findable.
+- **The animation is the browser's box.** `::details-content` is the box the browser already wraps the revealed content in, so it grows from `block-size: 0` to `auto` (with `interpolate-size: allow-keywords`) and lands on the content's own height. Nothing is measured, and `content-visibility` flips discretely at the ends, which is what keeps closed content out of the layout, out of the tab order and still findable.
 
 Where `::details-content` or `interpolate-size` is not supported, the panel simply opens and closes at once; everything else is unchanged.
 
@@ -149,7 +149,7 @@ Parts: `details` (the `<details>` box), `summary`, `icon`, `label`, `marker` (th
 
 The open panel is `sb-details::part(details):open`. Not `sb-details[open]`: the host's `open` attribute is the server's word, not the live state.
 
-It styles against the semantic tokens — `--sb-surface-card`, `--sb-surface-hover`, `--sb-border`, `--sb-text-1`, `--sb-text-2`, `--sb-text-muted`, `--sb-brand-light`, `--sb-radius` — and notches its corners by `--sb-notch` (at `0` the radius takes over). `--sb-details-duration` (220 ms) sets the animation, and `prefers-reduced-motion: reduce` turns it off, opening and closing at once.
+It styles against the semantic tokens (`--sb-surface-card`, `--sb-surface-hover`, `--sb-border`, `--sb-text-1`, `--sb-text-2`, `--sb-text-muted`, `--sb-brand-light`, `--sb-radius`) and notches its corners by `--sb-notch` (at `0` the radius takes over). `--sb-details-duration` (220 ms) sets the animation, and `prefers-reduced-motion: reduce` turns it off, opening and closing at once.
 
 ```html preview
 <div style="display: grid; gap: 8px; inline-size: min(100%, 26rem)">
@@ -169,4 +169,4 @@ It styles against the semantic tokens — `--sb-surface-card`, `--sb-surface-hov
 - **Closed content:** the browser's own `content-visibility: hidden` on `::details-content` keeps it out of the accessibility tree and out of the tab order, and find-in-page still reaches it and opens the panel.
 - **Motion:** `prefers-reduced-motion: reduce` removes the height transition and the marker's rotation; the panel still opens and closes.
 - **Forced colours:** the marker is drawn in `CanvasText`, and the focus ring is an outline, which forced colours keep.
-- **Disabled:** `<summary>` has no disabled state, so the component sets `aria-disabled` and `tabindex="-1"` (out of the tab order) and cancels the default action of the click — which is also what Enter and Space trigger.
+- **Disabled:** `<summary>` has no disabled state, so the component sets `aria-disabled` and `tabindex="-1"` (out of the tab order) and cancels the default action of the click, which is also what Enter and Space trigger.

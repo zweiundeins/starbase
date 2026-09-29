@@ -69,7 +69,7 @@ It only paints when something changes: a prop, a drag, or each frame while `spin
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `--sb-voxel-size` (default `16rem`) sets the width; it stays square and never grows wider than its container.
 - **Colours:** the models have their own colours, which themes don't change. The canvas is transparent, so it sits on whatever is behind it; the focus ring is `--sb-brand-light`.

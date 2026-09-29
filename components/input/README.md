@@ -79,7 +79,7 @@ It is not a form-associated element yet (Rocket can't declare one), so the form'
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given, up to `26rem`; set `max-inline-size` on the element to change that. The field is `2.75rem` tall: set `block-size` on `::part(input)` (and `::part(button)`, with `action`).
 - **Fonts:** the label, the text you type and the hint use your page's font.

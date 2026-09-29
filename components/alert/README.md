@@ -62,7 +62,7 @@ So a new message needs a new element: give each message its own `id` (as above),
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Fonts:** the heading and the message use your page's font.
 - **Colours:** each variant has a tone: `--sb-info`, `--sb-ok` (success), `--sb-warn` (warning) or `--sb-danger`. It colours the status light and the heading (unless the page's `color-scheme` is dark, the heading mixes it with `--sb-text-1`, for contrast), and tints the border and the background. The box is `--sb-surface-inset` with a `--sb-border` edge, the message `--sb-text-2` (the close button turns `--sb-text-1` on hover), the corners `--sb-radius`.

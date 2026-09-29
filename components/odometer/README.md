@@ -88,7 +88,7 @@ When the number gains a digit (9.9 → 10.0) the wheels snap to the new layout i
 
 ### Locales
 
-Separators follow `lang`, or else the nearest `lang` around it, also from outside a component it sits in, then the browser's language. A tag that is not a valid locale falls back to the browser's (`en_US` is read as `en-US`). The digits themselves are always 0–9, and read left to right, in right-to-left text too.
+Separators follow `lang`, or else the nearest `lang` around it, also from outside a component it sits in, then the browser's language. A tag that is not a valid locale falls back to the browser's (`en_US` is read as `en-US`). The digits themselves are always 0 to 9, and read left to right, in right-to-left text too.
 
 ```html preview
 <div style="display: grid; gap: 0.5rem; font-size: 1.5rem">

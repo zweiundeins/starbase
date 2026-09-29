@@ -73,7 +73,7 @@ Inside a `<form>`, `sb-range` submits its range under its `name`, in the format 
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
 - **Fonts:** the label, the range and the tick labels use your page's font.

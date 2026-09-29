@@ -149,7 +149,7 @@ Inside a `<form>`, `sb-select` submits its value under its `name` (`name=value`;
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** it fills the width it is given, up to `26rem`; set `max-inline-size` on the element to change that. The control is at least `2.75rem` tall and grows as chips wrap; the list is at most `18rem` tall (`max-block-size` on `::part(listbox)`).
 - **Fonts:** the label, the text you type, the chips and the options use your page's font.

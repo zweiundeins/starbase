@@ -77,7 +77,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `--sb-gauge-size` (default `12rem`) sets the width. The dial keeps its proportions and the value and label scale with it (never below a readable size).
 - **Fonts:** the value and the label use your page's font. A site that sets a display font (`--sb-font-display`, like Starbase's pixel font) gets it for the value; set `--sb-font-display` on the gauge to choose the value's font on its own.

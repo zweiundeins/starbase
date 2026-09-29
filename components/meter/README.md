@@ -22,7 +22,7 @@ playground:
 
 A row of pixel blocks lit up to `value`, from `min` to `max`. Any value above `min` lights at least one block, and only `max` lights them all. When the value changes, blocks light up in a quick cascade from the edge that moves.
 
-The whole bar changes colour at the `warn` and `danger` thresholds, given in value units. Left unset, they sit at 70% and 90% of the range (70 and 90 on 0–100). When `danger` is below `warn`, low values are the bad ones, as with fuel or batteries. To keep the bar in its normal colour, set both above `max`.
+The whole bar changes colour at the `warn` and `danger` thresholds, given in value units. Left unset, they sit at 70% and 90% of the range (70 and 90 on 0 to 100). When `danger` is below `warn`, low values are the bad ones, as with fuel or batteries. To keep the bar in its normal colour, set both above `max`.
 
 ## Examples
 
@@ -80,7 +80,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `--sb-meter-width` (default `22rem`) is the widest it gets, `--sb-meter-height` (default `12px`) the height of the blocks; `segments` sets how many there are.
 - **Fonts:** the label and the value use your page's font.

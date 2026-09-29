@@ -24,7 +24,7 @@ playground:
 
 An actions menu: a trigger opens a list of things the user can *do*, with submenus where a choice needs one. Choosing an item emits `sb-select` with `{ name, value }`, so a page posts it as a command and shows whatever the server renders next. A menu holds no value, so there is nothing pending and nothing to revert.
 
-**An actions menu keeps nothing.** No checkmark, no highlighted row, and the trigger keeps its label: it hands an intent over and forgets it, so everything visible afterwards is the page reacting (the demos here write the value into a signal). A menu that answers a question instead of doing something is the exception, and shows what is chosen — give that one [a current choice](#a-current-choice). For a value in a form, reach for [sb-select](/components/select).
+**An actions menu keeps nothing.** No checkmark, no highlighted row, and the trigger keeps its label: it hands an intent over and forgets it, so everything visible afterwards is the page reacting (the demos here write the value into a signal). A menu that answers a question instead of doing something is the exception, and shows what is chosen: give that one [a current choice](#a-current-choice). For a value in a form, reach for [sb-select](/components/select).
 
 The menu is a native `popover` in the top layer, positioned with CSS anchor positioning where the browser has it (and by hand, flipping and shifting, where it doesn't). No ancestor can clip it.
 
@@ -32,7 +32,7 @@ The menu is a native `popover` in the top layer, positioned with CSS anchor posi
 
 ### Actions
 
-`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}` — the string `"-"` is a divider too.
+`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`. The string `"-"` is a divider too.
 
 ```html preview
 <div data-signals:_actionPick="''" style="display: grid; gap: 12px; justify-items: start">
@@ -67,11 +67,11 @@ A submenu opens to the inline end of its parent item and flips to the start when
 
 ### A current choice
 
-Some menus answer a question instead of doing something — *Sort by*, *Density*, *Theme*. Make the root menu one radio group with `type="radio"`, or a single submenu into one with `type: "radio"` on its parent item.
+Some menus answer a question instead of doing something: *Sort by*, *Density*, *Theme*. Make the root menu one radio group with `type="radio"`, or a single submenu into one with `type: "radio"` on its parent item.
 
 **An item of the group changes a value, so it emits `sb-change` with `{ name, value }`; every other item stays an intent and emits `sb-select`. A menu may mix both kinds, and no item ever sends both.**
 
-The checked value is `value`, and the server owns it like every other value here: a changed attribute wins, `value=""` clears it, a removed one is ignored, and the live value is the `value` property. The demo plays the server with a signal — the menu reports the choice, the "server" sends the value back, and the check follows it.
+The checked value is `value`, and the server owns it like every other value here: a changed attribute wins, `value=""` clears it, a removed one is ignored, and the live value is the `value` property. The demo plays the server with a signal: the menu reports the choice, the "server" sends the value back, and the check follows it.
 
 ```html preview
 <div data-signals="{_sortPick: 'name'}" style="display: grid; gap: 12px; justify-items: start">
@@ -99,7 +99,7 @@ A group inside a submenu is the same thing one level down, and the rest of the m
 </div>
 ```
 
-**The trigger shows the choice.** With a value set it reads `<label>: <chosen label>` — *Sort by: Stars* — and falls back to the plain `label` when nothing is chosen. The label stays yours: set it statically or with `data-attr` and the trigger composes from whatever it says. An actions menu is untouched by this and keeps its label as it always did.
+**The trigger shows the choice.** With a value set it reads `<label>: <chosen label>` (*Sort by: Stars*), and falls back to the plain `label` when nothing is chosen. The label stays yours: set it statically or with `data-attr` and the trigger composes from whatever it says. An actions menu is untouched by this and keeps its label as it always did.
 
 #### A group across submenus
 
@@ -118,11 +118,11 @@ A group may reach into its submenus. The value is then the item values from the 
 </div>
 ```
 
-Choosing *Newest first* reports `date.newest`, and the trigger reads *Sort by: Newest first* — the leaf's own label, because the menu already shows which branch it sits in. A parent on the way is never selectable: it opens its submenu like any other parent, reports nothing of its own, and carries a faint mark so you can see where the choice lives. The server sets and clears the whole path as one value, with the rules from above: `value="date.oldest"` moves the check across levels, `value=""` clears it. Keep dots out of the item values of a group — they separate the segments.
+Choosing *Newest first* reports `date.newest`, and the trigger reads *Sort by: Newest first*, the leaf's own label, because the menu already shows which branch it sits in. A parent on the way is never selectable: it opens its submenu like any other parent, reports nothing of its own, and carries a faint mark so you can see where the choice lives. The server sets and clears the whole path as one value, with the rules from above: `value="date.oldest"` moves the check across levels, `value=""` clears it. Keep dots out of the item values of a group: they separate the segments.
 
 **One group per dropdown.** A second `type: "radio"` is ignored and reported to the console instead of guessed at; two questions want two dropdowns. Checkbox groups, with several items checked at once, can follow if anyone needs them.
 
-With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command is rejected — the same contract every value component follows:
+With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command is rejected. It is the same contract every value component follows:
 
 ```html
 <sb-dropdown name="sort" label="Sort by" type="radio" confirm value="name"
@@ -149,7 +149,7 @@ sb-dropdown:state(pending) { opacity: 0.85; }
 
 ### Your own trigger
 
-The `trigger` slot fills the trigger with your own content — text, an icon, an `sb-…` component. The button itself stays ours, so `aria-haspopup`, `aria-expanded` and the keyboard live in the shadow root and no morph can strip them. Keep the slot free of interactive elements (a button inside a button), and name the menu with `label`.
+The `trigger` slot fills the trigger with your own content: text, an icon, an `sb-…` component. The button itself stays ours, so `aria-haspopup`, `aria-expanded` and the keyboard live in the shadow root and no morph can strip them. Keep the slot free of interactive elements (a button inside a button), and name the menu with `label`.
 
 ```html preview
 <sb-dropdown label="More" placement="bottom-end" items='[{"value":"copy","label":"Copy link","icon":"🔗"},{"value":"share","label":"Share","icon":"📤"},{"divider":true},{"value":"remove","label":"Remove","danger":true}]'>
@@ -182,7 +182,7 @@ A slotted item opens a submenu with `data-children='[…]'`, the same JSON as `i
 
 ### Server data
 
-The menu is server data: a new `items` array replaces the whole tree whenever the server likes, and an open menu stays open — the open state is local and lives in a signal, so nothing about it is reset by a morph.
+The menu is server data: a new `items` array replaces the whole tree whenever the server likes, and an open menu stays open. The open state is local and lives in a signal, so nothing about it is reset by a morph.
 
 ```html preview
 <div data-signals="{_fleetAlt: false}" style="display: grid; gap: 12px; justify-items: start">
@@ -203,7 +203,7 @@ Give it a `name` and post the detail as it is:
   data-on:sb-select="@post('/cmd/ship', {payload: {tabid: $tabid, ...evt.detail}})"></sb-dropdown>
 ```
 
-A plain item is an intent, not a value: nothing is pending and there is nothing to revert, and the component shows no result of its own (a radio group is the exception, and has both). The server decides, and the page re-renders — see [Commands and components](/contribute#commands-and-components). When an item starts something slow, let the server render the pending state (a disabled item, a spinner in the page), never the menu.
+A plain item is an intent, not a value: nothing is pending and there is nothing to revert, and the component shows no result of its own (a radio group is the exception, and has both). The server decides, and the page re-renders (see [Commands and components](/contribute#commands-and-components)). When an item starts something slow, let the server render the pending state (a disabled item, a spinner in the page), never the menu.
 
 ## Open and closed
 
@@ -211,12 +211,12 @@ Opening and closing is local state. Clicks, the keyboard, an outside click and E
 
 The server still gets a say through the `open` attribute, with the usual rule:
 
-- The first `open` sets the initial state — `<sb-dropdown open items='…'>` is open on the first paint, without the opening animation.
+- The first `open` sets the initial state: `<sb-dropdown open items='…'>` is open on the first paint, without the opening animation.
 - A **changed** attribute wins over the local state: `open="false"` closes the menu, `open` re-opens it.
 - Re-sent identical markup changes nothing, because the morph never touches an attribute it already agrees with. That is what makes the attribute safe to render on every frame.
 - A **removed** attribute is ignored, like every other reflected attribute (morphs strip those). To close from the server, send `open="false"`: it closes a menu the user opened even when the element was rendered without `open`.
 
-From the client, use the property and the methods instead — they never touch the attribute:
+From the client, use the property and the methods instead. They never touch the attribute:
 
 ```js
 el.open          // true or false, live
@@ -251,11 +251,11 @@ sb-dropdown::part(trigger) { font-weight: 700; }
 It follows the WAI-ARIA menu button pattern:
 
 - **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s, dividers are `separator`s and disabled items are `aria-disabled`.
-- **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in — the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves. A parent that only leads to the choice stays a `menuitem` with `aria-haspopup`: its faint mark is decoration (`aria-hidden`), never a checked state. The trigger names what the menu is *and* what is chosen ("Sort by: Newest first"), so the visible text and the accessible name stay the same string.
+- **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in: the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves. A parent that only leads to the choice stays a `menuitem` with `aria-haspopup`: its faint mark is decoration (`aria-hidden`), never a checked state. The trigger names what the menu is *and* what is chosen ("Sort by: Newest first"), so the visible text and the accessible name stay the same string.
 - **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item, and the same letter again cycles through the items it starts (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
 - **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item, also when hovering opened it already; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.
 - **Pointer:** hovering a parent opens its submenu after a moment and leaving closes it a little later, so a diagonal path from the item into the submenu keeps it; a click on the parent keeps it open and moves the focus into it. Tapping a parent opens its submenu and tapping it again closes it, which is the only way back on a touch screen. While the menu has the focus, the focus follows the moving pointer, so one row is current and Enter chooses the row under the pointer.
-- **Focus:** real DOM focus moves onto the row inside the shadow root, so screen readers announce it and nothing in your markup is touched. When the server replaces the items while the menu is open, a row that is gone hands the focus to its neighbour, and the focus is only picked back up when it fell on the floor — see [Lists that hold the keyboard](/contribute#lists-that-hold-the-keyboard). A submenu whose parent is no longer a parent closes itself.
+- **Focus:** real DOM focus moves onto the row inside the shadow root, so screen readers announce it and nothing in your markup is touched. When the server replaces the items while the menu is open, a row that is gone hands the focus to its neighbour, and the focus is only picked back up when it fell on the floor (see [Lists that hold the keyboard](/contribute#lists-that-hold-the-keyboard)). A submenu whose parent is no longer a parent closes itself.
 - **Pointer:** an outside click closes the menu, disabled items ignore clicks.
 - **Motion:** the opening animation is skipped under `prefers-reduced-motion`, and for a menu that is already open on the first render.
 - **Forced colours:** the caret, the checks, the submenu arrows, the dividers and the edges of trigger and menu come back in system colours, and the focused row and trigger get an outline.

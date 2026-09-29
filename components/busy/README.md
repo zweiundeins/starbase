@@ -114,7 +114,7 @@ A skeleton usually stands in for the content it is waiting for, so give it the s
 
 ### A spinner inside the button
 
-The most common loading state there is. For a button, reach for [`sb-button`](/components/button)'s own `loading` prop first: it draws the same eight blinking dots as `sb-busy`, sized from the button's own text and colour, and it blocks clicks (mouse, Enter or Space) in the capture phase — which is what stops a double submit, and which a spinner sitting inside the button cannot do.
+The most common loading state there is. For a button, reach for [`sb-button`](/components/button)'s own `loading` prop first: it draws the same eight blinking dots as `sb-busy`, sized from the button's own text and colour, and it blocks clicks (mouse, Enter or Space) in the capture phase. That is what stops a double submit, and a spinner sitting inside the button cannot do it.
 
 ```html preview
 <div data-signals="{_synced: []}" style="display: flex; align-items: center; gap: 16px">
@@ -142,9 +142,9 @@ The most common loading state there is. For a button, reach for [`sb-button`](/c
 </div>
 ```
 
-Which one: `sb-button loading` when a click starts a command, because only the button itself can swallow the second click; the composed `sb-busy` when you want no page state at all, or a shape `sb-button` does not draw — a bar, a skeleton — or the `delay` and `min` timings the button prop deliberately leaves out.
+Which one: `sb-button loading` when a click starts a command, because only the button itself can swallow the second click; the composed `sb-busy` when you want no page state at all, or a shape `sb-button` does not draw (a bar, a skeleton), or the `delay` and `min` timings the button prop deliberately leaves out.
 
-The composed version needs no `for`: the default rule watches any request from inside the host's parent element, and here that parent *is* the button it sits in. Point `for` at the button (`for="#save"`) only when the spinner lives somewhere else on the page. The same wiring works for `@post('/cmd/…')` — `sb-busy` watches the element, not the method.
+The composed version needs no `for`: the default rule watches any request from inside the host's parent element, and here that parent *is* the button it sits in. Point `for` at the button (`for="#save"`) only when the spinner lives somewhere else on the page. The same wiring works for `@post('/cmd/…')`: `sb-busy` watches the element, not the method.
 
 Two details make the composed spinner behave inside a button:
 
@@ -205,7 +205,7 @@ Parts: `base` (the indicator, shown while it is up), `spinner`, `bar`, `fill`, `
 | `--sb-text-2` | the label |
 | `--sb-notch` | pixel corners on the bar and the skeleton (`0` falls back to a border radius) |
 
-`inline-size` on the host sizes the bar and the skeleton. The host also carries `:state(busy)` while the indicator is up — a CSS custom state, so a server morph cannot reset it:
+`inline-size` on the host sizes the bar and the skeleton. The host also carries `:state(busy)` while the indicator is up. It is a CSS custom state, so a server morph cannot reset it:
 
 ```css
 form:has(sb-busy:state(busy)) { opacity: 0.6; }

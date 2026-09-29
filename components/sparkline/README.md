@@ -86,7 +86,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 
 ## Styling
 
-Style it from your page's CSS — no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
+Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size:** `--sb-sparkline-width` (default `12rem`) is the width of the line and the value together, and `--sb-sparkline-height` (default `2.25rem`) the height of the line. Its pixels stay square: the line is 24 of them high and as many wide as fit.
 - **Fonts:** the value uses your page's font.
