@@ -32,6 +32,9 @@ const anchors = CSS.supports('container-type: anchored')
 // The open popovers, innermost last: Escape closes only the top one.
 const layers = []
 
+// The side of the trigger as a logical position-area keyword.
+const AT = { top: 'block-start', bottom: 'block-end', start: 'inline-start', end: 'inline-end' }
+
 // Where the focus goes on open: an autofocus element, else the first one that
 // takes the focus, looking into the shadow roots of components on the way.
 const FOCUSABLE = ':is(a[href], button, input, select, textarea, summary, [tabindex]):not(:disabled, [tabindex^="-"])'
@@ -178,49 +181,74 @@ rocket('sb-popover', {
 	},
 	// Rendered once: the trigger and the panel hold the focus.
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, overrideProp, props }) => {
+	render: ({ html }) => html`
+		<span class="anchor" data-ref:anchor
+			data-on:click="@click()"
+			data-on:keydown="@key()"
+			data-on:pointerenter="@point(true)"
+			data-on:pointerleave="@point(false)"
+			data-on:focusin="@focus(true)"
+			data-on:focusout="@focus(false)"><slot name="trigger" data-ref:trig data-on:slotchange="@aria()"><button class="trigger" part="trigger" type="button" data-ref:btn
+				data-attr:aria-haspopup="$$hover ? null : 'dialog'"
+				data-attr:aria-expanded="$$hover ? null : String($$open)"
+				data-attr:aria-controls="$$hover ? null : 'pop'"
+				data-attr:aria-describedby="$$hover ? 'pop' : null"
+				data-text="$$label"></button></slot></span>
+		<div id="pop" class="pop" popover="manual" data-ref:pop
+			data-effect="el.togglePopover(!!$$open)"
+			data-attr:data-side="$$side"
+			data-style:position-area="$$area"
+			data-style:place-self="$$self"
+			data-style:left="$$x"
+			data-style:top="$$y"
+			data-attr:role="$$hover ? null : 'dialog'"
+			data-attr:aria-label="$$hover ? null : $$name"
+			data-class:anim="$$anim"
+			data-on:keydown="@key()"
+			data-on:pointerenter="@point(true)"
+			data-on:pointerleave="@point(false)"
+			data-on:focusin="@focus(true, true)"
+			data-on:focusout="@focus(false)">
+			<div class="panel" part="panel"><slot data-ref:content data-on:slotchange="@aria()"></slot></div>
+			<span class="arrow" part="arrow" aria-hidden="true" data-show="$$arrow" data-style:left="$$ax" data-style:top="$$ay"></span>
+		</div>
+	`,
+	onFirstRender: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, overrideProp, props, refs: { anchor, trig, btn, pop, content } }) => {
 		adoptStyles(host, styles)
-		let isOpen = props.open // plain too: cleanup runs after the signals are cleared
-		$$.open = isOpen
-		$$.anim = false // no fade-in for a panel that starts open
-		$$.label = props.label
-		$$.name = host.getAttribute('aria-label') || props.label
-		$$.hover = props.mode === 'hover'
-		$$.arrow = props.arrow
-		$$.side = props.placement.split('-')[0]
-
-		const $ = (s) => host.shadowRoot?.querySelector(s)
-		const pop = () => $('.pop')
-		const content = () => $('slot:not([name])')?.assignedElements({ flatten: true }) ?? []
-		const slotted = () => $('slot[name="trigger"]')?.assignedElements()[0]
-		const trigger = () => slotted() ?? $('.trigger')
+		// Everything the markup reads from the props. The anchored path is all
+		// position-area and place-self; the other one gets coordinates from place().
+		const sync = (p) => {
+			const [side, align] = p.placement.split('-')
+			const block = side === 'top' || side === 'bottom'
+			$$.label = p.label
+			$$.name = host.getAttribute('aria-label') || p.label
+			$$.hover = p.mode === 'hover'
+			$$.arrow = p.arrow
+			$$.side = side
+			if (!anchors) return
+			// Centred: the whole row (or column) is the area, so a panel wider
+			// than the trigger still fits and the fallbacks get their turn.
+			$$.area = `self-${AT[side]} ${align ? `span-self-${block ? 'inline' : 'block'}-${align === 'start' ? 'end' : 'start'}` : 'span-all'}`
+			$$.self = align ? '' : block ? 'normal anchor-center' : 'anchor-center normal'
+		}
+		sync(props)
+		const slotted = () => trig.assignedElements()[0]
+		const trigger = () => slotted() ?? btn
+		const panel = () => content.assignedElements({ flatten: true })
 
 		// Without anchored container queries: fixed coordinates, flipped to the
 		// other side when only that one has room, shifted back into the viewport.
 		const place = () => {
-			const p = pop()
-			const a = $('.anchor')
-			if (!p || !a) return
+			if (anchors || !isOpen) return
 			let [side, align] = props.placement.split('-')
 			const block = side === 'top' || side === 'bottom'
-			if (anchors) {
-				$$.side = side
-				const at = { top: 'block-start', bottom: 'block-end', start: 'inline-start', end: 'inline-end' }[side]
-				// Centred: the whole row (or column) is the area, so a panel wider
-				// than the trigger still fits and the fallbacks get their turn.
-				p.style.positionArea = `self-${at} ${align ? `span-self-${block ? 'inline' : 'block'}-${align === 'start' ? 'end' : 'start'}` : 'span-all'}`
-				p.style.placeSelf = align ? '' : block ? 'normal anchor-center' : 'anchor-center normal'
-				return
-			}
-			if (!isOpen) return
-			const r = a.getBoundingClientRect()
+			const r = anchor.getBoundingClientRect()
 			const rtl = getComputedStyle(host).direction === 'rtl'
-			const w = p.offsetWidth
-			const h = p.offsetHeight
+			const w = pop.offsetWidth
+			const h = pop.offsetHeight
 			// The viewport without its scrollbars.
 			const { clientWidth: vw, clientHeight: vh } = document.documentElement
-			const pad = 8
-			const fits = (v, size, max) => v >= pad && v + size <= max - pad
+			const fits = (v, size, max) => v >= GAP && v + size <= max - GAP
 			// Across the edge: after the trigger (or before it), or the other way
 			// round when only that fits. Along it: aligned to lo (-1), hi (1) or centred.
 			const across = (lo, hi, size, max, after) => {
@@ -228,7 +256,7 @@ rocket('sb-popover', {
 				return fits(x, size, max) || !fits(y, size, max) ? x : y
 			}
 			const along = (lo, hi, size, al) => (al ? (al < 0 ? lo : hi - size) : (lo + hi - size) / 2)
-			const shift = (v, size, max) => Math.round(Math.min(Math.max(pad, v), Math.max(pad, max - size - pad))) + 'px'
+			const shift = (v, size, max) => Math.round(Math.min(Math.max(GAP, v), Math.max(GAP, max - size - GAP))) + 'px'
 			let left
 			let top
 			if (block) {
@@ -241,12 +269,10 @@ rocket('sb-popover', {
 				side = (left > r.left) !== rtl ? 'end' : 'start'
 			}
 			$$.side = side
-			p.style.left = shift(left, w, vw)
-			p.style.top = shift(top, h, vh)
-			Object.assign($('.arrow').style, {
-				left: (block ? r.left + r.width / 2 - 6 : left > r.left ? r.right : r.left - GAP) + 'px',
-				top: (block ? (side === 'bottom' ? r.bottom : r.top - GAP) : r.top + r.height / 2 - 6) + 'px',
-			})
+			$$.x = shift(left, w, vw)
+			$$.y = shift(top, h, vh)
+			$$.ax = (block ? r.left + r.width / 2 - 6 : left > r.left ? r.right : r.left - GAP) + 'px'
+			$$.ay = (block ? (side === 'bottom' ? r.bottom : r.top - GAP) : r.top + r.height / 2 - 6) + 'px'
 		}
 
 		// Your trigger is page markup that a morph resets: the watcher below calls
@@ -258,64 +284,46 @@ rocket('sb-popover', {
 			for (const k in want) if (t.getAttribute(k) !== want[k]) want[k] === null ? t.removeAttribute(k) : t.setAttribute(k, want[k])
 			// An id can't point into the shadow root, but an element reference to
 			// the slotted content (same tree as the trigger) can.
-			const d = content()
+			const d = panel()
 			const had = t.ariaDescribedByElements ?? []
 			if ($$.hover && (had.length !== d.length || d.some((el, i) => el !== had[i]))) t.ariaDescribedByElements = d
 		}
 
-		// No attribute form for these: a press anywhere in the document, Escape
-		// wherever the focus is, and scrolling while we position by hand.
-		const onDown = (evt) => evt.composedPath().includes(host) || setOpen(false, 'outside')
-		const onKey = (evt) => {
-			if (evt.key !== 'Escape' || evt.defaultPrevented || layers.at(-1) !== host) return
-			evt.preventDefault()
-			setOpen(false, 'escape')
-			// Dismissed: it stays closed until the pointer or the focus comes back.
-			hov = foc = false
-			clearTimeout(timer)
-		}
-		const onMove = () => place()
-		let bound = false
-		const bind = (on) => {
-			if (on === bound) return
-			bound = on
-			const m = on ? 'addEventListener' : 'removeEventListener'
-			document[m]('pointerdown', onDown, true)
-			document[m]('keydown', onKey)
-			if (!anchors) {
-				window[m]('scroll', onMove, { capture: true, passive: true })
-				window[m]('resize', onMove)
-			}
-		}
-
-		const apply = () => {
-			const p = pop()
-			if (!p) return // before the first render
-			try {
-				p.togglePopover(isOpen)
-			} catch {}
+		const layer = () => {
 			const i = layers.indexOf(host)
 			if (i >= 0) layers.splice(i, 1)
 			if (isOpen) layers.push(host)
-			place()
-			aria()
-			bind(isOpen)
 		}
+		// The data-effect shows the panel once the event that opened it is done:
+		// place it and move the focus in then.
+		const settle = (focus) =>
+			queueMicrotask(() =>
+				peek(() => {
+					place()
+					if (focus && isOpen && !$$.hover) first(panel())?.focus()
+				}),
+			)
 
+		let isOpen = props.open // plain too: cleanup runs after the signals are cleared
 		let timer = 0
 		const setOpen = (next, reason, focus) => {
 			clearTimeout(timer)
 			if (next === isOpen) return
 			// The focus goes back to the trigger when it was inside the panel,
 			// unless a press outside is taking it somewhere else.
-			const back = !next && reason !== 'outside' && pop()?.matches(':focus-within')
+			if (!next && reason !== 'outside' && pop.matches(':focus-within')) trigger()?.focus()
 			if (next) $$.anim = true
 			$$.open = isOpen = next
-			apply()
-			if (focus && next && !$$.hover) first(content())?.focus()
-			if (back) trigger()?.focus()
+			layer()
+			aria()
+			settle(focus)
 			emit(next ? 'sb-open' : 'sb-close', { name: props.name, reason })
 		}
+		$$.anim = false // no fade-in for a panel that starts open
+		$$.open = isOpen
+		layer()
+		aria()
+		settle()
 
 		// Hover mode: open a moment after the pointer or the focus came to trigger
 		// or panel, close a moment after both left, so the pointer can cross the gap.
@@ -327,19 +335,37 @@ rocket('sb-popover', {
 			const want = hov || foc
 			if (want !== isOpen) timer = setTimeout(() => peek(() => setOpen(want, want ? 'trigger' : 'leave')), want ? 400 : 300)
 		}
+		const dismiss = (evt) => {
+			if (evt.key !== 'Escape' || evt.defaultPrevented || !isOpen) return
+			evt.preventDefault()
+			setOpen(false, 'escape')
+			// Dismissed: it stays closed until the pointer or the focus comes back.
+			hov = foc = false
+			clearTimeout(timer)
+		}
+
+		// No attribute form for these: a press anywhere, scrolling, and Escape with
+		// the focus elsewhere, captured so the newest popover closes before a drawer
+		// around it. With the focus inside, @key() hears it after the panel's content.
+		const listen = (target, ...args) => {
+			target.addEventListener(...args)
+			cleanup(() => target.removeEventListener(...args))
+		}
+		listen(document, 'pointerdown', (evt) => isOpen && !evt.composedPath().includes(host) && setOpen(false, 'outside'), true)
+		listen(document, 'keydown', (evt) => layers.at(-1) === host && !evt.composedPath().includes(host) && dismiss(evt), true)
+		if (!anchors) {
+			listen(window, 'scroll', place, { capture: true, passive: true })
+			listen(window, 'resize', place)
+		}
 
 		// served is the server's last word on open: only a changed one wins, and a
 		// removed attribute is ignored (morphs also strip reflected ones).
 		let served = host.hasAttribute('open') ? props.open : null
-		const serverOpen = () => {
-			if (!host.hasAttribute('open')) return void (served = null)
-			if (props.open === served) return
-			setOpen((served = props.open), 'server')
-		}
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				serverOpen()
-				$$.name = host.getAttribute('aria-label') || props.label
+				if (!host.hasAttribute('open')) served = null
+				else if (props.open !== served) setOpen((served = props.open), 'server')
+				sync(props)
 				aria()
 			}),
 		)
@@ -347,16 +373,13 @@ rocket('sb-popover', {
 
 		observeProps((p) =>
 			peek(() => {
-				$$.label = p.label
-				$$.name = host.getAttribute('aria-label') || p.label
-				$$.hover = p.mode === 'hover'
-				$$.arrow = p.arrow
+				sync(p)
 				place()
 				aria()
 			}),
 		)
 
-		overrideProp('open', () => peek(() => $$.open), (v) => peek(() => setOpen(!!v && v !== 'false', 'api', true)))
+		overrideProp('open', () => isOpen, (v) => peek(() => setOpen(!!v && v !== 'false', 'api', true)))
 		defineHostProp('show', { value: () => peek(() => setOpen(true, 'api', true)) })
 		defineHostProp('hide', { value: () => peek(() => setOpen(false, 'api')) })
 
@@ -364,54 +387,24 @@ rocket('sb-popover', {
 			// Removed or moved while open: it closes, and says so, unless the
 			// server's open attribute brings it straight back.
 			if (isOpen && !served) setTimeout(() => emit('sb-close', { name: props.name, reason: 'api' }))
-			bind(false)
 			watch.disconnect()
 			clearTimeout(timer)
-			const i = layers.indexOf(host)
-			if (i >= 0) layers.splice(i, 1)
-			try {
-				pop()?.hidePopover()
-			} catch {}
+			isOpen = false
+			layer()
 		})
-		// A panel the server rendered open shows right after the first render.
-		queueMicrotask(() => peek(apply))
 
 		action('aria', () => peek(aria))
+		action('key', ({ evt }) => peek(() => dismiss(evt)))
 		// Hover mode takes a tap (no hover on a touch screen), not a mouse click.
 		action('click', ({ evt }) => peek(() => (!$$.hover || evt.pointerType === 'touch') && setOpen(!isOpen, 'trigger', true)))
 		action('point', ({ evt }, on) => peek(() => evt.pointerType !== 'touch' && ((hov = on), hovering())))
 		// The focus holds a hover card open, except a mouse click's on the
 		// trigger (it isn't :focus-visible, and the pointer is on it anyway).
-		action('focus', ({ evt }, on, panel) =>
+		action('focus', ({ evt }, on, inPanel) =>
 			peek(() => {
-				foc = on && (panel || !hov || evt.composedPath()[0].matches(':focus-visible'))
+				foc = on && (inPanel || !hov || evt.composedPath()[0].matches(':focus-visible'))
 				hovering()
 			}),
 		)
 	},
-	render: ({ html }) => html`
-		<span class="anchor"
-			data-on:click="@click()"
-			data-on:pointerenter="@point(true)"
-			data-on:pointerleave="@point(false)"
-			data-on:focusin="@focus(true)"
-			data-on:focusout="@focus(false)"><slot name="trigger" data-on:slotchange="@aria()"><button class="trigger" part="trigger" type="button"
-				data-attr:aria-haspopup="$$hover ? null : 'dialog'"
-				data-attr:aria-expanded="$$hover ? null : String($$open)"
-				data-attr:aria-controls="$$hover ? null : 'pop'"
-				data-attr:aria-describedby="$$hover ? 'pop' : null"
-				data-text="$$label"></button></slot></span>
-		<div id="pop" class="pop" popover="manual"
-			data-attr:data-side="$$side"
-			data-attr:role="$$hover ? null : 'dialog'"
-			data-attr:aria-label="$$hover ? null : $$name"
-			data-class:anim="$$anim"
-			data-on:pointerenter="@point(true)"
-			data-on:pointerleave="@point(false)"
-			data-on:focusin="@focus(true, true)"
-			data-on:focusout="@focus(false)">
-			<div class="panel" part="panel"><slot data-on:slotchange="@aria()"></slot></div>
-			<span class="arrow" part="arrow" aria-hidden="true" data-show="$$arrow"></span>
-		</div>
-	`,
 })
