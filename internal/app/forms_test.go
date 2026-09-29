@@ -37,6 +37,7 @@ func TestFormParticipation(t *testing.T) {
 const formsJS = `
 const cases = [
 	{ tag: 'sb-input', attrs: { value: 'server' }, local: 'mine', server: [['f', 'server']], mine: [['f', 'mine']] },
+	{ tag: 'sb-date-picker', attrs: { value: '2026-09-29' }, local: '2026-10-03', server: [['f', '2026-09-29']], mine: [['f', '2026-10-03']] },
 	{ tag: 'sb-code-editor', attrs: { value: 'a = 1' }, local: 'b = 2', server: [['f', 'a = 1']], mine: [['f', 'b = 2']] },
 	{ tag: 'sb-select', attrs: { options: '["A","B","C"]', value: 'A' }, local: 'B', server: [['f', 'A']], mine: [['f', 'B']] },
 	{ tag: 'sb-select', attrs: { multiple: '', options: '["A","B","C"]', value: '["A","C"]' }, local: [], server: [['f', 'A'], ['f', 'C']], mine: [] },
@@ -46,7 +47,6 @@ const cases = [
 	{ tag: 'sb-slider', attrs: { value: '30' }, local: 70, server: [['f', '30']], mine: [['f', '70']] },
 	{ tag: 'sb-rating', attrs: { value: '2' }, local: 4, server: [['f', '2']], mine: [['f', '4']] },
 	{ tag: 'sb-range', attrs: { value: '{"start":20,"end":60}' }, local: { start: 10, end: 30 }, server: [['f', '{"start":20,"end":60}']], mine: [['f', '{"start":10,"end":30}']] },
-	{ tag: 'sb-date-picker', attrs: { value: '2026-09-29' }, local: '2026-10-03', server: [['f', '2026-09-29']], mine: [['f', '2026-10-03']] },
 ]
 const settle = () => new Promise((r) => setTimeout(r, 60))
 const rows = []
