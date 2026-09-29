@@ -132,7 +132,7 @@ el.hide()  // close
 
 `sb-open` and `sb-close` carry `{ name, reason }`. An open comes from the `trigger`, the `server` or the `api` (the property and the methods). A close comes from the `trigger`, a press `outside`, `escape`, `leave` (hover mode: the pointer and the focus left), the `server` or the `api`, which also covers a panel removed or moved while open, unless the server's `open` attribute says open.
 
-Popovers nest: a press inside an inner panel keeps the outer one open, and Escape closes the innermost first. A component inside the panel that handles Escape itself (a dropdown's open menu) keeps the panel open when it cancels the key.
+Popovers nest: a press inside an inner panel keeps the outer one open, and Escape closes the innermost first, also before a drawer or a modal the popover sits in. A component inside the panel that handles Escape itself (a dropdown's open menu) keeps the panel open when it cancels the key.
 
 ## Styling
 
