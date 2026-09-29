@@ -13,7 +13,7 @@ Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node,
 
 ## Features
 
-- **34 components** (forms, navigation, feedback, layout, media, data, utilities, and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
+- **41 components** (forms, navigation, feedback, layout, media, data, utilities, and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
 - **Code playground:** edit a component's JS and HTML in a sandboxed live preview, save and share immutable links, submit the result as a component.
 - **Submissions without tools:** a GitHub issue form (paste code, link a repo or a playground link); a bot validates it and opens a pull request.
 - **Autoloader:** one `<script>` loads each `<sb-*>` component on first use, on any site.
@@ -46,7 +46,7 @@ Without GitHub credentials, dev builds sign you in as a fake user at `/auth/dev?
 
 ```html
 <script type="importmap">
-  { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" } }
+  { "imports": { "datastar": "https://<starbase>/c/datastar@<build>/datastar-rocket.js" } }
 </script>
 <script type="module" src="https://<starbase>/c/autoloader.js"></script>
 
@@ -63,8 +63,8 @@ The autoloader (generated from the catalog) imports each `<sb-*>` component the 
 
 ```html
 <script type="importmap">
-  { "imports": { "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js" },
-    "integrity": { "…": "…the map from https://<starbase>/c/@<catalog>/importmap.json, plus Datastar's" } }
+  { "imports": { "datastar": "https://<starbase>/c/datastar@<build>/datastar-rocket.js" },
+    "integrity": { "…": "…the map from https://<starbase>/c/@<catalog>/importmap.json" } }
 </script>
 <script type="module" src="https://<starbase>/c/@<catalog>/autoloader.js" integrity="sha384-…"></script>
 ```
@@ -75,7 +75,10 @@ Every component page's Installation section has this snippet with the current ca
 |---|---|
 | `/c/<slug>@<hash>/<file>.js` | one version of a component's file (its module and vendored files) |
 | `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions |
-| `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load |
+| `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load, Datastar's included |
+| `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.4 release with Starbase's fixes (`patches/rocket`), until they are released upstream |
+
+The components also run on the official Datastar release; the fixes are listed in `patches/rocket/README.md`.
 
 With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`.
 

@@ -85,12 +85,13 @@ func TestLoadReportsEveryProblem(t *testing.T) {
 		"widget/widget.js":   {Data: []byte("rocket('sb-widget', {})")},
 		"Bad_Name/README.md": {Data: []byte(validReadme)},
 		"nojs/README.md":     {Data: []byte(validReadme)},
+		"datastar/README.md": {Data: []byte(validReadme)},
 	}
 	_, err := catalog.Load(fsys)
 	if err == nil {
 		t.Fatal("expected errors")
 	}
-	for _, want := range []string{"must look like sb-my-widget", "unknown category", "YYYY-MM-DD", "kebab-case", "missing nojs.js"} {
+	for _, want := range []string{"must look like sb-my-widget", "unknown category", "YYYY-MM-DD", "kebab-case", "missing nojs.js", "reserved for the Datastar build"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error does not mention %q:\n%v", want, err)
 		}

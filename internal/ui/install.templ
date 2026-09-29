@@ -13,7 +13,7 @@ templ Installation(v InstallView) {
 		data-on:sb-change={ installChange() }
 	>
 		<div slot={ installSlot("autoloader") } class="install-panel">
-			<p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag: the autoloader imports each component the first time its tag appears, including tags a Datastar morph adds later.</p>
+			<p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag: the autoloader imports each component the first time its tag appears, including tags a Datastar morph adds later. The Datastar here is v1.0.4 with <a href={ safe(v.Patches) }>Starbase's fixes</a> until they are released; the components also run on the official release.</p>
 			@snippetBlock(v.Autoloader)
 			<p class="muted">No flash of undefined elements: put <code>class="sb-cloak"</code> on <code>{ "<html>" }</code> and add <code>{ ".sb-cloak :not(:defined) { visibility: hidden }" }</code> to your CSS. The autoloader removes the class once the page's components are defined.</p>
 		</div>

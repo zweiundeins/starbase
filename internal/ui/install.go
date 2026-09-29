@@ -28,6 +28,7 @@ type InstallView struct {
 	SelfHost   Snippet  // import map at your own Datastar, and your copies of the files
 	Files      []SelfHostGroup
 	Datastar   string // where to get datastar-rocket.js
+	Patches    string // the fixes in that build (patches/rocket on GitHub)
 }
 
 // SelfHostGroup is one component's files to copy (the component, then each

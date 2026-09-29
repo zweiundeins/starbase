@@ -56,7 +56,7 @@ func newServerBus(t *testing.T) (*httptest.Server, *http.Client, *cqrs.Bus, *cat
 	hub := cqrs.NewHub()
 	bus := cqrs.NewBus(d.W, hub, log)
 	go bus.Run(ctx)
-	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
+	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat, Datastar: static.Datastar()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := bus.Exec(ctx, commands.SeedDemo{}); err != nil {

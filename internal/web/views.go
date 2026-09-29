@@ -105,21 +105,17 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	}, nil
 }
 
-// DatastarVersion is the Datastar + Rocket release the snippets load from
-// jsDelivr; static/vendor/datastar-rocket-<version>.js is a copy of it (for its
-// integrity). Pages load a patched build of it (scripts/vendor-rocket.sh).
-const DatastarVersion = "v1.0.4"
-
-const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@" + DatastarVersion + "/bundles/datastar-rocket.js"
-
 // install builds a component page's Installation tabs (model.InstallTabs).
 // Every snippet is exactly what to paste: the explanations are the page's.
 func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, error) {
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
+	// The patched Datastar + Rocket build pages load, pinned like a component
+	// version (patches/rocket; every component works on the official release too).
+	dsURL := base + s.assets.datastar
 	usage := c.InstallMarkup()
 	deps := s.catalog.Deps(c)
 	all := append([]*catalog.Component{c}, deps...)
-	v := ui.InstallView{Tab: rc.prefs.InstallTabOrDefault(), Datastar: datastarCDN}
+	v := ui.InstallView{Tab: rc.prefs.InstallTabOrDefault(), Datastar: dsURL, Patches: strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/patches/rocket"}
 	for _, d := range deps {
 		v.Deps = append(v.Deps, d.Tag)
 	}
@@ -128,7 +124,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 		return fmt.Sprintf("<script type=\"importmap\">\n  { \"imports\": { \"datastar\": %q } }\n</script>\n", datastar)
 	}
 
-	v.Autoloader = snippet(importMap(datastarCDN) +
+	v.Autoloader = snippet(importMap(dsURL) +
 		fmt.Sprintf("<script type=\"module\" src=\"%s/c/autoloader.js\"></script>\n\n%s", base, usage))
 
 	// Integrity for everything the page will load: Datastar, and every file
@@ -136,7 +132,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	// code-editor's Prism). A script tag's integrity covers only that file, so
 	// the imported ones are pinned through the import map.
 	var entries strings.Builder
-	fmt.Fprintf(&entries, "      %q: %q", datastarCDN, s.assets.datastarSRI)
+	fmt.Fprintf(&entries, "      %q: %q", dsURL, s.assets.datastarSRI)
 	for _, d := range all {
 		for _, f := range d.Sizes.Files {
 			p := catalog.MinOf(f.Name)
@@ -157,7 +153,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
     }
   }
 </script>
-`, datastarCDN, entries.String())
+`, dsURL, entries.String())
 
 	// This component (and what it renders), pinned to this version.
 	var scripts strings.Builder

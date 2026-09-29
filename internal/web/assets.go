@@ -33,7 +33,8 @@ type assets struct {
 	bundleFits  bool                 // the bundle is within bundleBudget: pages load it
 	autoloader  generated            // /c/autoloader.js: loads <sb-*> modules on first use
 	autoTheme   generated            // /theme/auto.css: daylight's tokens for "auto" on light systems
-	datastarSRI string               // of the official release (datastarCDN)
+	datastar    string               // the pinned URL path of the Datastar build (datastarPath)
+	datastarSRI string               // its integrity
 	bundles     map[string]generated // /bundle/<name>.css: stylesheets in one file, minified
 	dev         bool
 }
@@ -73,9 +74,10 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 	}
 	auto := catalog.AutoloaderJS(cat, "")
 	a.autoloader = generated{body: []byte(auto), hash: hashOf([]byte(auto))}
-	// Of the official release the snippets load from jsDelivr, not of the patched
-	// build pages load (scripts/vendor-rocket.sh).
-	ds, _ := fs.ReadFile(staticFS, "vendor/datastar-rocket-"+DatastarVersion+".js")
+	// The Datastar build pages load, as install snippets pin it (SyncCatalog
+	// stores every build under catalog.DatastarSlug).
+	ds, _ := fs.ReadFile(staticFS, "vendor/"+catalog.DatastarFile)
+	a.datastar = "/c/" + catalog.DatastarSlug + "@" + catalog.VersionHash(ds) + "/" + catalog.DatastarFile
 	a.datastarSRI = catalog.SRI(ds)
 	css := autoThemeCSS(staticFS)
 	a.autoTheme = generated{body: []byte(css), hash: hashOf([]byte(css))}

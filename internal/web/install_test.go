@@ -3,7 +3,6 @@ package web_test
 import (
 	"encoding/json"
 	"html"
-	"io/fs"
 	"net/http"
 	"net/http/cookiejar"
 	"regexp"
@@ -13,11 +12,8 @@ import (
 
 	"starbase/internal/catalog"
 	"starbase/internal/commands"
-	"starbase/internal/web"
 	"starbase/static"
 )
-
-const datastarCDN = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js"
 
 // installPanels returns the Installation section's snippets by slot, as
 // their copy buttons copy them.
@@ -75,8 +71,9 @@ func TestInstallSnippets(t *testing.T) {
 		}
 	}
 
-	// Autoloader: the latest autoloader and the Datastar CDN.
-	if a := p["autoloader"]; !strings.Contains(a, `"datastar": "`+datastarCDN+`"`) || !strings.Contains(a, `<script type="module" src="`+ts.URL+`/c/autoloader.js"></script>`) {
+	// Autoloader: the latest autoloader and the pinned Datastar build.
+	datastarURL := ts.URL + "/c/datastar@" + catalog.VersionHash(static.Datastar()) + "/datastar-rocket.js"
+	if a := p["autoloader"]; !strings.Contains(a, `"datastar": "`+datastarURL+`"`) || !strings.Contains(a, `<script type="module" src="`+ts.URL+`/c/autoloader.js"></script>`) {
 		t.Errorf("autoloader panel:\n%s", a)
 	}
 
@@ -104,17 +101,13 @@ func TestInstallSnippets(t *testing.T) {
 	_, mapJSON := get(t, c, ts.URL+"/c/@"+cat.Hash+"/importmap.json")
 	var full struct{ Integrity map[string]string }
 	json.Unmarshal([]byte(mapJSON), &full)
-	ds, _ := fs.ReadFile(static.FS, "vendor/datastar-rocket-"+web.DatastarVersion+".js")
-	if entries[datastarCDN] != catalog.SRI(ds) {
+	if entries[datastarURL] != catalog.SRI(static.Datastar()) {
 		t.Error("pinned import map lacks Datastar's integrity")
 	}
 	if entries[ts.URL+"/c/"+slider.VersionedMinScript()] == "" {
 		t.Error("pinned import map lacks the component's module")
 	}
 	for u, sri := range entries {
-		if u == datastarCDN {
-			continue
-		}
 		if full.Integrity[u] != sri || servedSRI(t, c, u) != sri {
 			t.Errorf("%s: integrity %s doesn't match importmap.json or the served file", u, sri)
 		}
@@ -241,9 +234,6 @@ func TestInstallIntegrityCoversImports(t *testing.T) {
 			}
 			found := false
 			for u, sri := range entries {
-				if strings.Contains(u, "datastar-rocket.js") {
-					continue // the CDN copy; its hash is checked in TestInstallSnippets
-				}
 				if strings.HasSuffix(u, "/"+imported) {
 					found = true
 				}

@@ -159,9 +159,27 @@ func Load(fsys fs.FS) (*Catalog, error) {
 // component then gets a new version, whose .min files are made the new way.
 const minFormat = "min2"
 
+// The Datastar + Rocket build pages load (static/vendor, patches/rocket) is
+// served like a component version, /c/datastar@<hash>/datastar-rocket.js, so
+// install snippets can pin it; no component may take its name.
+const (
+	DatastarSlug = "datastar"
+	DatastarFile = "datastar-rocket.js"
+)
+
+// VersionHash names a version of some bytes in a URL: the first 12 hex digits
+// of their SHA-256.
+func VersionHash(b []byte) string {
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:])[:12]
+}
+
 func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	if !slugRe.MatchString(slug) {
 		return nil, fmt.Errorf("folder name must be kebab-case")
+	}
+	if slug == DatastarSlug {
+		return nil, fmt.Errorf("%q is reserved for the Datastar build", slug)
 	}
 	readme, err := fs.ReadFile(fsys, path.Join(slug, "README.md"))
 	if err != nil {

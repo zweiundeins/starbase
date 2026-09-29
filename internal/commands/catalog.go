@@ -16,7 +16,8 @@ import (
 // SyncCatalog mirrors the embedded component folders into SQLite. Components
 // whose folders were removed are deactivated, keeping their stars.
 type SyncCatalog struct {
-	Catalog *catalog.Catalog
+	Catalog  *catalog.Catalog
+	Datastar []byte // the patched Datastar + Rocket build, kept for good like a component version
 }
 
 func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
@@ -71,6 +72,12 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 			}
 		}
 	}
+	if len(c.Datastar) > 0 {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			catalog.DatastarSlug, catalog.VersionHash(c.Datastar), catalog.DatastarFile, c.Datastar, catalog.SRI(c.Datastar), now); err != nil {
+			return err
+		}
+	}
 	// And the snapshot of the whole catalog, with its frozen autoloader.
 	auto := catalog.AutoloaderJS(c.Catalog, "../")
 	res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO catalog_snapshots (hash, autoloader, integrity, created_at) VALUES (?, ?, ?, ?)`,
@@ -82,6 +89,13 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 		for _, comp := range c.Catalog.Components {
 			if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
 				c.Catalog.Hash, comp.Slug, comp.Hash); err != nil {
+				return err
+			}
+		}
+		// A new snapshot also pins the Datastar build it was published with.
+		if len(c.Datastar) > 0 {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
+				c.Catalog.Hash, catalog.DatastarSlug, catalog.VersionHash(c.Datastar)); err != nil {
 				return err
 			}
 		}

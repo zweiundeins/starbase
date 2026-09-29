@@ -54,7 +54,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		database.Close()
 	}
 
-	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
+	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat, Datastar: static.Datastar()}); err != nil {
 		closeAll()
 		return nil, err
 	}
