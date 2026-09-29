@@ -46,6 +46,7 @@ const cases = [
 	{ tag: 'sb-slider', attrs: { value: '30' }, local: 70, server: [['f', '30']], mine: [['f', '70']] },
 	{ tag: 'sb-rating', attrs: { value: '2' }, local: 4, server: [['f', '2']], mine: [['f', '4']] },
 	{ tag: 'sb-range', attrs: { value: '{"start":20,"end":60}' }, local: { start: 10, end: 30 }, server: [['f', '{"start":20,"end":60}']], mine: [['f', '{"start":10,"end":30}']] },
+	{ tag: 'sb-date-picker', attrs: { value: '2026-09-29' }, local: '2026-10-03', server: [['f', '2026-09-29']], mine: [['f', '2026-10-03']] },
 ]
 const settle = () => new Promise((r) => setTimeout(r, 60))
 const rows = []
