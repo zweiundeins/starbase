@@ -98,11 +98,11 @@ rocket('sb-modal', {
 
 		action('close', (_, reason = 'button') => close(reason))
 		// Elements marked data-sb-close close the dialog and report their value
-		// (or their text). Only our own: one in a nested sb-modal's light DOM is
-		// inside this host too, and closes just that inner dialog.
+		// (or their text). Only our own: one in a nested sb-modal's or
+		// sb-drawer's light DOM is inside this host too, and closes just that one.
 		action('click', ({ evt }) => {
 			const btn = evt.target.closest?.('[data-sb-close]')
-			if (btn?.closest(host.localName) === host) close('action', btn.getAttribute('data-sb-close') || btn.textContent.trim())
+			if (btn?.closest('sb-modal,sb-drawer') === host) close('action', btn.getAttribute('data-sb-close') || btn.textContent.trim())
 		})
 	},
 	// No ids in here: toggling inline swaps <section> and <dialog> around the
