@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"starbase/internal/demo"
 )
 
 func TestDemoDataEndpoints(t *testing.T) {
@@ -86,7 +88,8 @@ func TestDemoList(t *testing.T) {
 		"datastar-patch-elements",
 		`<sb-virtual-scroll id="stars" offset="999998" total="1000000" data-preserve-attr="`,
 		`<div slot="header" aria-hidden="true">`,
-		`<div role="listitem" aria-posinset="1000000" aria-setsize="1000000"><b>SB 1000000</b>`,
+		`<div role="listitem" aria-posinset="1000000" aria-setsize="1000000"><b>` + demo.StarAt(999999).Name + `</b>`,
+		`<span>Planets</span></div>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q in\n%.600s", want, body)
