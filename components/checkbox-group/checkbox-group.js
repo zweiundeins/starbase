@@ -214,7 +214,7 @@ rocket('sb-checkbox-group', {
 				const a = host.getAttribute('value')
 				if (a !== null && a !== keep.served) $$.value = list(a)
 				keep.served = a
-				$$.aria = host.getAttribute('aria-label')
+				$$.aria = host.getAttribute('aria-label') ?? '' // a null would delete the signal
 				$$.all = host.hasAttribute('select-all') ? props.selectAll || 'All' : ''
 				rebuild()
 			})
@@ -294,7 +294,7 @@ rocket('sb-checkbox-group', {
 	render: ({ html }) => html`
 		<div class="group" part="base" role="group"
 			data-attr:aria-labelledby="$$label ? 'label' : null"
-			data-attr:aria-label="$$label ? null : $$aria"
+			data-attr:aria-label="($$label ? '' : $$aria) || null"
 			data-attr:aria-disabled="$$disabled ? 'true' : null">
 			<span id="label" class="label" part="label" data-show="$$label" data-text="$$label"></span>
 			<div class="items" part="items"
