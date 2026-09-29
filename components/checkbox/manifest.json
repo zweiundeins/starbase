@@ -1,0 +1,92 @@
+{
+  "tag": "sb-checkbox",
+  "props": [
+    {
+      "name": "checked",
+      "attribute": "checked",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Checked or not. A new state from the server wins (send checked=\"false\" to clear it); the live state is the checked property."
+      }
+    },
+    {
+      "name": "indeterminate",
+      "attribute": "indeterminate",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Shows the mixed state (the server says \"some\"). A click resolves it to checked; the live state is the indeterminate property."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Visible label next to the box, and its accessible name."
+      }
+    },
+    {
+      "name": "disabled",
+      "attribute": "disabled",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Disable interaction."
+      }
+    },
+    {
+      "name": "name",
+      "attribute": "name",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Name reported in sb-change (e.g. the field of a command), and the field it submits in a form."
+      }
+    },
+    {
+      "name": "value",
+      "attribute": "value",
+      "type": "string",
+      "default": "on",
+      "required": false,
+      "docs": {
+        "description": "What a form submits under name while checked, like a native checkbox."
+      }
+    },
+    {
+      "name": "confirm",
+      "attribute": "confirm",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Server-confirmed value: :state(pending) while the local state differs from the server's checked attribute (see revert())."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "event",
+      "name": "change",
+      "bubbles": true,
+      "composed": true,
+      "description": "After the user checks or clears the box."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-change",
+      "bubbles": true,
+      "composed": true,
+      "description": "Same moment. detail: { name, value, checked } (value is the checked state): ready for a command."
+    }
+  ]
+}
