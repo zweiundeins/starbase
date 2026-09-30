@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket: a light component inside data-ignore-morph</title>
+<p>A light-DOM component with a <code>render</code>, once inside a <code>data-ignore-morph</code> element and once outside. The result prints below.</p>
+<div id="ignored" data-ignore-morph></div>
+<div id="plain"></div>
+<pre id="out"></pre>
+<script type="module">
+  import { rocket } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+  rocket('x-badge', {
+    mode: 'light',
+    props: ({ string }) => ({ label: string }),
+    render: ({ html, props }) => html`<b>${props.label}</b>`,
+  })
+  await customElements.whenDefined('x-badge')
+  const make = (label) => Object.assign(document.createElement('x-badge'), { label })
+  const inside = make('one')
+  ignored.append(inside)
+  plain.append(make('one'))
+  await new Promise(requestAnimationFrame)
+  const lines = [`inside: ${ignored.textContent || '(nothing)'}`, `outside: ${plain.textContent}`]
+  inside.label = 'two'
+  await new Promise(requestAnimationFrame)
+  lines.push(`inside after a prop change: ${ignored.textContent || '(nothing)'}`)
+  out.textContent = lines.join('\n') // v1.0.4: (nothing), one, (nothing)
+  console.log(out.textContent)
+</script>

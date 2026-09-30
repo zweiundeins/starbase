@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket: a queued definition leaves light children unbound</title>
+<p>The module calls <code>rocket()</code> right after the import, before Datastar's first pass, so the definition waits for <code>datastar-ready</code>. The children below should read "bound", and the button should count.</p>
+<x-card>
+  <span data-text="'bound'">not bound</span>
+  <button data-signals:clicks="0" data-on:click="$clicks++" data-text="'clicked ' + $clicks">not bound</button>
+</x-card>
+<pre id="out"></pre>
+<script type="module">
+  import { rocket } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+  rocket('x-card', { render: ({ html }) => html`<slot></slot>` })
+  setTimeout(() => {
+    document.querySelector('x-card button').click()
+    out.textContent = [...document.querySelectorAll('x-card > *')].map((el) => el.textContent).join('\n') // v1.0.4: not bound, not bound
+    console.log(out.textContent)
+  }, 500)
+</script>

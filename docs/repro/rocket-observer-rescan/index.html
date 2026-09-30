@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket: reordering rows costs O(n²)</title>
+<p>Reorders the rows of a table with <code>replaceChildren()</code> at three sizes. With only the bundle loaded (no component), the time grows with the square of the row count. The result prints below.</p>
+<pre id="out"></pre>
+<table><tbody id="rows"></tbody></table>
+<script type="module">
+  import 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+  const row = (i) => {
+    const tr = document.createElement('tr')
+    for (let c = 0; c < 8; c++) tr.insertCell().textContent = i + '.' + c
+    return tr
+  }
+  for (const n of [250, 500, 1000]) {
+    rows.replaceChildren(...Array.from({ length: n }, (_, i) => row(i)))
+    await new Promise((r) => setTimeout(r))
+    const t0 = performance.now()
+    rows.replaceChildren(...[...rows.rows].reverse()) // the same rows, reordered
+    await new Promise((r) => setTimeout(r)) // after the mutation observers ran
+    out.textContent += `${n} rows: ${Math.round(performance.now() - t0)} ms\n` // v1.0.4: about 200, 750, 2900 ms
+  }
+  rows.replaceChildren()
+  console.log(out.textContent)
+</script>

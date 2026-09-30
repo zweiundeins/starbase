@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket: removed elements stay alive</title>
+<p>Creates 200 Rocket elements, removes them and holds only weak references. Collect garbage (DevTools, Memory panel, the bin icon), then press check.</p>
+<button id="check">check</button>
+<pre id="out"></pre>
+<div id="box"></div>
+<script type="module">
+  import { rocket } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+  rocket('x-tile', { render: ({ html }) => html`<b>tile</b>` })
+  await customElements.whenDefined('x-tile')
+  const refs = []
+  for (let i = 0; i < 200; i++) {
+    const el = document.createElement('x-tile')
+    box.append(el)
+    refs.push(new WeakRef(el))
+  }
+  await new Promise(requestAnimationFrame)
+  box.replaceChildren()
+  check.onclick = () => {
+    out.textContent = `${refs.filter((r) => r.deref()).length} of 200 removed elements still alive` // v1.0.4: 200
+    console.log(out.textContent)
+  }
+</script>
