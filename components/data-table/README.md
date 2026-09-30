@@ -20,10 +20,10 @@ playground:
   style: "block-size: 18rem"
   props: {rowHeight: {min: 24, max: 64}}
   values: {selection: single, label: Star catalog}
-  exclude: [offset, total, rowKey, buffer, confirm, name]
+  exclude: [offset, total, rowKey, buffer, confirm, name, hiddenColumns]
 ---
 
-A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
+A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges, and a column picker lets the user hide columns. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
 
 The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith). Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders.
 
@@ -75,6 +75,23 @@ A value can be a cell object instead of a plain value: `{"value": 2634.1, "suffi
   columns='[{"key":"name","label":"Moon","sortable":true},{"key":"radius","label":"Radius","align":"end","sortable":true},{"key":"group","label":"Group","width":"7rem","sortable":true}]'
   rows='[{"id":"io","name":{"value":"Io","href":"https://en.wikipedia.org/wiki/Io_(moon)"},"radius":{"value":1821.6,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"europa","name":{"value":"Europa","href":"https://en.wikipedia.org/wiki/Europa_(moon)"},"radius":{"value":1560.8,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"ganymede","name":{"value":"Ganymede","href":"https://en.wikipedia.org/wiki/Ganymede_(moon)"},"radius":{"value":2634.1,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"callisto","name":{"value":"Callisto","href":"https://en.wikipedia.org/wiki/Callisto_(moon)"},"radius":{"value":2410.3,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"amalthea","name":{"value":"Amalthea","href":"https://en.wikipedia.org/wiki/Amalthea_(moon)"},"radius":{"value":83.5,"suffix":"km"},"group":{"value":"Inner","tone":"neutral"}},{"id":"test","name":"<b>not bold</b>","radius":{"value":0.5,"suffix":"km"},"group":{"value":"Made up","tone":"warning"}}]'></sb-data-table>
 ```
+
+### Columns the user picks
+
+With `column-picker`, a Columns button above the table opens a menu of every column, each with a checkbox. `hidden-columns` holds the keys of the columns not shown. It is view state, like a tree's expanded branches: the table works without anyone keeping it, and when the user changes it, the table emits `sb-columns` with the whole list. Here a page signal keeps it:
+
+```html preview
+<div data-signals="{_hidden: ['mass']}" style="display: grid; gap: 12px">
+  <sb-data-table label="Planets" column-picker style="inline-size: min(100%, 40rem)"
+    columns='[{"key":"name","label":"Planet"},{"key":"moons","label":"Moons","align":"end","width":"5rem"},{"key":"radius","label":"Radius","align":"end"},{"key":"mass","label":"Mass (Earths)","align":"end"},{"key":"day","label":"Day","align":"end"}]'
+    rows='[{"id":"mercury","name":"Mercury","moons":0,"radius":{"value":2439.7,"suffix":"km"},"mass":0.055,"day":{"value":4222.6,"suffix":"h"}},{"id":"venus","name":"Venus","moons":0,"radius":{"value":6051.8,"suffix":"km"},"mass":0.815,"day":{"value":2802,"suffix":"h"}},{"id":"earth","name":"Earth","moons":1,"radius":{"value":6371,"suffix":"km"},"mass":1,"day":{"value":24,"suffix":"h"}},{"id":"mars","name":"Mars","moons":2,"radius":{"value":3389.5,"suffix":"km"},"mass":0.107,"day":{"value":24.7,"suffix":"h"}},{"id":"jupiter","name":"Jupiter","moons":95,"radius":{"value":69911,"suffix":"km"},"mass":317.8,"day":{"value":9.9,"suffix":"h"}}]'
+    data-attr:hidden-columns="JSON.stringify($_hidden)" data-preserve-attr="hidden-columns"
+    data-on:sb-columns="$_hidden = evt.detail.hidden"></sb-data-table>
+  <span>Hidden: <b data-text="$_hidden.join(', ') || 'nothing'"></b></span>
+</div>
+```
+
+A server that should remember the choice posts `sb-columns` as a command and keeps the list as a session preference, so the next page renders it into `hidden-columns`. A new list from the server wins over the user's, the same list again leaves it alone, and `el.hiddenColumns` reads or sets the list on the page without an event. At least one column always shows: the menu won't hide the last one, and a list that hides every column still shows the first.
 
 ## Server side
 
@@ -187,7 +204,7 @@ func (r *Reader) DemoStars(ctx context.Context, sort string, desc bool, offset, 
 
 Give it a `name` and a `selection`, and it emits `sb-change` with `{ name, value }` (an array of row keys) when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` matches, and `revert()` goes back to the server's selection when a command is rejected. See [Commands and components](/contribute#commands-and-components).
 
-A new `selected` from the server always wins, and `selected="[]"` clears it. Markup re-sent with the same `selected` leaves the user's selection alone. The order (`sort`) is not part of the value: it only ever comes from the server.
+A new `selected` from the server always wins, and `selected="[]"` clears it. Markup re-sent with the same `selected` leaves the user's selection alone. The order (`sort`) is not part of the value: it only ever comes from the server. Neither is `hidden-columns`: it is view state with its own event (`sb-columns`), never pending, and `revert()` leaves it as it is.
 
 ## Columns and rows
 
@@ -217,8 +234,9 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** it fills the width it is given and is at most `24rem` tall; set `block-size` or `max-block-size` on the element to change that. Rows are `row-height` tall. Set `font-size` on the element (default `0.875rem`) to scale the text.
 - **Fonts:** the header and the cells use your page's font.
 - **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, and placeholders are sb-virtual-scroll's `--sb-surface-hover` bars. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1.
+- **Toolbar:** it shows above the table with `column-picker`, or while a control you put in its slot shows (one with `hidden`, or hidden by `data-show`, doesn't count). The Columns button and its menu are `--sb-surface-raised` with a `--sb-border` frame and `--sb-text-2` text; checkboxes take `--sb-brand`.
 - **Rich cells:** links are `--sb-brand-light` and underlined, suffixes `--sb-text-muted`. Badges take their tone from `--sb-info`, `--sb-ok`, `--sb-warn` and `--sb-danger` (`neutral` from `--sb-text-muted`), with a tinted background and border.
-- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. In rows with cell objects, a cell holds a `text` (also `link` for a link, `badge` for a badge, so `::part(text badge)` styles only badges) and a `suffix`. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. In rows with cell objects, a cell holds a `text` (also `link` for a link, `badge` for a badge, so `::part(text badge)` styles only badges) and a `suffix`. Above the table: `toolbar`, `columns-button`, `columns-menu` (the popover) and `column-option` (a label with its checkbox). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -239,4 +257,5 @@ It follows the WAI-ARIA grid pattern:
 - **Focus:** one cell at a time is in the tab order: the first header, then the cell focused last, or the header again once that cell's row is gone. Sortable headers are buttons.
 - **Keys:** the arrows move between cells, Home and End to the first and last cell of the row, Ctrl+Home to the first header, Ctrl+End to the last cell of the last row, Page Up and Page Down by a view. Moving past the rendered rows scrolls there, and the focus lands when the rows arrive. Space selects or unselects the row, Enter emits `sb-row-activate` (so does a double click, which selects only once). On a sortable header, Enter or Space sorts.
 - **Links in cells:** a link is not a tab stop of its own; the cell is, and Enter on it follows the link (after `sb-cell-activate`). Space still selects the row.
+- **Column menu:** the Columns button has `aria-haspopup="dialog"` and `aria-expanded`, and opens a dialog named by `columns-label` with a native checkbox per column. The focus goes to the first checkbox; Tab and Shift+Tab cycle through them, Space toggles one (the focus stays on it), and Escape closes only the menu, also inside a drawer, and returns the focus to the button.
 - **Badges:** a tone is colour only, so the badge's text has to carry the meaning ("Failed", not a red dot). In forced colours, links use the system's link colour and badges keep a border.

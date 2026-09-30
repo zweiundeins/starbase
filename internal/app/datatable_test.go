@@ -5,10 +5,11 @@ import (
 	"testing"
 )
 
-// TestDataTableCells checks sb-data-table's cell objects in the browser, one
-// row per check: links only for http, https and mailto, text that is never
-// markup or an expression, suffixes and badges, the local sort by value, a
-// fixed row height, sb-cell-activate, and the plain loop kept for plain rows.
+// TestDataTableCells checks sb-data-table's cell objects and column picker in
+// the browser, one row per check: links only for http, https and mailto, text
+// that is never markup or an expression, suffixes and badges, the local sort
+// by value, a fixed row height, sb-cell-activate, the plain loop kept for plain
+// rows, and hidden-columns as view state with its menu's focus and keys.
 func TestDataTableCells(t *testing.T) {
 	_, body := probe(t, "/", dataTableJS)
 	var rows []struct {
@@ -51,6 +52,9 @@ const texts = (el, j = 0) => $$(el, '.row').map((r) => r.querySelectorAll('.cell
 const resolved = (u) => new URL(u, document.baseURI).href
 const checks = []
 const check = (f) => checks.push(f)
+// An error anywhere on the page (a component's effect, an action) fails the check it happened in.
+addEventListener('error', (e) => out.push({ check: n, error: 'page: ' + (e.error?.stack || e.message) }))
+addEventListener('unhandledrejection', (e) => out.push({ check: n, error: 'page: ' + (e.reason?.stack || e.reason) }))
 
 check(async () => {
 	const el = await make({ columns: [{ key: 'name' }], rows: [
@@ -202,6 +206,167 @@ check(async () => {
 	row('back to plain', loops(el), [2, 0])
 	row('plain cells again', bare(), true)
 	el.remove()
+})
+
+check(async () => {
+	const cols = [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }, { key: 'c', label: 'C' }]
+	const el = await make({ 'column-picker': '', 'hidden-columns': ['b'], selection: 'multiple', confirm: '', selected: [], columns: cols,
+		rows: [{ id: 1, a: 'a1', b: 'b1', c: 'c1' }, { id: 2, a: 'a2', b: 'b2', c: 'c2' }] })
+	const heads = () => $$(el, '.th').map((t) => t.lastElementChild.textContent)
+	const shows = (x) => getComputedStyle(x).display !== 'none'
+	const toolbar = $(el, '.toolbar'), button = $(el, '.columns'), menu = $(el, '.menu')
+	const boxes = () => $$(el, '.menu input')
+	const focused = () => boxes().indexOf(el.shadowRoot.activeElement)
+	const key = (k, shiftKey = false) => el.shadowRoot.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, composed: true, cancelable: true }))
+	const got = []
+	el.addEventListener('sb-columns', (e) => got.push(e.detail))
+	row('hidden columns leave the header', heads(), ['A', 'C'])
+	row('and the rows', $$(el, '.row').map((r) => [...r.querySelectorAll('.cell')].map((c) => c.textContent)), [['a1', 'c1'], ['a2', 'c2']])
+	row('the toolbar shows its Columns button', [shows(toolbar), shows(button), button.textContent], [true, true, 'Columns'])
+	row('the button', ['aria-haspopup', 'aria-controls', 'aria-expanded', 'popovertarget'].map((a) => button.getAttribute(a)), ['dialog', 'columns', 'false', 'columns'])
+	row('the menu', ['popover', 'role', 'aria-modal', 'aria-label'].map((a) => menu.getAttribute(a)), ['auto', 'dialog', 'true', 'Columns'])
+	const forced = [...el.shadowRoot.adoptedStyleSheets].flatMap((s) => [...s.cssRules]).filter((r) => r.conditionText === '(forced-colors: active)').flatMap((r) => [...r.cssRules])
+	row('forced colours mark the open button and a hovered option', ['.columns:is(:hover, [aria-expanded="true"])', '.option:not(:has(:disabled)):hover'].map((sel) => forced.some((r) => r.selectorText === sel)), [true, true])
+
+	button.click()
+	await settle()
+	row('the menu opens', [menu.matches(':popover-open'), button.getAttribute('aria-expanded')], [true, 'true'])
+	row('the focus lands on the first checkbox', focused(), 0)
+	row('the options', $$(el, '.option').map((o) => [o.getAttribute('part'), o.textContent]), [['column-option', 'A'], ['column-option', 'B'], ['column-option', 'C']])
+	row('checked follows the list', boxes().map((b) => b.checked), [true, false, true])
+	key('Tab')
+	row('Tab moves on', focused(), 1)
+	key('Tab'), key('Tab')
+	row('Tab cycles', focused(), 0)
+	key('Tab', true)
+	row('Shift+Tab cycles back', focused(), 2)
+	menu.focus()
+	key('Tab')
+	row('Tab from the menu itself: the first', focused(), 0)
+	menu.focus()
+	key('Tab', true)
+	row('Shift+Tab from the menu itself: the last', focused(), 2)
+	boxes()[2].click()
+	await settle()
+	row('sb-columns with the whole list', got, [{ name: '', hidden: ['b', 'c'] }])
+	row('the column is gone', heads(), ['A'])
+	row('the focus stays on the checkbox', focused(), 2)
+	row('the last shown column cannot be hidden', boxes().map((b) => b.disabled), [true, false, false])
+	row('the table never writes the attribute', el.getAttribute('hidden-columns'), '["b"]')
+	row('the property is the local list', el.hiddenColumns, ['b', 'c'])
+	row('hidden columns are not pending', el.matches(':state(pending)'), false)
+	$$(el, '.row')[0].click()
+	await settle()
+	row('a selection is', [el.selected, el.matches(':state(pending)')], [['1'], true])
+	boxes()[1].click()
+	await settle()
+	row('a column change leaves it pending', [heads(), el.matches(':state(pending)')], [['A', 'B'], true])
+	el.revert()
+	await settle()
+	row('revert() keeps the hidden columns', [el.selected, el.matches(':state(pending)'), el.hiddenColumns, heads()], [[], false, ['c'], ['A', 'B']])
+
+	el.setAttribute('hidden-columns', '["a"]')
+	await settle()
+	row('the server\'s list while open: checked', boxes().map((b) => b.checked), [false, true, true])
+	row('and the grid', heads(), ['B', 'C'])
+	row('no sb-columns for it', got.length, 2)
+	el.hiddenColumns = ['a', 'c']
+	await settle()
+	row('a property write: the grid, no event, no attribute', [heads(), got.length, el.getAttribute('hidden-columns')], [['B'], 2, '["a"]'])
+	el.setAttribute('hidden-columns', '["a","b","c","gone"]')
+	await settle()
+	row('every column hidden: the first shows', [heads(), boxes().map((b) => [b.checked, b.disabled])], [['A'], [[true, true], [false, false], [false, false]]])
+	boxes()[2].click()
+	await settle()
+	row('picking another keeps the one shown', [heads(), got.at(-1).hidden], [['A', 'C'], ['b', 'gone']])
+
+	const options = () => $$(el, '.option').map((o) => o.textContent)
+	el.setAttribute('hidden-columns', '[]')
+	await settle()
+	boxes()[2].focus()
+	el.setAttribute('columns', JSON.stringify([cols[1], cols[2]]))
+	await settle()
+	row('a column dropped before the focused one: the focus stays with its column', [options(), focused()], [['B', 'C'], 1])
+	el.setAttribute('columns', JSON.stringify(cols))
+	await settle()
+	row('and when it comes back', [options(), focused()], [['A', 'B', 'C'], 2])
+	el.setAttribute('columns', JSON.stringify(cols.slice(0, 2)))
+	await settle()
+	row('the focused column dropped: its neighbour', [options(), focused(), menu.matches(':popover-open')], [['A', 'B'], 1, true])
+	el.setAttribute('columns', JSON.stringify(cols.slice(0, 1)))
+	await settle()
+	row('no checkbox left to focus: the menu', [boxes().map((b) => b.disabled), el.shadowRoot.activeElement === menu], [[true], true])
+	el.setAttribute('columns', JSON.stringify(cols))
+	await settle()
+
+	const seen = []
+	const onKey = (e) => seen.push(e.key)
+	window.addEventListener('keydown', onKey)
+	key('Escape')
+	window.removeEventListener('keydown', onKey)
+	row('Escape in the menu goes no further', seen, [])
+	menu.hidePopover()
+	await settle()
+	row('closing returns the focus to the button', [el.shadowRoot.activeElement === button, button.getAttribute('aria-expanded')], [true, 'false'])
+	button.click()
+	await settle()
+	el.removeAttribute('column-picker')
+	await settle()
+	const stop = $(el, '.grid [tabindex="0"]')
+	row('the picker taken away while open: the focus goes to the grid', [menu.matches(':popover-open'), shows(button), !!stop && el.shadowRoot.activeElement === stop], [false, false, true])
+	el.remove()
+	await settle()
+	const next = await make({ columns: cols, rows: [{ id: 1, a: 'a1' }] })
+	row('a removed table with confirm leaves the next one rendering', $$(next, '.row').length, 1)
+	next.remove()
+
+	const two = [{ key: 'a' }, { key: 'b' }]
+	const bare = await make({ columns: two, rows: [{ id: 1, a: 1, b: 2 }] })
+	row('no picker, nothing slotted: no toolbar', getComputedStyle($(bare, '.toolbar')).display, 'none')
+	bare.remove()
+	// In a shadow root of its own, away from the page's [hidden] rule.
+	const wrap = document.createElement('div')
+	wrap.attachShadow({ mode: 'open' })
+	document.body.append(wrap)
+	const tools = document.createElement('sb-data-table')
+	tools.setAttribute('columns', JSON.stringify(two))
+	tools.innerHTML = '<button slot="toolbar">CSV</button>'
+	wrap.shadowRoot.append(tools)
+	await settle()
+	const bar = () => getComputedStyle($(tools, '.toolbar')).display !== 'none'
+	row('a slotted control: the toolbar, without the Columns button', [bar(), getComputedStyle($(tools, '.columns')).display], [true, 'none'])
+	const csv = tools.querySelector('button')
+	csv.hidden = true
+	await settle()
+	row('its only control hidden: no toolbar', bar(), false)
+	csv.hidden = false
+	await settle()
+	row('shown again: the toolbar', bar(), true)
+	csv.style.display = 'none'
+	await settle()
+	row('hidden by data-show: no toolbar', bar(), false)
+	wrap.remove()
+
+	await customElements.whenDefined('sb-drawer')
+	const drawer = document.createElement('sb-drawer')
+	drawer.setAttribute('modal', 'false')
+	drawer.innerHTML = '<button id="dt-other">x</button>'
+	const table = document.createElement('sb-data-table')
+	for (const [k, v] of Object.entries({ 'column-picker': '', columns: JSON.stringify(two) })) table.setAttribute(k, v)
+	drawer.append(table)
+	document.body.append(drawer)
+	await settle()
+	drawer.show()
+	await settle(300)
+	$(table, '.columns').click()
+	await settle()
+	table.shadowRoot.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true }))
+	await settle()
+	row('Escape in the menu leaves a drawer open', drawer.isOpen, true)
+	document.getElementById('dt-other').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true }))
+	await settle()
+	row('Escape elsewhere in it closes the drawer', drawer.isOpen, false)
+	drawer.remove()
 })
 
 for (const [i, f] of checks.entries()) {

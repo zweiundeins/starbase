@@ -143,11 +143,46 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in sb-change (e.g. the field of a command)."
+        "description": "Name reported in sb-change and sb-columns (e.g. the field of a command)."
+      }
+    },
+    {
+      "name": "hiddenColumns",
+      "attribute": "hidden-columns",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "View state: the keys of the columns not shown, as a JSON array. A changed list from the server wins; the same list again keeps the user's choice. The live list is the hiddenColumns property. At least one column always shows."
+      }
+    },
+    {
+      "name": "columnPicker",
+      "attribute": "column-picker",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show a Columns button in the toolbar, with a menu that shows and hides columns (sb-columns)."
+      }
+    },
+    {
+      "name": "columnsLabel",
+      "attribute": "columns-label",
+      "type": "string",
+      "default": "Columns",
+      "required": false,
+      "docs": {
+        "description": "The Columns button's text, and the accessible name of its menu."
       }
     }
   ],
-  "slots": [],
+  "slots": [
+    {
+      "name": "toolbar",
+      "description": "Your own controls (e.g. export buttons), in a toolbar above the table, before the Columns button."
+    }
+  ],
   "events": [
     {
       "kind": "custom-event",
@@ -190,6 +225,13 @@
       "bubbles": true,
       "composed": true,
       "description": "The selection changed. detail: { name, value } (an array of row keys): ready for a command."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-columns",
+      "bubbles": true,
+      "composed": true,
+      "description": "The user showed or hid a column in the column picker. detail: { name, hidden } (the keys of every hidden column). View state: not emitted for a change the server made or a property write."
     }
   ]
 }

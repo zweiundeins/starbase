@@ -61,6 +61,9 @@ const compare =
 		return (dir === 'desc' ? -1 : 1) * (typeof x === 'number' && typeof y === 'number' ? x - y : collator.compare(String(x), String(y)))
 	}
 const align = (a) => (a === 'end' || a === 'right' ? 'end' : a === 'center' ? 'center' : 'start')
+const anchors = CSS.supports('anchor-name: --a')
+// A control in the toolbar slot counts while it shows: not hidden, nor display: none (data-show).
+const visible = (slot) => !!slot?.assignedElements().some((e) => !e.hidden && e.style.display !== 'none')
 
 // The windowing is sb-virtual-scroll's: the rows are its children, the header
 // row sits in its header slot, and its role="grid" makes it the grid. Every
@@ -90,6 +93,69 @@ const styles = /* css */ `
 	font-size: 0.875rem;
 }
 :host([hidden]) { display: none; }
+.toolbar {
+	flex: none;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-block-end: 0.5rem;
+}
+.columns {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	block-size: 2rem;
+	padding-inline: 0.75rem;
+	border: 1px solid var(--_border);
+	background: var(--_head);
+	color: var(--_label);
+	font-weight: 600;
+	cursor: pointer;
+	anchor-name: --sb-columns;
+	clip-path: ${notch('calc(2px * var(--_notch))')};
+	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
+}
+.columns:hover, .columns[aria-expanded="true"] { color: var(--_text); background: var(--_hover); }
+.menu {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--_text);
+	overflow: visible;
+	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
+}
+@supports (anchor-name: --a) {
+	.menu { position-anchor: --sb-columns; inset: auto; position-area: block-end span-inline-start; margin-block-start: 4px; position-try-fallbacks: flip-block, flip-inline; }
+}
+.panel {
+	display: grid;
+	min-inline-size: 10rem;
+	max-block-size: min(20rem, 70vh);
+	overflow: auto;
+	padding: 0.375rem;
+	border: 1px solid var(--_border);
+	background: var(--_head);
+	clip-path: ${notch('var(--_n)')};
+	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
+}
+.option {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.4rem 0.5rem;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.option:hover { background: var(--_hover); }
+.option input { flex: none; inline-size: 1rem; block-size: 1rem; margin: 0; accent-color: var(--_brand); cursor: inherit; }
+.option:has(:disabled) { color: var(--_muted); cursor: default; }
+.option:has(:disabled):hover { background: none; }
+.columns:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
+.option input:focus-visible { outline: 2px solid var(--_focus); outline-offset: 2px; }
 .grid {
 	flex: 1 1 auto;
 	min-block-size: 0;
@@ -170,6 +236,9 @@ const styles = /* css */ `
 	.row[aria-selected="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 	.text[href] { color: LinkText; }
 	[data-tone] { background: none; border-color: CanvasText; }
+	.option:has(:disabled) { color: GrayText; }
+	.columns:is(:hover, [aria-expanded="true"]) { forced-color-adjust: none; background: Highlight; color: HighlightText; outline-color: HighlightText; }
+	.option:not(:has(:disabled)):hover { outline: 1px solid Highlight; outline-offset: -1px; }
 	.row[aria-selected="true"] :is(.text, .suffix) { color: inherit; border-color: currentColor; }
 }
 `
@@ -189,9 +258,13 @@ rocket('sb-data-table', {
 		selected: json.default(() => []).docs({ description: 'The selection: a JSON array of row keys. A new list from the server replaces it; the live value is the selected property.' }),
 		label: string.trim.default('Table').docs({ description: 'Accessible name.' }),
 		confirm: bool.docs({ description: 'Server-confirmed selection: :state(pending) while the local selection differs from the server\'s selected attribute (see revert()).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change and sb-columns (e.g. the field of a command).' }),
+		hiddenColumns: json.default(() => []).docs({ description: 'View state: the keys of the columns not shown, as a JSON array. A changed list from the server wins; the same list again keeps the user\'s choice. The live list is the hiddenColumns property. At least one column always shows.' }),
+		columnPicker: bool.docs({ description: 'Show a Columns button in the toolbar, with a menu that shows and hides columns (sb-columns).' }),
+		columnsLabel: string.trim.default('Columns').docs({ description: 'The Columns button\'s text, and the accessible name of its menu.' }),
 	}),
 	manifest: {
+		slots: [{ name: 'toolbar', description: 'Your own controls (e.g. export buttons), in a toolbar above the table, before the Columns button.' }],
 		events: [
 			{ name: 'sb-window', kind: 'custom-event', bubbles: true, composed: true, description: 'The view needs rows the table doesn\'t have (also on connect and on resize): detail { offset, count }, plus key and dir of the order to send them in. Answer with rows from that offset, offset and total.' },
 			{ name: 'sb-sort', kind: 'custom-event', bubbles: true, composed: true, description: 'A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort; a table that holds every row has sorted them already.' },
@@ -199,6 +272,7 @@ rocket('sb-data-table', {
 			{ name: 'sb-cell-activate', kind: 'custom-event', bubbles: true, composed: true, description: 'A click or middle click on a link in a cell, or Enter on its cell. detail: { key, column, value, href }. Cancelable: preventDefault() stops the navigation, for an in-page action instead.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The selection changed.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The selection changed. detail: { name, value } (an array of row keys): ready for a command.' },
+			{ name: 'sb-columns', kind: 'custom-event', bubbles: true, composed: true, description: 'The user showed or hid a column in the column picker. detail: { name, hidden } (the keys of every hidden column). View state: not emitted for a change the server made or a property write.' },
 		],
 	},
 	// Rendered once: rows, header and focus all flow through signals, so new
@@ -215,6 +289,9 @@ rocket('sb-data-table', {
 		// the server's last order, so only a new one replaces a local one.
 		let data = [], off = 0, cols = [], sort = { key: '', dir: '' }, sorted, asked = null, expire = 0
 		let olds = new Set(), until = 0, dropped, shown = [], said
+		// all: every column; cols: the ones shown; hidden: the local list (view
+		// state); forced: a column shown although the list hides every one.
+		let all = [], hidden = keys(props.hiddenColumns), forced
 		const orderOf = (o) => o.key + ' ' + o.dir
 		const keyAt = (i) => {
 			const [r, j] = shown[i - off] ?? []
@@ -244,6 +321,49 @@ rocket('sb-data-table', {
 		$$.fr = -1 // the focus cell (roving tabindex): row (-1 the header), column
 		$$.fc = 0
 		$$.hasFocus = false
+		$$.menu = false
+		$$.slotted = false
+		// slotchange doesn't report a control hidden or shown in place.
+		const tools = new MutationObserver(() => ($$.slotted = visible($('slot[name="toolbar"]'))))
+		tools.observe(host, { subtree: true, attributeFilter: ['hidden', 'style'] })
+		cleanup(() => tools.disconnect())
+		action('toolbar', ({ el }) => ($$.slotted = visible(el)))
+
+		// The menu's checkboxes follow the columns. A focused one stays with its
+		// column; when the server drops that column, the neighbour takes the focus.
+		const options = (before) => {
+			const menu = $('.menu')
+			const box = menu?.matches(':popover-open') && host.shadowRoot.activeElement
+			const was = box && menu.contains(box) && box.dataset.k != null ? { key: before[+box.dataset.k]?.key, j: +box.dataset.k } : null
+			const on = new Set(cols.map((c) => c.key))
+			$$.opts = JSON.stringify(all.map((c) => ({ l: c.label, h: !on.has(c.key), d: cols.length === 1 && on.has(c.key) })))
+			if (was)
+				requestAnimationFrame(() => {
+					const boxes = [...menu.querySelectorAll('input')]
+					let j = all.findIndex((c) => c.key === was.key)
+					if (j < 0) j = Math.min(was.j, boxes.length - 1)
+					// A disabled neighbour is skipped; with none left, the menu holds the focus.
+					const to = (boxes[j]?.disabled ? (boxes[j + 1] ?? boxes[j - 1]) : boxes[j]) ?? menu
+					const at = host.shadowRoot.activeElement, floor = !at && (!document.activeElement || document.activeElement === document.body)
+					if (to !== at && (menu.contains(at) || floor)) to.focus()
+				})
+		}
+		const layout = () => {
+			const before = all
+			all = (Array.isArray(props.columns) ? props.columns : [])
+				.filter((c) => c?.key != null)
+				.map((c) => ({ key: String(c.key), label: String(c.label ?? c.key), width: c.width, align: align(c.align), sortable: !!c.sortable }))
+			const vis = all.filter((c) => !hidden.includes(c.key))
+			forced = !vis.length && all[0]?.key
+			cols = vis.length ? vis : all.slice(0, 1)
+			$$.al = cols.map((c) => c.align)
+			$$.tpl = cols.map((c) => (typeof c.width === 'number' ? c.width + 'px' : c.width || 'minmax(6rem, 1fr)')).join(' ')
+			$$.fc = Math.max(0, Math.min($$.fc, cols.length - 1))
+			$$.picker = props.columnPicker
+			$$.clabel = props.columnsLabel
+			if (!props.columnPicker && $('.menu')?.matches(':popover-open')) $('.menu').hidePopover()
+			options(before)
+		}
 
 		// Moves the DOM focus to the tab stop (the header row while its row is
 		// not rendered: a tabindex on the list would take its rows out of the
@@ -251,26 +371,23 @@ rocket('sb-data-table', {
 		// the table or fell on the floor, never when the user moved on.
 		const refocus = (scroll) =>
 			requestAnimationFrame(() => {
-				const active = document.activeElement
-				if (!$$.hasFocus || (active && active !== document.body && active !== host)) return
+				const active = document.activeElement, inner = host.shadowRoot.activeElement
+				if (!$$.hasFocus || (active && active !== document.body && active !== host) || (inner && !$('.grid').contains(inner))) return
 				const cell = $('.grid [tabindex="0"]')
 				const el = cell ?? $('.head')
 				if (el && host.shadowRoot.activeElement !== el) el.focus({ preventScroll: true })
 				if (scroll && cell && $$.fr >= 0) cell.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 			})
 
+		const shape = () => cols.map((c) => c.key).join('\n')
 		const take = () => {
-			cols = (Array.isArray(props.columns) ? props.columns : [])
-				.filter((c) => c?.key != null)
-				.map((c) => ({ key: String(c.key), label: String(c.label ?? c.key), width: c.width, align: align(c.align), sortable: !!c.sortable }))
-			$$.al = cols.map((c) => c.align)
-			$$.tpl = cols.map((c) => (typeof c.width === 'number' ? c.width + 'px' : c.width || 'minmax(6rem, 1fr)')).join(' ')
+			const was = shape()
+			layout()
 			$$.label = props.label
 			$$.mode = props.selection
 			$$.h = props.rowHeight
 			$$.buf = props.buffer
 			$$.loading = props.loading
-			$$.fc = Math.max(0, Math.min($$.fc, cols.length - 1))
 			const key = String(props.sort?.key ?? '')
 			const now = { key, dir: !key ? '' : props.sort.dir === 'desc' ? 'desc' : 'asc' }
 			const order = orderOf(now)
@@ -278,8 +395,11 @@ rocket('sb-data-table', {
 			// while after it rows in an order it replaced are late answers to
 			// earlier windows, which would put that order back. An order the
 			// server sends on its own wins.
-			if (asked ? order !== orderOf(asked) : olds.has(order) && performance.now() < until) dropped = props.rows
-			else if (props.rows !== dropped) {
+			if (asked ? order !== orderOf(asked) : olds.has(order) && performance.now() < until) {
+				dropped = props.rows
+				// Columns shown or hidden meanwhile show at once, with the rows at hand.
+				if (shape() !== was) show()
+			} else if (props.rows !== dropped) {
 				asked = null
 				clearTimeout(expire)
 				if (order !== said) (said = order), (sort = now)
@@ -299,30 +419,39 @@ rocket('sb-data-table', {
 		take()
 		// One take() for every attribute a morph or a signal patch changes at once.
 		let queued = false
-		observeProps(() => queued || ((queued = true), queueMicrotask(() => peek(() => ((queued = false), take())))))
+		const later = () => queued || ((queued = true), queueMicrotask(() => peek(() => ((queued = false), take()))))
+		observeProps(later)
 		cleanup(() => clearTimeout(expire))
 
 		// Selection: $$.sel is the local one, the attribute the server's.
 		$$.sel = keys(props.selected)
 		overrideProp('selected', () => peek(() => [...$$.sel]), (v) => peek(() => ($$.sel = keys(v))))
-		// A new selected attribute from the server wins, also one that decodes
-		// like the last ([] onto an element that never had one). The same one
-		// again keeps the user's selection; a removed one is ignored (morphs
-		// also strip reflected attributes).
-		let served = host.getAttribute('selected')
+		// Hidden columns are view state: never pending, and revert() leaves them.
+		overrideProp('hiddenColumns', () => peek(() => [...hidden]), (v) => peek(() => ((hidden = keys(v)), take())))
+		// A new selected or hidden-columns attribute from the server wins, even [] on a fresh element;
+		// the same one again keeps the user's choice, and a removed one is ignored (morphs strip reflected ones).
+		const words = {}
+		const heard = (k) => {
+			const a = host.getAttribute(k)
+			const news = a !== null && a !== words[k]
+			words[k] = a
+			return news
+		}
+		heard('selected'), heard('hidden-columns')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				const v = host.getAttribute('selected')
-				if (v !== served && (served = v) !== null) $$.sel = keys(props.selected)
+				if (heard('selected')) $$.sel = keys(props.selected)
+				if (heard('hidden-columns')) (hidden = keys(props.hiddenColumns)), later()
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['selected'] })
+		watch.observe(host, { attributeFilter: ['selected', 'hidden-columns'] })
 		cleanup(() => watch.disconnect())
 		// With confirm, :state(pending) marks a selection the server hasn't
 		// confirmed yet (compared as sets); revert() returns to the server's.
 		const states = internalsOf(host).states
 		const same = (a, b) => a.toSorted().join('\n') === b.toSorted().join('\n')
-		const sync = () => peek(() => states[props.confirm && !same([...$$.sel], keys(props.selected)) ? 'add' : 'delete']('pending'))
+		// keys(): the teardown deletes $$.sel, then runs the effect below once more.
+		const sync = () => peek(() => states[props.confirm && !same(keys($$.sel), keys(props.selected)) ? 'add' : 'delete']('pending'))
 		effect(() => (JSON.stringify($$.sel), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.sel = keys(props.selected)), sync())) })
@@ -395,8 +524,51 @@ rocket('sb-data-table', {
 			// A cell re-rendered away also "loses" focus, but that's not leaving
 			// (refocus picks it up): decide a frame later, when it is gone.
 			const t = evt.target
-			requestAnimationFrame(() => t.isConnected && !host.shadowRoot?.activeElement && ($$.hasFocus = false))
+			requestAnimationFrame(() => t.isConnected && !$('.grid')?.contains(host.shadowRoot?.activeElement) && ($$.hasFocus = false))
 		})
+
+		// The column menu: a popover (auto: light dismiss and Escape are the
+		// browser's) that holds the focus like a dialog.
+		action('menu', ({ el, evt }) =>
+			peek(() => {
+				const button = $('.columns')
+				// Closing with the focus inside: it goes back to the button, or to the
+				// grid when the server took the picker away.
+				if (evt.newState !== 'open') return el.contains(host.shadowRoot.activeElement) && (props.columnPicker ? button : ($('.grid [tabindex="0"]') ?? $('.head'))).focus()
+				if (anchors) return
+				const r = button.getBoundingClientRect()
+				const rtl = host.matches(':dir(rtl)')
+				Object.assign(el.style, { position: 'fixed', inset: 'auto', top: r.bottom + 4 + 'px', [rtl ? 'left' : 'right']: (rtl ? r.left : document.documentElement.clientWidth - r.right) + 'px' })
+			}),
+		)
+		action('menuToggle', ({ el, evt }) =>
+			peek(() => {
+				$$.menu = evt.newState === 'open'
+				if ($$.menu) (el.querySelector('input:not(:disabled)') ?? el).focus()
+			}),
+		)
+		action('menuKey', ({ el, evt }) => {
+			// The browser closes the menu. Stopped here, the Escape can't also
+			// close a drawer or popover the table sits in.
+			if (evt.key === 'Escape') return evt.stopPropagation()
+			if (evt.key !== 'Tab') return
+			evt.preventDefault()
+			const f = [...el.querySelectorAll('input:not(:disabled)')]
+			const i = f.indexOf(host.shadowRoot.activeElement)
+			f[i < 0 ? (evt.shiftKey ? f.length - 1 : 0) : (i + (evt.shiftKey ? -1 : 1) + f.length) % f.length]?.focus()
+		})
+		// A checkbox: the column shows or hides at once, and the page hears of
+		// it. The list is the user's view, so a forced column counts as shown.
+		action('pickColumn', ({ evt }) =>
+			peek(() => {
+				const c = all[+evt.target.dataset.k]
+				if (!c) return
+				hidden = hidden.filter((k) => k !== c.key && k !== forced)
+				if (!evt.target.checked) hidden.push(c.key)
+				take()
+				emit('sb-columns', { name: props.name, hidden: [...hidden] })
+			}),
+		)
 		// The grid keys of WAI-ARIA; moves past the rendered rows scroll there,
 		// and the rows come with the next window.
 		action('key', ({ evt }) => {
@@ -440,7 +612,10 @@ rocket('sb-data-table', {
 		})
 	},
 	// Runs on every connect, after the render.
-	onFirstRender: ({ refs: { grid, parts } }) => grid.append(...parts.childNodes),
+	onFirstRender: ({ $$, refs: { grid, parts, tools } }) => {
+		grid.append(...parts.childNodes)
+		$$.slotted = visible(tools)
+	},
 	render: ({ html }) => {
 		// $$rows (plain cells) or $$rich (cell objects): the same rows either way.
 		// r?. and || '[]': data-for can re-evaluate once with its signals gone.
@@ -461,6 +636,21 @@ rocket('sb-data-table', {
 			</template>
 		`
 		return html`
+		<div class="toolbar" part="toolbar" data-show="$$picker || $$slotted">
+			<slot name="toolbar" data-ref:tools data-on:slotchange="@toolbar()"></slot>
+			<button type="button" class="columns" part="columns-button" popovertarget="columns" aria-haspopup="dialog" aria-controls="columns"
+				data-show="$$picker" data-attr:aria-expanded="String(!!$$menu)" data-text="$$clabel"></button>
+		</div>
+		<div id="columns" class="menu" part="columns-menu" popover="auto" role="dialog" aria-modal="true" tabindex="-1"
+			data-attr:aria-label="$$clabel"
+			data-on:beforetoggle="@menu()" data-on:toggle="@menuToggle()" data-on:keydown="@menuKey()"
+			data-on:input="evt.stopPropagation()" data-on:change="@pickColumn()">
+			<div class="panel">
+				<template data-for="o, j in JSON.parse($$opts || '[]')">
+					<label class="option" part="column-option"><input type="checkbox" data-attr="{'data-k': j, disabled: o?.d}" data-effect="el.checked = !o?.h"><span data-text="o?.l"></span></label>
+				</template>
+			</div>
+		</div>
 		<sb-virtual-scroll class="grid" part="grid" role="grid" aria-readonly="true" data-ref:grid
 			data-attr="{'item-size': $$h, buffer: $$buf, offset: $$off, total: $$tot, 'aria-label': $$label, 'aria-rowcount': $$n + 1, 'aria-multiselectable': $$mode === 'multiple' && 'true', 'aria-busy': $$loading && 'true'}"
 			data-style:--h="$$h + 'px'" data-style:--rows="$$n + 1" data-style:--cols="$$tpl"

@@ -52,6 +52,7 @@ const cases = [
 	{ tag: 'sb-radio-group', attrs: { options: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
 	{ tag: 'sb-tree', attrs: { items: '[{"id":"a","label":"A"},{"id":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
 	{ tag: 'sb-data-table', attrs: { selection: 'multiple', columns: '[{"key":"name"}]', rows: '[{"id":"a","name":"A"},{"id":"b","name":"B"}]' }, prop: 'selected', attr: 'selected', local: ['b'], server: '[]', want: [] },
+	{ tag: 'sb-data-table', attrs: { columns: '[{"key":"a"},{"key":"b"},{"key":"c"}]' }, prop: 'hiddenColumns', attr: 'hidden-columns', local: ['b'], server: '[]', want: [] },
 	{ tag: 'sb-dropdown', attrs: { type: 'radio', items: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
 	{ tag: 'sb-tabs', prop: 'selected', attr: 'selected', local: 2, server: '0', want: 0 },
 	{ tag: 'sb-details', prop: 'open', attr: 'open', local: true, server: 'false', want: false },
