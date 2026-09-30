@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rocket and morph: moved ids come back new</title>
+<script type="module">
+  import { rocket } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js'
+
+  // A Rocket element with a render, which the patch inserts ahead of the keyed elements.
+  rocket('x-note', { mode: 'light', render: ({ html }) => html`<i>note</i>` })
+
+  // Tags every keyed element, so the report after the patch tells a moved node from a new one.
+  window.tag = () => {
+    for (const el of document.querySelectorAll('#root [id]')) el.kept = true
+  }
+  window.report = () =>
+    console.log(
+      JSON.stringify(Object.fromEntries(['a', 'b', 'c', 'g'].map((id) => [id, document.getElementById(id)?.kept === true]))),
+      'canvas kept:', !!document.querySelector('#g canvas'),
+    )
+</script>
+
+<p>Open the devtools console and click one button (reload the page before the other). The patch moves <code>#a</code> and the <code>data-ignore-morph</code> box <code>#g</code> into the second section, <code>#b</code> into the first, and leaves <code>#c</code> where it is. It also inserts one element first: a Rocket element with a render, or a tag nothing defines.</p>
+<p><b>Rocket element first:</b> <code>{"a":false,"b":false,"c":true,"g":false} canvas kept: false</code>. No exception: every moved element is a new node, and the box comes back empty.<br>
+<b>Plain element first:</b> <code>{"a":true,"b":true,"c":true,"g":true} canvas kept: true</code>.</p>
+<button data-on:click="tag(); @get('move.html'); setTimeout(report, 500)">move (Rocket element first)</button>
+<button data-on:click="tag(); @get('move-plain.html'); setTimeout(report, 500)">move (plain element first)</button>
+
+<div id="root">
+  <section id="s1"><p id="a">A</p><div id="g" data-ignore-morph><canvas width="40" height="20"></canvas></div></section>
+  <section id="s2"><p id="b">B</p></section>
+  <p id="c">C</p>
+</div>
