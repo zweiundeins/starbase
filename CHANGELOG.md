@@ -13,7 +13,7 @@ All notable changes to this project are documented here. The format follows
   - [#1225](https://github.com/starfederation/datastar/issues/1225): a removed element's mount root leaves the observed roots, so removed elements can be collected.
   - [#1226](https://github.com/starfederation/datastar/issues/1226): a definition that arrives after Datastar's first pass still applies the shadow host's light children.
   - [#1227](https://github.com/starfederation/datastar/issues/1227): the pending-host observer scans a parent once per batch, not once per moved child, so reordering 1,000 rows no longer takes seconds.
-- `docs/upstream/08` adds a comment for [#1209](https://github.com/starfederation/datastar/issues/1209): a Rocket element inserted ahead of keyed moves breaks them without throwing, and only 0008's restored id maps fix it (`docs/repro/rocket-morph-ids/`).
+- `docs/repro/rocket-morph-ids/` shows a quiet case of [#1209](https://github.com/starfederation/datastar/issues/1209): a Rocket element inserted ahead of keyed moves breaks them without throwing, and only 0008's restored id maps fix it. A comment for #1209 is drafted in `docs/upstream/08`, not posted.
 
 ## [0.5.0] - 2026-09-29
 

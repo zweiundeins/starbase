@@ -1,6 +1,6 @@
 **Title:** #1209, the quiet case: a morph that inserts a Rocket element first recreates every keyed element it moves after it
 
-**Filed:** not yet; a comment on https://github.com/starfederation/datastar/issues/1209
+**Filed:** not posted; a draft comment for https://github.com/starfederation/datastar/issues/1209
 
 ### Comment
 
