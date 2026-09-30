@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The columns: [{key, label?, width?, align?, sortable?}]. width is a CSS grid track (a number is px; default minmax(6rem, 1fr)); align is start, center or end."
+        "description": "The columns: [{key, label?, width?, align?, sortable?}]. width is a CSS grid track (a number is px; default minmax(6rem, 1fr)); align is start, center or end. A row's value for a key is a scalar or a cell object {value, text?, suffix?, href?, tone?}."
       }
     },
     {
@@ -18,7 +18,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The rows at hand, objects keyed by column: all of them, or the window the server sent, starting at row offset."
+        "description": "The rows at hand, objects keyed by column: all of them, or the window the server sent, starting at row offset. A value is a scalar, or a cell object {value, text, suffix, href, tone}: text replaces the formatted value, suffix follows it muted, href (http, https or mailto) makes it a link, tone (info, success, warning, danger, neutral) a badge. value is the sort key. Nothing is rendered as HTML."
       }
     },
     {
@@ -168,7 +168,14 @@
       "name": "sb-row-activate",
       "bubbles": true,
       "composed": true,
-      "description": "Enter or a double click on a row. detail: { key }."
+      "description": "Enter or a double click on a row (not on a link in it). detail: { key }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-cell-activate",
+      "bubbles": true,
+      "composed": true,
+      "description": "A click or middle click on a link in a cell, or Enter on its cell. detail: { key, column, value, href }. Cancelable: preventDefault() stops the navigation, for an in-page action instead."
     },
     {
       "kind": "event",

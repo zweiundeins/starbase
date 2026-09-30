@@ -23,7 +23,7 @@ playground:
   exclude: [offset, total, rowKey, buffer, confirm, name]
 ---
 
-A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
+A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
 
 The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith). Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders.
 
@@ -64,6 +64,16 @@ With all rows given and no `total`, the table has everything and never asks the 
 <sb-data-table label="Moons of Jupiter" selection="single" style="inline-size: min(100%, 30rem)"
   columns='[{"key":"name","label":"Moon","sortable":true},{"key":"radius","label":"Radius (km)","align":"end","sortable":true},{"key":"found","label":"Found","align":"end","width":"6rem","sortable":true}]'
   rows='[{"id":"io","name":"Io","radius":1821.6,"found":1610},{"id":"europa","name":"Europa","radius":1560.8,"found":1610},{"id":"ganymede","name":"Ganymede","radius":2634.1,"found":1610},{"id":"callisto","name":"Callisto","radius":2410.3,"found":1610},{"id":"amalthea","name":"Amalthea","radius":83.5,"found":1892}]'></sb-data-table>
+```
+
+### Rich cells
+
+A value can be a cell object instead of a plain value: `{"value": 2634.1, "suffix": "km"}` shows the number with a muted unit after it and still sorts by the number, `href` makes the text a link, and `tone` shows it as a badge. The names link to Wikipedia, and the last row shows that a cell's text is only ever text, never markup:
+
+```html preview
+<sb-data-table label="Moons of Jupiter" selection="single" style="inline-size: min(100%, 34rem)"
+  columns='[{"key":"name","label":"Moon","sortable":true},{"key":"radius","label":"Radius","align":"end","sortable":true},{"key":"group","label":"Group","width":"7rem","sortable":true}]'
+  rows='[{"id":"io","name":{"value":"Io","href":"https://en.wikipedia.org/wiki/Io_(moon)"},"radius":{"value":1821.6,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"europa","name":{"value":"Europa","href":"https://en.wikipedia.org/wiki/Europa_(moon)"},"radius":{"value":1560.8,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"ganymede","name":{"value":"Ganymede","href":"https://en.wikipedia.org/wiki/Ganymede_(moon)"},"radius":{"value":2634.1,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"callisto","name":{"value":"Callisto","href":"https://en.wikipedia.org/wiki/Callisto_(moon)"},"radius":{"value":2410.3,"suffix":"km"},"group":{"value":"Galilean","tone":"info"}},{"id":"amalthea","name":{"value":"Amalthea","href":"https://en.wikipedia.org/wiki/Amalthea_(moon)"},"radius":{"value":83.5,"suffix":"km"},"group":{"value":"Inner","tone":"neutral"}},{"id":"test","name":"<b>not bold</b>","radius":{"value":0.5,"suffix":"km"},"group":{"value":"Made up","tone":"warning"}}]'></sb-data-table>
 ```
 
 ## Server side
@@ -183,8 +193,15 @@ A new `selected` from the server always wins, and `selected="[]"` clears it. Mar
 
 - `columns`: `[{key, label?, width?, align?, sortable?}]`. `width` is a CSS grid track (`"8rem"`, `"minmax(4rem, 2fr)"`, a number for px; default `minmax(6rem, 1fr)`). Widths whose minimum is a length keep the columns steady while rows come and go; a table wider than its box scrolls sideways. `align` is `start`, `center` or `end`.
 - `rows`: objects keyed by column. Numbers show in the reader's format (`4,242.5`), everything else as text. The field named by `row-key` (default `id`) identifies a row.
+- A value can also be a cell object, `{value, text?, suffix?, href?, tone?}`:
+  - `value` is the raw value: the sort key, what `sb-cell-activate` reports, and the text when there is no `text` (formatted like a plain value).
+  - `text` is shown instead of the formatted `value`, and `suffix` after it in a muted colour (the table adds the space).
+  - `href` makes the text a link, but only when it resolves (against the page's URL) to `http:`, `https:` or `mailto:`. Anything else, such as `javascript:` or `data:`, shows plain text.
+  - `tone` shows the text as a badge: `info`, `success`, `warning`, `danger` or `neutral`. Any other tone is ignored.
+  - Nothing in a cell is ever read as HTML: `<b>` stays the text `<b>`. Other fields are ignored, and a row's key may be a cell object too (its `value` is the key).
+- A click or middle click on a link, or Enter on its cell, emits `sb-cell-activate` with `{key, column, value, href}`. It is cancelable: a listener that calls `preventDefault()` stops the navigation (a middle click then opens no tab) and can run an action instead, such as `data-on:sb-cell-activate="evt.detail.column === 'ip' && (evt.preventDefault(), @post('/ip-info?ip=' + encodeURIComponent(evt.detail.value)))"`. A click on a link doesn't select the row.
 - `offset` is the index of the first row in `rows`, and `total` the number of rows there are. Without `total`, the table has what it was given.
-- Sorting: a table that holds every row (`offset` 0, and no `total` or one no larger than the rows given) sorts them itself when a sortable header is clicked. Numbers sort by value, text in the reader's order (with numbers inside it by value, so "Io 2" comes before "Io 10"), and missing values last. It still emits `sb-sort`, a new `sort` from the server wins, and rows the server sends in are sorted the same way, so their order doesn't jump. A table that holds only a window asks, and the server sends the rows in the new order.
+- Sorting: a table that holds every row (`offset` 0, and no `total` or one no larger than the rows given) sorts them itself when a sortable header is clicked. Numbers sort by value, text in the reader's order (with numbers inside it by value, so "Io 2" comes before "Io 10"), and missing values last. A cell object sorts by its `value`, else its `text`. It still emits `sb-sort`, a new `sort` from the server wins, and rows the server sends in are sorted the same way, so their order doesn't jump. A table that holds only a window asks, and the server sends the rows in the new order.
 - `row-height` is fixed (default `36` px), and `buffer` (default `4000` px of rows) is how much the table keeps ready above and below the view.
 - A server that sends fewer rows than asked for (a cap) still fills the view: the table then asks for windows that fit the cap.
 - Browsers cap how tall an element can be, Firefox at about 17.9 million px (Chrome and Safari at about 33.5 million). Keep rows × `row-height` under that: 100,000 rows of 36 px are 3.6 million px.
@@ -200,7 +217,8 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** it fills the width it is given and is at most `24rem` tall; set `block-size` or `max-block-size` on the element to change that. Rows are `row-height` tall. Set `font-size` on the element (default `0.875rem`) to scale the text.
 - **Fonts:** the header and the cells use your page's font.
 - **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, and placeholders are sb-virtual-scroll's `--sb-surface-hover` bars. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1.
-- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Rich cells:** links are `--sb-brand-light` and underlined, suffixes `--sb-text-muted`. Badges take their tone from `--sb-info`, `--sb-ok`, `--sb-warn` and `--sb-danger` (`neutral` from `--sb-text-muted`), with a tinted background and border.
+- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. In rows with cell objects, a cell holds a `text` (also `link` for a link, `badge` for a badge, so `::part(text badge)` styles only badges) and a `suffix`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -220,3 +238,5 @@ It follows the WAI-ARIA grid pattern:
 - **Structure:** a `grid` with `aria-rowcount` for every row there is (plus the header), and `aria-rowindex` on each rendered row, so a screen reader knows where it is in the whole table, not in the few rows the page holds. Sorted headers have `aria-sort`; with a `selection`, rows have `aria-selected`. The grid is `aria-busy` while `loading` is set.
 - **Focus:** one cell at a time is in the tab order: the first header, then the cell focused last, or the header again once that cell's row is gone. Sortable headers are buttons.
 - **Keys:** the arrows move between cells, Home and End to the first and last cell of the row, Ctrl+Home to the first header, Ctrl+End to the last cell of the last row, Page Up and Page Down by a view. Moving past the rendered rows scrolls there, and the focus lands when the rows arrive. Space selects or unselects the row, Enter emits `sb-row-activate` (so does a double click, which selects only once). On a sortable header, Enter or Space sorts.
+- **Links in cells:** a link is not a tab stop of its own; the cell is, and Enter on it follows the link (after `sb-cell-activate`). Space still selects the row.
+- **Badges:** a tone is colour only, so the badge's text has to carry the meaning ("Failed", not a red dot). In forced colours, links use the system's link colour and badges keep a border.
