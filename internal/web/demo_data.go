@@ -1,12 +1,15 @@
 package web
 
 import (
+	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"html"
 	"math"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +41,10 @@ import (
 //	GET /demo/data/list?id=<host id>&offset=&count=   a window of a million-item list
 //
 // patches an sb-virtual-scroll instead (see demoList).
+//
+//	GET /demo/data/rows/export?format=csv&key=name&dir=desc&columns=name,distance&selected=1,2
+//
+// downloads the star catalog as CSV or JSON, rate limited (see demoRowsExport).
 
 var signalNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,40}$`)
 
@@ -132,6 +139,166 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 	}
 	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}}
 	s.demoAnswer(w, r, "_rows", window, window)
+}
+
+// demoStarColumns are the star catalog's columns an export can hold, by
+// their JSON names.
+var demoStarColumns = []string{"id", "name", "class", "temp", "constellation", "distance", "magnitude", "planets"}
+
+// demoStarField is the value of st's column key (one of demoStarColumns).
+func demoStarField(st demo.Star, key string) any {
+	switch key {
+	case "id":
+		return st.ID
+	case "name":
+		return st.Name
+	case "class":
+		return st.Class
+	case "temp":
+		return st.Temp
+	case "constellation":
+		return st.Constellation
+	case "distance":
+		return st.Distance
+	case "magnitude":
+		return st.Magnitude
+	case "planets":
+		return st.Planets
+	}
+	return nil
+}
+
+// demoRowsExport answers sb-data-table's sb-export with a download of the star
+// catalog: ?format=csv or json, in the order asked for (?key=, ?dir=), the
+// ?columns= in their order (default: all), and with ?selected= only those
+// stars (at most 1000 ids). The rows stream from one read transaction, so the
+// whole catalog never sits in memory, and go out compressed.
+func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	format := q.Get("format")
+	if format != "csv" && format != "json" {
+		http.Error(w, "format must be csv or json", http.StatusBadRequest)
+		return
+	}
+	key, dir := q.Get("key"), q.Get("dir")
+	if !queries.DemoStarSortable(key) {
+		key, dir = "", ""
+	} else if dir != "desc" {
+		dir = "asc"
+	}
+	columns := demoStarColumns
+	if c := q.Get("columns"); c != "" {
+		columns = strings.Split(c, ",")
+		for i, k := range columns {
+			if !slices.Contains(demoStarColumns, k) {
+				http.Error(w, "unknown column "+strconv.Quote(k), http.StatusBadRequest)
+				return
+			}
+			if slices.Contains(columns[:i], k) {
+				http.Error(w, "column "+strconv.Quote(k)+" twice", http.StatusBadRequest)
+				return
+			}
+		}
+	}
+	var ids []int
+	if sel := q.Get("selected"); sel != "" {
+		list := strings.Split(sel, ",")
+		if len(list) > 1000 {
+			http.Error(w, "at most 1000 selected ids", http.StatusBadRequest)
+			return
+		}
+		for _, v := range list {
+			id, err := strconv.Atoi(v)
+			if err != nil {
+				http.Error(w, "selected must be ids", http.StatusBadRequest)
+				return
+			}
+			ids = append(ids, id)
+		}
+	}
+	now := time.Now()
+	if !s.exportLimit.allow(sessionID(r), 1, now) || !s.exportLimitIP.allow(clientIP(r), 1, now) {
+		http.Error(w, "exporting too often", http.StatusTooManyRequests)
+		return
+	}
+	// A download holds a read connection until it ends: slow ones must not
+	// take them all from the pages, and one that stalls for a minute ends.
+	select {
+	case s.exports <- struct{}{}:
+		defer func() { <-s.exports }()
+	default:
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "too many downloads at once", http.StatusServiceUnavailable)
+		return
+	}
+	setWriteDeadline(w, r, time.Now().Add(time.Minute))
+
+	h := w.Header()
+	h.Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	h.Set("Cache-Control", "public, max-age=300")
+	h.Set("Content-Disposition", `attachment; filename="stars.`+format+`"`)
+	// Each star is written as it comes from the cursor.
+	var write func(demo.Star) error
+	var end func() error
+	if format == "csv" {
+		h.Set("Content-Type", "text/csv; charset=utf-8")
+		cw := csv.NewWriter(w)
+		cw.Write(columns)
+		row := make([]string, len(columns))
+		write = func(st demo.Star) error {
+			for i, k := range columns {
+				switch v := demoStarField(st, k).(type) {
+				case float64:
+					row[i] = strconv.FormatFloat(v, 'f', -1, 64) // 1234567, never 1.234567e+06
+				default:
+					row[i] = fmt.Sprint(v)
+				}
+			}
+			return cw.Write(row)
+		}
+		end = func() error { cw.Flush(); return cw.Error() }
+	} else {
+		h.Set("Content-Type", "application/json")
+		bw := bufio.NewWriter(w)
+		bw.WriteString("[")
+		sep := ""
+		write = func(st demo.Star) error {
+			obj := []byte(sep + "{")
+			for i, k := range columns {
+				if i > 0 {
+					obj = append(obj, ',')
+				}
+				v, err := json.Marshal(demoStarField(st, k))
+				if err != nil {
+					return err
+				}
+				obj = append(append(strconv.AppendQuote(obj, k), ':'), v...)
+			}
+			sep = ",\n"
+			_, err := bw.Write(append(obj, '}'))
+			return err
+		}
+		end = func() error { bw.WriteString("]\n"); return bw.Flush() }
+	}
+	n := 0
+	err := s.q.View(r.Context(), func(rd *queries.Reader) error {
+		return rd.EachDemoStar(r.Context(), key, dir == "desc", ids, func(st demo.Star) error {
+			if n++; n%1000 == 0 {
+				setWriteDeadline(w, r, time.Now().Add(time.Minute))
+			}
+			return write(st)
+		})
+	})
+	if err == nil {
+		err = end()
+	}
+	if err != nil {
+		// A file cut short must not look complete: the download fails instead.
+		if r.Context().Err() == nil {
+			s.log.Error("export failed", "err", err)
+		}
+		panic(http.ErrAbortHandler)
+	}
 }
 
 // demoAnswer writes the list as JSON, or patches it into the requested signal.

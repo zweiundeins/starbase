@@ -143,7 +143,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Name reported in sb-change and sb-columns (e.g. the field of a command)."
+        "description": "Name reported in sb-change, sb-columns and sb-export (e.g. the field of a command)."
       }
     },
     {
@@ -225,6 +225,13 @@
       "bubbles": true,
       "composed": true,
       "description": "The selection changed. detail: { name, value } (an array of row keys): ready for a command."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-export",
+      "bubbles": true,
+      "composed": true,
+      "description": "requestExport(format) was called. detail: { name, format, sort: { key, dir }, columns, selected }: the order on screen, the keys of the shown columns in order, and the local selection. The page asks the server for the file; the table never builds one."
     },
     {
       "kind": "custom-event",

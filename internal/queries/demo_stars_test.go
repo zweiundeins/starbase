@@ -2,6 +2,8 @@ package queries_test
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 
 	"starbase/internal/commands"
@@ -57,5 +59,43 @@ func TestDemoStars(t *testing.T) {
 	}
 	if !queries.DemoStarSortable("name") || queries.DemoStarSortable("planets") || queries.DemoStarSortable("id; DROP TABLE demo_stars") {
 		t.Error("DemoStarSortable")
+	}
+
+	// EachDemoStar: every star in the order of DemoStars' windows, or only the ids given.
+	each := func(key string, desc bool, ids []int, fn func(demo.Star) error) error {
+		return e.q.View(ctx, func(r *queries.Reader) error { return r.EachDemoStar(ctx, key, desc, ids, fn) })
+	}
+	for _, key := range []string{"", "magnitude", "class"} {
+		for _, desc := range []bool{false, true} {
+			var all []demo.Star
+			if err := each(key, desc, nil, func(s demo.Star) error { all = append(all, s); return nil }); err != nil {
+				t.Fatal(err)
+			}
+			if len(all) != demo.StarCount {
+				t.Fatalf("%q desc=%v: %d stars", key, desc, len(all))
+			}
+			for _, offset := range []int{0, 4321, demo.StarCount - 5} {
+				if w, _ := window(key, desc, offset, 5); !slices.Equal(w, all[offset:offset+5]) {
+					t.Errorf("%q desc=%v at %d: %+v, the window %+v", key, desc, offset, all[offset:offset+5], w)
+				}
+			}
+		}
+	}
+	var some []demo.Star
+	if err := each("name", true, []int{7, 3, 999_999_999, 3, 12}, func(s demo.Star) error { some = append(some, s); return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if len(some) != 3 || some[0].Name < some[1].Name || some[1].Name < some[2].Name {
+		t.Errorf("ids 3, 7 and 12 by name, descending: %+v", some)
+	}
+	for _, s := range some {
+		if s.ID != 3 && s.ID != 7 && s.ID != 12 {
+			t.Errorf("star %d was not asked for", s.ID)
+		}
+	}
+	stop := errors.New("stop")
+	n := 0
+	if err := each("", false, nil, func(demo.Star) error { n++; return stop }); err != stop || n != 1 {
+		t.Errorf("fn's error: %v after %d stars", err, n)
 	}
 }

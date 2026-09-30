@@ -5,11 +5,8 @@ import (
 	"testing"
 )
 
-// TestDataTableCells checks sb-data-table's cell objects and column picker in
-// the browser, one row per check: links only for http, https and mailto, text
-// that is never markup or an expression, suffixes and badges, the local sort
-// by value, a fixed row height, sb-cell-activate, the plain loop kept for plain
-// rows, and hidden-columns as view state with its menu's focus and keys.
+// TestDataTableCells checks sb-data-table in the browser, one row per check:
+// cell objects (checks 1 to 8), hidden columns and their menu (9), sb-export (10).
 func TestDataTableCells(t *testing.T) {
 	_, body := probe(t, "/", dataTableJS)
 	var rows []struct {
@@ -367,6 +364,35 @@ check(async () => {
 	await settle()
 	row('Escape elsewhere in it closes the drawer', drawer.isOpen, false)
 	drawer.remove()
+})
+
+check(async () => {
+	const el = await make({ name: 'stars', selection: 'multiple', 'hidden-columns': ['b'],
+		columns: [{ key: 'a', sortable: true }, { key: 'b' }, { key: 'c', sortable: true }], rows: [{ id: 1, a: 'x', b: 1, c: 3 }, { id: 2, a: 'y', b: 2, c: 1 }] })
+	const got = []
+	el.addEventListener('sb-export', (e) => got.push({ ...e.detail, bubbles: e.bubbles, composed: e.composed }))
+	const button = $$(el, '.th button')[1]
+	button.click()
+	await settle()
+	button.click()
+	await settle()
+	$$(el, '.row')[0].click()
+	await settle()
+	el.requestExport('json')
+	el.requestExport()
+	const want = { name: 'stars', format: 'json', sort: { key: 'c', dir: 'desc' }, columns: ['a', 'c'], selected: ['1'], bubbles: true, composed: true }
+	row('sb-export: the local order, the shown columns, the selection', got, [want, { ...want, format: 'csv' }])
+	el.remove()
+
+	const server = await make({ columns: [{ key: 'a', sortable: true }], rows: [{ id: 1, a: 'x' }, { id: 2, a: 'y' }], total: 100, sort: { key: 'a', dir: 'asc' } })
+	const asked = []
+	server.addEventListener('sb-sort', (e) => asked.push(e.detail.dir))
+	server.addEventListener('sb-export', (e) => asked.push(e.detail.sort))
+	$(server, '.th button').click()
+	await settle()
+	server.requestExport()
+	row('an unanswered sb-sort is not the order on screen', asked, ['desc', { key: 'a', dir: 'asc' }])
+	server.remove()
 })
 
 for (const [i, f] of checks.entries()) {

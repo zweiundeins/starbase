@@ -258,7 +258,7 @@ rocket('sb-data-table', {
 		selected: json.default(() => []).docs({ description: 'The selection: a JSON array of row keys. A new list from the server replaces it; the live value is the selected property.' }),
 		label: string.trim.default('Table').docs({ description: 'Accessible name.' }),
 		confirm: bool.docs({ description: 'Server-confirmed selection: :state(pending) while the local selection differs from the server\'s selected attribute (see revert()).' }),
-		name: string.trim.docs({ description: 'Name reported in sb-change and sb-columns (e.g. the field of a command).' }),
+		name: string.trim.docs({ description: 'Name reported in sb-change, sb-columns and sb-export (e.g. the field of a command).' }),
 		hiddenColumns: json.default(() => []).docs({ description: 'View state: the keys of the columns not shown, as a JSON array. A changed list from the server wins; the same list again keeps the user\'s choice. The live list is the hiddenColumns property. At least one column always shows.' }),
 		columnPicker: bool.docs({ description: 'Show a Columns button in the toolbar, with a menu that shows and hides columns (sb-columns).' }),
 		columnsLabel: string.trim.default('Columns').docs({ description: 'The Columns button\'s text, and the accessible name of its menu.' }),
@@ -272,6 +272,7 @@ rocket('sb-data-table', {
 			{ name: 'sb-cell-activate', kind: 'custom-event', bubbles: true, composed: true, description: 'A click or middle click on a link in a cell, or Enter on its cell. detail: { key, column, value, href }. Cancelable: preventDefault() stops the navigation, for an in-page action instead.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The selection changed.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The selection changed. detail: { name, value } (an array of row keys): ready for a command.' },
+			{ name: 'sb-export', kind: 'custom-event', bubbles: true, composed: true, description: 'requestExport(format) was called. detail: { name, format, sort: { key, dir }, columns, selected }: the order on screen, the keys of the shown columns in order, and the local selection. The page asks the server for the file; the table never builds one.' },
 			{ name: 'sb-columns', kind: 'custom-event', bubbles: true, composed: true, description: 'The user showed or hid a column in the column picker. detail: { name, hidden } (the keys of every hidden column). View state: not emitted for a change the server made or a property write.' },
 		],
 	},
@@ -455,6 +456,11 @@ rocket('sb-data-table', {
 		effect(() => (JSON.stringify($$.sel), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.sel = keys(props.selected)), sync())) })
+		// The server has the rows and builds the file: the table only says what
+		// is on screen (its order, not an unanswered sb-sort) and what is picked.
+		defineHostProp('requestExport', {
+			value: (format = 'csv') => peek(() => emit('sb-export', { name: props.name, format: String(format), sort: { key: sort.key, dir: sort.dir }, columns: cols.map((c) => c.key), selected: keys($$.sel) })),
+		})
 
 		const pick = (i, toggle) => {
 			const k = keyAt(i)

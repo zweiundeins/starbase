@@ -23,7 +23,7 @@ playground:
   exclude: [offset, total, rowKey, buffer, confirm, name, hiddenColumns]
 ---
 
-A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges, and a column picker lets the user hide columns. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
+A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges; a column picker lets the user hide columns, and exports come from the server, which has every row. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
 
 The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith). Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders.
 
@@ -159,12 +159,26 @@ func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSigna
 
 The query asks SQLite for one window in one order. Every sortable column has an index, and the id breaks ties, so the windows of one order fit together. `OFFSET` walks the index: the last window of 100,000 rows takes about a millisecond.
 
-```go source=internal/queries/demo_stars.go#starOrder,Reader.DemoStars
+```go source=internal/queries/demo_stars.go#starOrder,starOrderBy,Reader.DemoStars
 // starOrder maps a sort key of the star catalog to its column: the class
 // sorts by temperature.
 var starOrder = map[string]string{
 	"name": "name", "class": "temp", "constellation": "constellation",
 	"distance": "distance", "magnitude": "magnitude",
+}
+
+// starOrderBy is the ORDER BY for sort (a key of starOrder, else the
+// catalog's own order). Ties go in id order (the indexes hold it), so every
+// window of one order fits the next.
+func starOrderBy(sort string, desc bool) string {
+	col, dir := starOrder[sort], " ASC"
+	if col == "" {
+		col = "id"
+	}
+	if desc {
+		dir = " DESC"
+	}
+	return col + dir + ", id" + dir
 }
 
 // DemoStars returns up to count stars from offset, sorted by sort (a key of
@@ -174,16 +188,8 @@ func (r *Reader) DemoStars(ctx context.Context, sort string, desc bool, offset, 
 	if err := r.tx.QueryRowContext(ctx, `SELECT count(*) FROM demo_stars`).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	col, dir := starOrder[sort], " ASC"
-	if col == "" {
-		col = "id"
-	}
-	if desc {
-		dir = " DESC"
-	}
-	// Ties in id order (the indexes hold it), so every window of one order fits the next.
 	rows, err := r.tx.QueryContext(ctx, `SELECT id, name, class, temp, constellation, distance, magnitude, planets FROM demo_stars
-		ORDER BY `+col+dir+`, id`+dir+` LIMIT ? OFFSET ?`, count, offset)
+		ORDER BY `+starOrderBy(sort, desc)+` LIMIT ? OFFSET ?`, count, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -199,6 +205,180 @@ func (r *Reader) DemoStars(ctx context.Context, sort string, desc bool, offset, 
 	return out, total, rows.Err()
 }
 ```
+
+### Exports
+
+A page puts its own export buttons in the `toolbar` slot, and they call the table's `requestExport(format)` (`csv` by default), which emits `sb-export` with `{name, format, sort, columns, selected}`: the order on screen, the keys of the shown columns in their order, and the user's selection. The table never builds a file and never asks for the rows: the server has them. The page turns the event into a download of `/demo/data/rows/export`, which checks every parameter, is rate limited (per session, three downloads in a row, then one every five seconds; the whole server streams at most two at a time), and streams the file. The whole catalog is 100,000 rows; it goes out compressed, and the browser never holds more than the window it shows:
+
+```go source=internal/web/demo_data.go#Server.demoRowsExport
+// demoRowsExport answers sb-data-table's sb-export with a download of the star
+// catalog: ?format=csv or json, in the order asked for (?key=, ?dir=), the
+// ?columns= in their order (default: all), and with ?selected= only those
+// stars (at most 1000 ids). The rows stream from one read transaction, so the
+// whole catalog never sits in memory, and go out compressed.
+func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	format := q.Get("format")
+	if format != "csv" && format != "json" {
+		http.Error(w, "format must be csv or json", http.StatusBadRequest)
+		return
+	}
+	key, dir := q.Get("key"), q.Get("dir")
+	if !queries.DemoStarSortable(key) {
+		key, dir = "", ""
+	} else if dir != "desc" {
+		dir = "asc"
+	}
+	columns := demoStarColumns
+	if c := q.Get("columns"); c != "" {
+		columns = strings.Split(c, ",")
+		for i, k := range columns {
+			if !slices.Contains(demoStarColumns, k) {
+				http.Error(w, "unknown column "+strconv.Quote(k), http.StatusBadRequest)
+				return
+			}
+			if slices.Contains(columns[:i], k) {
+				http.Error(w, "column "+strconv.Quote(k)+" twice", http.StatusBadRequest)
+				return
+			}
+		}
+	}
+	var ids []int
+	if sel := q.Get("selected"); sel != "" {
+		list := strings.Split(sel, ",")
+		if len(list) > 1000 {
+			http.Error(w, "at most 1000 selected ids", http.StatusBadRequest)
+			return
+		}
+		for _, v := range list {
+			id, err := strconv.Atoi(v)
+			if err != nil {
+				http.Error(w, "selected must be ids", http.StatusBadRequest)
+				return
+			}
+			ids = append(ids, id)
+		}
+	}
+	now := time.Now()
+	if !s.exportLimit.allow(sessionID(r), 1, now) || !s.exportLimitIP.allow(clientIP(r), 1, now) {
+		http.Error(w, "exporting too often", http.StatusTooManyRequests)
+		return
+	}
+	// A download holds a read connection until it ends: slow ones must not
+	// take them all from the pages, and one that stalls for a minute ends.
+	select {
+	case s.exports <- struct{}{}:
+		defer func() { <-s.exports }()
+	default:
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "too many downloads at once", http.StatusServiceUnavailable)
+		return
+	}
+	setWriteDeadline(w, r, time.Now().Add(time.Minute))
+
+	h := w.Header()
+	h.Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	h.Set("Cache-Control", "public, max-age=300")
+	h.Set("Content-Disposition", `attachment; filename="stars.`+format+`"`)
+	// Each star is written as it comes from the cursor.
+	var write func(demo.Star) error
+	var end func() error
+	if format == "csv" {
+		h.Set("Content-Type", "text/csv; charset=utf-8")
+		cw := csv.NewWriter(w)
+		cw.Write(columns)
+		row := make([]string, len(columns))
+		write = func(st demo.Star) error {
+			for i, k := range columns {
+				switch v := demoStarField(st, k).(type) {
+				case float64:
+					row[i] = strconv.FormatFloat(v, 'f', -1, 64) // 1234567, never 1.234567e+06
+				default:
+					row[i] = fmt.Sprint(v)
+				}
+			}
+			return cw.Write(row)
+		}
+		end = func() error { cw.Flush(); return cw.Error() }
+	} else {
+		h.Set("Content-Type", "application/json")
+		bw := bufio.NewWriter(w)
+		bw.WriteString("[")
+		sep := ""
+		write = func(st demo.Star) error {
+			obj := []byte(sep + "{")
+			for i, k := range columns {
+				if i > 0 {
+					obj = append(obj, ',')
+				}
+				v, err := json.Marshal(demoStarField(st, k))
+				if err != nil {
+					return err
+				}
+				obj = append(append(strconv.AppendQuote(obj, k), ':'), v...)
+			}
+			sep = ",\n"
+			_, err := bw.Write(append(obj, '}'))
+			return err
+		}
+		end = func() error { bw.WriteString("]\n"); return bw.Flush() }
+	}
+	n := 0
+	err := s.q.View(r.Context(), func(rd *queries.Reader) error {
+		return rd.EachDemoStar(r.Context(), key, dir == "desc", ids, func(st demo.Star) error {
+			if n++; n%1000 == 0 {
+				setWriteDeadline(w, r, time.Now().Add(time.Minute))
+			}
+			return write(st)
+		})
+	})
+	if err == nil {
+		err = end()
+	}
+	if err != nil {
+		// A file cut short must not look complete: the download fails instead.
+		if r.Context().Err() == nil {
+			s.log.Error("export failed", "err", err)
+		}
+		panic(http.ErrAbortHandler)
+	}
+}
+```
+
+It reads the stars from a cursor in the same order as the windows, so the file has the order the table shows:
+
+```go source=internal/queries/demo_stars.go#Reader.EachDemoStar
+// EachDemoStar calls fn with every star in the order DemoStars gives them, or
+// only with the stars whose id is in ids, and stops at fn's first error. The
+// rows stream from the cursor: a whole export never sits in memory.
+func (r *Reader) EachDemoStar(ctx context.Context, sort string, desc bool, ids []int, fn func(demo.Star) error) error {
+	where, args := "", make([]any, len(ids))
+	if len(ids) > 0 {
+		where = ` WHERE id IN (?` + strings.Repeat(", ?", len(ids)-1) + `)`
+		for i, id := range ids {
+			args[i] = id
+		}
+	}
+	rows, err := r.tx.QueryContext(ctx, `SELECT id, name, class, temp, constellation, distance, magnitude, planets FROM demo_stars`+where+`
+		ORDER BY `+starOrderBy(sort, desc), args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var s demo.Star
+		if err := rows.Scan(&s.ID, &s.Name, &s.Class, &s.Temp, &s.Constellation, &s.Distance, &s.Magnitude, &s.Planets); err != nil {
+			return err
+		}
+		if err := fn(s); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+```
+
+A real server should also neutralise text cells that start with `=`, `+`, `-` or `@` (for example with a leading `'`), or a spreadsheet that opens the CSV may run them as formulas. The star catalog has no text like that.
 
 ## With commands
 

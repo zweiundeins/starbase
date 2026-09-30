@@ -42,6 +42,10 @@ type Server struct {
 	sizeLimitIP  *limiter
 	sizeMu       sync.Mutex
 	sizes        map[[32]byte]map[string]any // playground code → $_size (playground_size.go)
+
+	exportLimit   *limiter // the star catalog's downloads, per session
+	exportLimitIP *limiter
+	exports       chan struct{} // the downloads streaming now, each holding a read connection
 }
 
 type Deps struct {
@@ -77,6 +81,10 @@ func New(ctx context.Context, d Deps) *Server {
 		sizeLimitIP:  newLimiter(10, 60),
 		sizes:        map[[32]byte]map[string]any{},
 		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
+
+		exportLimit:   newLimiter(0.2, 3), // a download every five seconds, three in a row
+		exportLimitIP: newLimiter(1, 10),
+		exports:       make(chan struct{}, 2), // the read pool has at least four
 	}
 	s.oauth = newOAuth(d.Config)
 	return s
@@ -138,6 +146,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /demo/data/search", s.demoSearch)
 	mux.HandleFunc("GET /demo/data/list", s.demoList)
 	mux.HandleFunc("GET /demo/data/rows", s.demoRows)
+	mux.HandleFunc("GET /demo/data/rows/export", s.demoRowsExport)
 	mux.HandleFunc("OPTIONS /demo/", demoPreflight)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
