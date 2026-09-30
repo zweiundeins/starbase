@@ -44,6 +44,26 @@ const today = () => ((n) => ymd(n.getFullYear(), n.getMonth(), n.getDate()))(new
 const lohi = (a, b) => (a > b ? [b, a] : [a, b])
 const anchors = CSS.supports('anchor-name: --a')
 
+// A date-time is its wall clock as UTC ms. local: what datetime-local accepts
+// (no zone, at most three fraction digits, dropped); off: a Z or offset in ms.
+const stampRe = /^(\d{4}-\d\d-\d\d)([Tt ])(\d\d):(\d\d)(?::(\d\d)(?:\.(\d+))?)?([Zz]|([+-])(\d\d):(\d\d))?$/
+const clock = (s) => {
+	const m = stampRe.exec(String(s ?? '').trim())
+	const n = m && day(m[1])
+	if (n == null || m[3] > 23 || m[4] > 59 || m[5] > 59 || m[9] > 23 || m[10] > 59) return null
+	return {
+		w: n * DAY + (m[3] * 3600 + m[4] * 60 + (+m[5] || 0)) * 1e3,
+		local: m[2] !== 't' && !m[7] && !(m[6]?.length > 3),
+		off: m[7] ? (m[8] === '-' ? -6e4 : 6e4) * ((+m[9] || 0) * 60 + (+m[10] || 0)) : null,
+	}
+}
+// The normalised form, seconds only when they aren't zero, and the seconds of the day.
+const stamp = (w) => ((w = new Date(w).toISOString()), w.slice(0, 16) + (w.slice(17, 19) === '00' ? '' : w.slice(16, 19)))
+const sod = (w) => (w - Math.floor(w / DAY) * DAY) / 1e3
+// The time row's fields: b and a are the day period before or after the hour.
+const FIELD = { h: 'h', m: 'm', s: 's', b: 'p', a: 'p' }
+const shown = (el) => el.getClientRects().length > 0
+
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-control-bg, #0B1224);
@@ -56,6 +76,7 @@ const styles = /* css */ `
 	--_panel: var(--sb-surface-raised, #10182B);
 	--_hover: var(--sb-surface-hover, #1A2540);
 	--_brand: var(--sb-brand, #8C6BFF);
+	--_brand-hover: var(--sb-brand-hover, #A58BFF);
 	--_brand-light: var(--sb-brand-light, #B09AFF);
 	--_brand-subtle: var(--sb-brand-subtle, rgb(140 107 255 / 0.14));
 	--_on-brand: var(--sb-text-on-brand, #F3F4FA);
@@ -164,27 +185,70 @@ td {
 [part~=day][part~=selected] { background: var(--_brand); color: var(--_on-brand); clip-path: ${notch('var(--_n)')}; }
 [part~=disabled] { color: var(--_muted); text-decoration: line-through; cursor: default; }
 [part~=disabled]:hover { background: none; }
+.times { display: grid; gap: 0.375rem; inline-size: 15.75rem; margin-block-start: 0.5rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--_border); }
+.time { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+[part~=time-label] { flex: 1; margin-inline-end: 0.25rem; color: var(--_label); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.empty { color: var(--_muted); }
+[part~=segment] {
+	flex: none;
+	box-sizing: border-box;
+	inline-size: 2.25rem;
+	block-size: 2rem;
+	padding: 0;
+	border: 1px solid var(--_border);
+	border-radius: calc(var(--_radius) - 2px);
+	background: var(--_bg);
+	text-align: center;
+	font-size: 0.875rem;
+}
+[part~=segment]:hover { border-color: var(--_border-hover); }
+[part~=segment]:focus-visible { outline-color: var(--_brand-light); background: var(--_brand-subtle); }
+[part~=segment]:not([inputmode]) { inline-size: 3rem; }
+@supports (field-sizing: content) {
+	[part~=segment]:not([inputmode]) { inline-size: auto; min-inline-size: 2.25rem; padding-inline: 0.375rem; field-sizing: content; }
+}
+.sep { color: var(--_muted); white-space: pre; }
+[part~=apply] {
+	justify-self: end;
+	inline-size: auto;
+	block-size: 2rem;
+	padding-inline: 0.875rem;
+	background: var(--_brand);
+	color: var(--_on-brand);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	clip-path: ${notch('var(--_n)')};
+}
+[part~=apply]:hover { background: var(--_brand-hover); color: var(--_on-brand); }
+[part~=apply][aria-disabled=true] { background: var(--_brand); }
 @media (prefers-reduced-motion: reduce) { .control { transition: none; } }
 @media (forced-colors: active) {
 	i, [part~=today]::after { forced-color-adjust: none; background: CanvasText; }
 	[part~=range], [part~=day][part~=selected] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 	[part~=disabled] { color: GrayText; }
 	.cal { outline: 1px solid CanvasText; outline-offset: -1px; }
+	[part~=segment]:focus-visible { outline-color: Highlight; }
+	[part~=apply] { outline: 1px solid ButtonText; outline-offset: -1px; }
+	[part~=apply]:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+	[part~=apply][aria-disabled=true], .empty { color: GrayText; outline-color: GrayText; }
 }
 `
 
 rocket('sb-date-picker', {
-	props: ({ bool, json, oneOf, string }) => ({
-		value: string.docs({ description: 'The date, ISO: 2026-09-29. With mode="range", JSON: {"start":"2026-09-29","end":"2026-10-03"}. A new value from the server replaces it (value="" clears); the live value is the value property.' }),
+	props: ({ bool, json, number, oneOf, string }) => ({
+		value: string.docs({ description: 'The date, ISO: 2026-09-29. With time, a local date-time as datetime-local submits it: 2026-09-29T14:30 (seconds only when not zero). With mode="range", JSON: {"start":"2026-09-29","end":"2026-10-03"}. A new value from the server replaces it (value="" clears); the live value is the value property.' }),
 		mode: oneOf('single', 'range').default('single').docs({ description: 'One date, or a start and an end, committed together as one value.' }),
-		min: string.docs({ description: 'Earliest date that can be picked (ISO).' }),
-		max: string.docs({ description: 'Latest date that can be picked (ISO).' }),
+		time: bool.docs({ description: 'The value includes a time of day. The calendar and a time row below it edit a draft, and Apply (or Enter in the time row) commits the date and the time together.' }),
+		step: number.clamp(0, 3600).default(60).docs({ description: 'With time: the time\'s granularity in whole seconds up to 3600, as on datetime-local (60: minutes, 900: quarter hours, 1: seconds shown); a step that isn\'t a positive number means 60. Up and Down move by it; typed values off the step are kept.' }),
+		min: string.docs({ description: 'Earliest date that can be picked (ISO). With time, a date (from the start of that day) or a date-time.' }),
+		max: string.docs({ description: 'Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time.' }),
 		disabledDates: json.default(() => []).docs({ description: 'Server data: dates that can\'t be picked, as a JSON array of ISO dates (e.g. booked days). They can still be focused and read.' }),
 		month: string.docs({ description: 'The month shown, YYYY-MM (view state). A changed attribute from the server moves the calendar there; the user paging months emits sb-month.' }),
 		open: bool.docs({ description: 'The calendar popover is open. View state: a changed attribute from the server opens or closes it (open="false" closes); local toggling never reflects it.' }),
 		inline: bool.docs({ description: 'Show the calendar on the page, always visible, without the text field.' }),
 		label: string.trim.docs({ description: 'Visible label, and the accessible name of the calendar.' }),
-		placeholder: string.docs({ description: 'Placeholder text (default: the locale\'s date pattern, e.g. dd.mm.yyyy).' }),
+		placeholder: string.docs({ description: 'Placeholder text (default: the locale\'s date pattern, e.g. dd.mm.yyyy, or with time dd.mm.yyyy, hh:mm).' }),
+		applyLabel: string.default('Apply').docs({ description: 'With time: the text of the button that commits the calendar\'s date and time.' }),
 		error: string.docs({ description: 'Message shown when the typed text is not a date that can be picked.' }),
 		lang: string.trim.docs({ description: 'Locale for month and weekday names, the first day of the week and the typed format (default: the page\'s lang, then the browser\'s).' }),
 		disabled: bool.docs({ description: 'Disable the field and the calendar. A form leaves it out.' }),
@@ -194,7 +258,7 @@ rocket('sb-date-picker', {
 	manifest: {
 		events: [
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The value changed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'A date was picked or typed. detail: { name, value }: an ISO date ("" when cleared), or with mode="range" { start, end } (null when cleared). Ready for a command.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'A date was picked or typed (with time: applied or typed). detail: { name, value }: an ISO date or with time a date-time ("" when cleared), or with mode="range" { start, end } (null when cleared). Ready for a command.' },
 			{ name: 'sb-month', kind: 'custom-event', bubbles: true, composed: true, description: 'The user moved the calendar to another month. detail: { name, year, month } (month from 1): the moment to send that month\'s disabled-dates.' },
 			{ name: 'sb-toggle', kind: 'custom-event', bubbles: true, composed: true, description: 'The popover opened or closed. detail: { name, open }. View state: not emitted for a change the server made.' },
 		],
@@ -204,6 +268,25 @@ rocket('sb-date-picker', {
 	renderOnPropChange: false,
 	render: ({ html }) => {
 		const seven = [...Array(7).keys()]
+		// A segment of end i's time: k is its field (see FIELD), show the signal
+		// that shows it.
+		const seg = (k, i, show) => {
+			const f = FIELD[k]
+			return html`<input id="${k}${i}" part="segment" type="text" role="spinbutton" autocomplete="off" spellcheck="false"
+				inputmode="${f === 'p' ? false : 'numeric'}" maxlength="${f === 'p' ? false : '2'}"
+				data-show="$$${show}"
+				data-bind="$$${k}${i}"
+				data-attr:disabled="$$disabled"
+				data-attr:aria-label="$$fl.${f}"
+				data-attr:aria-valuenow="$$r${i}.${f}"
+				data-attr:aria-valuemin="$$lo.${f}"
+				data-attr:aria-valuemax="$$hi.${f}"
+				data-attr:aria-valuetext="$$r${i}.${f}t"
+				data-on:focus="el.select()"
+				data-on:click="el.selectionStart === el.selectionEnd && el.select()"
+				data-on:input="@typing()"
+				data-on:focusout="@left()"/>`
+		}
 		return html`
 			<label part="label" for="i" data-show="$$label" data-text="$$label"></label>
 			<div class="control" part="control" data-ref:control data-show="!$$inline" data-class:invalid="$$invalid"
@@ -257,6 +340,15 @@ rocket('sb-date-picker', {
 							)}
 						</tbody>
 					</table>
+					<div class="times" data-show="$$time">
+						${[0, 1].map(
+							(i) => html`<div class="time" part="time" role="group" data-show="$$range || ${i} === 0" data-attr:aria-label="$$r${i}.n">
+								<span part="time-label" aria-hidden="true" data-class:empty="$$r${i}.e" data-text="$$r${i}.l"></span>
+								${seg('b', i, 'pb')}${seg('h', i, 'time')}<span class="sep" aria-hidden="true" data-text="$$sep"></span>${seg('m', i, 'time')}<span class="sep" aria-hidden="true" data-show="$$secs" data-text="$$sep2"></span>${seg('s', i, 'secs')}${seg('a', i, 'pa')}
+							</div>`,
+						)}
+						<button type="button" part="apply" data-attr:disabled="$$disabled" data-attr:aria-disabled="$$ready ? false : 'true'" data-text="$$applyLabel" data-on:click="@apply()"></button>
+					</div>
 				</div>
 			</div>
 		`
@@ -265,25 +357,43 @@ rocket('sb-date-picker', {
 		adoptStyles(host, styles)
 		const states = internalsOf(host).states
 		const range = () => props.mode === 'range'
+		// A value's ends are points: days, or with time date-times (see clock()).
+		// A time of day is in seconds.
+		const pt = (s) => (!props.time ? day(s) : (s = clock(s))?.local ? s.w : null)
+		const str = (p) => (props.time ? stamp(p) : iso(p))
+		const wallOf = (p) => p
+		const pointOf = (w) => w
+		const dayOf = (p) => (props.time ? Math.floor(wallOf(p) / DAY) : p)
+		// As on datetime-local, a step that isn't a positive number is 60.
+		const step = () => (props.step > 0 ? Math.max(1, Math.round(props.step)) : 60)
+		const last = () => Math.floor(86399 / step()) * step()
 
-		// The value as one string, so values compare: "" or an ISO date, or with
-		// range "" or {"start","end"} JSON in order (what a form submits).
+		// The value as one string, so values compare: "" or a point, or with range
+		// "" or {"start","end"} JSON in order (what a form submits).
 		const norm = (v) => {
-			if (!range()) return (v = day(v)) == null ? '' : iso(v)
+			if (!range()) return (v = pt(v)) == null ? '' : str(v)
 			try {
 				v = typeof v === 'string' ? JSON.parse(v) : v
 			} catch {}
-			const [a, b] = lohi(...(Array.isArray(v) ? v : [v?.start, v?.end]).map(day))
-			return a == null || b == null ? '' : JSON.stringify({ start: iso(a), end: iso(b) })
+			const [a, b] = lohi(...(Array.isArray(v) ? v : [v?.start, v?.end]).map(pt))
+			return a == null || b == null ? '' : JSON.stringify({ start: str(a), end: str(b) })
 		}
 		const out = (v) => (range() ? (v ? JSON.parse(v) : null) : v)
-		const ends = (v) => (range() ? (v ? Object.values(JSON.parse(v)) : []) : [v]).map(day).filter((n) => n != null)
-		const text = (v) => ends(v).map((n) => fmt.format(n * DAY)).join(' – ')
+		const points = (v) => (range() ? (v ? Object.values(JSON.parse(v)) : []) : [v]).map(pt).filter((n) => n != null)
+		const ends = (v) => points(v).map(dayOf)
+		const text = (v) => {
+			const ws = points(v).map(wallOf)
+			const t = props.time && times[+(step() % 60 !== 0 || ws.some((w) => sod(w) % 60))]
+			return ends(v).map((n, i) => (t ? t.format(ws[i]) : fmt.format(n * DAY))).join(' – ')
+		}
 
 		// The language: formats, the first day of the week, the typed order and
 		// the placeholder. The typed format is the locale's numeric one
 		// (dd.mm.yyyy, mm/dd/yyyy, yyyy/mm/dd…), in its own digits.
-		let fmt, full, title, num, digits, order, first, lo, hi, off
+		let fmt, full, title, num, digits, order, first, lo, hi, off, loP, hiP
+		// With time: the formats without and with seconds, their number order (time
+		// first in vi) and the words they write (klo, г.), which typed text may contain.
+		let times, stamps, cycle, ampm, words, datePattern
 		const speak = () => {
 			let el = host, l
 			while (!(l = el.closest('[lang]')) && (el = el.getRootNode().host));
@@ -302,7 +412,14 @@ rocket('sb-date-picker', {
 			}
 			const ps = fmt.formatToParts(0)
 			order = ps.map((p) => p.type).filter((t) => t !== 'literal')
-			const pattern = ps.map((p) => ({ day: 'dd', month: 'mm', year: 'yyyy' })[p.type] ?? p.value).join('')
+			const pat = (ps) => ps.map((p) => ({ day: 'dd', month: 'mm', year: 'yyyy', hour: 'hh', minute: 'mm', second: 'ss' })[p.type] ?? p.value).join('')
+			datePattern = pat(ps)
+			// h24 (midnight as 24) is read and shown as h23, in the field as in the time row.
+			const hc = dtf({ hour: 'numeric' }).resolvedOptions().hourCycle || 'h23'
+			cycle = hc === 'h24' ? 'h23' : hc
+			const dt = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', ...(hc === 'h24' && { hourCycle: 'h23' }) }
+			times = [dtf(dt), dtf({ ...dt, second: '2-digit' })]
+			const pattern = props.time ? pat(times[+(step() % 60 !== 0)].formatToParts(0)) : datePattern
 			$$.ph = props.placeholder || (range() ? `${pattern} – ${pattern}` : pattern)
 			// 1970-01-04 (day 3) was a Sunday.
 			const wd = (o, d) => dtf({ weekday: o }).format((3 + ((first + d) % 7)) * DAY)
@@ -310,16 +427,50 @@ rocket('sb-date-picker', {
 				const s = wd('short', d)
 				$$['w' + d] = { s: s.length > 4 ? wd('narrow', d) : s, l: wd('long', d) }
 			}
+
+			// The time row: the fields' names, values and order, and the separators.
+			const twelve = cycle === 'h11' || cycle === 'h12'
+			const h12 = dtf({ hour: 'numeric', hourCycle: 'h12' })
+			ampm = [0, DAY / 2].map((t, i) => h12.formatToParts(t).find((p) => p.type === 'dayPeriod')?.value || ['AM', 'PM'][i])
+			const tp = times[1].formatToParts(0)
+			stamps = tp.map((p) => p.type).filter((t) => ['year', 'month', 'day', 'hour', 'minute', 'second'].includes(t))
+			const at = (t) => tp.findIndex((p) => p.type === t)
+			const after = (t) => (tp[at(t) + 1]?.type === 'literal' ? tp[at(t) + 1].value : ':')
+			words = new Set(tp.flatMap((p) => (p.type === 'literal' && p.value.toLowerCase().match(/\p{L}+/gu)) || []))
+			let names
+			try {
+				names = new Intl.DisplayNames(lang, { type: 'dateTimeField' })
+			} catch {}
+			const name = (f, en) => {
+				try {
+					return names.of(f) || en
+				} catch {
+					return en
+				}
+			}
+			$$.fl = { h: name('hour', 'Hour'), m: name('minute', 'Minute'), s: name('second', 'Second'), p: name('dayPeriod', 'AM/PM') }
+			$$.lo = { h: +(cycle === 'h12'), m: 0, s: 0, p: 0 }
+			$$.hi = { h: twelve ? 11 + (cycle === 'h12') : 23, m: 59, s: 59, p: 1 }
+			const before = twelve && at('dayPeriod') >= 0 && at('dayPeriod') < at('hour')
+			$$.pb = before
+			$$.pa = twelve && !before
+			$$.sep = after('hour')
+			$$.sep2 = after('minute')
 		}
-		// Bounds and ruled-out days.
+		// Bounds, as points (with time, a date alone is the start of that day for
+		// min and its last second for max) and as days, and ruled-out days.
 		const bound = () => {
-			lo = day(props.min) ?? -Infinity
-			hi = day(props.max) ?? Infinity
+			const b = (s, end) => pt(s) ?? ((s = day(s)) == null ? null : pointOf(s * DAY + (end ? 86399e3 : 0)))
+			loP = b(props.min) ?? -Infinity
+			hiP = b(props.max, true) ?? Infinity
+			lo = isFinite(loP) ? dayOf(loP) : loP
+			hi = isFinite(hiP) ? dayOf(hiP) : hiP
 			off = new Set([props.disabledDates].flat().map(day))
 		}
 		// The other props the template reads.
 		const mirror = () => {
-			for (const k of ['label', 'error', 'inline', 'disabled']) $$[k] = props[k]
+			for (const k of ['label', 'error', 'inline', 'disabled', 'time', 'applyLabel']) $$[k] = props[k]
+			$$.range = range()
 			$$.aria = host.getAttribute('aria-label') || 'Date'
 			states[props.disabled ? 'add' : 'delete']('disabled')
 		}
@@ -328,17 +479,46 @@ rocket('sb-date-picker', {
 		mirror()
 		const ok = (n) => n >= lo && n <= hi && !off.has(n)
 		const clamp = (n) => Math.min(Math.max(n, lo), hi)
-		// Typed text: an ISO date, or three numbers in the locale's order with a
-		// four-digit year. Anything else is not a date: never guess.
+		const latin = (s) => s.replace(/\p{Nd}/gu, (c) => (digits.includes(c) ? digits.indexOf(c) : c))
+		// Typed text: ISO, or the numbers in the order the field shows them (with time,
+		// date first works too) and a four-digit year; see hms(). Never guess.
 		const read = (s) => {
-			s = s.replace(/\p{Nd}/gu, (c) => (digits.includes(c) ? digits.indexOf(c) : c))
-			let n = day(s)
-			const g = s.match(/\d+/g)
-			if (n == null && g?.length === 3) {
-				const o = Object.fromEntries(order.map((t, i) => [t, g[i]]))
-				n = o.year?.length === 4 && o.month?.length < 3 && o.day?.length < 3 ? day(`${o.year}-${o.month.padStart(2, '0')}-${o.day.padStart(2, '0')}`) : null
+			s = latin(s)
+			let n = pt(s)
+			const g = [...s.matchAll(/\d+/g)]
+			const ways = props.time ? [stamps, [...order, 'hour', 'minute', 'second']] : [order]
+			if (n == null && (props.time ? [5, 6] : [3]).includes(g.length))
+				for (const way of ways) {
+					const o = {}
+					way.filter((t) => g.length > 5 || t !== 'second').forEach((t, i) => (o[t] = g[i]))
+					const [y, m, d, h, mi, sec] = ['year', 'month', 'day', 'hour', 'minute', 'second'].map((t) => o[t]?.[0])
+					n = y?.length === 4 && m?.length < 3 && d?.length < 3 ? day(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`) : null
+					if (props.time && n != null) {
+						const ds = [o.year, o.month, o.day]
+						const [a, b] = [Math.min(...ds.map((x) => x.index)), Math.max(...ds.map((x) => x.index + x[0].length))]
+						n = hms((s.slice(0, a) + ' ' + s.slice(b)).toLowerCase(), [h, mi, sec], n)
+					}
+					if (n != null) break
+				}
+			return n != null && ok(dayOf(n)) && n >= loP && n <= hiP ? n : null
+		}
+		// The time around a typed date: AM or PM anywhere makes it 12-hour (12 AM
+		// is 0); other words only as the format writes them.
+		const hms = (tail, [h, m, s = '00'], n) => {
+			let pm = -1
+			const period = (i) => (pm < 0 || pm === i) && ((pm = i), true)
+			for (const [i, a] of ampm.entries()) {
+				const w = a.toLowerCase()
+				if (!tail.includes(w)) continue
+				if (!period(i)) return null
+				tail = tail.replace(w, ' ')
 			}
-			return n != null && ok(n) ? n : null
+			for (const w of tail.match(/\p{L}+/gu) ?? []) {
+				const i = ['am', 'pm'].indexOf(w)
+				if (i >= 0 ? !period(i) : !words.has(w)) return null
+			}
+			if (h.length > 2 || m.length !== 2 || s.length !== 2 || m > 59 || s > 59 || h > (pm < 0 ? 23 : 12)) return null
+			return pointOf(n * DAY + ((pm < 0 ? +h : (h % 12) + pm * 12) * 3600 + m * 60 + +s) * 1e3)
 		}
 
 		// The month shown, the day with the grid's focus (always in that month),
@@ -362,9 +542,9 @@ rocket('sb-date-picker', {
 				len = ymd(vy, vm + 1, 1) - f1
 				g = f1 - ((new Date(f1 * DAY).getUTCDay() - first + 7) % 7)
 				const R = range()
-				// The range on show: the value's, or while picking, from the first
-				// pick to the day pointed at.
-				const e = ends($$.v)
+				// The range on show: the value's (with time the draft's), or while
+				// picking, from the first pick to the day pointed at.
+				const e = props.time ? draft.slice(0, R ? 2 : 1).flatMap((x) => (x.d == null ? [] : [x.d])) : ends($$.v)
 				const [a, b] = pick1 != null ? lohi(pick1, hover ?? focus) : [e[0], e.at(-1)]
 				const t = today()
 				for (let i = 0; i < 42; i++) {
@@ -396,12 +576,108 @@ rocket('sb-date-picker', {
 			paint()
 		}
 
-		// The value: $$.v is the local one, the attribute the server's.
+		// The draft (with time): each end's day (null until picked), time of day,
+		// and the point it started from, kept while the wall clock is the same.
+		let draft = []
+		let edited = false
+		let secs = false
+		const whole = (x) => pointOf(x.d * DAY + x.s * 1e3, x.t)
+		const from = (p) => {
+			const w = wallOf(p)
+			const d = Math.floor(w / DAY)
+			return { d, s: (w - d * DAY) / 1e3, t: p }
+		}
+		const redraft = () => {
+			const ps = points($$.v)
+			draft = [0, 1].map((i) => (ps[i] != null ? from(ps[i]) : { d: null, s: i ? last() : 0, t: null }))
+			edited = false
+			secs = step() % 60 !== 0
+			draw()
+		}
+		// A field's value as its segment shows it (p: 0 AM, 1 PM), its values, and
+		// its step: the step's seconds below a minute, its minutes below an hour.
+		const val = (x, f) => {
+			const H = Math.floor(x.s / 3600)
+			return { h: cycle === 'h11' ? H % 12 : cycle === 'h12' ? H % 12 || 12 : H, m: Math.floor(x.s / 60) % 60, s: x.s % 60, p: +(H >= 12) }[f]
+		}
+		const span = (f) => (f === 'h' ? (cycle === 'h12' ? [1, 12] : [0, cycle === 'h11' ? 11 : 23]) : [0, f === 'p' ? 1 : 59])
+		const every = (f, s = step()) => (f === 's' && s < 60 ? s : f === 'm' && s % 60 === 0 && s < 3600 ? s / 60 : 1)
+		const two = (n) => String(n).padStart(2, '0').replace(/\d/g, (c) => digits[c])
+		// The time row shows the draft. Seconds show with a step or a draft that
+		// has them, and stay until the next draft.
+		const draw = () =>
+			props.time &&
+			draft.length &&
+			peek(() => {
+				secs ||= draft.some((x) => x.s % 60)
+				$$.secs = secs
+				$$.ready = pick1 == null && draft.slice(0, range() ? 2 : 1).every((x) => x.d != null)
+				draft.forEach((x, i) => {
+					const [h, m, s, p] = ['h', 'm', 's', 'p'].map((f) => val(x, f))
+					const t = { h: two(h), m: two(m), s: two(s), p: ampm[p] }
+					$$['r' + i] = {
+						l: x.d == null ? datePattern : fmt.format(x.d * DAY),
+						n: x.d == null ? $$.label || $$.aria : full.format(x.d * DAY),
+						e: x.d == null,
+						h, m, s, p,
+						ht: t.h, mt: t.m, st: t.s, pt: t.p,
+					}
+					$$['h' + i] = t.h
+					$$['m' + i] = t.m
+					$$['s' + i] = t.s
+					$$['a' + i] = $$['b' + i] = t.p
+				})
+			})
+		// The draft's ends within min and max.
+		const fix = () => {
+			for (const x of draft) {
+				if (x.d == null) continue
+				const p = whole(x)
+				if (p < loP) Object.assign(x, from(loP))
+				else if (p > hiP) Object.assign(x, from(hiP))
+			}
+		}
+		// Sets field f of end i to v, as its segment shows it.
+		const put = (i, f, v) => {
+			const x = draft[i]
+			let [H, M, S] = [Math.floor(x.s / 3600), Math.floor(x.s / 60) % 60, x.s % 60]
+			if (f === 'h') H = cycle === 'h11' || cycle === 'h12' ? (v % 12) + (H >= 12 ? 12 : 0) : v
+			else if (f === 'p') H = (H % 12) + v * 12
+			else if (f === 'm') M = v
+			else S = v
+			x.s = H * 3600 + M * 60 + S
+			edited = true
+			fix()
+			draw()
+		}
+		// Up and Down: the next step in that direction, wrapping within the field.
+		const spin = (i, f, up) => {
+			const [a, b] = span(f)
+			const k = every(f)
+			const v = val(draft[i], f)
+			const n = a + (up ? Math.floor((v - a) / k) + 1 : Math.ceil((v - a) / k) - 1) * k
+			put(i, f, n > b ? a : n < a ? a + Math.floor((b - a) / k) * k : n)
+		}
+		// A segment's text, once it is left or complete: a number (a 12-hour hour
+		// may be 0 for 12), else the draft's value shows again.
+		const take = (el) => {
+			const f = FIELD[el.id[0]]
+			const i = +el.id[1]
+			const t = latin(el.value).trim()
+			$$[el.id] = el.value
+			if (f !== 'p' && /^\d{1,2}$/.test(t) && +t !== val(draft[i], f)) put(i, f, Math.min(+t, f !== 'h' ? 59 : cycle === 'h11' || cycle === 'h12' ? 12 : 23))
+			else draw()
+		}
+		const segs = () => [...cal.querySelectorAll('[part~=segment]')].filter(shown)
+
+		// The value: $$.v is the local one, the attribute the server's. A new
+		// value is also a new draft.
 		const set = (v) => {
 			$$.v = v
 			$$.text = text(v)
 			$$.invalid = false
 			pick1 = null
+			props.time && redraft()
 			paint()
 		}
 		const commit = (v) => {
@@ -432,13 +708,17 @@ rocket('sb-date-picker', {
 		observeProps((p, changes) =>
 			peek(() => {
 				const has = (...k) => k.some((x) => x in changes)
-				if (has('lang', 'placeholder', 'mode')) speak()
-				if (has('min', 'max', 'disabledDates')) bound()
+				// A new format: the server's value, normalised again, wins.
+				const format = has('mode', 'time') || (p.time && has('step'))
+				if (format || has('lang', 'placeholder')) speak()
+				if (format || has('min', 'max', 'disabledDates')) bound()
 				if (p.disabled || p.inline) $$.open = false
 				mirror()
 				if (has('lang')) $$.invalid || ($$.text = text($$.v))
-				if (has('mode')) set(norm(p.value))
+				if (format) set(norm(p.value))
 				else if (has('lang', 'min', 'max', 'disabledDates', 'disabled')) paint()
+				// Redrawn only for a prop the time row shows: a redraw drops a half-typed segment.
+				if (!format && has('lang', 'label')) draw()
 				sync()
 			}),
 		)
@@ -451,7 +731,9 @@ rocket('sb-date-picker', {
 				pick1 = null
 				// Closing with the focus inside: it goes back to the button.
 				if (evt.newState !== 'open') return cal.contains(host.shadowRoot.activeElement) && button.focus()
-				// The user's open shows the value's month (or today's).
+				// The user's open shows the value's month (or today's). The draft
+				// starts from the value: a close dropped the last one.
+				props.time && redraft()
 				$$.open ? paint() : move(ends($$.v)[0] ?? today())
 				if (anchors) return
 				const r = control.getBoundingClientRect()
@@ -517,11 +799,40 @@ rocket('sb-date-picker', {
 
 		const choose = (n) => {
 			if (!ok(n) || props.disabled) return
+			if (props.time) return pick(n)
 			if (range() && pick1 == null) return (pick1 = n), paint()
 			const [a, b] = lohi(pick1 ?? n, n)
 			commit(range() ? JSON.stringify({ start: iso(a), end: iso(b) }) : iso(n))
 			$$.open && cal.hidePopover()
 		}
+		// With time, a day goes into the draft (a range's second pick completes
+		// it), and the focus moves on to the time.
+		const pick = (n) => {
+			edited = true
+			if (range() && pick1 == null) {
+				pick1 = n
+				draft[0].d = n
+				draft[1].d = null
+			} else if (range()) {
+				;[draft[0].d, draft[1].d] = lohi(pick1, n)
+				pick1 = null
+			} else draft[0].d = n
+			fix()
+			draw()
+			paint()
+			pick1 == null && segs()[0]?.focus()
+		}
+		// Apply: the draft, within the bounds and in order, becomes the value.
+		const apply = () => {
+			segs().forEach((s) => take(s))
+			if (!$$.ready) return
+			fix()
+			const [a, b] = draft.map(whole)
+			const [s, e] = lohi(a, b)
+			commit(range() ? JSON.stringify({ start: str(s), end: str(e) }) : str(a))
+			$$.open && cal.hidePopover()
+		}
+		action('apply', () => peek(apply))
 		// The typed text, committed on change (Enter or leaving the field).
 		action('typed', () =>
 			peek(() => {
@@ -529,9 +840,30 @@ rocket('sb-date-picker', {
 				const ns = s ? (range() ? s.split(/\s+-\s+|\s*[–—]\s*/) : [s]).map(read) : []
 				if (ns.includes(null) || (ns.length && ns.length !== (range() ? 2 : 1))) return ($$.invalid = true)
 				const [a, b] = lohi(ns[0], ns[1])
-				commit(!ns.length ? '' : range() ? JSON.stringify({ start: iso(a), end: iso(b) }) : iso(ns[0]))
+				commit(!ns.length ? '' : range() ? JSON.stringify({ start: str(a), end: str(b) }) : str(ns[0]))
 			}),
 		)
+		// Typing in a segment: a letter sets the day period; two digits set the
+		// number and move on to the next segment.
+		action('typing', ({ el, evt }) =>
+			peek(() => {
+				evt.stopPropagation()
+				if (FIELD[el.id[0]] === 'p') {
+					const [c, a, p] = [evt.data ?? '', ...ampm].map((s) => s.toLowerCase().match(/\p{L}/u)?.[0])
+					const v = c === 'a' || (c === a && a !== p) ? 0 : c === 'p' || (c === p && a !== p) ? 1 : -1
+					$$[el.id] = el.value
+					v < 0 ? draw() : put(+el.id[1], 'p', v)
+					return queueMicrotask(() => el.select())
+				}
+				edited = true
+				if (!/^\d\d$/.test(latin(el.value).trim())) return
+				take(el)
+				const all = segs()
+				const next = all[all.indexOf(el) + 1]
+				next ? next.focus() : queueMicrotask(() => el.select())
+			}),
+		)
+		action('left', ({ el }) => peek(() => take(el)))
 		action('page', (_, k) => move(addMonths(focus, k)))
 		// The days: i is the cell's place in the grid.
 		action('tap', (_, i) =>
@@ -543,21 +875,43 @@ rocket('sb-date-picker', {
 			}),
 		)
 		action('over', (_, i) => peek(() => pick1 != null && here(g + i) && g + i !== hover && ((hover = g + i), paint())))
+		// Keys in the time row; false leaves the key to the browser. Left and
+		// Right move the caret, and from the text's edge to the next segment.
+		const segment = (el, k) => {
+			const f = FIELD[el.id[0]]
+			const i = +el.id[1]
+			const [a, b] = span(f)
+			if (k === 'Enter') return take(el), apply(), true
+			if (k === 'ArrowUp' || k === 'ArrowDown') take(el), spin(i, f, k === 'ArrowUp')
+			else if (k === 'Home' || k === 'End') put(i, f, k === 'Home' ? a : b)
+			else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+				const on = (k === 'ArrowRight') !== host.matches(':dir(rtl)')
+				const all = segs()
+				const to = all[all.indexOf(el) + (on ? 1 : -1)]
+				if (!to || (on ? el.selectionEnd < el.value.length : el.selectionStart > 0)) return false
+				return to.focus(), true
+			} else return false
+			queueMicrotask(() => el.select())
+			return true
+		}
 		action('key', ({ el, evt }) =>
 			peek(() => {
 				const k = evt.key
 				if (k === 'Escape') {
 					// The browser closes the popover. Stopped here, the Escape can't also
 					// close a drawer or popover the picker sits in. Inline, it drops a
-					// half-picked range.
+					// half-picked range or an edited draft.
 					if ($$.open) return evt.stopPropagation()
-					if (pick1 == null) return
+					if (pick1 == null && !edited) return
 					pick1 = null
+					props.time && redraft()
 					paint()
 				} else if (k === 'Tab' && $$.open) {
 					// A dialog: the focus stays in it.
-					const f = [...el.querySelectorAll('button, [tabindex="0"]')]
+					const f = [...el.querySelectorAll('button, [tabindex="0"], input')].filter(shown)
 					f[(f.indexOf(host.shadowRoot.activeElement) + (evt.shiftKey ? -1 : 1) + f.length) % f.length]?.focus()
+				} else if (evt.target.matches('[part~=segment]')) {
+					if (!segment(evt.target, k)) return
 				} else if (evt.target.localName === 'td') {
 					const x = host.matches(':dir(rtl)') ? -1 : 1
 					const w = (new Date(focus * DAY).getUTCDay() - first + 7) % 7 // place in the week

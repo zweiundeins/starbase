@@ -38,6 +38,8 @@ const formsJS = `
 const cases = [
 	{ tag: 'sb-input', attrs: { value: 'server' }, local: 'mine', server: [['f', 'server']], mine: [['f', 'mine']] },
 	{ tag: 'sb-date-picker', attrs: { value: '2026-09-29' }, local: '2026-10-03', server: [['f', '2026-09-29']], mine: [['f', '2026-10-03']] },
+	{ tag: 'sb-date-picker', attrs: { time: '', value: '2026-09-29T08:00' }, local: '2026-10-03T17:45', server: [['f', '2026-09-29T08:00']], mine: [['f', '2026-10-03T17:45']] },
+	{ tag: 'sb-date-picker', attrs: { time: '', step: '1', value: '2026-09-29T08:00:30' }, local: '2026-10-03T17:45:05', server: [['f', '2026-09-29T08:00:30']], mine: [['f', '2026-10-03T17:45:05']] },
 	{ tag: 'sb-code-editor', attrs: { value: 'a = 1' }, local: 'b = 2', server: [['f', 'a = 1']], mine: [['f', 'b = 2']] },
 	{ tag: 'sb-select', attrs: { options: '["A","B","C"]', value: 'A' }, local: 'B', server: [['f', 'A']], mine: [['f', 'B']] },
 	{ tag: 'sb-select', attrs: { multiple: '', options: '["A","B","C"]', value: '["A","C"]' }, local: [], server: [['f', 'A'], ['f', 'C']], mine: [] },

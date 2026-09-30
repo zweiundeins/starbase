@@ -8,7 +8,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "The date, ISO: 2026-09-29. With mode=\"range\", JSON: {\"start\":\"2026-09-29\",\"end\":\"2026-10-03\"}. A new value from the server replaces it (value=\"\" clears); the live value is the value property."
+        "description": "The date, ISO: 2026-09-29. With time, a local date-time as datetime-local submits it: 2026-09-29T14:30 (seconds only when not zero). With mode=\"range\", JSON: {\"start\":\"2026-09-29\",\"end\":\"2026-10-03\"}. A new value from the server replaces it (value=\"\" clears); the live value is the value property."
       }
     },
     {
@@ -26,13 +26,33 @@
       }
     },
     {
+      "name": "time",
+      "attribute": "time",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The value includes a time of day. The calendar and a time row below it edit a draft, and Apply (or Enter in the time row) commits the date and the time together."
+      }
+    },
+    {
+      "name": "step",
+      "attribute": "step",
+      "type": "number",
+      "default": 60,
+      "required": false,
+      "docs": {
+        "description": "With time: the time's granularity in whole seconds up to 3600, as on datetime-local (60: minutes, 900: quarter hours, 1: seconds shown); a step that isn't a positive number means 60. Up and Down move by it; typed values off the step are kept."
+      }
+    },
+    {
       "name": "min",
       "attribute": "min",
       "type": "string",
       "default": "",
       "required": false,
       "docs": {
-        "description": "Earliest date that can be picked (ISO)."
+        "description": "Earliest date that can be picked (ISO). With time, a date (from the start of that day) or a date-time."
       }
     },
     {
@@ -42,7 +62,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Latest date that can be picked (ISO)."
+        "description": "Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time."
       }
     },
     {
@@ -102,7 +122,17 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Placeholder text (default: the locale's date pattern, e.g. dd.mm.yyyy)."
+        "description": "Placeholder text (default: the locale's date pattern, e.g. dd.mm.yyyy, or with time dd.mm.yyyy, hh:mm)."
+      }
+    },
+    {
+      "name": "applyLabel",
+      "attribute": "apply-label",
+      "type": "string",
+      "default": "Apply",
+      "required": false,
+      "docs": {
+        "description": "With time: the text of the button that commits the calendar's date and time."
       }
     },
     {
@@ -170,7 +200,7 @@
       "name": "sb-change",
       "bubbles": true,
       "composed": true,
-      "description": "A date was picked or typed. detail: { name, value }: an ISO date (\"\" when cleared), or with mode=\"range\" { start, end } (null when cleared). Ready for a command."
+      "description": "A date was picked or typed (with time: applied or typed). detail: { name, value }: an ISO date or with time a date-time (\"\" when cleared), or with mode=\"range\" { start, end } (null when cleared). Ready for a command."
     },
     {
       "kind": "custom-event",

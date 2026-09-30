@@ -13,7 +13,8 @@ usage: |
 playground:
   values: {label: Launch date}
   attrs: {value: "2026-10-14"}
-  exclude: [value, disabledDates, month, open, name, lang, error, confirm]
+  exclude: [value, disabledDates, month, open, name, lang, error, confirm, applyLabel]
+  props: {step: {min: 1, max: 3600}}
 ---
 
 A text field for a date, with a button that opens a calendar. The field shows the date the way the page's language writes it and takes typed dates too. With `inline`, the calendar sits on the page on its own, always visible.
@@ -21,8 +22,9 @@ A text field for a date, with a button that opens a calendar. The field shows th
 - **`mode="range"`:** pick a start and an end. The range is **one value** (`{start, end}`), committed once, like [`sb-range`](/components/range).
 - **`min`, `max`, `disabled-dates`:** days that can't be picked, e.g. booked ones. The server sends them, also one month at a time.
 - **`month` and `open`:** view state the server may set. The calendar reports the user paging months with `sb-month`.
+- **`time` and `step`:** a time of day with the date. A row of time fields below the days edits the time, and Apply commits the date and the time together. `step` is the granularity in seconds, as on `<input type="datetime-local">`.
 
-The value is an ISO date (`2026-09-29`) in and out, whatever the language. The live value is the `value` property, so `data-bind` works.
+The value is an ISO date (`2026-09-29`) in and out, whatever the language, and with `time` a local date-time (`2026-09-29T14:30`). The live value is the `value` property, so `data-bind` works.
 
 ## Examples
 
@@ -51,6 +53,42 @@ The first pick marks the start, the second the end, and only then does the value
 
 `el.value` returns `{ start, end }` (or `null` when there is no range), and setting it takes `{ start, end }`, `[start, end]` or the JSON.
 
+### A date and a time
+
+With `time`, the field shows and reads a date and a time, and the calendar has a time row below the days. A day picked in the calendar goes into a draft and moves the focus to the time row's first field; nothing is sent yet. Apply, or Enter in the time row, commits the date and the time as one value.
+
+```html preview
+<div data-signals="{_launch: '2026-10-14T09:30'}" style="display: grid; gap: 12px">
+  <sb-date-picker time label="Launch" value="2026-10-14T09:30" data-bind:_launch__prop.value></sb-date-picker>
+  <span>Value: <code data-text="$_launch || 'none'"></code></span>
+</div>
+```
+
+The value is a local date-time, `2026-10-14T09:30`, normalised as `<input type="datetime-local">` normalises it: seconds only when they aren't zero, a space accepted for the `T`, and a date alone or a string with a time zone offset read as no value. The value names no zone, so the server knows which one the time is in.
+
+### Steps and seconds
+
+`step` is the time's granularity in seconds, as on `datetime-local`: `60` (the default) for minutes, `900` for quarter hours, and `1` shows the seconds. A step that isn't a positive number (`step=""`) means `60`, as it does there. Up and Down move the minutes by `step / 60` (the seconds by `step`, below a minute), and a typed value off the step is kept.
+
+```html preview
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+  <sb-date-picker time step="900" inline label="Quarter hours" value="2026-10-14T09:15" lang="en-GB"></sb-date-picker>
+  <sb-date-picker time step="1" inline label="To the second" value="2026-10-14T09:15:30" lang="en-GB"></sb-date-picker>
+</div>
+```
+
+### A range with times
+
+With `mode="range"`, the time row has a line for the start and one for the end. A start picked without a time begins at 00:00 and an end at the last step of its day (23:59 with minutes). Apply sends one `sb-change` with both ends, in time order:
+
+```html preview
+<div data-signals="{_window: ''}" style="display: grid; gap: 12px">
+  <sb-date-picker mode="range" time inline name="window" label="Maintenance window" month="2026-10" lang="en-GB"
+    data-on:sb-change="$_window = JSON.stringify(evt.detail)"></sb-date-picker>
+  <code data-text="$_window || 'Pick two days, then Apply'"></code>
+</div>
+```
+
 ### Inline, with bounds and ruled-out days
 
 `min` and `max` limit the calendar, and `disabled-dates` rules out single days. They can be focused and read, but not picked.
@@ -60,6 +98,8 @@ The first pick marks the start, the second the end, and only then does the value
   min="2026-10-05" max="2026-11-20"
   disabled-dates='["2026-10-10","2026-10-11","2026-10-17","2026-10-18"]'></sb-date-picker>
 ```
+
+With `time`, `min` and `max` may be date-times too. A day can be picked when part of it lies between them, and the time row keeps the draft inside them: picking `min`'s day shows `min`'s time. A date alone is the start of that day for `min` and the end of that day for `max`. `disabled-dates` stays a list of whole days.
 
 ### Booked days, one month at a time
 
@@ -114,6 +154,12 @@ The date is read when the field is committed (Enter, or leaving it). Text that i
 <sb-date-picker label="Return date" min="2026-10-01" error="Enter a date from 1 October 2026, like 14.10.2026." lang="de"></sb-date-picker>
 ```
 
+With `time`, type the date and the time as the field shows them: `14.10.2026, 09:30` in German, `10/14/2026, 9:30 PM` in US English, `21:30 14/10/2026` in Vietnamese (which also takes the date first). The hour is 24-hour unless the text has AM or PM (the language's own, or `am` and `pm` in any case), so `21:30` works in US English too, and `12 AM` is midnight. Seconds are optional, and an ISO date-time (`2026-10-14T09:30`, or with a space) works in every language. A date without a time is not a value.
+
+```html preview
+<sb-date-picker time label="Departure" lang="en-US" error="Enter a date and a time, like 10/14/2026, 9:30 PM."></sb-date-picker>
+```
+
 ## With commands
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
@@ -126,11 +172,13 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value
 
 A new `value` from the server always wins, and `value=""` clears it. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).
 
+With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), and with `mode="range"` both as `{ start, end }`. It is sent once per Apply, Enter in the time row or typed value, never for a day picked in the calendar or a change in the time row. A new `time` attribute from the server, or with `time` a new `step`, reads its `value` again in the new format, and that value replaces the local one.
+
 `open` and `month` are view state, not part of the value: never pending, and not touched by `revert()`. The server may set them, and a changed attribute wins (`open="false"` closes). The picker reports the user's changes with `sb-toggle` (`{ name, open }`) and `sb-month`, never for a change the server made.
 
 ## Forms
 
-Inside a `<form>`, `sb-date-picker` submits its value under its `name`: the ISO date (`launch=2026-10-14`), with `mode="range"` the JSON of its `value` attribute, and an empty string when there is no date, like `<input type="date">`. A `disabled` picker submits nothing. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears invalid typed text. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-date-picker` submits its value under its `name`: the ISO date (`launch=2026-10-14`), with `mode="range"` the JSON of its `value` attribute, and an empty string when there is no date, like `<input type="date">`. With `time` it submits what `<input type="datetime-local">` submits for the same value (`launch=2026-10-14T09:30`, seconds only when they aren't zero). A `disabled` picker submits nothing. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears invalid typed text. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 
@@ -138,8 +186,8 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** the field fills the width it is given, up to `20rem`; set `max-inline-size` on the element to change that. The field is `2.75rem` tall, and each day `2.25rem` square, so the calendar is about `17rem` wide.
 - **Fonts:** the label, the field, the month and the days use your page's font.
-- **Colours:** the field is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder is `--sb-control-placeholder`, the label `--sb-text-2`, the button and the weekdays `--sb-text-muted`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and invalid text a `--sb-danger` edge and message. The calendar is `--sb-surface-raised`; a picked day is `--sb-brand` with `--sb-text-on-brand` text, the days of a range `--sb-brand-subtle`, the day under the pointer `--sb-surface-hover`, and today `--sb-brand-light`. Corners are `--sb-control-radius`, and `--sb-notch: 0` rounds the calendar and the days instead of notching them.
-- **Parts:** `label`, `control` (the field's box), `input`, `button` (opens the calendar), `error`, `calendar`, `title` (the month), `nav` (the four paging buttons) and `grid`. Every date is `day`, plus `today`, `selected`, `range`, `start`, `end` or `disabled` as they apply: `::part(day today)`. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Colours:** the field is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder is `--sb-control-placeholder`, the label `--sb-text-2`, the button and the weekdays `--sb-text-muted`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and invalid text a `--sb-danger` edge and message. The calendar is `--sb-surface-raised`; a picked day is `--sb-brand` with `--sb-text-on-brand` text, the days of a range `--sb-brand-subtle`, the day under the pointer `--sb-surface-hover`, and today `--sb-brand-light`. The time fields are drawn like the field, a focused one with a `--sb-brand-light` ring on `--sb-brand-subtle`; Apply is `--sb-brand` (`--sb-brand-hover` under the pointer). Corners are `--sb-control-radius`, and `--sb-notch: 0` rounds the calendar, the days and Apply instead of notching them.
+- **Parts:** `label`, `control` (the field's box), `input`, `button` (opens the calendar), `error`, `calendar`, `title` (the month), `nav` (the four paging buttons) and `grid`. Every date is `day`, plus `today`, `selected`, `range`, `start`, `end` or `disabled` as they apply: `::part(day today)`. With `time`: `time` (a line of the time row), `time-label` (the date in front of it), `segment` (the hour, minute, second and day period fields) and `apply`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -160,9 +208,17 @@ It follows the ARIA date picker dialog pattern:
   - Home and End go to the first and last day of the week.
   - Enter or Space picks the day; a day that can't be picked is skipped by picking, but can still be focused and read.
   - Escape closes the calendar, also from the field, and puts the focus back on the button (inline, it drops a half-picked range). In a drawer, a modal or a popover, the first Escape closes only the calendar. Tab moves between the paging buttons and the grid, and stays in the calendar while it is open.
-- **Opening:** the focus goes to the picked day, else to today. Picking a date closes the calendar and returns the focus to the button.
+- **Opening:** the focus goes to the picked day, else to today. Without `time`, picking a date closes the calendar and returns the focus to the button.
+- **The time row (with `time`):** each line is a group named by its date's full format (by the label while no day is picked), with the date in the numeric format in front of it. Its fields (hour, minute, second when shown, and the day period in 12-hour languages) are text fields with the `spinbutton` role, named in the page's language (`Stunde` in German) and carrying their value, its text and the range. The numeric ones open a number keyboard on phones.
+- **Keys in the time row:**
+  - Up and Down move a field by its step, wrapping within it (23 to 00) without changing the next field; Home and End go to its first and last value (00 and 59 for the minutes, whatever the step).
+  - Digits are typed as in a text field, and two of them move on to the next field, from a range's start line on to its end line.
+  - Left and Right move the caret, and from the edge of the text to the previous or next field (mirrored right to left).
+  - `a`, `p`, or the first letter of the language's AM or PM set the day period; Up and Down toggle it.
+  - Enter applies. Tab moves through the paging buttons, the grid, the time fields and Apply.
+- **Focus with `time`:** once the draft has its day (a range: both days), a pick moves the focus to the first field of the (start) line. Apply is `aria-disabled` until then. Apply closes the calendar and puts the focus back on the button; inline, the focus stays. Escape and a click outside close the calendar without applying, and the next open starts from the value again; inline, Escape resets the draft to the value.
 - **Invalid text:** the field is `aria-invalid`, and the `error` message is announced (a live region).
 - **Disabled:** `disabled` takes the field, the button and the calendar out of the tab order.
-- **Forced colours:** focus rings, the arrows and today's mark use system colours, and picked days `Highlight`.
+- **Forced colours:** focus rings (the time fields' and Apply's too), the arrows, today's mark and Apply's edge use system colours, and picked days `Highlight`.
 
 The calendar is a native popover (`popover="auto"`), so it is never clipped by a scrolling container, and a click outside it closes it.
