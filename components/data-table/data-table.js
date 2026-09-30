@@ -102,7 +102,9 @@ const styles = /* css */ `
 	gap: 0.5rem;
 	margin-block-end: 0.5rem;
 }
-.columns {
+/* Buttons the page puts in the toolbar look like the Columns button, unless
+   the page styles them. */
+.columns, ::slotted(button) {
 	all: unset;
 	box-sizing: border-box;
 	display: inline-flex;
@@ -114,11 +116,13 @@ const styles = /* css */ `
 	color: var(--_label);
 	font-weight: 600;
 	cursor: pointer;
-	anchor-name: --sb-columns;
 	clip-path: ${notch('calc(2px * var(--_notch))')};
 	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
 }
-.columns:hover, .columns[aria-expanded="true"] { color: var(--_text); background: var(--_hover); }
+.columns { anchor-name: --sb-columns; }
+.columns:hover, .columns[aria-expanded="true"], ::slotted(button:hover) { color: var(--_text); background: var(--_hover); }
+::slotted(button:disabled) { opacity: 0.5; cursor: default; }
+::slotted([hidden]) { display: none; }
 .menu {
 	margin: 0;
 	padding: 0;
@@ -154,7 +158,7 @@ const styles = /* css */ `
 .option input { flex: none; inline-size: 1rem; block-size: 1rem; margin: 0; accent-color: var(--_brand); cursor: inherit; }
 .option:has(:disabled) { color: var(--_muted); cursor: default; }
 .option:has(:disabled):hover { background: none; }
-.columns:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
+.columns:focus-visible, ::slotted(button:focus-visible) { outline: 2px solid var(--_focus); outline-offset: -2px; }
 .option input:focus-visible { outline: 2px solid var(--_focus); outline-offset: 2px; }
 .grid {
 	flex: 1 1 auto;

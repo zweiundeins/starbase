@@ -25,7 +25,7 @@ import (
 //
 //	GET /demo/data/children?parent=<id>   a body's children ("" or no parent: the top level)
 //	GET /demo/data/search?q=…&kind=a,b&limit=8
-//	GET /demo/data/rows?offset=0&count=100&key=name&dir=desc   a window of the star catalog, in an order
+//	GET /demo/data/rows?offset=0&count=100&key=name&dir=desc   a window of the star catalog, in an order (&cells=rich: as cell objects)
 //
 // They answer Datastar requests with a signal patch into the signal named by
 // &into= (default _tree, _found and _rows): the top level and search results
@@ -113,7 +113,8 @@ func (s *Server) demoSearch(w http.ResponseWriter, r *http.Request) {
 
 // demoRows answers a table's window and sort requests (sb-data-table's
 // sb-window and sb-sort) with ?count= stars from ?offset= (at most 500) in the
-// order asked for (?key=, ?dir=), and says which order it used.
+// order asked for (?key=, ?dir=), and says which order it used. With
+// &cells=rich, the rows hold cell objects (demoStarCells).
 func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	offset, _ := strconv.Atoi(q.Get("offset"))
@@ -138,7 +139,35 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}}
+	if q.Get("cells") == "rich" {
+		rows := make([]map[string]any, len(stars))
+		for i, st := range stars {
+			rows[i] = demoStarCells(st)
+		}
+		window["rows"] = rows
+	}
 	s.demoAnswer(w, r, "_rows", window, window)
+}
+
+// demoStarCells is a star as sb-data-table's cell objects: the name links to
+// the star (an in-page link the demo cancels, to run an action instead), the
+// distance carries its unit, and the magnitude of a star the naked eye can see
+// (6 or brighter) shows as a badge.
+func demoStarCells(st demo.Star) map[string]any {
+	var magnitude any = st.Magnitude
+	if st.Magnitude <= 6 {
+		magnitude = map[string]any{"value": st.Magnitude, "tone": "info"}
+	}
+	return map[string]any{
+		"id":            st.ID,
+		"name":          map[string]any{"value": st.Name, "href": "#star-" + strconv.Itoa(st.ID)},
+		"class":         st.Class,
+		"temp":          st.Temp,
+		"constellation": st.Constellation,
+		"distance":      map[string]any{"value": st.Distance, "suffix": "ly"},
+		"magnitude":     magnitude,
+		"planets":       st.Planets,
+	}
 }
 
 // demoStarColumns are the star catalog's columns an export can hold, by

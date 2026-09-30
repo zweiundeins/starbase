@@ -56,6 +56,41 @@ func TestDemoRows(t *testing.T) {
 	if w := getJSON("count=100000&key=nope&dir=desc"); len(w.Rows) != 500 || w.Rows[0].ID != 1 || w.Sort.Key != "" || w.Sort.Dir != "" {
 		t.Errorf("capped, unknown key: %d rows, first %d, sort %+v", len(w.Rows), w.Rows[0].ID, w.Sort)
 	}
+	// &cells=rich: the name links to the star, the distance has its unit, and
+	// only a star the naked eye can see has a badge on its magnitude.
+	req, _ := http.NewRequest("GET", ts.URL+"/demo/data/rows?count=500&cells=rich", nil)
+	req.Header.Set("Accept", "application/json")
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rich struct{ Rows []map[string]any }
+	json.NewDecoder(res.Body).Decode(&rich)
+	res.Body.Close()
+	badges, plain := 0, 0
+	for _, r := range rich.Rows {
+		name, _ := r["name"].(map[string]any)
+		dist, _ := r["distance"].(map[string]any)
+		if _, ok := name["value"].(string); !ok || name["href"] != fmt.Sprintf("#star-%v", r["id"]) || dist["suffix"] != "ly" || dist["value"] == nil || r["class"] == nil {
+			t.Fatalf("rich row: %v", r)
+		}
+		switch m := r["magnitude"].(type) {
+		case map[string]any:
+			if m["tone"] != "info" || m["value"].(float64) > 6 {
+				t.Errorf("a badge on magnitude %v", m)
+			}
+			badges++
+		case float64:
+			if m <= 6 {
+				t.Errorf("no badge on magnitude %v", m)
+			}
+			plain++
+		}
+	}
+	if len(rich.Rows) != 500 || badges == 0 || plain == 0 {
+		t.Errorf("rich: %d rows, %d badges, %d plain magnitudes", len(rich.Rows), badges, plain)
+	}
+
 	// Datastar: a patch into the signal named by into.
 	_, body := get(t, c, ts.URL+"/demo/data/rows?offset=5&count=2&key=name&into=_stars")
 	if !strings.Contains(body, "datastar-patch-signals") || !strings.Contains(body, `"_stars":{`) || !strings.Contains(body, `"offset":5`) || !strings.Contains(body, `"sort":{"dir":"asc","key":"name"}`) {

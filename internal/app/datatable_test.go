@@ -336,6 +336,7 @@ check(async () => {
 	csv.hidden = true
 	await settle()
 	row('its only control hidden: no toolbar', bar(), false)
+	row('and the control stays hidden', getComputedStyle(csv).display, 'none')
 	csv.hidden = false
 	await settle()
 	row('shown again: the toolbar', bar(), true)

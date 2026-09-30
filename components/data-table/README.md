@@ -31,26 +31,34 @@ The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the
 
 ### 100,000 stars from the server
 
-The first 100,000 stars of the site's made-up star catalog, stored in SQLite so the server can sort them (`/demo/data/rows`). Scroll, drag the scrollbar to the middle, click a header to sort, and pick rows. The page never holds more than a few hundred rows:
+The first 100,000 stars of the site's made-up star catalog, stored in SQLite so the server can sort them (`/demo/data/rows`). Scroll, drag the scrollbar to the middle, click a header to sort, pick rows, hide columns, click a star's name, and download the table as CSV or JSON. The page never holds more than a few hundred rows:
 
 1. On connect, and whenever the view needs rows it doesn't have, the table emits `sb-window` with `{offset, count}` and the order to send them in (`key`, `dir`).
 2. A header click emits `sb-sort` with the order asked for (`key`, `dir`) and the window to answer with (`offset` 0, `count`).
-3. Both run `@get('/demo/data/rows?…&into=_stars')`, and the server patches `$_stars` with `{rows, offset, total, sort}`.
+3. Both run `@get('/demo/data/rows?…&into=_stars&cells=rich')`, and the server patches `$_stars` with `{rows, offset, total, sort}`. With `cells=rich`, its rows hold cell objects: the names are links, the distances carry their unit, and stars bright enough to see have a badge on their magnitude.
 4. `data-attr` hands them back. A new `sort` scrolls to the top. Answers can land out of order: after a header click, the table takes rows only in the order it asked for, and drops late answers in the order it replaced.
+5. A click on a name emits `sb-cell-activate`. The page cancels the link and shows the star instead: this is how a cell runs an action on the page.
+6. The CSV and JSON buttons are the page's own, in the `toolbar` slot. They call `requestExport()`, the table emits `sb-export` with its order, the shown columns and the selection, and the page turns that into a download of `/demo/data/rows/export` (see [Exports](#exports)). A download link starts no navigation, so the page's streams stay open.
 
 `data-indicator` sets `loading` while a request is in flight.
 
 ```html preview
-<div data-signals="{_stars: {rows: [], offset: 0, total: 0, sort: {key: '', dir: ''}}, _loading: false, _picked: []}" style="display: grid; gap: 12px">
-  <sb-data-table label="Star catalog" selection="multiple" style="block-size: 22rem"
-    columns='[{"key":"name","label":"Name","sortable":true},{"key":"class","label":"Class","width":"6rem","sortable":true},{"key":"constellation","label":"Constellation","sortable":true},{"key":"distance","label":"Distance (ly)","align":"end","sortable":true},{"key":"magnitude","label":"Magnitude","align":"end","width":"7.5rem","sortable":true},{"key":"planets","label":"Planets","align":"end","width":"6rem"}]'
+<div data-signals="{_stars: {rows: [], offset: 0, total: 0, sort: {key: '', dir: ''}}, _loading: false, _picked: [], _star: ''}" style="display: grid; gap: 12px">
+  <sb-data-table label="Star catalog" selection="multiple" column-picker style="block-size: 24rem"
+    columns='[{"key":"name","label":"Name","sortable":true},{"key":"class","label":"Class","width":"6rem","sortable":true},{"key":"constellation","label":"Constellation","sortable":true},{"key":"distance","label":"Distance","align":"end","sortable":true},{"key":"magnitude","label":"Magnitude","align":"end","width":"7.5rem","sortable":true},{"key":"planets","label":"Planets","align":"end","width":"6rem"}]'
     data-attr="{rows: JSON.stringify($_stars.rows), offset: $_stars.offset, total: $_stars.total, sort: JSON.stringify($_stars.sort), loading: $_loading}"
     data-preserve-attr="rows offset total sort loading"
     data-indicator:_loading
-    data-on:sb-window="@get('/demo/data/rows?into=_stars&' + new URLSearchParams(evt.detail))"
-    data-on:sb-sort="@get('/demo/data/rows?into=_stars&' + new URLSearchParams(evt.detail))"
-    data-on:sb-change="$_picked = evt.detail.value"></sb-data-table>
+    data-on:sb-window="@get('/demo/data/rows?into=_stars&cells=rich&' + new URLSearchParams(evt.detail))"
+    data-on:sb-sort="@get('/demo/data/rows?into=_stars&cells=rich&' + new URLSearchParams(evt.detail))"
+    data-on:sb-change="$_picked = evt.detail.value"
+    data-on:sb-cell-activate="evt.preventDefault(); $_star = evt.detail.value"
+    data-on:sb-export="Object.assign(document.createElement('a'), {href: '/demo/data/rows/export?' + new URLSearchParams({format: evt.detail.format, key: evt.detail.sort.key, dir: evt.detail.sort.dir, columns: evt.detail.columns, selected: evt.detail.selected}), download: ''}).click()">
+    <button slot="toolbar" data-on:click="el.closest('sb-data-table').requestExport('csv')">CSV</button>
+    <button slot="toolbar" data-on:click="el.closest('sb-data-table').requestExport('json')">JSON</button>
+  </sb-data-table>
   <span>Selected: <b data-text="$_picked.join(', ') || 'nothing'"></b></span>
+  <span>Star: <b data-text="$_star || 'click a name'"></b></span>
 </div>
 ```
 
@@ -95,12 +103,13 @@ A server that should remember the choice posts `sb-columns` as a command and kee
 
 ## Server side
 
-The handler behind the first example is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. It reads the window and the order from the query, and `demoAnswer` patches the signal named by `into` (it also serves plain JSON and the demo's `delay`). The answer carries the order it used, so the header shows what the rows are, not what was clicked:
+The handler behind the first example is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. It reads the window and the order from the query, and `demoAnswer` patches the signal named by `into` (it also serves plain JSON and the demo's `delay`). The answer carries the order it used, so the header shows what the rows are, not what was clicked. With `cells=rich`, each star goes through `demoStarCells` (below, with the export), which turns it into cell objects:
 
 ```go source=internal/web/demo_data.go#Server.demoRows,Server.demoAnswer
 // demoRows answers a table's window and sort requests (sb-data-table's
 // sb-window and sb-sort) with ?count= stars from ?offset= (at most 500) in the
-// order asked for (?key=, ?dir=), and says which order it used.
+// order asked for (?key=, ?dir=), and says which order it used. With
+// &cells=rich, the rows hold cell objects (demoStarCells).
 func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	offset, _ := strconv.Atoi(q.Get("offset"))
@@ -125,6 +134,13 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}}
+	if q.Get("cells") == "rich" {
+		rows := make([]map[string]any, len(stars))
+		for i, st := range stars {
+			rows[i] = demoStarCells(st)
+		}
+		window["rows"] = rows
+	}
 	s.demoAnswer(w, r, "_rows", window, window)
 }
 
@@ -208,9 +224,9 @@ func (r *Reader) DemoStars(ctx context.Context, sort string, desc bool, offset, 
 
 ### Exports
 
-A page puts its own export buttons in the `toolbar` slot, and they call the table's `requestExport(format)` (`csv` by default), which emits `sb-export` with `{name, format, sort, columns, selected}`: the order on screen, the keys of the shown columns in their order, and the user's selection. The table never builds a file and never asks for the rows: the server has them. The page turns the event into a download of `/demo/data/rows/export`, which checks every parameter, is rate limited (per session, three downloads in a row, then one every five seconds; the whole server streams at most two at a time), and streams the file. The whole catalog is 100,000 rows; it goes out compressed, and the browser never holds more than the window it shows:
+A page puts its own export buttons in the `toolbar` slot, and they call the table's `requestExport(format)` (`csv` by default), which emits `sb-export` with `{name, format, sort, columns, selected}`: the order on screen, the keys of the shown columns in their order, and the user's selection. The table never builds a file and never asks for the rows: the server has them. The page turns the event into a download of `/demo/data/rows/export`, which checks every parameter, is rate limited (per session, three downloads in a row, then one every five seconds; the whole server streams at most two at a time), and streams the file. The whole catalog is 100,000 rows; it goes out compressed, and the browser never holds more than the window it shows. `demoStarCells` is the rich rows' shape from the first example:
 
-```go source=internal/web/demo_data.go#Server.demoRowsExport
+```go source=internal/web/demo_data.go#Server.demoRowsExport,demoStarCells
 // demoRowsExport answers sb-data-table's sb-export with a download of the star
 // catalog: ?format=csv or json, in the order asked for (?key=, ?dir=), the
 // ?columns= in their order (default: all), and with ?selected= only those
@@ -343,6 +359,27 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		panic(http.ErrAbortHandler)
 	}
 }
+
+// demoStarCells is a star as sb-data-table's cell objects: the name links to
+// the star (an in-page link the demo cancels, to run an action instead), the
+// distance carries its unit, and the magnitude of a star the naked eye can see
+// (6 or brighter) shows as a badge.
+func demoStarCells(st demo.Star) map[string]any {
+	var magnitude any = st.Magnitude
+	if st.Magnitude <= 6 {
+		magnitude = map[string]any{"value": st.Magnitude, "tone": "info"}
+	}
+	return map[string]any{
+		"id":            st.ID,
+		"name":          map[string]any{"value": st.Name, "href": "#star-" + strconv.Itoa(st.ID)},
+		"class":         st.Class,
+		"temp":          st.Temp,
+		"constellation": st.Constellation,
+		"distance":      map[string]any{"value": st.Distance, "suffix": "ly"},
+		"magnitude":     magnitude,
+		"planets":       st.Planets,
+	}
+}
 ```
 
 It reads the stars from a cursor in the same order as the windows, so the file has the order the table shows:
@@ -414,7 +451,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** it fills the width it is given and is at most `24rem` tall; set `block-size` or `max-block-size` on the element to change that. Rows are `row-height` tall. Set `font-size` on the element (default `0.875rem`) to scale the text.
 - **Fonts:** the header and the cells use your page's font.
 - **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, and placeholders are sb-virtual-scroll's `--sb-surface-hover` bars. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1.
-- **Toolbar:** it shows above the table with `column-picker`, or while a control you put in its slot shows (one with `hidden`, or hidden by `data-show`, doesn't count). The Columns button and its menu are `--sb-surface-raised` with a `--sb-border` frame and `--sb-text-2` text; checkboxes take `--sb-brand`.
+- **Toolbar:** it shows above the table with `column-picker`, or while a control you put in its slot shows (one with `hidden`, or hidden by `data-show`, doesn't count). The Columns button and its menu are `--sb-surface-raised` with a `--sb-border` frame and `--sb-text-2` text; checkboxes take `--sb-brand`. A `<button>` you put in the slot looks like the Columns button until your page styles it.
 - **Rich cells:** links are `--sb-brand-light` and underlined, suffixes `--sb-text-muted`. Badges take their tone from `--sb-info`, `--sb-ok`, `--sb-warn` and `--sb-danger` (`neutral` from `--sb-text-muted`), with a tinted background and border.
 - **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. In rows with cell objects, a cell holds a `text` (also `link` for a link, `badge` for a badge, so `::part(text badge)` styles only badges) and a `suffix`. Above the table: `toolbar`, `columns-button`, `columns-menu` (the popover) and `column-option` (a label with its checkbox). Your page's `::part()` rules win over the component's own, without `!important`.
 
