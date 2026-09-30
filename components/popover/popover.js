@@ -65,6 +65,7 @@ const styles = /* css */ `
 	--_ctl-radius: var(--sb-control-radius, 6px);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
+	--_shadow: var(--sb-shadow-overlay, 0 12px 24px -6px rgb(0 0 0 / 0.55));
 	display: inline-block;
 	vertical-align: middle;
 }
@@ -107,7 +108,7 @@ const styles = /* css */ `
 	background: none;
 	color: var(--_body);
 	border-radius: calc(var(--_radius) * (1 - var(--_notch)));
-	box-shadow: 0 12px 24px -6px rgb(0 0 0 / 0.55);
+	box-shadow: var(--_shadow);
 	--_aw: 12px;
 	--_ah: 8px;
 }
