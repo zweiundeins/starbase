@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The patched Rocket build has four more fixes, twelve in all (`patches/rocket`). These four are not filed upstream yet; their issue drafts and repro pages are in `docs/upstream/09` to `12` and `docs/repro/`.
+  - 0009: a light component renders inside a `data-ignore-morph` ancestor instead of drawing nothing.
+  - 0010: a removed element's mount root leaves the observed roots, so removed elements can be collected.
+  - 0011: a definition that arrives after Datastar's first pass still applies the shadow host's light children.
+  - 0012: the pending-host observer scans a parent once per batch, not once per moved child, so reordering 1,000 rows no longer takes seconds.
+- `docs/upstream/08` adds a comment for [#1209](https://github.com/starfederation/datastar/issues/1209): a Rocket element inserted ahead of keyed moves breaks them without throwing, and only 0008's restored id maps fix it (`docs/repro/rocket-morph-ids/`).
+
 ## [0.5.0] - 2026-09-29
 
 Seven new components (a drawer, a popover, checkboxes, a date picker, a virtual scroll and a data table), docs that show the real server code behind their demos, and Starbase's pages on a patched Rocket until its fixes land upstream.
