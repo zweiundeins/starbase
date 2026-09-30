@@ -34,7 +34,7 @@ Remember the children that were hidden before the first pass, and apply them onc
 
 ```diff
 diff --git a/library/src/rocket/runtime.ts b/library/src/rocket/runtime.ts
-index f432cd2..ea1b276 100644
+index f432cd2..7d38c43 100644
 --- a/library/src/rocket/runtime.ts
 +++ b/library/src/rocket/runtime.ts
 @@ -392,10 +392,14 @@ const markPendingRocketHosts = (root: ParentNode) => {
@@ -52,7 +52,7 @@ index f432cd2..ea1b276 100644
  // Keep the pre-upgrade guard in sync with live DOM insertion.
  //
  // Watch live DOM insertions and scoped attribute additions so newly unresolved Rocket content is deferred before Datastar can evaluate it.
-@@ -1205,12 +1209,14 @@ export function rocket<
+@@ -1205,12 +1209,15 @@ export function rocket<
        )
  
        // Remove this host's child markers before scoping them while leaving independently pending nested Rocket hosts protected.
@@ -63,18 +63,20 @@ index f432cd2..ea1b276 100644
          if (node.getAttribute(rocketDeferredIgnoreAttr) !== tag) continue
          node.removeAttribute(rocketDeferredIgnoreAttr)
          node.removeAttribute(rocketIgnoreAttr)
-+        if (hiddenFromFirstApply.delete(node)) neverApplied.push(node as HTMLOrSVG)
++        if (hiddenFromFirstApply.delete(node))
++          neverApplied.push(node as HTMLOrSVG)
        }
  
        // Apply host markers here because custom-element constructors cannot mutate attributes on freshly created elements.
-@@ -1529,6 +1535,11 @@ export function rocket<
+@@ -1529,6 +1536,12 @@ export function rocket<
        // In `light` mode that surface is the host itself.
        // In shadow modes, re-applying the host would incorrectly rewrite outer-page bindings into Rocket's private signal path.
        apply(this.#mountRoot!, true)
 +      // Light children of a shadow host: the mount root's apply does not reach them, and removing
 +      // their marker applies nothing.
 +      if (this.#mountRoot !== this) {
-+        for (const node of neverApplied) if (node.parentNode === this) apply(node, false)
++        for (const node of neverApplied)
++          if (node.parentNode === this) apply(node, false)
 +      }
        this.#datastarApplied = true
        this.#conditionalCleanups.push(
