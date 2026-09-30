@@ -27,8 +27,15 @@ import (
 // loaded), until the result arrives.
 func probe(t *testing.T, path, script string) (*app.App, []byte) {
 	t.Helper()
+	return probeAt(t, "", path, script)
+}
+
+// probeAt is probe from http://<host>:<port>, which Chrome maps to the app, plus chromeArgs.
+// A host other than localhost makes a non-secure context; "" is 127.0.0.1, as in probe.
+func probeAt(t *testing.T, host, path, script string, chromeArgs ...string) (*app.App, []byte) {
+	t.Helper()
 	chrome := findChrome(t)
-	a, base, ln := startApp(t)
+	a, base, ln := startApp(t, host)
 
 	var once sync.Once
 	results := make(chan []byte, 1)
@@ -60,14 +67,19 @@ func probe(t *testing.T, path, script string) (*app.App, []byte) {
 				}
 			}
 			w.WriteHeader(rec.Code)
-			w.Write([]byte(strings.Replace(rec.Body.String(), "</body>", inject+"</body>", 1)))
+			doc := strings.Replace(rec.Body.String(), "</body>", inject+"</body>", 1)
+			w.Write([]byte(doc))
 		default:
 			a.Handler.ServeHTTP(w, r)
 		}
 	})}
 	go srv.Serve(ln)
 	t.Cleanup(func() { srv.Close() })
-	return a, runChrome(t, chrome, base+path, results)
+	if host != "" {
+		// HttpsUpgrades would try https://<host> first.
+		chromeArgs = append([]string{"--host-resolver-rules=MAP " + host + " 127.0.0.1", "--disable-features=HttpsUpgrades"}, chromeArgs...)
+	}
+	return a, runChrome(t, chrome, base+path, results, chromeArgs...)
 }
 
 func findChrome(t *testing.T) string {
@@ -85,14 +97,19 @@ func findChrome(t *testing.T) string {
 	return chrome
 }
 
-// startApp runs the app in-process on a free port; the caller serves ln.
-func startApp(t *testing.T) (*app.App, string, net.Listener) {
+// startApp runs the app in-process on a free port of 127.0.0.1, with its
+// base URL on host when one is given; the caller serves ln.
+func startApp(t *testing.T, host string) (*app.App, string, net.Listener) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	base := "http://" + ln.Addr().String()
+	if host != "" {
+		_, port, _ := net.SplitHostPort(ln.Addr().String())
+		base = "http://" + net.JoinHostPort(host, port)
+	}
 	cfg := config.Load()
 	cfg.BaseURL = base
 	cfg.DBPath = filepath.Join(t.TempDir(), "db.sqlite")
@@ -107,10 +124,12 @@ func startApp(t *testing.T) (*app.App, string, net.Listener) {
 	return a, base, ln
 }
 
-// runChrome loads url in headless Chrome and returns what the page posted.
-func runChrome(t *testing.T, chrome, url string, results <-chan []byte) []byte {
+// runChrome loads url in headless Chrome, with extra flags, and returns what
+// the page posted.
+func runChrome(t *testing.T, chrome, url string, results <-chan []byte, extra ...string) []byte {
 	t.Helper()
-	args := []string{"--headless=new", "--disable-gpu", "--window-size=1440,1000", "--dump-dom", url}
+	args := append([]string{"--headless=new", "--disable-gpu", "--window-size=1440,1000"}, extra...)
+	args = append(args, "--dump-dom", url)
 	if os.Geteuid() == 0 || os.Getenv("STARBASE_CHROME_NO_SANDBOX") == "1" {
 		args = append([]string{"--no-sandbox"}, args...)
 	}
