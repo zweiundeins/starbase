@@ -1,6 +1,6 @@
 **Title:** Rocket: removed elements are never garbage-collected (`observedRoots` only grows)
 
-**Filed:** not yet
+**Filed:** https://github.com/starfederation/datastar/issues/1225
 
 ### Bug Report
 
@@ -12,7 +12,7 @@ The set is read in one place: when an attribute plugin registers late, `attribut
 
 ### Reproduce
 
-**CodePen:** (to create with `codepen.html`, #10; open the browser devtools console, not CodePen's).
+**CodePen:** https://codepen.io/mbolli/pen/qErXLLd (open the browser devtools console, not CodePen's).
 
 ```html
 <!doctype html>

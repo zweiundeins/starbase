@@ -8,11 +8,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
-- The patched Rocket build has four more fixes, twelve in all (`patches/rocket`). These four are not filed upstream yet; their issue drafts and repro pages are in `docs/upstream/09` to `12` and `docs/repro/`.
-  - 0009: a light component renders inside a `data-ignore-morph` ancestor instead of drawing nothing.
-  - 0010: a removed element's mount root leaves the observed roots, so removed elements can be collected.
-  - 0011: a definition that arrives after Datastar's first pass still applies the shadow host's light children.
-  - 0012: the pending-host observer scans a parent once per batch, not once per moved child, so reordering 1,000 rows no longer takes seconds.
+- The patched Rocket build has four more fixes, twelve in all (`patches/rocket`). Each is filed upstream, with its repro page in `docs/repro/`.
+  - [#1224](https://github.com/starfederation/datastar/issues/1224): a light component renders inside a `data-ignore-morph` ancestor instead of drawing nothing.
+  - [#1225](https://github.com/starfederation/datastar/issues/1225): a removed element's mount root leaves the observed roots, so removed elements can be collected.
+  - [#1226](https://github.com/starfederation/datastar/issues/1226): a definition that arrives after Datastar's first pass still applies the shadow host's light children.
+  - [#1227](https://github.com/starfederation/datastar/issues/1227): the pending-host observer scans a parent once per batch, not once per moved child, so reordering 1,000 rows no longer takes seconds.
 - `docs/upstream/08` adds a comment for [#1209](https://github.com/starfederation/datastar/issues/1209): a Rocket element inserted ahead of keyed moves breaks them without throwing, and only 0008's restored id maps fix it (`docs/repro/rocket-morph-ids/`).
 
 ## [0.5.0] - 2026-09-29

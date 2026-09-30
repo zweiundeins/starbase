@@ -1,6 +1,6 @@
 **Title:** Rocket: a light-DOM component draws nothing inside a `data-ignore-morph` element
 
-**Filed:** not yet
+**Filed:** https://github.com/starfederation/datastar/issues/1224
 
 ### Bug Report
 
@@ -10,7 +10,7 @@ A component with `mode: 'light'` renders by morphing its own host: `morph(this.#
 
 ### Reproduce
 
-**CodePen:** (to create with `codepen.html`, #09; open the browser devtools console, not CodePen's).
+**CodePen:** https://codepen.io/mbolli/pen/bNqrOOL (open the browser devtools console, not CodePen's).
 
 ```html
 <!doctype html>

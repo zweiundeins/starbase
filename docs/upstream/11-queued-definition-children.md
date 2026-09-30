@@ -1,6 +1,6 @@
 **Title:** Rocket: light children of a shadow component never bind when `rocket()` runs before Datastar's first pass
 
-**Filed:** not yet
+**Filed:** https://github.com/starfederation/datastar/issues/1226
 
 ### Bug Report
 
@@ -10,7 +10,7 @@ It happens whenever the component's module runs before Datastar's first pass: a 
 
 ### Reproduce
 
-**CodePen:** (to create with `codepen.html`, #11; open the browser devtools console, not CodePen's).
+**CodePen:** https://codepen.io/mbolli/pen/NPpveEy (open the browser devtools console, not CodePen's).
 
 ```html
 <!doctype html>

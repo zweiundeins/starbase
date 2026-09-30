@@ -1,6 +1,6 @@
 **Title:** Rocket: reordering n children with `replaceChildren()` costs O(n²) in the pending-host observer
 
-**Filed:** not yet
+**Filed:** https://github.com/starfederation/datastar/issues/1227
 
 ### Bug Report
 
@@ -10,7 +10,7 @@ We found it in nfsen-ng's result table, where going from 100 to 250 rows per pag
 
 ### Reproduce
 
-**CodePen:** (to create with `codepen.html`, #12; open the browser devtools console, not CodePen's).
+**CodePen:** https://codepen.io/mbolli/pen/zxZdymQ (open the browser devtools console, not CodePen's).
 
 ```html
 <!doctype html>
