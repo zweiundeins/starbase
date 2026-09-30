@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestDatePickerTime checks sb-date-picker's time of day in the browser: values, typed text,
+// TestDatePickerTime checks sb-date-picker's time of day in the browser: values, zones, typed text,
 // the draft that Apply or Enter commits, the time row's keys, min and max, pending and revert().
 func TestDatePickerTime(t *testing.T) {
 	_, body := probe(t, "/", datePickerTimeJS)
@@ -86,6 +86,104 @@ await group('native parity', async () => {
 		check('value ' + v + ' normalises as datetime-local does', el.value, native.value)
 	}
 	el.remove()
+})
+
+await group('zones', async () => {
+	const el = await make({ time: '' })
+	for (const [tz, v, want] of [
+		['Europe/Zurich', '2026-03-29T02:30', '2026-03-29T03:30+02:00'],
+		['Europe/Zurich', '2026-10-25T02:30', '2026-10-25T02:30+02:00'],
+		['Europe/Zurich', '2026-10-25T00:30:00Z', '2026-10-25T02:30+02:00'],
+		['Europe/Zurich', '2026-10-25T01:30:00Z', '2026-10-25T02:30+01:00'],
+		['Europe/Zurich', '2026-09-29T12:00:00Z', '2026-09-29T14:00+02:00'],
+		['Asia/Kathmandu', '2026-01-01T00:00:00Z', '2026-01-01T05:45+05:45'],
+		['America/New_York', '2026-10-14T09:30:15.5-04:00', '2026-10-14T09:30:15-04:00'],
+		['UTC', '2026-01-01T00:00:00Z', '2026-01-01T00:00+00:00'],
+		['Africa/Monrovia', '1970-01-01T12:00-00:44', '1970-01-01T12:00-00:44'],
+	]) {
+		el.setAttribute('time-zone', tz)
+		await settle()
+		el.value = v
+		check(tz + ': ' + v, el.value, want)
+	}
+	const d = new Date('2026-09-29T12:00:00Z')
+	const p2 = (n) => String(Math.floor(n)).padStart(2, '0')
+	const o = -d.getTimezoneOffset()
+	const mine = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + 'T' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + (o < 0 ? '-' : '+') + p2(Math.abs(o) / 60) + ':' + p2(Math.abs(o) % 60)
+	for (const tz of ['local', 'Not/AZone']) {
+		el.setAttribute('time-zone', tz)
+		await settle()
+		el.value = '2026-09-29T12:00:00Z'
+		check('time-zone="' + tz + '" is the viewer\'s zone', el.value, mine)
+	}
+	el.remove()
+
+	const k = await make({ time: '', inline: '', 'time-zone': 'Europe/Zurich', lang: 'en-GB', value: '2026-10-25T02:30+01:00' })
+	const log = events(k)
+	check('an overlap time from the server keeps its offset', [k.value, time(k), picked(k)], ['2026-10-25T02:30+01:00', '02 30', ['25']])
+	cell(k, 25).click()
+	key(part(k, '#m0'), 'ArrowUp')
+	key(part(k, '#m0'), 'ArrowDown')
+	key(part(k, '#m0'), 'Enter')
+	await settle()
+	check('applied with the same wall clock, it stays +01:00', [k.value, log], ['2026-10-25T02:30+01:00', []])
+	key(part(k, '#h0'), 'ArrowUp')
+	key(part(k, '#h0'), 'Enter')
+	await settle()
+	check('another wall clock is read in the zone', [k.value, log], ['2026-10-25T03:30+01:00', ['change', '2026-10-25T03:30+01:00']])
+	k.month = '2026-03'
+	await settle()
+	cell(k, 29).click()
+	key(part(k, '#h0'), 'Home')
+	key(part(k, '#h0'), 'ArrowUp')
+	key(part(k, '#h0'), 'ArrowUp')
+	key(part(k, '#h0'), 'Enter')
+	await settle()
+	check('a wall clock in the spring gap is the time after it', k.value, '2026-03-29T03:30+02:00')
+	k.remove()
+
+	const [east, west] = ['Pacific/Kiritimati', 'Pacific/Niue']
+	const days = []
+	for (const tz of [east, west]) {
+		const z = await make({ time: '', inline: '', 'time-zone': tz, lang: 'en-GB' })
+		const want = new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric' }).format(Date.now())
+		days.push(z.shadowRoot.querySelector('td[aria-current=date]')?.textContent, want)
+		z.remove()
+	}
+	check('today is the zone\'s day', [days[0], days[2]], [days[1], days[3]])
+	const tokyo = await make({ time: '', inline: '', 'time-zone': 'Asia/Tokyo', lang: 'en-GB', value: '2026-10-14T23:30:00Z', 'disabled-dates': '["2026-10-15"]' })
+	check('the value\'s day and disabled-dates are the zone\'s days', [picked(tokyo), cell(tokyo, 15).getAttribute('aria-disabled'), time(tokyo)], [['15'], 'true', '08 30'])
+	tokyo.remove()
+
+	const form = document.createElement('form')
+	box.append(form)
+	const t = document.createElement('sb-date-picker')
+	for (const [k, v] of Object.entries({ time: '', 'time-zone': 'America/New_York', lang: 'en-US', name: 'f', min: '2026-10-14T13:00:00Z' })) t.setAttribute(k, v)
+	form.append(t)
+	await settle()
+	await typeIn(t, '10/14/2026 9:30 AM')
+	check('typed text is the zone\'s wall clock', [t.value, part(t, '#i').value.replace(/\s/g, ' ')], ['2026-10-14T09:30-04:00', '10/14/2026, 09:30 AM'])
+	await typeIn(t, '2026-10-14T15:30:00Z')
+	check('a typed RFC 3339 instant is shown in the zone', t.value, '2026-10-14T11:30-04:00')
+	await typeIn(t, '10/14/2026 8:30 AM')
+	check('min with an offset bounds typed text', [t.value, part(t, '#i').getAttribute('aria-invalid')], ['2026-10-14T11:30-04:00', 'true'])
+	check('a form gets the RFC 3339 string', [...new FormData(form)], [['f', '2026-10-14T11:30-04:00']])
+	form.remove()
+
+	const plain = await make({ value: '2026-10-14' })
+	plain.value = '2026-10-20'
+	plain.setAttribute('step', '900')
+	plain.setAttribute('time-zone', 'Europe/Zurich')
+	await settle()
+	check('without time, a new step or time-zone leaves the local value alone', plain.value, '2026-10-20')
+	plain.remove()
+
+	const s = await make({ time: '', 'time-zone': 'Europe/Zurich', value: '2026-09-29T12:00:00Z' })
+	s.value = '2026-10-01T08:00+02:00'
+	s.setAttribute('time-zone', 'Asia/Kathmandu')
+	await settle()
+	check('a new time-zone: the server\'s value wins, in the new zone', s.value, '2026-09-29T17:45+05:45')
+	s.remove()
 })
 
 await group('typing', async () => {

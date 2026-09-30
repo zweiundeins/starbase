@@ -13,7 +13,7 @@ usage: |
 playground:
   values: {label: Launch date}
   attrs: {value: "2026-10-14"}
-  exclude: [value, disabledDates, month, open, name, lang, error, confirm, applyLabel]
+  exclude: [value, disabledDates, month, open, name, lang, error, confirm, timeZone, applyLabel]
   props: {step: {min: 1, max: 3600}}
 ---
 
@@ -23,8 +23,9 @@ A text field for a date, with a button that opens a calendar. The field shows th
 - **`min`, `max`, `disabled-dates`:** days that can't be picked, e.g. booked ones. The server sends them, also one month at a time.
 - **`month` and `open`:** view state the server may set. The calendar reports the user paging months with `sb-month`.
 - **`time` and `step`:** a time of day with the date. A row of time fields below the days edits the time, and Apply commits the date and the time together. `step` is the granularity in seconds, as on `<input type="datetime-local">`.
+- **`time-zone`:** with `time`, an IANA zone (`Europe/Zurich`) or `local` for the viewer's zone. The picker shows and reads the wall clock there, and the value is an instant with the zone's offset.
 
-The value is an ISO date (`2026-09-29`) in and out, whatever the language, and with `time` a local date-time (`2026-09-29T14:30`). The live value is the `value` property, so `data-bind` works.
+The value is an ISO date (`2026-09-29`) in and out, whatever the language, with `time` a local date-time (`2026-09-29T14:30`), and with `time-zone` an RFC 3339 instant with its offset (`2026-09-29T14:30+02:00`). The live value is the `value` property, so `data-bind` works.
 
 ## Examples
 
@@ -64,7 +65,7 @@ With `time`, the field shows and reads a date and a time, and the calendar has a
 </div>
 ```
 
-The value is a local date-time, `2026-10-14T09:30`, normalised as `<input type="datetime-local">` normalises it: seconds only when they aren't zero, a space accepted for the `T`, and a date alone or a string with a time zone offset read as no value. The value names no zone, so the server knows which one the time is in.
+The value is a local date-time, `2026-10-14T09:30`, normalised as `<input type="datetime-local">` normalises it: seconds only when they aren't zero, a space accepted for the `T`, and a date alone or a string with a time zone offset read as no value. The value names no zone, so the server knows which one the time is in. With [`time-zone`](#time-zones), the value carries its offset instead.
 
 ### Steps and seconds
 
@@ -79,7 +80,7 @@ The value is a local date-time, `2026-10-14T09:30`, normalised as `<input type="
 
 ### A range with times
 
-With `mode="range"`, the time row has a line for the start and one for the end. A start picked without a time begins at 00:00 and an end at the last step of its day (23:59 with minutes). Apply sends one `sb-change` with both ends, in time order:
+With `mode="range"`, the time row has a line for the start and one for the end. A picked day keeps the time its end had; in an empty range the start begins at 00:00 and the end at the last step of its day (23:59 with minutes). Apply sends one `sb-change` with both ends, in time order:
 
 ```html preview
 <div data-signals="{_window: ''}" style="display: grid; gap: 12px">
@@ -88,6 +89,24 @@ With `mode="range"`, the time row has a line for the start and one for the end. 
   <code data-text="$_window || 'Pick two days, then Apply'"></code>
 </div>
 ```
+
+### Time zones
+
+With `time-zone`, the picker shows and reads the wall clock of that zone, and the value is an RFC 3339 instant with the zone's offset at that moment. `local` is the viewer's own zone, and so is a name the browser can't read. The calendar's days, today and `disabled-dates` are that zone's days. The same instant, `2026-10-14T07:30:00Z`, in three zones:
+
+```html preview
+<div lang="en-GB" data-signals="{_zurich: '2026-10-14T09:30+02:00', _york: '2026-10-14T03:30-04:00', _mine: ''}" style="display: grid; gap: 12px">
+  <sb-date-picker time time-zone="Europe/Zurich" label="Zurich" value="2026-10-14T07:30:00Z" data-bind:_zurich__prop.value></sb-date-picker>
+  <code data-text="$_zurich"></code>
+  <sb-date-picker time time-zone="America/New_York" label="New York" value="2026-10-14T07:30:00Z" data-bind:_york__prop.value></sb-date-picker>
+  <code data-text="$_york"></code>
+  <sb-date-picker time time-zone="local" label="Your time" value="2026-10-14T07:30:00Z"
+    data-init="customElements.whenDefined(el.localName).then(() => $_mine = el.value)" data-on:change="$_mine = el.value"></sb-date-picker>
+  <code data-text="$_mine"></code>
+</div>
+```
+
+The picker shows no zone name, so the page says which zone it shows, as the labels do here. The server can't know the viewer's offset, so the third line reads the value from the picker once it is defined, and after every change. A wall time the zone skips (the spring gap) is read as the time after the gap, and one it repeats (the autumn overlap) as the earlier of the two. A value from the server keeps its own offset: `2026-10-25T02:30+01:00` in `Europe/Zurich` stays `+01:00` through an Apply that leaves the time alone.
 
 ### Inline, with bounds and ruled-out days
 
@@ -99,7 +118,7 @@ With `mode="range"`, the time row has a line for the start and one for the end. 
   disabled-dates='["2026-10-10","2026-10-11","2026-10-17","2026-10-18"]'></sb-date-picker>
 ```
 
-With `time`, `min` and `max` may be date-times too. A day can be picked when part of it lies between them, and the time row keeps the draft inside them: picking `min`'s day shows `min`'s time. A date alone is the start of that day for `min` and the end of that day for `max`. `disabled-dates` stays a list of whole days.
+With `time`, `min` and `max` may be date-times too (with `time-zone`, with or without an offset). A day can be picked when part of it lies between them, and the time row keeps the draft inside them: picking `min`'s day shows `min`'s time. A date alone is the start of that day for `min` and the end of that day for `max`. `disabled-dates` stays a list of whole days.
 
 ### Booked days, one month at a time
 
@@ -154,7 +173,7 @@ The date is read when the field is committed (Enter, or leaving it). Text that i
 <sb-date-picker label="Return date" min="2026-10-01" error="Enter a date from 1 October 2026, like 14.10.2026." lang="de"></sb-date-picker>
 ```
 
-With `time`, type the date and the time as the field shows them: `14.10.2026, 09:30` in German, `10/14/2026, 9:30 PM` in US English, `21:30 14/10/2026` in Vietnamese (which also takes the date first). The hour is 24-hour unless the text has AM or PM (the language's own, or `am` and `pm` in any case), so `21:30` works in US English too, and `12 AM` is midnight. Seconds are optional, and an ISO date-time (`2026-10-14T09:30`, or with a space) works in every language. A date without a time is not a value.
+With `time`, type the date and the time as the field shows them: `14.10.2026, 09:30` in German, `10/14/2026, 9:30 PM` in US English, `21:30 14/10/2026` in Vietnamese (which also takes the date first). The hour is 24-hour unless the text has AM or PM (the language's own, or `am` and `pm` in any case), so `21:30` works in US English too, and `12 AM` is midnight. Seconds are optional, and an ISO date-time (`2026-10-14T09:30`, or with a space) works in every language. With `time-zone`, the typed time is the zone's wall clock, and an ISO date-time with an offset or `Z` is read as that instant. A date without a time is not a value.
 
 ```html preview
 <sb-date-picker time label="Departure" lang="en-US" error="Enter a date and a time, like 10/14/2026, 9:30 PM."></sb-date-picker>
@@ -172,13 +191,13 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value
 
 A new `value` from the server always wins, and `value=""` clears it. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).
 
-With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), and with `mode="range"` both as `{ start, end }`. It is sent once per Apply, Enter in the time row or typed value, never for a day picked in the calendar or a change in the time row. A new `time` attribute from the server, or with `time` a new `step`, reads its `value` again in the new format, and that value replaces the local one.
+With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), with `time-zone` an instant with the zone's offset (`2026-10-14T09:30+02:00`), and with `mode="range"` both as `{ start, end }`. It is sent once per Apply, Enter in the time row or typed value, never for a day picked in the calendar or a change in the time row. The server may send a zone picker any RFC 3339 instant (`2026-10-14T07:30:00Z`) and gets back the offset form, which parses to the same instant. A new `time` attribute from the server, or with `time` a new `step` or `time-zone`, reads its `value` again in the new format, and that value replaces the local one.
 
 `open` and `month` are view state, not part of the value: never pending, and not touched by `revert()`. The server may set them, and a changed attribute wins (`open="false"` closes). The picker reports the user's changes with `sb-toggle` (`{ name, open }`) and `sb-month`, never for a change the server made.
 
 ## Forms
 
-Inside a `<form>`, `sb-date-picker` submits its value under its `name`: the ISO date (`launch=2026-10-14`), with `mode="range"` the JSON of its `value` attribute, and an empty string when there is no date, like `<input type="date">`. With `time` it submits what `<input type="datetime-local">` submits for the same value (`launch=2026-10-14T09:30`, seconds only when they aren't zero). A `disabled` picker submits nothing. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears invalid typed text. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+Inside a `<form>`, `sb-date-picker` submits its value under its `name`: the ISO date (`launch=2026-10-14`), with `mode="range"` the JSON of its `value` attribute, and an empty string when there is no date, like `<input type="date">`. With `time` it submits what `<input type="datetime-local">` submits for the same value (`launch=2026-10-14T09:30`, seconds only when they aren't zero), and with `time-zone` the instant with its offset (`launch=2026-10-14T09:30+02:00`). A `disabled` picker submits nothing. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears invalid typed text. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
 ## Styling
 

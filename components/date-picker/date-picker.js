@@ -60,6 +60,32 @@ const clock = (s) => {
 // The normalised form, seconds only when they aren't zero, and the seconds of the day.
 const stamp = (w) => ((w = new Date(w).toISOString()), w.slice(0, 16) + (w.slice(17, 19) === '00' ? '' : w.slice(16, 19)))
 const sod = (w) => (w - Math.floor(w / DAY) * DAY) / 1e3
+// The viewer's zone, and a zone Intl can read (else the viewer's).
+const viewerZone = new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+const zone = (tz) => {
+	try {
+		return tz === 'local' ? viewerZone : new Intl.DateTimeFormat('en', { timeZone: tz }).resolvedOptions().timeZone
+	} catch {
+		return viewerZone
+	}
+}
+// wall is the instant t on the zone's clock, read as if that clock were UTC.
+const clocks = new Map()
+const wall = (t, tz) => {
+	let c = clocks.get(tz)
+	if (!c) clocks.set(tz, (c = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })))
+	const f = {}
+	for (const { type, value } of c.formatToParts(t)) f[type] = +value
+	return Date.UTC(f.year, f.month - 1, f.day, f.hour, f.minute, f.second, ((t % 1e3) + 1e3) % 1e3)
+}
+// The instant a wall clock w shows: in an overlap the earlier one, in a gap
+// the one after it (Temporal's "compatible").
+const instant = (w, tz) => {
+	const [a, b] = [w - DAY, w + DAY].map((t) => w - (wall(t, tz) - t))
+	const fit = [a, b].filter((t) => wall(t, tz) === w)
+	return fit.length ? Math.min(...fit) : a
+}
+const offset = (o) => ((o = Math.round(o / 6e4)), (o < 0 ? '-' : '+') + [Math.abs(o) / 60, Math.abs(o) % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':'))
 // The time row's fields: b and a are the day period before or after the hour.
 const FIELD = { h: 'h', m: 'm', s: 's', b: 'p', a: 'p' }
 const shown = (el) => el.getClientRects().length > 0
@@ -236,12 +262,13 @@ td {
 
 rocket('sb-date-picker', {
 	props: ({ bool, json, number, oneOf, string }) => ({
-		value: string.docs({ description: 'The date, ISO: 2026-09-29. With time, a local date-time as datetime-local submits it: 2026-09-29T14:30 (seconds only when not zero). With mode="range", JSON: {"start":"2026-09-29","end":"2026-10-03"}. A new value from the server replaces it (value="" clears); the live value is the value property.' }),
+		value: string.docs({ description: 'The date, ISO: 2026-09-29. With time, a local date-time as datetime-local submits it: 2026-09-29T14:30 (seconds only when not zero), and with time-zone an instant with its offset: 2026-09-29T14:30+02:00 (any RFC 3339 instant is read). With mode="range", JSON: {"start":"2026-09-29","end":"2026-10-03"}. A new value from the server replaces it (value="" clears); the live value is the value property.' }),
 		mode: oneOf('single', 'range').default('single').docs({ description: 'One date, or a start and an end, committed together as one value.' }),
 		time: bool.docs({ description: 'The value includes a time of day. The calendar and a time row below it edit a draft, and Apply (or Enter in the time row) commits the date and the time together.' }),
 		step: number.clamp(0, 3600).default(60).docs({ description: 'With time: the time\'s granularity in whole seconds up to 3600, as on datetime-local (60: minutes, 900: quarter hours, 1: seconds shown); a step that isn\'t a positive number means 60. Up and Down move by it; typed values off the step are kept.' }),
-		min: string.docs({ description: 'Earliest date that can be picked (ISO). With time, a date (from the start of that day) or a date-time.' }),
-		max: string.docs({ description: 'Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time.' }),
+		timeZone: string.trim.docs({ description: 'With time: an IANA time zone (Europe/Zurich), or local for the viewer\'s. The picker shows and reads the wall clock there, and the value is an RFC 3339 instant with the zone\'s offset: 2026-09-29T14:30+02:00. A zone the browser can\'t read means the viewer\'s. Without it, the value is a local date-time.' }),
+		min: string.docs({ description: 'Earliest date that can be picked (ISO). With time, a date (from the start of that day) or a date-time, with time-zone with or without an offset.' }),
+		max: string.docs({ description: 'Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time, with time-zone with or without an offset.' }),
 		disabledDates: json.default(() => []).docs({ description: 'Server data: dates that can\'t be picked, as a JSON array of ISO dates (e.g. booked days). They can still be focused and read.' }),
 		month: string.docs({ description: 'The month shown, YYYY-MM (view state). A changed attribute from the server moves the calendar there; the user paging months emits sb-month.' }),
 		open: bool.docs({ description: 'The calendar popover is open. View state: a changed attribute from the server opens or closes it (open="false" closes); local toggling never reflects it.' }),
@@ -258,7 +285,7 @@ rocket('sb-date-picker', {
 	manifest: {
 		events: [
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The value changed.' },
-			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'A date was picked or typed (with time: applied or typed). detail: { name, value }: an ISO date or with time a date-time ("" when cleared), or with mode="range" { start, end } (null when cleared). Ready for a command.' },
+			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'A date was picked or typed (with time: applied or typed). detail: { name, value }: an ISO date, with time a date-time (with time-zone, with its offset) ("" when cleared), or with mode="range" { start, end } (null when cleared). Ready for a command.' },
 			{ name: 'sb-month', kind: 'custom-event', bubbles: true, composed: true, description: 'The user moved the calendar to another month. detail: { name, year, month } (month from 1): the moment to send that month\'s disabled-dates.' },
 			{ name: 'sb-toggle', kind: 'custom-event', bubbles: true, composed: true, description: 'The popover opened or closed. detail: { name, open }. View state: not emitted for a change the server made.' },
 		],
@@ -357,13 +384,22 @@ rocket('sb-date-picker', {
 		adoptStyles(host, styles)
 		const states = internalsOf(host).states
 		const range = () => props.mode === 'range'
-		// A value's ends are points: days, or with time date-times (see clock()).
-		// A time of day is in seconds.
-		const pt = (s) => (!props.time ? day(s) : (s = clock(s))?.local ? s.w : null)
-		const str = (p) => (props.time ? stamp(p) : iso(p))
-		const wallOf = (p) => p
-		const pointOf = (w) => w
+		// A value's ends are points: days, or with time date-times (see clock()),
+		// with a zone instants. A time of day is in seconds.
+		let tz = null
+		const zoneUp = () => (tz = props.time && props.timeZone ? zone(props.timeZone) : null)
+		const pt = (s) => {
+			if (!props.time) return day(s)
+			s = clock(s)
+			return !s ? null : !tz ? (s.local ? s.w : null) : s.off != null ? s.w - s.off : instant(s.w, tz)
+		}
+		// A zone's offset in whole minutes, so the string names exactly p (old offsets have seconds).
+		const str = (p, o) => (!props.time ? iso(p) : tz ? ((o = Math.round((wall(p, tz) - p) / 6e4) * 6e4), stamp(p + o) + offset(o)) : stamp(p))
+		const wallOf = (p) => (tz ? wall(p, tz) : p)
+		// The point of a wall clock: t when it shows that wall clock still.
+		const pointOf = (w, t) => (!tz ? w : t != null && wall(t, tz) === w ? t : instant(w, tz))
 		const dayOf = (p) => (props.time ? Math.floor(wallOf(p) / DAY) : p)
+		const now = () => (tz ? Math.floor(wall(Date.now(), tz) / DAY) : today())
 		// As on datetime-local, a step that isn't a positive number is 60.
 		const step = () => (props.step > 0 ? Math.max(1, Math.round(props.step)) : 60)
 		const last = () => Math.floor(86399 / step()) * step()
@@ -474,6 +510,7 @@ rocket('sb-date-picker', {
 			$$.aria = host.getAttribute('aria-label') || 'Date'
 			states[props.disabled ? 'add' : 'delete']('disabled')
 		}
+		zoneUp()
 		speak()
 		bound()
 		mirror()
@@ -546,7 +583,7 @@ rocket('sb-date-picker', {
 				// picking, from the first pick to the day pointed at.
 				const e = props.time ? draft.slice(0, R ? 2 : 1).flatMap((x) => (x.d == null ? [] : [x.d])) : ends($$.v)
 				const [a, b] = pick1 != null ? lohi(pick1, hover ?? focus) : [e[0], e.at(-1)]
-				const t = today()
+				const t = now()
 				for (let i = 0; i < 42; i++) {
 					const n = g + i
 					const sel = pick1 != null ? n === pick1 : R ? n === a || n === b : n === b
@@ -696,7 +733,7 @@ rocket('sb-date-picker', {
 		// The first month: month, else the value's, else today's. The focus is on
 		// the value (or today) when it is in that month.
 		const v0 = norm(props.value)
-		focus = ends(v0)[0] ?? today()
+		focus = ends(v0)[0] ?? now()
 		if (mon(props.month) != null && !iso(focus).startsWith(props.month)) focus = mon(props.month)
 		focus = clamp(focus)
 		;[vy, vm] = parts(focus)
@@ -708,8 +745,10 @@ rocket('sb-date-picker', {
 		observeProps((p, changes) =>
 			peek(() => {
 				const has = (...k) => k.some((x) => x in changes)
-				// A new format: the server's value, normalised again, wins.
-				const format = has('mode', 'time') || (p.time && has('step'))
+				// A new format: the server's value, normalised again, wins. step and
+				// time-zone only shape a value with time.
+				const format = has('mode', 'time') || (p.time && has('step', 'timeZone'))
+				if (format) zoneUp()
 				if (format || has('lang', 'placeholder')) speak()
 				if (format || has('min', 'max', 'disabledDates')) bound()
 				if (p.disabled || p.inline) $$.open = false
@@ -734,7 +773,7 @@ rocket('sb-date-picker', {
 				// The user's open shows the value's month (or today's). The draft
 				// starts from the value: a close dropped the last one.
 				props.time && redraft()
-				$$.open ? paint() : move(ends($$.v)[0] ?? today())
+				$$.open ? paint() : move(ends($$.v)[0] ?? now())
 				if (anchors) return
 				const r = control.getBoundingClientRect()
 				const rtl = host.matches(':dir(rtl)')

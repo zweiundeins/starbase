@@ -46,6 +46,7 @@ const cases = [
 	{ tag: 'sb-range', attr: 'value', local: { start: 10, end: 20 }, server: '{"start":0,"end":100}', want: { start: 0, end: 100 } },
 	{ tag: 'sb-date-picker', attr: 'value', local: '2026-09-29', server: '', want: '' },
 	{ tag: 'sb-date-picker', attrs: { time: '' }, attr: 'value', local: '2026-09-29T14:30', server: '', want: '' },
+	{ tag: 'sb-date-picker', attrs: { time: '', 'time-zone': 'Europe/Zurich' }, attr: 'value', local: '2026-09-29T14:30+02:00', server: '2026-09-29T12:00:00Z', want: '2026-09-29T14:00+02:00' },
 	{ tag: 'sb-code-editor', attr: 'value', local: 'x = 1', server: '', want: '' },
 	{ tag: 'sb-select', attrs: { options: '["A","B"]' }, attr: 'value', local: 'B', server: '', want: '' },
 	{ tag: 'sb-radio-group', attrs: { options: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
