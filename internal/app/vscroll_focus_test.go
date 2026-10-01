@@ -506,6 +506,22 @@ try {
 	await frames(2)
 	check(c, 'a focusout that leaves it the focus (a window switch) keeps its tabindex', scroller.getAttribute('tabindex'), '-1')
 
+	c = '7: Tab right after a window, before its frame, starts from the same item'
+	await list(10000, 2, 160)
+	link(150).focus()
+	await settle(vs)
+	const seen = []
+	// Registered after the component's own observer, so it runs right after it, in the same microtask checkpoint.
+	const spy = new MutationObserver(() => {
+		if (seen.length) return
+		deep().dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }))
+		seen.push(describe(deep()))
+	})
+	spy.observe(vs, { attributeFilter: ['offset'] })
+	await list(10000, 2, 160, '', 10)
+	spy.disconnect()
+	check(c, 'the focus Tab moves on from', seen[0], 'a #r150a')
+
 	c = '7: the item at the index holds only disabled controls, and its link now shows another item'
 	await list(10000, 2, 160)
 	link(150).focus()
