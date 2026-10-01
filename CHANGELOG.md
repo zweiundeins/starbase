@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `sb-relative-time` takes `time-zone`, an IANA name for the date on hover, the threshold date and the day count, so a page that shows its times in the server's zone says "yesterday" by the server's calendar. The date on hover follows `title-lang` (`auto` is the browser's language), and `title-style="numeric"` shows it as numbers with seconds, like `toLocaleString()`.
+
 ### Changed
 
 - The patched Rocket build has four more fixes, twelve in all (`patches/rocket`). Each is filed upstream, with its repro page in `docs/repro/`.
@@ -14,6 +18,10 @@ All notable changes to this project are documented here. The format follows
   - [#1226](https://github.com/starfederation/datastar/issues/1226): a definition that arrives after Datastar's first pass still applies the shadow host's light children.
   - [#1227](https://github.com/starfederation/datastar/issues/1227): the pending-host observer scans a parent once per batch, not once per moved child, so reordering 1,000 rows no longer takes seconds.
 - `docs/repro/rocket-morph-ids/` shows a quiet case of [#1209](https://github.com/starfederation/datastar/issues/1209): a Rocket element inserted ahead of keyed moves breaks them without throwing, and only 0008's restored id maps fix it. A comment for #1209 is drafted in `docs/upstream/08`, not posted.
+
+### Fixed
+
+- `sb-relative-time`: where a daylight saving gap skips midnight (America/Santiago, America/Havana, Africa/Cairo), the day count turns at the jump instead of an hour before it.
 
 ## [0.5.0] - 2026-09-29
 
