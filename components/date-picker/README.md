@@ -13,7 +13,7 @@ usage: |
 playground:
   values: {label: Launch date}
   attrs: {value: "2026-10-14"}
-  exclude: [value, disabledDates, month, open, name, lang, error, confirm, timeZone, applyLabel]
+  exclude: [value, disabledDates, month, open, name, lang, error, confirm, applyLabel]
   props: {step: {min: 1, max: 3600}}
 ---
 

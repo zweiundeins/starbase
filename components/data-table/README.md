@@ -15,8 +15,8 @@ playground:
     columns: '[{"key":"name","label":"Name","sortable":true},{"key":"class","label":"Class","width":"6rem","sortable":true},{"key":"constellation","label":"Constellation","sortable":true},{"key":"magnitude","label":"Magnitude","align":"end","width":"7.5rem","sortable":true}]'
     "data-signals:_pgstars": '{rows: [], offset: 0, total: 0, sort: {key: "", dir: ""}}'
     data-attr: '{rows: JSON.stringify($_pgstars.rows), offset: $_pgstars.offset, total: $_pgstars.total, sort: JSON.stringify($_pgstars.sort)}'
-    "data-on:sb-window": '@get(`/demo/data/rows?into=_pgstars&${new URLSearchParams(evt.detail)}`)'
-    "data-on:sb-sort": '@get(`/demo/data/rows?into=_pgstars&${new URLSearchParams(evt.detail)}`)'
+    "data-on:sb-window": '@get(`/demo/data/rows?cells=rich&into=_pgstars&${new URLSearchParams(evt.detail)}`)'
+    "data-on:sb-sort": '@get(`/demo/data/rows?cells=rich&into=_pgstars&${new URLSearchParams(evt.detail)}`)'
   style: "block-size: 18rem"
   props: {rowHeight: {min: 24, max: 64}}
   values: {selection: single, label: Star catalog}
