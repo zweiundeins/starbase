@@ -121,7 +121,7 @@ rocket('sb-virtual-scroll', {
 		}
 
 		// at: the index of the item with the focus (-1: none), place: the focused element among its
-		// focusables. parked: the scroller holds the focus while that item is outside the window.
+		// focusables. parked: the scroller holds the focus while no item can take it.
 		let at = -1, place = 0, parked = false, frame = 0
 		// A <template data-for> that renders the items is no item.
 		const kids = () => items.assignedElements().filter((el) => el.localName != 'template')
@@ -180,20 +180,21 @@ rocket('sb-virtual-scroll', {
 			emit('sb-window', { offset, count: n })
 		}
 
+		const park = () => parked || ((parked = true), ($$.tab = tab()), scroller.focus({ preventScroll: true }))
 		// A frame after a window, so a page that moves the focus itself (sb-data-table) goes first:
 		// back to the same place in the item now at that index, or to the scroller while none is.
 		const refocus = () => {
 			frame = 0
 			const a = document.activeElement
 			if (at < 0 || !(holds() || !a || a === document.body)) return
+			// A list that ends before the item: its neighbour, the new last item.
+			if (host.hasAttribute('total')) at = Math.min(at, props.total - 1)
+			if (at < 0) return
 			const item = kids()[at - props.offset]
-			if (!item) {
-				if (!parked) (parked = true), ($$.tab = tab()), scroller.focus({ preventScroll: true })
-				return
-			}
-			const el = focusables(item)[place]
-			if (!el) at = -1
-			else if (host.getRootNode().activeElement !== el) el.focus({ preventScroll: true })
+			if (!item) return park()
+			const all = focusables(item), el = all[Math.min(place, all.length - 1)]
+			if (el) host.getRootNode().activeElement === el || el.focus({ preventScroll: true })
+			else (at = -1), holds() || park()
 		}
 
 		sync()
@@ -211,9 +212,9 @@ rocket('sb-virtual-scroll', {
 			const t = evt.target, to = evt.relatedTarget
 			if (t === scroller && parked) (parked = false), ($$.tab = tab())
 			if (to) return void (host.contains(to) || host.shadowRoot.contains(to) || (at = -1))
-			// No related target: a click on the page, or the morph removing the
-			// element. Gone once the morph is done: keep the item.
-			queueMicrotask(() => t.isConnected && !holds() && (at = -1))
+			// No related target: a click on the page, or the morph removing the element. Gone once
+			// the morph is done: keep the item and refocus, also when the morph left the host as it was.
+			queueMicrotask(() => (t.isConnected ? holds() || (at = -1) : host.isConnected && (frame ||= requestAnimationFrame(refocus))))
 		})
 		// A morph (the server's answer) changes the children and the attributes.
 		const watch = new MutationObserver(() => {

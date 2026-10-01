@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,15 +26,16 @@ func TestVirtualScrollFocus(t *testing.T) {
 		{"outside", "/", vscrollFocusJS + vscrollOutsideJS, false},
 		{"header", "/", vscrollFocusJS + vscrollHeaderJS, false},
 		{"data-table", "/components/data-table", vscrollHelpersJS + vscrollTableJS, true},
+		{"shrink", "/", vscrollFocusJS + vscrollShrinkJS, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			script := strings.Replace(c.script, "HOST_HTML", jsonString(t, vscrollHost(0, 160)), 1)
+			script := strings.Replace(c.script, "HOST_HTML", jsonString(t, vscrollHost(0, 160, vscrollTotal, 2)), 1)
 			handlers := func(app http.Handler) map[string]http.HandlerFunc {
 				if c.stars {
 					waitForStars(t, app)
 				}
-				return map[string]http.HandlerFunc{"/__probe/window": vscrollWindow}
+				return map[string]http.HandlerFunc{"/__probe/window": vscrollServer()}
 			}
 			_, body := probeWith(t, c.path, script, handlers)
 			var rows []struct{ Case, Step, Got, Want, Error string }
@@ -57,32 +59,53 @@ func TestVirtualScrollFocus(t *testing.T) {
 
 const vscrollTotal = 10000
 
-// vscrollHost is the test list holding items offset to offset+count: a header of 8 buttons, and
-// items of two links each without ids, like /demo/data/list.
-func vscrollHost(offset, count int) string {
+// vscrollHost is the test list of total items holding offset to offset+count: a header of 8
+// buttons, and items without ids, like /demo/data/list, of up to two links each.
+func vscrollHost(offset, count, total, links int) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, `<sb-virtual-scroll id="vsf" offset="%d" total="%d" data-preserve-attr="role aria-label item-size buffer data-on:sb-window">`, offset, vscrollTotal)
+	fmt.Fprintf(&b, `<sb-virtual-scroll id="vsf" offset="%d" total="%d" data-preserve-attr="role aria-label item-size buffer data-on:sb-window">`, offset, total)
 	b.WriteString(`<div slot="header">`)
 	for i := 1; i <= 8; i++ {
 		fmt.Fprintf(&b, `<button type="button">H%d</button>`, i)
 	}
 	b.WriteString(`</div>`)
 	for i := offset; i < offset+count; i++ {
-		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d"><a href="#r%da">%d a</a> <a href="#r%db">%d b</a></div>`, i+2, i, i, i, i)
+		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d">`, i+2)
+		for j, l := range []string{"a", "b"}[:links] {
+			if j > 0 {
+				b.WriteString(" ")
+			}
+			fmt.Fprintf(&b, `<a href="#r%d%s">%d %s</a>`, i, l, i, l)
+		}
+		if links == 0 {
+			fmt.Fprintf(&b, "%d", i)
+		}
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</sb-virtual-scroll>`)
 	return b.String()
 }
 
-// vscrollWindow answers the test list's sb-window like /demo/data/list: the
-// host with ?count= items from ?offset=.
-func vscrollWindow(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	offset, _ := strconv.Atoi(q.Get("offset"))
-	count, _ := strconv.Atoi(q.Get("count"))
-	offset = min(max(offset, 0), vscrollTotal)
-	count = min(max(count, 0), vscrollTotal-offset)
-	datastar.NewSSE(w, r).PatchElements(vscrollHost(offset, count))
+// vscrollServer answers the test list's sb-window like /demo/data/list: the host with ?count=
+// items from ?offset=. A request with ?total= (and ?links=) is a new list, as a filter sends.
+func vscrollServer() http.HandlerFunc {
+	var mu sync.Mutex
+	total, links := vscrollTotal, 2
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		mu.Lock()
+		if s := q.Get("total"); s != "" {
+			total, _ = strconv.Atoi(s)
+			links, _ = strconv.Atoi(q.Get("links"))
+		}
+		n, l := total, min(max(links, 0), 2)
+		mu.Unlock()
+		offset, _ := strconv.Atoi(q.Get("offset"))
+		count, _ := strconv.Atoi(q.Get("count"))
+		offset = min(max(offset, 0), n)
+		count = min(max(count, 0), n-offset)
+		datastar.NewSSE(w, r).PatchElements(vscrollHost(offset, count, n, l))
+	}
 }
 
 // waitForStars returns once SeedStars, which the app runs in the background at
@@ -341,6 +364,61 @@ try {
 	check(c, 'windows on the way', windows > 0, true)
 } catch (e) {
 	rows.push({ case: c, error: String(e?.stack || e) })
+}
+await report()
+`
+
+// vscrollShrinkJS: the server sends a new list (a filter) that ends before the focused item, or
+// whose item there has fewer links, or none.
+const vscrollShrinkJS = `
+// The new list from offset 0: total items of links links each, count of them in the window.
+const list = async (total, links, count) => {
+	const b = document.createElement('button')
+	b.hidden = true
+	b.setAttribute('data-on:click', "@get('/__probe/window?offset=0&count=" + count + '&total=' + total + '&links=' + links + "')")
+	document.body.append(b)
+	await frames(2)
+	const done = new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error('no answer for a list of ' + total)), 10000)
+		document.addEventListener('datastar-fetch', function seen(e) {
+			if (e.detail.el !== b || e.detail.type !== 'finished') return
+			document.removeEventListener('datastar-fetch', seen)
+			clearTimeout(timer)
+			resolve()
+		})
+	})
+	b.click()
+	await done
+	b.remove()
+	await settle(vs)
+}
+try {
+	let c = '7: a list that ends before the item, of one link each'
+	link(150, 'b').focus()
+	await settle(vs)
+	await list(100, 1, 100)
+	check(c, 'the focus', describe(deep()), 'a #r99a')
+	check(c, 'the scroller\'s tabindex', scroller.getAttribute('tabindex'), 'null')
+
+	c = '7: an item with nothing to focus'
+	await list(100, 0, 100)
+	check(c, 'the focus', describe(deep()), 'div::part(scroller)')
+
+	c = '7: a list that ends before the item, outside its first window'
+	await list(10000, 2, 160)
+	vs.scrollToIndex(5000)
+	await settle(vs)
+	link(5000).focus()
+	await settle(vs)
+	await list(3000, 2, 60)
+	check(c, 'the focus', describe(deep()), 'a #r2999a')
+	check(c, 'the scroller\'s tabindex', scroller.getAttribute('tabindex'), 'null')
+
+	c = '7: an empty list'
+	await list(0, 2, 0)
+	check(c, 'the focus', describe(document.activeElement), 'body')
+} catch (e) {
+	rows.push({ case: '7', error: String(e?.stack || e) })
 }
 await report()
 `

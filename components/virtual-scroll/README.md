@@ -160,6 +160,8 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 
 `scrollToIndex(index, { block })` scrolls to the item at `index` (from 0). `block` is `'start'` (the default: the item at the top), `'end'`, or `'nearest'` (only as far as needed to show it, for keyboard navigation). When the item is outside the current window, the scroll asks for its window.
 
+The list's own actions are `scroll`, `trackFocus` and `leaveFocus`. Rocket looks up an `@name()` on the host, an item or the header among them first, so a component that renders the list must not give its own actions these names. Datastar's actions, such as `@get` and `@post`, are unaffected.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
@@ -188,5 +190,6 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Other structures:** a `role` on the host hands the semantics to the page, and the scroller drops its `list` role: a feed (`role="feed"` with `role="article"` items), or a grid (`role="grid"`, rows with `aria-rowindex`). Name the host with `aria-label` then.
 - **Keyboard:** when no item has anything to focus, the scroller takes the focus itself, so the arrow keys, Page Up and Down, Home and End scroll it. Otherwise Tab goes to the items' links, buttons, fields and elements with a `tabindex`.
 - **Focus across windows:** the morph patches the items by position, so a window can fill the focused element with another item or remove it. A frame after each window, the list puts the focus back on the same element of the item that now has its index, without scrolling, and Tab and Shift+Tab walk the items one at a time across any number of windows. A page that moves the focus itself, like `sb-data-table` with its roving cell, has done so by then.
-- **Focus outside the window:** when the focused item scrolls out of the window, the scroller holds the focus (with `tabindex="-1"` while it does), and a window that brings the item back gives it the focus again. A window never takes the focus back from the rest of the page.
+- **A new list:** when the server sends a list that ends before the focused item, its new last item takes the focus. An item with fewer focusable elements than before gives it to its last one; an item with none leaves it where it is, or gives it to the scroller when the morph removed the focused element.
+- **Focus outside the window:** when the focused item scrolls out of the window, the scroller holds the focus (with `tabindex="-1"` while it does), and a window that brings the item back gives it the focus again. A window never takes the focus back from the rest of the page. With a `role` on the host, the scroller has neither a role nor a name (ARIA allows no name on an element without a role), so it is an unnamed focus stop inside the host's table, grid or feed.
 - **Header:** a control in the `header` slot takes the focus without scrolling the list, and a focused item under the header scrolls into view below it. Tab from the header goes to the first item of the window, which can be up to `buffer` px above the view.
