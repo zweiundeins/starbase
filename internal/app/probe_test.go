@@ -34,8 +34,25 @@ func probe(t *testing.T, path, script string) (*app.App, []byte) {
 // A host other than localhost makes a non-secure context; "" is 127.0.0.1, as in probe.
 func probeAt(t *testing.T, host, path, script string, chromeArgs ...string) (*app.App, []byte) {
 	t.Helper()
+	return probeFull(t, host, path, script, nil, chromeArgs...)
+}
+
+// probeWith is probe with test-only handlers by path, answered before the app's; they are made
+// before Chrome starts, from the app's handler, so they can wait for it or pass requests on.
+func probeWith(t *testing.T, path, script string, handlers func(app http.Handler) map[string]http.HandlerFunc) (*app.App, []byte) {
+	t.Helper()
+	return probeFull(t, "", path, script, handlers)
+}
+
+// probeFull is probeAt with probeWith's handlers.
+func probeFull(t *testing.T, host, path, script string, handlers func(app http.Handler) map[string]http.HandlerFunc, chromeArgs ...string) (*app.App, []byte) {
+	t.Helper()
 	chrome := findChrome(t)
 	a, base, ln := startApp(t, host)
+	var extra map[string]http.HandlerFunc
+	if handlers != nil {
+		extra = handlers(a.Handler)
+	}
 
 	var once sync.Once
 	results := make(chan []byte, 1)
@@ -70,6 +87,10 @@ func probeAt(t *testing.T, host, path, script string, chromeArgs ...string) (*ap
 			doc := strings.Replace(rec.Body.String(), "</body>", inject+"</body>", 1)
 			w.Write([]byte(doc))
 		default:
+			if h := extra[r.URL.Path]; h != nil {
+				h(w, r)
+				return
+			}
 			a.Handler.ServeHTTP(w, r)
 		}
 	})}

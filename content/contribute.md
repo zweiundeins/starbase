@@ -210,7 +210,7 @@ A component whose rows can be replaced by the server (a tree, a menu, a group of
 - Restore the DOM focus after a re-render only when it **fell on the floor**: `document.activeElement` is the body or the host. If the user moved on to something else, leave it there; a component that grabs focus back is worse than one that loses it.
 - When the focused row is **gone from the new list**, focus its neighbour (the old index, clamped into the new list, skipping disabled rows), not the first row: jumping to the top turns one arrow key into a trip to the other end of the list.
 
-`sb-tree`, `sb-radio-group` and `sb-dropdown` all do this; copy from whichever is closest in shape.
+`sb-tree`, `sb-radio-group`, `sb-dropdown` and `sb-virtual-scroll` all do this; copy from whichever is closest in shape.
 
 ### Components with several values
 

@@ -90,6 +90,7 @@ rocket('sb-virtual-scroll', {
 	renderOnPropChange: false,
 	render: ({ html }) => html`
 		<div class="scroller" part="scroller" data-ref:scroller data-on:scroll__passive="@scroll()"
+			data-on:focusin="@trackFocus()" data-on:focusout="@leaveFocus()"
 			data-attr:role="$$role" data-attr:aria-label="($$role && $$label) || false" data-attr:tabindex="$$tab"
 			data-style:scroll-padding-block-start="$$head + 'px'">
 			<div class="header" part="header" data-ref:header><slot name="header"></slot></div>
@@ -115,11 +116,22 @@ rocket('sb-virtual-scroll', {
 			return cap ? Math.min(b, Math.max(0, Math.floor((rows(cap) - v) / 2))) : b
 		}
 
+		// at: the index of the item with the focus (-1: none), place: the focused element among its
+		// focusables. parked: the scroller holds the focus while that item is outside the window.
+		let at = -1, place = 0, parked = false, frame = 0
+		// A <template data-for> that renders the items is no item.
+		const kids = () => items.assignedElements().filter((el) => el.localName != 'template')
+		const focusables = (item) => [...(item.matches(FOCUSABLE) ? [item] : []), ...item.querySelectorAll(FOCUSABLE)]
+		const holds = () => {
+			const a = host.getRootNode().activeElement
+			return a === host || host.contains(a)
+		}
+		const tab = () => (host.querySelector(FOCUSABLE) ? parked && -1 : 0)
+
 		$$.head = 0
 		const sync = () => {
 			const size = props.itemSize
-			// A <template data-for> that renders the items is no item.
-			have = items.assignedElements().filter((el) => el.localName != 'template').length
+			have = kids().length
 			$$.size = size
 			$$.cols = props.columns
 			$$.height = rows(props.total) * size
@@ -128,7 +140,7 @@ rocket('sb-virtual-scroll', {
 			// A role on the host hands the semantics to the page (a grid, a feed).
 			$$.role = !host.hasAttribute('role') && 'list'
 			$$.label = props.label
-			$$.tab = !host.querySelector(FOCUSABLE) && 0
+			$$.tab = tab()
 		}
 
 		// The window for the scroll position: the visible rows plus the buffer on
@@ -164,8 +176,41 @@ rocket('sb-virtual-scroll', {
 			emit('sb-window', { offset, count: n })
 		}
 
+		// A frame after a window, so a page that moves the focus itself (sb-data-table) goes first:
+		// back to the same place in the item now at that index, or to the scroller while none is.
+		const refocus = () => {
+			frame = 0
+			const a = document.activeElement
+			if (at < 0 || !(holds() || !a || a === document.body)) return
+			const item = kids()[at - props.offset]
+			if (!item) {
+				if (!parked) (parked = true), ($$.tab = tab()), scroller.focus({ preventScroll: true })
+				return
+			}
+			const el = focusables(item)[place]
+			if (!el) at = -1
+			else if (host.getRootNode().activeElement !== el) el.focus({ preventScroll: true })
+		}
+
 		sync()
 		action('scroll', ask)
+		// Named apart from what a page may bind on the host: an action there
+		// finds the host's own actions first.
+		action('trackFocus', ({ evt }) => {
+			const path = evt.composedPath(), k = path.indexOf(items)
+			if (path[0] === scroller) return
+			const item = path[k - 1], i = k > 0 ? kids().indexOf(item) : -1
+			at = i < 0 ? -1 : props.offset + i
+			if (i >= 0) place = focusables(item).findIndex((el) => el === evt.target || el.contains(evt.target))
+		})
+		action('leaveFocus', ({ evt }) => {
+			const t = evt.target, to = evt.relatedTarget
+			if (t === scroller && parked) (parked = false), ($$.tab = tab())
+			if (to) return void (host.contains(to) || host.shadowRoot.contains(to) || (at = -1))
+			// No related target: a click on the page, or the morph removing the
+			// element. Gone once the morph is done: keep the item.
+			queueMicrotask(() => t.isConnected && !holds() && (at = -1))
+		})
 		// A morph (the server's answer) changes the children and the attributes.
 		const watch = new MutationObserver(() => {
 			wait = false
@@ -176,6 +221,7 @@ rocket('sb-virtual-scroll', {
 			if (have < lastCount && props.offset + have < props.total) cap = have
 			if (!host.hasAttribute('total')) last = ''
 			ask()
+			frame ||= requestAnimationFrame(refocus)
 		})
 		watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true })
 		// The first size asks right away, later ones once the resizing stops.
@@ -193,6 +239,7 @@ rocket('sb-virtual-scroll', {
 			watch.disconnect()
 			resize.disconnect()
 			clearTimeout(timer)
+			cancelAnimationFrame(frame)
 		})
 
 		defineHostProp('scrollToIndex', {
