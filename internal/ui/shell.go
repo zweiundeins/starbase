@@ -101,7 +101,8 @@ func safe(s string) templ.SafeURL { return templ.SafeURL(s) }
 // PageSignals builds the body's initial signals: a per-tab id plus extra
 // page-owned signals.
 func PageSignals(extra map[string]any) string {
-	s := `{tabid: crypto.randomUUID().replaceAll('-', '').slice(0, 16)`
+	// getRandomValues, unlike randomUUID, also exists outside secure contexts (plain HTTP).
+	s := `{tabid: Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('')`
 	keys := make([]string, 0, len(extra))
 	for k := range extra {
 		keys = append(keys, k)
