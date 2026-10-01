@@ -31,26 +31,30 @@ func TestVirtualScrollFocus(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	links := vscrollItems{links: 2}
 	cases := []struct {
 		name, path, script string
+		items              vscrollItems
 		stars              bool // the page shows the demo stars
 	}{
-		{"tab from item 0", "/", vscrollFocusJS + vscrollTab0JS, false},
-		{"tab from item 5000", "/", vscrollFocusJS + vscrollTab5000JS, false},
-		{"outside", "/", vscrollFocusJS + vscrollOutsideJS, false},
-		{"header", "/", vscrollFocusJS + vscrollHeaderJS, false},
-		{"data-table", "/components/data-table", vscrollHelpersJS + vscrollTableJS, true},
-		{"shrink", "/", vscrollFocusJS + vscrollShrinkJS, false},
+		{"tab from item 0", "/", vscrollFocusJS + vscrollTab0JS, links, false},
+		{"tab from item 5000", "/", vscrollFocusJS + vscrollTab5000JS, links, false},
+		{"outside", "/", vscrollFocusJS + vscrollOutsideJS, links, false},
+		{"header", "/", vscrollFocusJS + vscrollHeaderJS, links, false},
+		{"data-table", "/components/data-table", vscrollHelpersJS + vscrollTableJS, links, true},
+		{"shrink", "/", vscrollFocusJS + vscrollShrinkJS, links, false},
+		{"focusable items", "/", vscrollFocusJS + vscrollFocusableJS, vscrollItems{links: 2, focusable: true}, false},
+		{"component in an item", "/", vscrollFocusJS + vscrollComponentJS, vscrollItems{links: 2, b: "checkbox"}, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			script := strings.Replace(c.script, "HOST_HTML", jsonString(t, vscrollHost(0, 160, vscrollTotal, 2)), 1)
+			script := strings.Replace(c.script, "HOST_HTML", jsonString(t, vscrollHost(0, 160, vscrollTotal, c.items)), 1)
 			var served atomic.Int32
 			handlers := func(app http.Handler) map[string]http.HandlerFunc {
 				if c.stars {
 					waitForStars(t, app)
 				}
-				m := map[string]http.HandlerFunc{"/__probe/window": vscrollServer()}
+				m := map[string]http.HandlerFunc{"/__probe/window": vscrollServer(c.items)}
 				if bundle != nil {
 					m[datastarPath(t, app)] = func(w http.ResponseWriter, r *http.Request) {
 						served.Add(1)
@@ -85,9 +89,16 @@ func TestVirtualScrollFocus(t *testing.T) {
 
 const vscrollTotal = 10000
 
+// vscrollItems is what each item of the test list holds.
+type vscrollItems struct {
+	links     int    // up to two, a and b
+	b         string // b as a link (""), a disabled button ("disabled") or an sb-checkbox ("checkbox")
+	focusable bool   // the item takes the focus itself (tabindex="-1"), like a grid's rows
+}
+
 // vscrollHost is the test list of total items holding offset to offset+count: a header of 8
-// buttons, and items without ids, like /demo/data/list, of up to two links each.
-func vscrollHost(offset, count, total, links int) string {
+// buttons, and items without ids, like /demo/data/list.
+func vscrollHost(offset, count, total int, items vscrollItems) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, `<sb-virtual-scroll id="vsf" offset="%d" total="%d" data-preserve-attr="role aria-label item-size buffer data-on:sb-window">`, offset, total)
 	b.WriteString(`<div slot="header">`)
@@ -95,15 +106,26 @@ func vscrollHost(offset, count, total, links int) string {
 		fmt.Fprintf(&b, `<button type="button">H%d</button>`, i)
 	}
 	b.WriteString(`</div>`)
+	row := ""
+	if items.focusable {
+		row = ` tabindex="-1"`
+	}
 	for i := offset; i < offset+count; i++ {
-		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d">`, i+2)
-		for j, l := range []string{"a", "b"}[:links] {
-			if j > 0 {
-				b.WriteString(" ")
-			}
-			fmt.Fprintf(&b, `<a href="#r%d%s">%d %s</a>`, i, l, i, l)
+		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d"%s>`, i+2, row)
+		if items.links > 0 {
+			fmt.Fprintf(&b, `<a href="#r%da">%d a</a>`, i, i)
 		}
-		if links == 0 {
+		if items.links > 1 {
+			switch items.b {
+			case "disabled":
+				fmt.Fprintf(&b, ` <button type="button" disabled>%d b</button>`, i)
+			case "checkbox":
+				fmt.Fprintf(&b, ` <sb-checkbox label="%d b" data-k="#r%db"></sb-checkbox>`, i, i)
+			default:
+				fmt.Fprintf(&b, ` <a href="#r%db">%d b</a>`, i, i)
+			}
+		}
+		if items.links == 0 {
 			fmt.Fprintf(&b, "%d", i)
 		}
 		b.WriteString(`</div>`)
@@ -113,24 +135,25 @@ func vscrollHost(offset, count, total, links int) string {
 }
 
 // vscrollServer answers the test list's sb-window like /demo/data/list: the host with ?count=
-// items from ?offset=. A request with ?total= (and ?links=) is a new list, as a filter sends.
-func vscrollServer() http.HandlerFunc {
+// items from ?offset=. A request with ?total= (and ?links=, ?b=) is a new list, as a filter sends.
+func vscrollServer(items vscrollItems) http.HandlerFunc {
 	var mu sync.Mutex
-	total, links := vscrollTotal, 2
+	total := vscrollTotal
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		mu.Lock()
 		if s := q.Get("total"); s != "" {
 			total, _ = strconv.Atoi(s)
-			links, _ = strconv.Atoi(q.Get("links"))
+			items.links, _ = strconv.Atoi(q.Get("links"))
+			items.b = q.Get("b")
 		}
-		n, l := total, min(max(links, 0), 2)
+		n, it := total, items
 		mu.Unlock()
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		count, _ := strconv.Atoi(q.Get("count"))
 		offset = min(max(offset, 0), n)
 		count = min(max(count, 0), n-offset)
-		datastar.NewSSE(w, r).PatchElements(vscrollHost(offset, count, n, l))
+		datastar.NewSSE(w, r).PatchElements(vscrollHost(offset, count, n, it))
 	}
 }
 
@@ -186,7 +209,13 @@ const deep = () => {
 	while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement
 	return a
 }
-const describe = (el) => (el ? el.localName + (el.getAttribute('href') ? ' ' + el.getAttribute('href') : '') + (el.getAttribute('part') ? '::part(' + el.getAttribute('part') + ')' : '') : 'nothing')
+// An element in an sb-checkbox's shadow root names the checkbox by its data-k.
+const key = (el) => el?.getAttribute('href') ?? el?.getRootNode().host?.dataset?.k
+const describe = (el) => {
+	if (!el) return 'nothing'
+	const part = el.getAttribute('part'), k = key(el)
+	return el.localName + (part ? '::part(' + part + ')' + (k ? ' of ' + k : '') : k ? ' ' + k : '')
+}
 const TABBABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]'
 const kids = (n) => {
 	if (n.localName === 'slot') {
@@ -248,7 +277,10 @@ await frames(3)
 await settle(vs)
 const scroller = vs.shadowRoot.querySelector('[part=scroller]')
 const link = (i, l = 'a') => vs.querySelector('a[href="#r' + i + l + '"]')
-const inList = (el) => !!el && (vs.contains(el) || vs.shadowRoot.contains(el))
+const inList = (el) => {
+	for (; el; el = el.parentNode ?? el.host) if (el === vs) return true
+	return false
+}
 let windows = 0
 vs.addEventListener('sb-window', () => windows++)
 // n steps of Tab (or Shift+Tab) from link k (item k >> 1, a or b): each one
@@ -259,8 +291,8 @@ const walk = async (c, k, n, back) => {
 		await settle(vs)
 		k += back ? -1 : 1
 		const want = '#r' + (k >> 1) + (k & 1 ? 'b' : 'a'), a = deep()
-		if (!inList(a)) return void check(c, 'step ' + s, describe(a), 'a ' + want + ' (in the list)')
-		if (a.getAttribute('href') !== want) return void check(c, 'step ' + s, describe(a), 'a ' + want)
+		if (!inList(a)) return void check(c, 'step ' + s, describe(a), want + ' (in the list)')
+		if (key(a) !== want) return void check(c, 'step ' + s, describe(a), want)
 	}
 	rows.push({ case: c, step: n + ' steps', got: 'ok', want: 'ok' })
 	return k
@@ -421,31 +453,39 @@ await report()
 `
 
 // vscrollShrinkJS: the server sends a new list (a filter) that ends before the focused item, or
-// whose item there has fewer links, or none.
+// whose item there has fewer links, or none, or a disabled button in place of the focused link.
 const vscrollShrinkJS = `
-// The new list from offset 0: total items of links links each, count of them in the window.
-const list = async (total, links, count) => {
-	const b = document.createElement('button')
-	b.hidden = true
-	b.setAttribute('data-on:click', "@get('/__probe/window?offset=0&count=" + count + '&total=' + total + '&links=' + links + "')")
-	document.body.append(b)
+// The new list from offset 0: total items of links links each (b as the server's ?b= says),
+// count of them in the window.
+const list = async (total, links, count, b = '') => {
+	const btn = document.createElement('button')
+	btn.hidden = true
+	btn.setAttribute('data-on:click', "@get('/__probe/window?offset=0&count=" + count + '&total=' + total + '&links=' + links + '&b=' + b + "')")
+	document.body.append(btn)
 	await frames(2)
 	const done = new Promise((resolve, reject) => {
 		const timer = setTimeout(() => reject(new Error('no answer for a list of ' + total)), 10000)
 		document.addEventListener('datastar-fetch', function seen(e) {
-			if (e.detail.el !== b || e.detail.type !== 'finished') return
+			if (e.detail.el !== btn || e.detail.type !== 'finished') return
 			document.removeEventListener('datastar-fetch', seen)
 			clearTimeout(timer)
 			resolve()
 		})
 	})
-	b.click()
+	btn.click()
 	await done
-	b.remove()
+	btn.remove()
 	await settle(vs)
 }
 try {
-	let c = '7: a list that ends before the item, of one link each'
+	let c = '7: a disabled button in place of the focused link'
+	link(150, 'b').focus()
+	await settle(vs)
+	await list(10000, 2, 160, 'disabled')
+	check(c, 'the focus', describe(deep()), 'a #r150a')
+
+	c = '7: a list that ends before the item, of one link each'
+	await list(10000, 2, 160)
 	link(150, 'b').focus()
 	await settle(vs)
 	await list(100, 1, 100)
@@ -468,9 +508,65 @@ try {
 
 	c = '7: an empty list'
 	await list(0, 2, 0)
-	check(c, 'the focus', describe(document.activeElement), 'body')
+	check(c, 'the focus', describe(deep()), 'div::part(scroller)')
 } catch (e) {
 	rows.push({ case: '7', error: String(e?.stack || e) })
+}
+await report()
+`
+
+// vscrollFocusableJS: items that take the focus themselves (tabindex="-1"), so the item and its
+// link both contain the focused element.
+const vscrollFocusableJS = `
+const c = '8: items that take the focus themselves'
+try {
+	let before = windows
+	link(150, 'b').focus()
+	await settle(vs)
+	check(c, 'a window landed', windows > before, true)
+	check(c, 'the focus', describe(deep()), 'a #r150b')
+	before = windows
+	const k = await walk(c, 301, 200)
+	check(c, 'windows on the way', windows > before, true)
+	if (k) {
+		before = windows
+		await walk(c + ', Shift+Tab', k, 100, true)
+		check(c + ', Shift+Tab', 'windows on the way', windows > before, true)
+	}
+} catch (e) {
+	rows.push({ case: c, error: String(e?.stack || e) })
+}
+await report()
+`
+
+// vscrollComponentJS: item b is an sb-checkbox, whose focusable box is in its shadow root.
+const vscrollComponentJS = `
+try {
+	await customElements.whenDefined('sb-checkbox')
+	const box = (i) => vs.querySelector('sb-checkbox[data-k="#r' + i + 'b"]').shadowRoot.querySelector('[part=base]')
+	let c = '9: a control inside a component'
+	let before = windows
+	box(150).focus()
+	await settle(vs)
+	check(c, 'a window landed', windows > before, true)
+	check(c, 'the focus', describe(deep()), 'div::part(base) of #r150b')
+	before = windows
+	await walk(c, 301, 100)
+	check(c, 'windows on the way', windows > before, true)
+
+	c = '9: a control inside a component, scrolled out of the window'
+	vs.scrollToIndex(140)
+	await settle(vs)
+	box(150).focus()
+	await settle(vs)
+	vs.scrollToIndex(5000)
+	await settle(vs)
+	check(c, 'scrollToIndex(5000): the focus', describe(deep()), 'div::part(scroller)')
+	vs.scrollToIndex(140)
+	await settle(vs)
+	check(c, 'scrollToIndex(140): the focus', describe(deep()), 'div::part(base) of #r150b')
+} catch (e) {
+	rows.push({ case: '9', error: String(e?.stack || e) })
 }
 await report()
 `

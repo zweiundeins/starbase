@@ -125,7 +125,12 @@ rocket('sb-virtual-scroll', {
 		let at = -1, place = 0, parked = false, frame = 0
 		// A <template data-for> that renders the items is no item.
 		const kids = () => items.assignedElements().filter((el) => el.localName != 'template')
-		const focusables = (item) => [...(item.matches(FOCUSABLE) ? [item] : []), ...item.querySelectorAll(FOCUSABLE)]
+		// In order, also those in components' open shadow roots (sb-checkbox's box).
+		const focusables = (el, out = []) => {
+			if (el.matches(FOCUSABLE)) out.push(el)
+			for (const c of el.shadowRoot ? [...el.shadowRoot.children, ...el.children] : el.children) focusables(c, out)
+			return out
+		}
 		const holds = () => {
 			const a = host.getRootNode().activeElement
 			return a === host || host.contains(a)
@@ -181,20 +186,23 @@ rocket('sb-virtual-scroll', {
 		}
 
 		const park = () => parked || ((parked = true), ($$.tab = tab()), scroller.focus({ preventScroll: true }))
+		const takes = (el) => (el.focus({ preventScroll: true }), el.getRootNode().activeElement === el)
 		// A frame after a window, so a page that moves the focus itself (sb-data-table) goes first:
 		// back to the same place in the item now at that index, or to the scroller while none is.
 		const refocus = () => {
 			frame = 0
 			const a = document.activeElement
 			if (at < 0 || !(holds() || !a || a === document.body)) return
-			// A list that ends before the item: its neighbour, the new last item.
+			// A list that ends before the item: its neighbour, the new last item; an empty list: the scroller.
 			if (host.hasAttribute('total')) at = Math.min(at, props.total - 1)
-			if (at < 0) return
+			if (at < 0) return holds() || park()
 			const item = kids()[at - props.offset]
 			if (!item) return park()
-			const all = focusables(item), el = all[Math.min(place, all.length - 1)]
-			if (el) host.getRootNode().activeElement === el || el.focus({ preventScroll: true })
-			else (at = -1), holds() || park()
+			// The focus is in that item already: where it was, or where the page put it.
+			if (item.contains(host.getRootNode().activeElement)) return
+			// The same place, or the nearest element before it, then after it, that takes the focus.
+			const all = focusables(item), i = Math.max(0, Math.min(place, all.length - 1))
+			if (![...all.slice(0, i + 1).reverse(), ...all.slice(i + 1)].some(takes)) (at = -1), holds() || park()
 		}
 
 		sync()
@@ -206,7 +214,10 @@ rocket('sb-virtual-scroll', {
 			if (path[0] === scroller) return
 			const item = path[k - 1], i = k > 0 ? kids().indexOf(item) : -1
 			at = i < 0 ? -1 : props.offset + i
-			if (i >= 0) place = focusables(item).findIndex((el) => el === evt.target || el.contains(evt.target))
+			if (i < 0) return
+			// The innermost one on the path: the link, not a row around it with a tabindex.
+			const all = focusables(item)
+			place = all.indexOf(path.find((el) => all.includes(el)))
 		})
 		action('leaveFocus', ({ evt }) => {
 			const t = evt.target, to = evt.relatedTarget

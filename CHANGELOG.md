@@ -22,7 +22,7 @@ All notable changes to this project are documented here. The format follows
 ### Fixed
 
 - `sb-relative-time`: where a daylight saving gap skips midnight (America/Santiago, America/Havana, Africa/Cairo), the day count turns at the jump instead of an hour before it.
-- `sb-virtual-scroll` keeps the keyboard focus on the same item when a window arrives. The morph patches the items by position, so the focused element showed another item afterwards, or the focus fell to the page when the morph removed it; now Tab and Shift+Tab walk the items one at a time across windows. An item scrolled out of the window leaves the focus on the scroller until a window brings it back, a new list that ends before the focused item gives the focus to its last item, and a control in the `header` slot takes the focus without scrolling the list.
+- `sb-virtual-scroll` keeps the keyboard focus on the same item when a window arrives. The morph patches the items by position, so the focused element showed another item afterwards, or the focus fell to the page when the morph removed it; now Tab and Shift+Tab walk the items one at a time across windows, also over links in rows that have a `tabindex` and over controls inside components (an `sb-checkbox`). An item scrolled out of the window leaves the focus on the scroller until a window brings it back, a new list that ends before the focused item gives the focus to its last item (an empty one to the scroller), and a control in the `header` slot takes the focus without scrolling the list.
 
 ## [0.5.0] - 2026-09-29
 
