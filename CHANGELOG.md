@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-01
+
+Time of day and time zones in the date picker; rich cells, a column picker and exports in the data table; keyboard focus that survives the virtual scroll's windows; copying without the Clipboard API; a shadow token for every overlay; and four more Rocket fixes, filed upstream.
+
 ### Added
 
 - `sb-relative-time` takes `time-zone`, an IANA name for the date on hover, the threshold date and the day count, so a page that shows its times in the server's zone says "yesterday" by the server's calendar. The date on hover follows `title-lang` (`auto` is the browser's language), and `title-style="numeric"` shows it as numbers with seconds, like `toLocaleString()`.
@@ -278,7 +282,8 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/zweiundeins/starbase/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/zweiundeins/starbase/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zweiundeins/starbase/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/zweiundeins/starbase/compare/v0.2.0...v0.3.0
