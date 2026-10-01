@@ -71,4 +71,3 @@ await fetch('/__probe/result', { method: 'POST', body: out })`, "%TAGS%", string
 	}
 	t.Logf("%d props of %d components match their manifests", n, len(cat.Components))
 }
-
