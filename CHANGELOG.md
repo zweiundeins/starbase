@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - `sb-relative-time` takes `time-zone`, an IANA name for the date on hover, the threshold date and the day count, so a page that shows its times in the server's zone says "yesterday" by the server's calendar. The date on hover follows `title-lang` (`auto` is the browser's language), and `title-style="numeric"` shows it as numbers with seconds, like `toLocaleString()`.
+- `sb-popover`'s drop shadow comes from `--sb-shadow-overlay`, so a theme can soften or drop it; the default is unchanged.
 
 ### Changed
 
@@ -21,6 +22,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-copy-button` copies where the Clipboard API is missing or refuses (plain HTTP, a permissions policy): through a hidden textarea in its own shadow root, and as a last resort it selects the text in a panel and says which keys copy it. `sb-copy` tells which way it went (`method`), and `sb-copy-error` is cancelable; cancelling it keeps the old "failed" state.
+- Pages work over plain HTTP: the tab id comes from `crypto.getRandomValues`, which non-secure contexts have, instead of `crypto.randomUUID`.
 - `sb-relative-time`: where a daylight saving gap skips midnight (America/Santiago, America/Havana, Africa/Cairo), the day count turns at the jump instead of an hour before it.
 - `sb-virtual-scroll` keeps the keyboard focus on the same item when a window arrives. The morph patches the items by position, so the focused element showed another item afterwards, or the focus fell to the page when the morph removed it; now Tab and Shift+Tab walk the items one at a time across windows, also over links in rows that have a `tabindex` and over controls inside components (an `sb-checkbox`). An item scrolled out of the window leaves the focus on the scroller until a window brings it back, a new list that ends before the focused item gives the focus to its last item (an empty one to the scroller), and a control in the `header` slot takes the focus without scrolling the list.
 
