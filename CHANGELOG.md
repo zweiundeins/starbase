@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows
 
 - `sb-relative-time` takes `time-zone`, an IANA name for the date on hover, the threshold date and the day count, so a page that shows its times in the server's zone says "yesterday" by the server's calendar. The date on hover follows `title-lang` (`auto` is the browser's language), and `title-style="numeric"` shows it as numbers with seconds, like `toLocaleString()`.
 - `sb-popover`'s drop shadow comes from `--sb-shadow-overlay`, so a theme can soften or drop it; the default is unchanged.
+- `sb-date-picker` takes `time`: a time row under the calendar, in `step`s (minutes by default, down to seconds), and an Apply button that commits the date and the time together; a form gets the value like a `datetime-local` field. With `time-zone`, it shows and reads the wall clock in an IANA zone and the value is an RFC 3339 instant with that zone's offset. Daylight saving gaps and overlaps resolve the way Temporal does.
+- `sb-data-table` cells can be rich: a link, a value with a muted suffix, or a badge (`{value, text, suffix, href, tone}`). Their text is never markup, and only `http`, `https` and `mailto` links are kept; `sb-cell-activate` reports a link's click. `hidden-columns` hides columns, which the server owns, and `column-picker` lets the user choose them (`sb-columns`, never pending). `requestExport()` emits `sb-export` with the order, the shown columns and the selection; the docs' star catalog answers it with a CSV or JSON download (`GET /demo/data/rows/export`, rate limited).
 
 ### Changed
 
