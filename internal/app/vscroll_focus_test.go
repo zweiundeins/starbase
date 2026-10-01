@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,7 +20,17 @@ import (
 
 // TestVirtualScrollFocus checks in Chrome that sb-virtual-scroll keeps the focus on its item across
 // windows. Tab is focus() on the next focusable element in flat-tree order, as the browser does it.
+//
+// STARBASE_DATASTAR_BUNDLE=<file> makes the pages load that bundle in place of the vendored build,
+// such as the official release: https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js
 func TestVirtualScrollFocus(t *testing.T) {
+	var bundle []byte
+	if p := os.Getenv("STARBASE_DATASTAR_BUNDLE"); p != "" {
+		var err error
+		if bundle, err = os.ReadFile(p); err != nil {
+			t.Fatal(err)
+		}
+	}
 	cases := []struct {
 		name, path, script string
 		stars              bool // the page shows the demo stars
@@ -31,13 +45,25 @@ func TestVirtualScrollFocus(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			script := strings.Replace(c.script, "HOST_HTML", jsonString(t, vscrollHost(0, 160, vscrollTotal, 2)), 1)
+			var served atomic.Int32
 			handlers := func(app http.Handler) map[string]http.HandlerFunc {
 				if c.stars {
 					waitForStars(t, app)
 				}
-				return map[string]http.HandlerFunc{"/__probe/window": vscrollServer()}
+				m := map[string]http.HandlerFunc{"/__probe/window": vscrollServer()}
+				if bundle != nil {
+					m[datastarPath(t, app)] = func(w http.ResponseWriter, r *http.Request) {
+						served.Add(1)
+						w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+						w.Write(bundle)
+					}
+				}
+				return m
 			}
 			_, body := probeWith(t, c.path, script, handlers)
+			if bundle != nil && served.Load() == 0 {
+				t.Error("the page did not load STARBASE_DATASTAR_BUNDLE")
+			}
 			var rows []struct{ Case, Step, Got, Want, Error string }
 			if err := json.Unmarshal(body, &rows); err != nil {
 				t.Fatalf("%v: %s", err, body)
@@ -106,6 +132,22 @@ func vscrollServer() http.HandlerFunc {
 		count = min(max(count, 0), n-offset)
 		datastar.NewSSE(w, r).PatchElements(vscrollHost(offset, count, n, l))
 	}
+}
+
+// datastarPath is the path the app's pages load Datastar from (its import map).
+func datastarPath(t *testing.T, app http.Handler) string {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	m := regexp.MustCompile(`"datastar":"([^"]+)"`).FindStringSubmatch(rec.Body.String())
+	if m == nil {
+		t.Fatal("no Datastar in the import map of /")
+	}
+	u, err := url.Parse(m[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.Path
 }
 
 // waitForStars returns once SeedStars, which the app runs in the background at
@@ -243,8 +285,14 @@ try {
 	await settle(vs)
 	link(5000).focus()
 	await settle(vs)
+	let before = windows
 	const k = await walk('2: Tab from item 5000', 10000, 400)
-	if (k) await walk('2: Shift+Tab back', k, 100, true)
+	check('2: Tab from item 5000', 'windows on the way', windows > before, true)
+	if (k) {
+		before = windows
+		await walk('2: Shift+Tab back', k, 100, true)
+		check('2: Shift+Tab back', 'windows on the way', windows > before, true)
+	}
 } catch (e) {
 	rows.push({ case: '2', error: String(e?.stack || e) })
 }
@@ -259,16 +307,20 @@ try {
 	link(305).focus()
 	await settle(vs)
 	outside.focus()
+	let before = windows
 	scroller.scrollTop += 3000
 	await settle(vs)
+	check(c, 'a window landed', windows > before, true)
 	check(c, 'after a window', document.activeElement === outside ? 'the outside button' : describe(deep()), 'the outside button')
 
 	c = '3: focus on the body'
 	link(400).focus()
 	await settle(vs)
 	link(400).blur()
+	before = windows
 	scroller.scrollTop += 3000
 	await settle(vs)
+	check(c, 'a window landed', windows > before, true)
 	check(c, 'after a window', describe(document.activeElement), 'body')
 
 	c = '4: an item scrolled out of the window'
