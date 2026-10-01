@@ -23,6 +23,7 @@ func TestVirtualScrollFocus(t *testing.T) {
 		{"tab from item 0", "/", vscrollFocusJS + vscrollTab0JS, false},
 		{"tab from item 5000", "/", vscrollFocusJS + vscrollTab5000JS, false},
 		{"outside", "/", vscrollFocusJS + vscrollOutsideJS, false},
+		{"header", "/", vscrollFocusJS + vscrollHeaderJS, false},
 		{"data-table", "/components/data-table", vscrollHelpersJS + vscrollTableJS, true},
 	}
 	for _, c := range cases {
@@ -263,6 +264,45 @@ try {
 	check(c, 'scrollToIndex(90): the scroller\'s tabindex', scroller.getAttribute('tabindex'), 'null')
 } catch (e) {
 	rows.push({ case: '3 and 4', error: String(e?.stack || e) })
+}
+await report()
+`
+
+const vscrollHeaderJS = `
+try {
+	let c = '5: focus in the header'
+	vs.scrollToIndex(5000)
+	await settle(vs)
+	const top = scroller.scrollTop
+	const buttons = [...vs.querySelectorAll('[slot=header] button')]
+	for (const [j, b] of buttons.entries()) {
+		b.focus()
+		await settle(vs)
+		check(c, 'focus() on H' + (j + 1) + ': scrollTop', scroller.scrollTop, top)
+	}
+	outside.focus()
+	for (const [j, b] of buttons.entries()) {
+		const to = tab()
+		await settle(vs)
+		check(c, 'Tab to H' + (j + 1) + ': the focus', describe(to), describe(b))
+		check(c, 'Tab to H' + (j + 1) + ': scrollTop', scroller.scrollTop, top)
+	}
+
+	// The header takes 30 px of the scroller: 20 px more puts item 5000 under it.
+	c = '5: an item under the header'
+	for (const [from, el] of [['outside', outside], ['H1', buttons[0]]]) {
+		el.focus()
+		vs.scrollToIndex(5000)
+		await settle(vs)
+		scroller.scrollTop += 20
+		await settle(vs)
+		link(5000).focus()
+		await settle(vs)
+		const head = vs.querySelector('[slot=header]').getBoundingClientRect().bottom
+		check(c, 'from ' + from + ': item 5000 below the header', link(5000).getBoundingClientRect().top >= head - 0.5, true)
+	}
+} catch (e) {
+	rows.push({ case: '5', error: String(e?.stack || e) })
 }
 await report()
 `

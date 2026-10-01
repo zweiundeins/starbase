@@ -24,6 +24,8 @@ const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]
 // - The window is not: rows wider than the list overflow it, and the scroller
 //   scrolls sideways (a table), with the sticky header.
 // - The bars above and below the window stand for rows the server hasn't sent.
+// - No scroll padding while a header control has the focus: the browser scrolls
+//   before any focus event, and the padding would scroll the list for it.
 const styles = /* css */ `
 :host {
 	--_ph: var(--sb-surface-hover, #1A2540);
@@ -41,7 +43,9 @@ const styles = /* css */ `
 	overscroll-behavior: contain;
 	contain: strict;
 	outline: none;
+	scroll-padding-block-start: var(--_head);
 }
+.scroller:has(.header:focus-within) { scroll-padding-block-start: 0; }
 .scroller:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
 .header { position: sticky; inset-block-start: 0; z-index: 1; }
 .spacer { position: relative; }
@@ -92,7 +96,7 @@ rocket('sb-virtual-scroll', {
 		<div class="scroller" part="scroller" data-ref:scroller data-on:scroll__passive="@scroll()"
 			data-on:focusin="@trackFocus()" data-on:focusout="@leaveFocus()"
 			data-attr:role="$$role" data-attr:aria-label="($$role && $$label) || false" data-attr:tabindex="$$tab"
-			data-style:scroll-padding-block-start="$$head + 'px'">
+			data-style:--_head="$$head + 'px'">
 			<div class="header" part="header" data-ref:header><slot name="header"></slot></div>
 			<div class="spacer" data-style:block-size="$$height + 'px'" data-style:--_y="$$y + 'px'"
 				data-style:--_h="$$win + 'px'" data-style:--_size="$$size + 'px'" data-style:--_cols="$$cols">
