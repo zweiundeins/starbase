@@ -94,6 +94,7 @@ type vscrollItems struct {
 	links     int    // up to two, a and b
 	b         string // b as a link (""), a disabled button ("disabled") or an sb-checkbox ("checkbox")
 	focusable bool   // the item takes the focus itself (tabindex="-1"), like a grid's rows
+	dead      string // the index of an item that holds only disabled buttons ("": none)
 }
 
 // vscrollHost is the test list of total items holding offset to offset+count: a header of 8
@@ -112,6 +113,10 @@ func vscrollHost(offset, count, total int, items vscrollItems) string {
 	}
 	for i := offset; i < offset+count; i++ {
 		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d"%s>`, i+2, row)
+		if strconv.Itoa(i) == items.dead {
+			fmt.Fprintf(&b, `<button type="button" disabled>%d a</button> <button type="button" disabled>%d b</button></div>`, i, i)
+			continue
+		}
 		if items.links > 0 {
 			fmt.Fprintf(&b, `<a href="#r%da">%d a</a>`, i, i)
 		}
@@ -146,6 +151,7 @@ func vscrollServer(items vscrollItems) http.HandlerFunc {
 			total, _ = strconv.Atoi(s)
 			items.links, _ = strconv.Atoi(q.Get("links"))
 			items.b = q.Get("b")
+			items.dead = q.Get("dead")
 		}
 		n, it := total, items
 		mu.Unlock()
@@ -457,10 +463,10 @@ await report()
 const vscrollShrinkJS = `
 // The new list from offset 0: total items of links links each (b as the server's ?b= says),
 // count of them in the window.
-const list = async (total, links, count, b = '') => {
+const list = async (total, links, count, b = '', offset = 0, dead = '') => {
 	const btn = document.createElement('button')
 	btn.hidden = true
-	btn.setAttribute('data-on:click', "@get('/__probe/window?offset=0&count=" + count + '&total=' + total + '&links=' + links + '&b=' + b + "')")
+	btn.setAttribute('data-on:click', "@get('/__probe/window?offset=" + offset + '&count=' + count + '&total=' + total + '&links=' + links + '&b=' + b + '&dead=' + dead + "')")
 	document.body.append(btn)
 	await frames(2)
 	const done = new Promise((resolve, reject) => {
@@ -494,6 +500,17 @@ try {
 
 	c = '7: an item with nothing to focus'
 	await list(100, 0, 100)
+	check(c, 'the focus', describe(deep()), 'div::part(scroller)')
+	check(c, 'the parked scroller\'s tabindex', scroller.getAttribute('tabindex'), '-1')
+	scroller.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }))
+	await frames(2)
+	check(c, 'a focusout that leaves it the focus (a window switch) keeps its tabindex', scroller.getAttribute('tabindex'), '-1')
+
+	c = '7: the item at the index holds only disabled controls, and its link now shows another item'
+	await list(10000, 2, 160)
+	link(150).focus()
+	await settle(vs)
+	await list(10000, 2, 160, '', 10, '150')
 	check(c, 'the focus', describe(deep()), 'div::part(scroller)')
 
 	c = '7: a list that ends before the item, outside its first window'

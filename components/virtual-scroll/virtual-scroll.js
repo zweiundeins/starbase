@@ -202,7 +202,8 @@ rocket('sb-virtual-scroll', {
 			if (item.contains(host.getRootNode().activeElement)) return
 			// The same place, or the nearest element before it, then after it, that takes the focus.
 			const all = focusables(item), i = Math.max(0, Math.min(place, all.length - 1))
-			if (![...all.slice(0, i + 1).reverse(), ...all.slice(i + 1)].some(takes)) (at = -1), holds() || park()
+			// Nothing there takes it: the scroller, not an element the morph left showing another item.
+			if (![...all.slice(0, i + 1).reverse(), ...all.slice(i + 1)].some(takes)) (at = -1), item.contains(host.getRootNode().activeElement) || park()
 		}
 
 		sync()
@@ -221,11 +222,12 @@ rocket('sb-virtual-scroll', {
 		})
 		action('leaveFocus', ({ evt }) => {
 			const t = evt.target, to = evt.relatedTarget
-			if (t === scroller && parked) (parked = false), ($$.tab = tab())
+			const unpark = () => parked && host.shadowRoot.activeElement !== scroller && ((parked = false), ($$.tab = tab()))
+			if (t === scroller && to) unpark()
 			if (to) return void (host.contains(to) || host.shadowRoot.contains(to) || (at = -1))
-			// No related target: a click on the page, or the morph removing the element. Gone once
-			// the morph is done: keep the item and refocus, also when the morph left the host as it was.
-			queueMicrotask(() => (t.isConnected ? holds() || (at = -1) : host.isConnected && (frame ||= requestAnimationFrame(refocus))))
+			// No related target: a click on the page, a window switch (the focus stays), or the morph removing
+			// the element. Gone once the morph is done: keep the item and refocus, also when the morph left the host as it was.
+			queueMicrotask(() => (t === scroller && unpark(), t.isConnected ? holds() || (at = -1) : host.isConnected && (frame ||= requestAnimationFrame(refocus))))
 		})
 		// A morph (the server's answer) changes the children and the attributes.
 		const watch = new MutationObserver(() => {
