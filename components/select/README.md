@@ -154,6 +154,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** it fills the width it is given, up to `26rem`; set `max-inline-size` on the element to change that. The control is at least `2.75rem` tall and grows as chips wrap; the list is at most `18rem` tall (`max-block-size` on `::part(listbox)`).
 - **Fonts:** the label, the text you type, the chips and the options use your page's font.
 - **Colours:** the control is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder and the arrow are `--sb-control-placeholder`, the label `--sb-text-2`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and chips are `--sb-brand-subtle`. The list is `--sb-surface-raised`; the active option is `--sb-surface-hover` with a `--sb-brand` edge, a selected one `--sb-brand-light`, descriptions `--sb-text-muted`. Corners are `--sb-control-radius`.
+- **Shadow:** `--sb-shadow-overlay` sets the list's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Parts:** `label`, `control` (the box), `input`, `chip` (each chip, with `multiple`), `clear` and `listbox` (the list). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

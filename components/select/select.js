@@ -33,6 +33,7 @@ const anchors = CSS.supports('anchor-name: --a')
 // (no padding) as a status region, so a new note is announced.
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 16px 40px -16px rgb(0 0 0 / 0.6));
 	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
 	--_border-hover: var(--sb-control-border-hover, #3A4868);
@@ -118,7 +119,7 @@ input[readonly] { cursor: pointer; }
 	border-radius: var(--_radius);
 	background: var(--_panel);
 	color: var(--_text);
-	box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+	box-shadow: var(--_shadow);
 	max-block-size: min(18rem, 50dvh);
 	overflow: auto;
 	box-sizing: border-box;

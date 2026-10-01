@@ -40,6 +40,7 @@ const normalize = (list) => {
 
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 10px 20px rgb(0 0 0 / 0.45));
 	--_bg: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border, #283552);
 	--_text: var(--sb-text-1, #F3F4FA);
@@ -65,7 +66,7 @@ const styles = /* css */ `
 	/* The region itself is never a click target; the toasts in it are. */
 	pointer-events: none;
 	/* Here, not on .toast: a toast's own clip-path would cut its shadow off. */
-	filter: drop-shadow(0 10px 20px rgb(0 0 0 / 0.45));
+	filter: drop-shadow(var(--_shadow));
 }
 [data-placement^="top"] { inset-block-start: var(--_inset); }
 [data-placement^="bottom"] { inset-block-end: var(--_inset); }

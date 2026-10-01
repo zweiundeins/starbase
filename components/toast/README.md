@@ -110,6 +110,7 @@ Only the newest `max` toasts are rendered, and only rendered toasts count down. 
 Every part is styleable from the page: `::part(region)`, `::part(toast)`, `::part(title)`, `::part(text)`, `::part(close)` and `::part(bar)` (the remaining-time bar). Tones come from `--sb-info`, `--sb-ok`, `--sb-warn` and `--sb-danger`, the surface from `--sb-surface-raised`, and the stack sits at `--sb-z-toast`. Two component variables tune the geometry:
 
 - `--sb-toast-width`: width of the stack (default `22rem`; it never exceeds the viewport).
+- `--sb-shadow-overlay`: the toasts' drop shadow, one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - `--sb-toast-inset`: distance from the edges (default `1rem`).
 
 Corners notch with `--sb-notch`, so the 8-bit look can be turned off per theme. For `prefers-reduced-motion: reduce` the entrance and exit animations are dropped, and the bar jumps down in fifths rather than slides.

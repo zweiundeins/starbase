@@ -117,6 +117,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Fonts:** the options use your page's font.
 - **Colours:** the control is `--sb-control-bg` with a `--sb-control-border` edge. Options are `--sb-text-2` (`--sb-text-1` when hovered or chosen); the chosen one fills with `--sb-brand-subtle` inside a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-control-radius`. The `menu` variant's list uses the same tokens, and the select's arrow is drawn in `--sb-text-2`, so it follows the theme.
+- **Shadow:** `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Parts:** `group` (the segmented control), `select` (with `variant="select"`), and `button` and `menu` (with `variant="menu"`). Every option in the segmented control and the menu is `option`, and the chosen one is also `selected`: `::part(option selected)`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

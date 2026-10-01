@@ -143,6 +143,7 @@ Style it from your page's CSS, no need to change the component or import anythin
 - **Size:** `--sb-drawer-size` (default `20rem`) is the width of a `start` or `end` drawer and the height of a `top` or `bottom` one, never more than the viewport. It spans the rest of the edge.
 - **Fonts:** the heading and the body use your page's font.
 - **Colours:** the panel is `--sb-surface-raised` with a `--sb-border` edge and footer divider, the heading `--sb-text-1`, the body `--sb-text-2`. The backdrop is `--sb-surface-overlay`, slightly blurred. The close button's focus ring is `--sb-brand`.
+- **Shadow:** `--sb-shadow-overlay` sets the panel's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Stacking:** a modal drawer is in the top layer. With `modal="false"` it stays in the page, fixed at `--sb-z-overlay` (40), so an ancestor with a `transform` or `filter` confines it.
 - **Parts:** `panel` (the dialog), `heading`, `body`, `footer` and `close` (the close button). Your page's `::part()` rules win over the component's own, without `!important`.
 

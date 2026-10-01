@@ -97,6 +97,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** the dialog is `28rem` wide (less on small screens); set `inline-size` on `::part(panel)` for another width.
 - **Fonts:** the heading and the body use your page's font.
 - **Colours:** the panel is `--sb-surface-raised` with a `--sb-border` edge and divider, the heading `--sb-text-1`, the body `--sb-text-2`. The backdrop is `--sb-surface-overlay`, slightly blurred. The close button's focus ring is `--sb-brand`; corners are `--sb-radius`.
+- **Shadow:** `--sb-shadow-overlay` sets the dialog's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Parts:** `panel` (the dialog), `heading`, `body`, `footer` and `close` (the close button). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

@@ -49,6 +49,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** the tip is at most `16rem` wide; set `max-inline-size` on `::part(tip)` for another limit.
 - **Fonts:** the tip uses your page's font.
 - **Colours:** the tip is `--sb-surface-raised` with `--sb-text-1` text, and `--sb-border-strong` draws its edge and the arrow. These tokens reach your trigger too, so set the text colour on the part rather than the token.
+- **Shadow:** `--sb-shadow-overlay` sets the tip's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Stacking:** the tip sits at `--sb-z-tooltip` (70). It is positioned inside the component, not in the top layer, so an ancestor with `overflow: hidden` clips it.
 - **Parts:** `tip`. Your page's `::part()` rules win over the component's own, without `!important`.
 

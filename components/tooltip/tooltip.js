@@ -2,6 +2,7 @@ import { rocket } from 'datastar'
 
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 8px 24px -12px rgb(0 0 0 / 0.6));
 	--_bg: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border-strong, #3A4868);
 	--_text: var(--sb-text-1, #F3F4FA);
@@ -29,7 +30,7 @@ const styles = /* css */ `
 	opacity: 0;
 	visibility: hidden;
 	transition: opacity 120ms, translate 120ms, visibility 120ms;
-	box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.6);
+	box-shadow: var(--_shadow);
 }
 .tip:empty { display: none; }
 .tip::before, .tip::after { content: ""; position: absolute; }

@@ -92,6 +92,7 @@ const shown = (el) => el.getClientRects().length > 0
 
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 12px 24px rgb(0 0 0 / 0.55));
 	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
 	--_border-hover: var(--sb-control-border-hover, #3A4868);
@@ -170,7 +171,7 @@ svg { inline-size: 1rem; block-size: 1rem; }
 	border: 0;
 	background: none;
 	overflow: visible;
-	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
+	filter: drop-shadow(var(--_shadow));
 }
 @supports (anchor-name: --a) {
 	[popover] { position-anchor: --sb-date; inset: auto; position-area: block-end span-inline-end; margin-block-start: 4px; position-try-fallbacks: flip-block, flip-inline; }

@@ -44,6 +44,7 @@ const readCookie = (name) => {
 
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 12px 32px -12px #0009);
 	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
 	--_text: var(--sb-text-2, #AEBBDD);
@@ -135,7 +136,7 @@ select:focus-visible { outline: 2px solid var(--_focus); outline-offset: 1px; }
 	border-radius: var(--_radius);
 	background: var(--_bg);
 	color: var(--_text);
-	box-shadow: 0 12px 32px -12px #0009;
+	box-shadow: var(--_shadow);
 }
 /* Below the button, right-aligned (anchor positioning; centred where unsupported). */
 @supports (anchor-name: --a) {

@@ -68,6 +68,7 @@ const light = (r) => ({ divider: !!r.divider, label: r.label ?? '', description:
 
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 12px 24px rgb(0 0 0 / 0.55));
 	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
 	--_border-hover: var(--sb-control-border-hover, #3A4868);
@@ -130,7 +131,7 @@ const styles = /* css */ `
 	padding: 0;
 	border: 0;
 	background: none;
-	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
+	filter: drop-shadow(var(--_shadow));
 }
 .menu {
 	max-block-size: min(20rem, 60dvh);

@@ -71,6 +71,7 @@ const visible = (slot) => !!slot?.assignedElements().some((e) => !e.hidden && e.
 // columns line up and a wide table scrolls sideways.
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 12px 24px rgb(0 0 0 / 0.55));
 	--_bg: var(--sb-surface-card, #141D32);
 	--_head: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border, #283552);
@@ -130,7 +131,7 @@ const styles = /* css */ `
 	background: none;
 	color: var(--_text);
 	overflow: visible;
-	filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.55));
+	filter: drop-shadow(var(--_shadow));
 }
 @supports (anchor-name: --a) {
 	.menu { position-anchor: --sb-columns; inset: auto; position-area: block-end span-inline-start; margin-block-start: 4px; position-try-fallbacks: flip-block, flip-inline; }

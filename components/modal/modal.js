@@ -2,6 +2,7 @@ import { rocket } from 'datastar'
 
 const styles = /* css */ `
 :host {
+	--_shadow: var(--sb-shadow-overlay, 0 24px 48px -16px rgb(0 0 0 / 0.7));
 	--_bg: var(--sb-surface-raised, #10182B);
 	--_border: var(--sb-border, #283552);
 	--_text: var(--sb-text-1, #F3F4FA);
@@ -20,7 +21,7 @@ const styles = /* css */ `
 	border-radius: var(--_radius);
 	background: var(--_bg);
 	color: var(--_muted);
-	box-shadow: 0 24px 48px -16px rgb(0 0 0 / 0.7);
+	box-shadow: var(--_shadow);
 }
 .inline { display: block; inline-size: 100%; max-inline-size: 28rem; }
 dialog[open] { animation: pop 180ms cubic-bezier(0.2, 0, 0, 1); }
