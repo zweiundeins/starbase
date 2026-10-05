@@ -34,7 +34,9 @@ import (
 //	parent → runner  {type: "run", files: {"component.js", "index.html", "style.css"}, deps: [urls], theme, base}
 //
 // base (optional) is the URL relative imports in component.js resolve
-// against: the folder the component's other files are served from.
+// against: the folder the component's other files are served from. Instead
+// of component.js, files may hold component.ts: the runner has the server
+// strip its types (/playground/transpile) and reports errors at its lines.
 //
 //	runner → parent  {type: "console", level, args: [string]} | {type: "error", message, line} | {type: "done"}
 //
@@ -59,6 +61,7 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 	h.Set("Content-Type", "text/html; charset=utf-8")
 
 	imports, _ := json.Marshal(map[string]any{"imports": map[string]string{"datastar": origin + s.assets.Datastar()}})
+	transpile, _ := json.Marshal(origin + "/playground/transpile")
 	var css strings.Builder
 	fmt.Fprintf(&css, `<link rel="stylesheet" href="%s">`, html.EscapeString(origin+s.assets.RunnerCSS()))
 	fmt.Fprintf(w, `<!DOCTYPE html>
@@ -78,6 +81,7 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 <script type="importmap">%s</script>
 <script>
 (() => {
+	const TRANSPILE = %s
 	const send = (m) => parent.postMessage({ source: 'sb-runner', ...m }, '*')
 	const fmt = (a) => {
 		if (typeof a === 'string') return a
@@ -88,7 +92,10 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 		const orig = console[level]
 		console[level] = (...args) => { send({ type: 'console', level, args: args.map(fmt) }); orig.apply(console, args) }
 	}
-	addEventListener('error', (e) => send({ type: 'error', message: e.message, line: e.error && e.error.line || e.lineno }))
+	// Transpiled TypeScript: lines[i] is the line written for line i + 1 of its JavaScript.
+	let lines = null, blob = ''
+	const written = (line) => (lines && lines[line - 1]) || line
+	addEventListener('error', (e) => send({ type: 'error', message: e.message, line: e.error && e.error.line ? written(e.error.line) : e.filename === blob ? written(e.lineno) : e.lineno }))
 	addEventListener('unhandledrejection', (e) => send({ type: 'error', message: String(e.reason && e.reason.message || e.reason) }))
 
 	// Loop guard. An endless loop would hang this frame for good (the host
@@ -206,10 +213,18 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 		try {
 			// The edited code first: Rocket must never see the site's copy of its tag.
 			let js = files['component.js'] || ''
+			if (files['component.ts'] != null) {
+				const res = await fetch(TRANSPILE, { method: 'POST', body: files['component.ts'] })
+				if (!res.ok) throw new Error('The server could not strip the types: ' + res.status)
+				const t = await res.json()
+				if (t.error) throw Object.assign(new SyntaxError(t.error), { line: t.line })
+				js = t.code
+				lines = t.lines
+			}
 			// A blob has no folder: resolve relative imports (vendored files) against base.
 			if (m.base) js = js.replace(/(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"\n]*)\2/g, (_, pre, q, spec) => pre + q + new URL(spec, m.base).href + q)
 			if (js.trim()) {
-				const load = (code) => import(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })))
+				const load = (code) => import((blob = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }))))
 				const guarded = guardLoops(js)
 				self.__sbStarted = 0
 				try {
@@ -223,7 +238,9 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 			for (const url of m.deps || []) await import(url)
 			await import('datastar')
 		} catch (err) {
-			send({ type: 'error', message: String(err && err.message || err), line: err && err.line })
+			// The line: the loop guard's, else the edited code's innermost frame in the stack.
+			const at = blob && String(err && err.stack || '').split(blob + ':')[1]
+			send({ type: 'error', message: String(err && err.message || err), line: err && err.line ? written(err.line) : at ? written(parseInt(at)) : undefined })
 		}
 		send({ type: 'done' })
 	})
@@ -233,7 +250,7 @@ func (s *Server) playgroundRun(w http.ResponseWriter, r *http.Request) {
 </head>
 <body></body>
 </html>
-`, css.String(), imports)
+`, css.String(), imports, transpile)
 }
 
 // Starter files for an empty playground (the same starter as the
@@ -334,7 +351,11 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		v.Component, v.ComponentName = comp.Slug, comp.Name
 		v.Base = "/c/" + comp.Slug + "@" + comp.Hash + "/"
 	}
-	v.Size = s.measure(v.Component, files["component.js"])
+	main := "component.js"
+	if _, ok := files["component.ts"]; ok {
+		main = "component.ts"
+	}
+	v.Size = s.measure(v.Component, main, files[main])
 	initial, _ := json.Marshal(files)
 	v.Initial = string(initial)
 	title := "Playground · Starbase"
@@ -346,6 +367,13 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	}
 	if v.Share != "" {
 		v.ShareURL = strings.TrimSuffix(s.cfg.BaseURL, "/") + "/playground?s=" + v.Share
+		shared := files
+		if v.Share != v.Loaded {
+			if sn, err := rc.r.Snippet(rc.ctx, v.Share); err == nil && sn != nil {
+				shared = sn.Files
+			}
+		}
+		_, v.ShareTS = shared["component.ts"]
 	}
 	u := ""
 	if rc.tab.PlaygroundShare != "" {

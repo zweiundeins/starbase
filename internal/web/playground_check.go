@@ -1,6 +1,7 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -15,18 +16,20 @@ import (
 	"starbase/internal/tscheck"
 )
 
-// POST /playground/check type-checks the playground's component.js when it
-// opts in with // @ts-check, against the patched Datastar build and the
-// files of the component it was opened from (internal/tscheck). It is a
-// query, like /playground/size, and answers with a patch of $_diag: the
-// diagnostics per file as JSON, the playground's diagnostics attribute. A
-// string, because a patched object would merge into the last one.
+// POST /playground/check type-checks the playground's component.ts, or its
+// component.js when it opts in with // @ts-check, against the patched
+// Datastar build and the files of the component it was opened from
+// (internal/tscheck). It is a query, like /playground/size, and answers with
+// a patch of $_diag: the diagnostics per file as JSON, the playground's
+// diagnostics attribute. A string, because a patched object would merge
+// into the last one.
 func (s *Server) playgroundCheck(w http.ResponseWriter, r *http.Request) {
 	var p struct {
 		Component string `json:"component"`
+		Name      string `json:"name"`
 		Code      string `json:"code"`
 	}
-	if err := datastar.ReadSignals(r, &p); err != nil || len(p.Code) > commands.MaxSnippetBytes {
+	if err := datastar.ReadSignals(r, &p); err != nil || len(p.Code) > commands.MaxSnippetBytes || !mainFile(p.Name) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
@@ -35,7 +38,8 @@ func (s *Server) playgroundCheck(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "checking too often", http.StatusTooManyRequests)
 		return
 	}
-	ds, _ := json.Marshal(map[string]any{"component.js": s.typecheck(r.Context(), p.Component, "component.js", p.Code)})
+	name := cmp.Or(p.Name, "component.js")
+	ds, _ := json.Marshal(map[string]any{name: s.typecheck(r.Context(), p.Component, name, p.Code)})
 	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{"_diag": string(ds)})
 }
 

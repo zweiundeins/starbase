@@ -87,6 +87,16 @@
       }
     },
     {
+      "name": "typescript",
+      "attribute": "typescript",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Offer a TypeScript switch, which renames component.js to component.ts (the runner must accept it). Initial files with component.ts switch it on."
+      }
+    },
+    {
       "name": "diagnostics",
       "attribute": "diagnostics",
       "type": "json",

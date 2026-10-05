@@ -33,6 +33,12 @@ func TestPlaygroundCheck(t *testing.T) {
 	if got := check("", "// @ts-check\n"+typo); !strings.Contains(got, `\"line\":3,\"col\":90,\"length\":5,\"text\":\"lable\",\"code\":2551`) {
 		t.Errorf("a typo:\n%s", got)
 	}
+	// TypeScript is always checked, and strictly.
+	body := `{"name":"component.ts","code":"export const f = (x) => x\n"}`
+	res := post(t, c, ts.URL+"/playground/check", body, "same-origin")
+	if b, _ := io.ReadAll(res.Body); !strings.Contains(string(b), `{\"component.ts\":[{\"line\":1,\"col\":19,\"length\":1,\"text\":\"x\",\"code\":7006`) {
+		t.Errorf("TypeScript:\n%s", b)
+	}
 	// A component's own files answer its relative imports (code-editor's vendored Prism).
 	editor, _ := cat.Get("code-editor")
 	src, _ := fs.ReadFile(cat.FS, editor.Script)

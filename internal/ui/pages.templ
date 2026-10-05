@@ -214,6 +214,7 @@ type CodePlaygroundView struct {
 	Loaded        string // snippet id from ?s=
 	Author        string // snippet author (GitHub login), if any
 	Share         string // snippet id to offer as a link
+	ShareTS       bool   // that snippet is TypeScript, which can't be submitted yet
 	ShareURL      string
 }
 
@@ -234,16 +235,19 @@ func sizeHidden(size map[string]any) templ.SafeCSS {
 	return ""
 }
 
-// sizeExpr measures component.js after edits (debounced; a newer request
-// cancels the one in flight).
+// sizeExpr measures component.js (or component.ts) after edits (debounced;
+// a newer request cancels the one in flight).
 func sizeExpr(component string) string {
-	return "@post('/playground/size', {payload: {component: " + jsString(component) + ", code: evt.detail.files['component.js'] ?? ''}})"
+	return "@post('/playground/size', {payload: {component: " + jsString(component) + ", " + moduleExpr + "}})"
 }
 
-// checkExpr type-checks component.js after edits and runs; the answer is
+// moduleExpr is the payload's name and code of the playground's module.
+const moduleExpr = "name: 'component.ts' in evt.detail.files ? 'component.ts' : 'component.js', code: evt.detail.files['component.ts'] ?? evt.detail.files['component.js'] ?? ''"
+
+// checkExpr type-checks the module after edits and runs; the answer is
 // $_diag, the playground's diagnostics as JSON (web/playground_check.go).
 func checkExpr(component string) string {
-	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", code: evt.detail.files['component.js'] ?? ''}})"
+	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", " + moduleExpr + "}})"
 }
 
 func shareExpr(component string) string {
@@ -272,7 +276,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				} else {
 					Write a Rocket component and try it live. The preview runs in a sandbox with every community component available.
 				}
-				Start the code with <code>{ "// @ts-check" }</code> to check it against Datastar's types.
+				Switch to TypeScript, or start JavaScript with <code>{ "// @ts-check" }</code>, to check the code against Datastar's types.
 			</p>
 		</header>
 		<div class="code-page__island" data-ignore-morph>
@@ -280,6 +284,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				initial={ v.Initial }
 				deps={ v.Deps }
 				base={ v.Base }
+				typescript
 				data-signals:_diag="'{}'"
 				data-attr:diagnostics="$_diag"
 				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) + "; " + checkExpr(v.Component) }
@@ -302,10 +307,14 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				</span>
 				<a href={ templ.SafeURL(v.ShareURL) }>{ v.ShareURL }</a>
 				<sb-copy-button value={ v.ShareURL } label="Copy link"></sb-copy-button>
-				<a class="btn btn--outline btn--sm" href={ templ.SafeURL("/submit?s=" + v.Share) }>
-					@Icon("github")
-					Submit as component
-				</a>
+				if v.ShareTS {
+					<span class="muted">The catalog takes JavaScript for now, so TypeScript can't be submitted yet.</span>
+				} else {
+					<a class="btn btn--outline btn--sm" href={ templ.SafeURL("/submit?s=" + v.Share) }>
+						@Icon("github")
+						Submit as component
+					</a>
+				}
 			} else {
 				<span class="muted">Saving creates a permanent link anyone can open. Then you can submit it as a component.</span>
 			}

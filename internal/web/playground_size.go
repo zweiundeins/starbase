@@ -12,17 +12,18 @@ import (
 	"starbase/internal/ui"
 )
 
-// POST /playground/size measures the playground's component.js the way the
-// catalog measures its modules (esbuild, brotli -11): the size line in the
-// playground's top bar. It is a query (nothing is stored) that answers with
+// POST /playground/size measures the playground's component.js (or
+// component.ts) the way the catalog measures its modules (esbuild, brotli
+// -11): the size line in the playground's top bar. It is a query (nothing is stored) that answers with
 // a patch of the page-local $_size signal. The code travels in the request
 // body, since the editor is a client island.
 func (s *Server) playgroundSize(w http.ResponseWriter, r *http.Request) {
 	var p struct {
 		Component string `json:"component"`
+		Name      string `json:"name"`
 		Code      string `json:"code"`
 	}
-	if err := datastar.ReadSignals(r, &p); err != nil || len(p.Code) > commands.MaxSnippetBytes {
+	if err := datastar.ReadSignals(r, &p); err != nil || len(p.Code) > commands.MaxSnippetBytes || !mainFile(p.Name) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
@@ -31,7 +32,7 @@ func (s *Server) playgroundSize(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "measuring too often", http.StatusTooManyRequests)
 		return
 	}
-	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{"_size": s.measure(p.Component, p.Code)})
+	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{"_size": s.measure(p.Component, p.Name, p.Code)})
 }
 
 // measure returns the $_size patch: the size line's texts, formatted here.
@@ -43,8 +44,8 @@ func (s *Server) playgroundSize(w http.ResponseWriter, r *http.Request) {
 // It is memoized by content (a page render measures its initial code,
 // and pages re-render on every broadcast), in a small map that is simply
 // dropped when full.
-func (s *Server) measure(slug, code string) map[string]any {
-	key := sha256.Sum256([]byte(slug + "\x00" + code))
+func (s *Server) measure(slug, name, code string) map[string]any {
+	key := sha256.Sum256([]byte(slug + "\x00" + name + "\x00" + code))
 	s.sizeMu.Lock()
 	v, ok := s.sizes[key]
 	s.sizeMu.Unlock()
@@ -52,12 +53,12 @@ func (s *Server) measure(slug, code string) map[string]any {
 		return v
 	}
 	c, _ := s.catalog.Get(slug)
-	m, err := s.catalog.Measure([]byte(code), c)
+	m, err := s.catalog.Measure(name, []byte(code), c)
 	if err != nil {
 		v = map[string]any{"stale": true, "title": "The code doesn't parse yet: these are the last sizes that did. " + firstLine(err.Error())}
 	} else {
 		own, min, raw, total := ui.FmtBytes(m.MinBrotli), ui.FmtBytes(m.Min), ui.FmtBytes(m.Raw), ""
-		title := "component.js: " + own + " minified with brotli (what a page downloads), " + min + " minified, " + raw + " as written."
+		title := name + ": " + own + " minified with brotli (what a page downloads), " + min + " minified, " + raw + " as written."
 		if m.Extra > 0 {
 			total = ui.FmtBytes(m.Total())
 			with := "the files it imports"
@@ -80,4 +81,10 @@ func (s *Server) measure(slug, code string) map[string]any {
 func firstLine(s string) string {
 	s, _, _ = strings.Cut(s, "\n")
 	return s
+}
+
+// mainFile reports whether name is the playground's module: component.js,
+// or component.ts in TypeScript. An empty name is component.js.
+func mainFile(name string) bool {
+	return name == "" || name == "component.js" || name == "component.ts"
 }

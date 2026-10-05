@@ -26,11 +26,12 @@ func (m Measured) Total() int { return m.MinBrotli + m.Extra }
 var definesRe = regexp.MustCompile(`rocket\(\s*['"](sb-[a-z0-9-]+)['"]`)
 
 // Measure minifies and compresses code afresh on every call (nothing is
-// kept: the playground measures every edit). c is the component whose
-// folder relative imports resolve against, or nil. A syntax error esbuild
-// can't minify past is returned as the error.
-func (cat *Catalog) Measure(code []byte, c *Component) (Measured, error) {
-	m, err := minify("component.js", code)
+// kept: the playground measures every edit). name is component.js, or
+// component.ts for TypeScript (measured as the JavaScript it compiles to). c
+// is the component whose folder relative imports resolve against, or nil.
+// A syntax error esbuild can't minify past is returned as the error.
+func (cat *Catalog) Measure(name string, code []byte, c *Component) (Measured, error) {
+	m, err := minify(name, code)
 	if err != nil {
 		return Measured{}, err
 	}

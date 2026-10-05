@@ -64,7 +64,11 @@ Elements with `slot="bar"` go into the top bar, between the file tabs and the ru
 
 ### Problems
 
-`diagnostics` maps file names to lists of problems, `{"component.js": [{line, col, length, message, text}]}`, and hands each list to that file's editor (see sb-code-editor's [problems](/components/code-editor#problems)). Starbase's `/playground` fills it from a type check on the server: once `component.js` starts with `// @ts-check`, every edit and run sends it to TypeScript, which checks it against the types of Datastar and Rocket.
+`diagnostics` maps file names to lists of problems, `{"component.js": [{line, col, length, message, text}]}`, and hands each list to that file's editor (see sb-code-editor's [problems](/components/code-editor#problems)). Starbase's `/playground` fills it from a type check on the server: every edit and run of `component.ts`, or of a `component.js` that starts with `// @ts-check`, goes to TypeScript, which checks it against the types of Datastar and Rocket.
+
+### TypeScript
+
+With `typescript`, the bar has a TypeScript switch: it renames `component.js` to `component.ts` (and back), keeping the code, and the editor highlights TypeScript. Initial files with a `component.ts` start with it on. The runner gets `component.ts` instead of `component.js`, so it has to turn it into JavaScript: Starbase's runner has the server strip the types and reports errors at the lines as written.
 
 ```html
 <sb-code-playground data-signals:_diag="'{}'" data-attr:diagnostics="$_diag"
@@ -86,7 +90,7 @@ The iframe (`sandbox="allow-scripts allow-modals"`) loads `runner` and exchanges
 | host → runner | `{type: "run", files, deps: [url], theme, base}` |
 | runner → host | `{type: "console", level, args}` · `{type: "error", message, line}` · `{type: "done"}` |
 
-The runner should import the edited `component.js` (for example from a `blob:` URL) **before** the dependencies, then `datastar`, and resolve `'datastar'` through an import map. A `blob:` module has no folder, so the runner resolves relative imports (`./vendor/lib.js`) against `base`, the `base` attribute as an absolute URL (empty when unset).
+The runner should import the edited `component.js` (for example from a `blob:` URL) **before** the dependencies, then `datastar`, and resolve `'datastar'` through an import map. With the TypeScript switch on, `files` holds `component.ts` instead. A `blob:` module has no folder, so the runner resolves relative imports (`./vendor/lib.js`) against `base`, the `base` attribute as an absolute URL (empty when unset).
 
 "Ran in … ms" is the time from `ready` to `done`. If a run has not sent `done` 5 s after its runner page loaded, the console says so: "No answer after 5 s: an endless loop?", or "The runner did not answer" when not even `ready` came. The next run replaces the frame, which stops it. This site's runner stops endless loops itself: every `while` and `for (…; …; …)` in `component.js` checks the time, and a task that spends a second in loops throws "Endless loop? Stopped after 1 s" (with the loop's line).
 

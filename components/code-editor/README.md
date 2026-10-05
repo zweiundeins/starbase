@@ -21,7 +21,7 @@ playground:
   style: "inline-size: min(100%, 32rem)"
 ---
 
-A real `<textarea>` layered over a highlighted `<pre>`. You get native editing (undo, IME, mobile keyboards, screen readers) with syntax colours from the theme tokens. It understands JavaScript, HTML and CSS, keeps indentation on Enter, indents and outdents selections with Tab and Shift+Tab, and emits `sb-run` on Ctrl/Cmd+Enter.
+A real `<textarea>` layered over a highlighted `<pre>`. You get native editing (undo, IME, mobile keyboards, screen readers) with syntax colours from the theme tokens. It understands JavaScript, TypeScript, HTML and CSS, keeps indentation on Enter, indents and outdents selections with Tab and Shift+Tab, and emits `sb-run` on Ctrl/Cmd+Enter.
 
 The highlighter (Prism) loads with the first editor on a page, so pages without one never download it. Until it arrives, the code shows uncoloured.
 

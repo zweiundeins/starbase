@@ -22,6 +22,8 @@ const TAGS_RE = /rocket\(\s*['"](sb-[a-z0-9-]+)['"]/g
 
 // The files outlive a re-attach (setup reruns): a moved playground keeps its edits.
 const kept = new WeakMap()
+// Playgrounds that offer the TypeScript switch: once offered, it stays.
+const typed = new WeakSet()
 
 // The console owns a fixed share of the preview pane and scrolls inside it, so
 // the preview never moves as output arrives. It is column-reverse: it stays at
@@ -67,8 +69,8 @@ const styles = /* css */ `
 .run { box-sizing: border-box; border-color: var(--_brand); background: var(--_brand); color: var(--sb-text-on-brand, #F3F4FA); font-weight: 700; }
 .run::before { content: ""; display: inline-block; block-size: 0.7em; margin-inline-end: 0.45em; border-left: 0.6em solid; clip-path: polygon(0 0, 100% 50%, 0 100%); }
 .run:hover { background: var(--sb-brand-hover, #A58BFF); }
-.auto { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--_text-2); cursor: pointer; }
-.auto input { accent-color: var(--_brand); }
+.check { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--_text-2); cursor: pointer; }
+.check input { accent-color: var(--_brand); }
 .panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-block-size: 0; }
 .editors { border-inline-end: 1px solid var(--_border); overflow: hidden; }
 @container (width < 48rem) {
@@ -98,6 +100,7 @@ rocket('sb-code-playground', {
 		delay: number.clamp(100, 5000).default(600).docs({ description: 'Auto-run debounce, in ms.' }),
 		base: string.trim.docs({ description: 'URL that relative imports in component.js resolve against (the folder its vendored files are served from).' }),
 		initial: json.default(() => ({})).docs({ description: 'Initial files as JSON {"component.js": "…"}, merged over the child scripts (a file here wins); handy for server-rendered pages.' }),
+		typescript: bool.docs({ description: 'Offer a TypeScript switch, which renames component.js to component.ts (the runner must accept it). Initial files with component.ts switch it on.' }),
 		diagnostics: json.default(() => ({})).docs({ description: 'Problems per file, as JSON {"component.js": [{line, col, length, message, text}]}, for that file\'s editor (see sb-code-editor\'s diagnostics).' }),
 	}),
 	manifest: {
@@ -111,7 +114,7 @@ rocket('sb-code-playground', {
 		],
 	},
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, props, render }) => {
 		adoptStyles(host, styles)
 		let files = kept.get(host)
 		if (!files) {
@@ -129,6 +132,8 @@ rocket('sb-code-playground', {
 		$$.theme = props.theme
 		$$.status = ''
 		$$.lines = [] // console output
+		$$.ts = files.has('component.ts')
+		if (props.typescript || $$.ts) typed.add(host)
 		// Each editor's diagnostics attribute, by file index.
 		const diagnose = () => peek(() => ($$.diag = [...files.keys()].map((n) => JSON.stringify(props.diagnostics?.[n] ?? []))))
 		diagnose()
@@ -188,6 +193,16 @@ rocket('sb-code-playground', {
 			clearTimeout(timer)
 			if ($$.auto) timer = setTimeout(run, props.delay)
 		})
+		// The TypeScript switch renames the module, keeping the code and the files' order.
+		action('lang', ({ el }) => {
+			const [from, to] = el.checked ? ['component.js', 'component.ts'] : ['component.ts', 'component.js']
+			if (!files.has(from)) return
+			kept.set(host, (files = new Map([...files].map(([n, code]) => [n === from ? to : n, code]))))
+			diagnose()
+			render({})
+			emit('sb-change', { files: all() })
+			run()
+		})
 		// File tabs: arrow keys, Home and End move the selection and the focus.
 		action('key', ({ el, evt }) => {
 			const n = files.size, i = { ArrowLeft: $$.active - 1, ArrowRight: $$.active + 1, Home: 0, End: n - 1 }[evt.key]
@@ -224,7 +239,8 @@ rocket('sb-code-playground', {
 					</div>
 					<slot name="bar"></slot>
 					<span class="status" data-text="$$status"></span>
-					<label class="auto"><input type="checkbox" data-bind:auto> Auto</label>
+					${typed.has(host) ? html`<label class="check"><input type="checkbox" data-bind:ts data-on:change="@lang()"> TypeScript</label>` : null}
+					<label class="check"><input type="checkbox" data-bind:auto> Auto</label>
 					<select aria-label="Preview theme" data-bind:theme data-on:change="$$theme = el.value; @run()">
 						${themes.map((t) => html`<option value="${t}">${t}</option>`)}
 					</select>
@@ -244,7 +260,7 @@ rocket('sb-code-playground', {
 						<iframe part="preview" title="Preview" loading="lazy" sandbox="allow-scripts allow-modals"></iframe>
 						<div class="console" part="console" role="log" aria-label="Console"><div>
 							<template data-for="line in $$lines">
-								<div data-attr:class="line.level" data-text="line.text"></div>
+								<div data-attr:class="line?.level" data-text="line?.text"></div>
 							</template>
 						</div></div>
 					</div>

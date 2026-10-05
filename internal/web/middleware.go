@@ -110,7 +110,8 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
 			site := r.Header.Get("Sec-Fetch-Site")
 			ok := site == "same-origin" || (site == "" && r.Header.Get("Origin") == origin)
-			if !ok {
+			// The playground's runner, an opaque origin, transpiles there: a pure function, no state.
+			if !ok && r.URL.Path != "/playground/transpile" {
 				http.Error(w, "cross-site request rejected", http.StatusForbidden)
 				return
 			}

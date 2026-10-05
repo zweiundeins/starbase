@@ -63,6 +63,9 @@ func FetchSnippet(ctx context.Context, client *http.Client, site, link string) (
 		return Source{}, err
 	}
 	code := sn.Files["component.js"]
+	if _, ts := sn.Files["component.ts"]; ts && code == "" {
+		return Source{}, errors.New("the snippet is TypeScript, and the catalog takes JavaScript components for now: switch the playground back to JavaScript, take out the types and save it again")
+	}
 	if n := len(tagInCodeRe.FindAllString(code, -1)); n != 1 {
 		return Source{}, fmt.Errorf("the snippet's component.js must define exactly one component with `rocket('sb-…')` (found %d)", n)
 	}

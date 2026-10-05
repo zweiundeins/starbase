@@ -90,6 +90,10 @@ func TestFetchNeedsExactlyOneComponent(t *testing.T) {
 
 func TestFetchSnippet(t *testing.T) {
 	site := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/playground/snippet/TsTs2345" {
+			w.Write([]byte(`{"files": {"component.ts": "rocket('sb-typed', {})"}}`))
+			return
+		}
 		if r.URL.Path != "/playground/snippet/AbCd2345" {
 			http.NotFound(w, r)
 			return
@@ -103,6 +107,9 @@ func TestFetchSnippet(t *testing.T) {
 	}
 	if _, err := submission.FetchSnippet(context.Background(), site.Client(), "https://starbase.example", link); err == nil {
 		t.Fatal("links to other hosts must be refused")
+	}
+	if _, err := submission.FetchSnippet(context.Background(), site.Client(), site.URL, site.URL+"/playground?s=TsTs2345"); err == nil || !strings.Contains(err.Error(), "TypeScript") {
+		t.Fatalf("a TypeScript snippet: %v", err)
 	}
 	src, err := submission.FetchSnippet(context.Background(), site.Client(), site.URL, link)
 	if err != nil {

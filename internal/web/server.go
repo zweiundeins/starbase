@@ -49,6 +49,10 @@ type Server struct {
 	checkMu      sync.Mutex
 	checks       map[[32]byte][]tscheck.Diagnostic // playground code → its diagnostics (playground_check.go)
 
+	transpileLimit *limiter // the runner's TypeScript, per client (it has no session)
+	transpileMu    sync.Mutex
+	transpiled     map[[32]byte][]byte // component.ts → the JSON answer (playground_transpile.go)
+
 	exportLimit   *limiter // the star catalog's downloads, per session
 	exportLimitIP *limiter
 	exports       chan struct{} // the downloads streaming now, each holding a read connection
@@ -92,6 +96,9 @@ func New(ctx context.Context, d Deps) *Server {
 		checkLimitIP: newLimiter(10, 60),
 		checks:       map[[32]byte][]tscheck.Diagnostic{},
 		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
+
+		transpileLimit: newLimiter(5, 40), // once per run
+		transpiled:     map[[32]byte][]byte{},
 
 		exportLimit:   newLimiter(0.2, 3), // a download every five seconds, three in a row
 		exportLimitIP: newLimiter(1, 10),
@@ -150,6 +157,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)
 	mux.HandleFunc("POST /playground/size", s.playgroundSize)
 	mux.HandleFunc("POST /playground/check", s.playgroundCheck)
+	mux.HandleFunc("POST /playground/transpile", s.playgroundTranspile)
 	mux.HandleFunc("GET /playground/preview/{commit}/{slug}/{file...}", s.servePreviewFile)
 
 	// Demo data: a read-only signal stream for the live examples.

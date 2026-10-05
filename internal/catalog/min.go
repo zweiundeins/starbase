@@ -79,8 +79,12 @@ func (cat *Catalog) MinFiles(c *Component) (map[string][]byte, error) {
 // minify shrinks (shrink.go) and minifies one module file; name is its path
 // inside the component folder.
 func minify(name string, src []byte) ([]byte, error) {
+	loader := api.LoaderJS
+	if strings.HasSuffix(name, ".ts") {
+		loader = api.LoaderTS
+	}
 	res := api.Transform(string(shrink(name, src)), api.TransformOptions{
-		Loader:            api.LoaderJS,
+		Loader:            loader,
 		Format:            api.FormatESModule,
 		Target:            api.ESNext, // minify only; never lower the syntax
 		MinifyWhitespace:  true,

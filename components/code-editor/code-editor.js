@@ -30,8 +30,8 @@ const dedent = (text) => {
 // Highlighting by Prism (vendored with the js-templates plugin), so the
 // HTML and CSS inside Rocket's html`…` and /* css */ `…` templates light up.
 // It loads with the first editor, so pages without one never download it;
-// until it arrives, the code shows uncoloured. js, html and css are Prism's own
-// names (aliases). A trailing newline keeps the last (empty) line's height.
+// until it arrives, the code shows uncoloured. js, ts, html and css are Prism's
+// own names (aliases). A trailing newline keeps the last (empty) line's height.
 let Prism
 const highlight = (src, lang) => (Prism ? Prism.highlight(src, Prism.languages[lang], lang) : src.replace(/&/g, '&amp;').replace(/</g, '&lt;')) + '\n'
 
@@ -139,7 +139,7 @@ textarea::selection { background: var(--_sel); -webkit-text-fill-color: transpar
 .token.string, .token.attr-value, .token.url { color: var(--sb-code-string, #6EF59A); }
 .token.number, .token.boolean, .token.constant { color: var(--sb-code-number, #F5C451); }
 .token.keyword, .token.atrule, .token.important, .token.rule { color: var(--sb-code-keyword, #B09AFF); }
-.token.function, .token.class-name, .token.attr-name, .token.property { color: var(--sb-code-function, #CBBEFF); }
+.token.function, .token.class-name, .token.builtin, .token.attr-name, .token.property { color: var(--sb-code-function, #CBBEFF); }
 .token.tag, .token.selector { color: var(--sb-code-tag, #65BFFF); }
 .token.punctuation, .token.operator { color: var(--_muted); }
 /* Code inside attributes and templates keeps the base text colour. */
@@ -148,7 +148,7 @@ textarea::selection { background: var(--_sel); -webkit-text-fill-color: transpar
 
 rocket('sb-code-editor', {
 	props: ({ bool, json, number, oneOf, string }) => ({
-		language: oneOf('js', 'html', 'css').default('js').docs({ description: 'Syntax to highlight.' }),
+		language: oneOf('js', 'ts', 'html', 'css').default('js').docs({ description: 'Syntax to highlight.' }),
 		value: string.docs({ description: 'The code (or a child <script type="text/plain">). A new value from the server replaces it; the live code is the value property.' }),
 		lineNumbers: bool.default(true).docs({ description: 'Show a line-number gutter.' }),
 		tabSize: number.clamp(1, 8).default(2).docs({ description: 'Visual width of a tab.' }),
