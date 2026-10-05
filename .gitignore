@@ -17,3 +17,6 @@
 
 # Agent worktrees
 .claude/worktrees/
+
+# The TypeScript compiler the binary embeds (go run ./cmd/fetchtsc)
+/internal/tscheck/dist/*.tgz
