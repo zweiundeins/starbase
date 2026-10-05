@@ -10,7 +10,6 @@ package tscheck
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha512"
@@ -82,7 +81,11 @@ func Fetch(ctx context.Context, platform string) ([]byte, error) {
 // Verify checks a package against the integrity npm publishes for it.
 func Verify(platform string, tgz []byte) error {
 	sum := sha512.Sum512(tgz)
-	if got := "sha512-" + base64.StdEncoding.EncodeToString(sum[:]); got != integrity[platform] {
+	return verify(platform, sum[:])
+}
+
+func verify(platform string, sum []byte) error {
+	if got := "sha512-" + base64.StdEncoding.EncodeToString(sum); got != integrity[platform] {
 		return fmt.Errorf("typescript-%s %s: integrity %s, want %s", platform, Version, got, integrity[platform])
 	}
 	return nil
@@ -90,8 +93,8 @@ func Verify(platform string, tgz []byte) error {
 
 // Unpack writes the package's lib/ (the compiler and the lib.*.d.ts files it
 // loads from its own folder) into dir.
-func Unpack(tgz []byte, dir string) error {
-	zr, err := gzip.NewReader(bytes.NewReader(tgz))
+func Unpack(tgz io.Reader, dir string) error {
+	zr, err := gzip.NewReader(tgz)
 	if err != nil {
 		return err
 	}

@@ -44,9 +44,12 @@ const styles = /* css */ `
 	--_brand: var(--sb-brand-light, #B09AFF);
 	--_sel: var(--sb-selection, rgb(140 107 255 / 0.4));
 	--_radius: var(--sb-radius, 8px);
+	--_danger: var(--sb-danger, #F2777A);
 	--_font: var(--sb-font-ui, "JetBrains Mono", ui-monospace, monospace);
 	--_code-size: var(--sb-code-editor-font-size, 0.8125rem);
-	display: block;
+	/* A column, so a host given a height shares it between the code and the problem line. */
+	display: flex;
+	flex-direction: column;
 	inline-size: 100%;
 }
 :host([hidden]) { display: none; }
@@ -54,6 +57,7 @@ const styles = /* css */ `
 /* A grid, so its one child fills --sb-code-editor-min-height. */
 .scroller {
 	display: grid;
+	flex: auto;
 	overflow: auto;
 	min-block-size: var(--sb-code-editor-min-height, 0);
 	max-block-size: var(--sb-code-editor-height, 28rem);
@@ -115,6 +119,21 @@ textarea {
 	-webkit-text-fill-color: transparent;
 }
 textarea::selection { background: var(--_sel); -webkit-text-fill-color: transparent; }
+/* Problems: the code again, transparent, with the diagnostics' ranges in <mark>s: only their underlines show. */
+.diag, .diag mark { color: transparent; }
+.diag mark { background: none; text-decoration: underline wavy var(--_danger); text-decoration-skip-ink: none; text-underline-offset: 0.2em; }
+.problem {
+	all: unset;
+	box-sizing: border-box;
+	margin-block-start: 0.35rem;
+	overflow: hidden;
+	color: var(--_danger);
+	font-size: 0.75rem;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+.problem:focus-visible { outline: 2px solid var(--_brand); outline-offset: 2px; }
 /* Prism tokens, coloured from theme tokens. */
 .token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--_muted); font-style: italic; }
 .token.string, .token.attr-value, .token.url { color: var(--sb-code-string, #6EF59A); }
@@ -128,7 +147,7 @@ textarea::selection { background: var(--_sel); -webkit-text-fill-color: transpar
 `
 
 rocket('sb-code-editor', {
-	props: ({ bool, number, oneOf, string }) => ({
+	props: ({ bool, json, number, oneOf, string }) => ({
 		language: oneOf('js', 'html', 'css').default('js').docs({ description: 'Syntax to highlight.' }),
 		value: string.docs({ description: 'The code (or a child <script type="text/plain">). A new value from the server replaces it; the live code is the value property.' }),
 		lineNumbers: bool.default(true).docs({ description: 'Show a line-number gutter.' }),
@@ -138,6 +157,7 @@ rocket('sb-code-editor', {
 		label: string.trim.docs({ description: 'Visible label; also the accessible name.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command).' }),
+		diagnostics: json.default(() => []).docs({ description: 'Problems to underline, as JSON [{line, col, length, message, text}]: line and col 1-based, col and length in UTF-16 code units (a JS string index). With text, a problem shows only while the code there still reads text, so a list about an older version fades as the code changes.' }),
 	}),
 	manifest: {
 		events: [
@@ -165,6 +185,57 @@ rocket('sb-code-editor', {
 		// may run once more: treat missing code as empty.
 		$$.html = () => ($$.ready, highlight($$.code ?? '', $$.lang || 'js'))
 		$$.numbers = () => ($$.code ?? '').split('\n').map((_, i) => i + 1).join('\n')
+
+		// Problems: the diagnostics prop stays in a closure (a list that is
+		// replaced, never merged); $$.dv counts its changes.
+		let diags = []
+		$$.dv = 0
+		$$.caret = 0
+		const take = () => peek(() => ((diags = Array.isArray(props.diagnostics) ? props.diagnostics : []), $$.dv++))
+		take()
+		observeProps(take, 'diagnostics')
+		// The problems still where they were found, as offsets, in order, without overlaps.
+		const found = (code) => {
+			if (!diags.length) return []
+			const starts = [0]
+			for (let i = 0; (i = code.indexOf('\n', i) + 1); ) starts.push(i)
+			let last = 0
+			return diags
+				.map((d) => ({ ...d, at: starts[d.line - 1] + d.col - 1 }))
+				.map((d) => ({ ...d, end: Math.min(d.at + Math.max(1, d.length | 0), code.length) }))
+				.filter((d) => d.at <= code.length && (!d.text || code.slice(d.at, d.end) === d.text))
+				.sort((a, b) => a.at - b.at)
+				.filter((d) => d.at >= last && ((last = d.end), true))
+		}
+		const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+		$$.marks = () => {
+			$$.dv
+			const code = $$.code ?? ''
+			let html = ''
+			let pos = 0
+			for (const d of found(code)) (html += esc(code.slice(pos, d.at)) + '<mark>' + esc(code.slice(d.at, d.end)) + '</mark>'), (pos = d.end)
+			return pos ? html + esc(code.slice(pos)) + '\n' : ''
+		}
+		// The status line: the problem at the caret, else the first.
+		$$.problem = () => {
+			$$.dv
+			const all = found($$.code ?? '')
+			const i = Math.max(0, all.findIndex((d) => d.at <= $$.caret && $$.caret <= d.end))
+			return all[i] ? `${all.length > 1 ? `${i + 1}/${all.length} · ` : ''}Line ${all[i].line}: ${all[i].message}` : ''
+		}
+		// F8 (Shift+F8) and a click on the status line select the next (previous) problem.
+		const go = (area, dir) => {
+			const all = found(area.value)
+			const at = area.selectionStart
+			const i = dir > 0 ? all.findIndex((d) => d.at > at) : all.findLastIndex((d) => d.end < at)
+			const d = all.at(i < 0 ? (dir > 0 ? 0 : -1) : i)
+			if (!d) return
+			area.focus()
+			area.setSelectionRange(d.at, d.end)
+			$$.caret = d.at
+			host.shadowRoot.querySelectorAll('.diag mark')[all.indexOf(d)]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+		}
+		action('next', () => go(host.shadowRoot.querySelector('textarea'), 1))
 
 		// Typing updates $$code; the textarea's data-effect only writes back
 		// external changes (the values differ), so the caret never jumps.
@@ -232,6 +303,10 @@ rocket('sb-code-editor', {
 				escaped = true // the next Tab moves focus instead of indenting
 				return
 			}
+			if (e.key === 'F8') {
+				e.preventDefault()
+				return go(area, e.shiftKey ? -1 : 1)
+			}
 			if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
 				e.preventDefault()
 				emit('sb-run', { value: area.value })
@@ -274,6 +349,7 @@ rocket('sb-code-editor', {
 				<pre class="gutter" aria-hidden="true" data-text="$$numbers"></pre>
 				<div class="code">
 					<pre aria-hidden="true"><code data-effect="el.innerHTML = $$html"></code></pre>
+					<pre class="diag" aria-hidden="true" data-effect="el.innerHTML = $$marks"></pre>
 					<textarea
 						part="textarea"
 						spellcheck="false"
@@ -285,10 +361,13 @@ rocket('sb-code-editor', {
 						id="ta"
 						cols="1"
 						aria-label="${label || host.getAttribute('aria-label') || 'Code'}"
+						aria-describedby="problem"
 						data-effect="el.value !== $$code && (el.value = $$code)"
 						data-attr:readonly="$$readonly"
 						data-attr:disabled="$$disabled"
-						data-on:input="$$code = el.value"
+						data-on:input="$$code = el.value; $$caret = el.selectionStart"
+						data-on:keyup="$$caret = el.selectionStart"
+						data-on:pointerup="$$caret = el.selectionStart"
 						data-on:change="@change()"
 						data-on:blur="@blur()"
 						data-on:keydown="@key()"
@@ -296,5 +375,7 @@ rocket('sb-code-editor', {
 				</div>
 			</div>
 		</div>
+		<button type="button" class="problem" id="problem" part="problem" tabindex="-1"
+			data-show="$$problem" data-text="$$problem" data-attr:title="$$problem" data-on:click="@next()"></button>
 	`,
 })

@@ -60,6 +60,18 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 </div>
 ```
 
+### Problems
+
+`diagnostics` underlines problems in the code: a JSON list of `{line, col, length, message, text}`, where `line` and `col` count from 1 and `col` and `length` are in UTF-16 code units, like a JS string index. The line under the editor shows the problem at the caret, else the first. F8 and Shift+F8 select the next and the previous problem, and a click on that line selects the next.
+
+With `text`, a problem shows only while the code at its place still reads `text`: a list about an older version fades as the code changes, so nothing points at the wrong word while the next list is on its way. A new list replaces the old one, and `[]` clears it. Starbase's [playground](/playground) fills it from a TypeScript check on the server.
+
+```html preview
+<sb-code-editor language="js" style="--sb-code-editor-height: 6rem"
+  value="const orbit = { period: 365 }&#10;console.log(orbit.perod)"
+  diagnostics='[{"line": 2, "col": 19, "length": 5, "text": "perod", "message": "Property \"perod\" does not exist on type \"{ period: number; }\". Did you mean \"period\"?"}]'></sb-code-editor>
+```
+
 ## Keyboard
 
 | Keys | Action |
@@ -67,6 +79,7 @@ Put the code in a child `<script type="text/plain">`. Its text is never parsed a
 | Tab / Shift+Tab | Indent / outdent the selected lines (without a selection, Tab inserts a tab and Shift+Tab outdents the line) |
 | Enter | New line, keeping the indentation (plus one after `{`, `(` or `[`) |
 | Ctrl/Cmd+Enter | Emit `sb-run` |
+| F8 / Shift+F8 | Select the next / previous [problem](#problems) |
 | Esc, then Tab | Leave the editor, so Tab is never a focus trap |
 
 ## With commands
@@ -83,10 +96,10 @@ Inside a `<form>`, `sb-code-editor` submits its code under its `name` (`name=…
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** it fills the width it is given. `--sb-code-editor-height` (default `28rem`) is the most it grows before it scrolls, `--sb-code-editor-min-height` (default `0`) the least it shrinks to. `--sb-code-editor-font-size` (default `0.8125rem`) sets the size of the code and the line numbers.
+- **Size:** it fills the width it is given. `--sb-code-editor-height` (default `28rem`) is the most it grows before it scrolls, `--sb-code-editor-min-height` (default `0`) the least it shrinks to. Given a height of its own (`block-size`), the code fills it, above the problem line when there is one. `--sb-code-editor-font-size` (default `0.8125rem`) sets the size of the code and the line numbers.
 - **Fonts:** the code uses `--sb-font-ui` when a site sets one, else JetBrains Mono or the system's monospace font; set `--sb-font-ui` on the editor to choose it. The label uses your page's font. The highlighted code is drawn under a transparent textarea, and the two must line up to the pixel, so change the code's font and size through `--sb-font-ui` and `--sb-code-editor-font-size`, which set both, not with `::part(textarea)`.
-- **Colours:** the syntax colours are `--sb-code-keyword`, `--sb-code-function`, `--sb-code-tag`, `--sb-code-string` and `--sb-code-number`; comments, punctuation and the line numbers are `--sb-text-muted`, plain code `--sb-text-1`. The box is `--sb-surface-inset` with a `--sb-border` edge (`--sb-brand-light` while you type), the selection `--sb-selection`, the label `--sb-text-2`, the corners `--sb-radius`. A `disabled` editor and its label are at half opacity (the code still scrolls).
-- **Parts:** `editor` (the scrolling box), `label` and `textarea` (the layer you type in). Your page's `::part()` rules win over the component's own, without `!important`.
+- **Colours:** the syntax colours are `--sb-code-keyword`, `--sb-code-function`, `--sb-code-tag`, `--sb-code-string` and `--sb-code-number`; comments, punctuation and the line numbers are `--sb-text-muted`, plain code `--sb-text-1`. The box is `--sb-surface-inset` with a `--sb-border` edge (`--sb-brand-light` while you type), the selection `--sb-selection`, the label `--sb-text-2`, the corners `--sb-radius`. Problems are underlined and described in `--sb-danger`. A `disabled` editor and its label are at half opacity (the code still scrolls).
+- **Parts:** `editor` (the scrolling box), `label`, `textarea` (the layer you type in) and `problem` (the line under the code). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -104,4 +117,4 @@ A font you load yourself works inside the component too: load it in the page (a 
 
 ## Accessibility
 
-The editable element is a native textarea with an accessible name: `label`, else the host's `aria-label`, else "Code". The visible label is a `<label>` for it, and `focus()` on the element focuses the textarea. `disabled` disables the textarea, which takes it out of the tab order. The highlighted layer and the gutter are `aria-hidden`.
+The editable element is a native textarea with an accessible name: `label`, else the host's `aria-label`, else "Code". The visible label is a `<label>` for it, and `focus()` on the element focuses the textarea. `disabled` disables the textarea, which takes it out of the tab order. The highlighted layer, the underlines and the gutter are `aria-hidden`; the problem line is the textarea's description (`aria-describedby`), and F8 reaches every problem from the keyboard.

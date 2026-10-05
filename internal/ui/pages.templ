@@ -240,6 +240,12 @@ func sizeExpr(component string) string {
 	return "@post('/playground/size', {payload: {component: " + jsString(component) + ", code: evt.detail.files['component.js'] ?? ''}})"
 }
 
+// checkExpr type-checks component.js after edits and runs; the answer is
+// $_diag, the playground's diagnostics as JSON (web/playground_check.go).
+func checkExpr(component string) string {
+	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", code: evt.detail.files['component.js'] ?? ''}})"
+}
+
 func shareExpr(component string) string {
 	return "el.classList.add('is-pending'); @post('/cmd/snippet', {payload: {tabid: $tabid, component: " + jsString(component) +
 		", files: document.querySelector('sb-code-playground').files}})"
@@ -266,6 +272,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				} else {
 					Write a Rocket component and try it live. The preview runs in a sandbox with every community component available.
 				}
+				Start the code with <code>{ "// @ts-check" }</code> to check it against Datastar's types.
 			</p>
 		</header>
 		<div class="code-page__island" data-ignore-morph>
@@ -273,7 +280,10 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				initial={ v.Initial }
 				deps={ v.Deps }
 				base={ v.Base }
-				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) }
+				data-signals:_diag="'{}'"
+				data-attr:diagnostics="$_diag"
+				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) + "; " + checkExpr(v.Component) }
+				data-on:sb-run={ checkExpr(v.Component) }
 			>
 				@PlaygroundSize(v.Size)
 			</sb-code-playground>

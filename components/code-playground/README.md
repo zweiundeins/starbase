@@ -62,6 +62,15 @@ Elements with `slot="bar"` go into the top bar, between the file tabs and the ru
 </sb-code-playground>
 ```
 
+### Problems
+
+`diagnostics` maps file names to lists of problems, `{"component.js": [{line, col, length, message, text}]}`, and hands each list to that file's editor (see sb-code-editor's [problems](/components/code-editor#problems)). Starbase's `/playground` fills it from a type check on the server: once `component.js` starts with `// @ts-check`, every edit and run sends it to TypeScript, which checks it against the types of Datastar and Rocket.
+
+```html
+<sb-code-playground data-signals:_diag="'{}'" data-attr:diagnostics="$_diag"
+  data-on:sb-change__debounce.400ms="@post('/check', {payload: {code: evt.detail.files['component.js']}})"></sb-code-playground>
+```
+
 ## Properties and methods
 
 - `files`: the current files as `{ "component.js": "…", … }`. Setting it merges the given files over the current ones, updates the editors and runs. Starbase's "Save & share" reads it.

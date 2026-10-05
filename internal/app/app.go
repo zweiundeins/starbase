@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"starbase/components"
@@ -17,6 +18,7 @@ import (
 	"starbase/internal/cqrs"
 	"starbase/internal/db"
 	"starbase/internal/queries"
+	"starbase/internal/tscheck"
 	"starbase/internal/web"
 	"starbase/static"
 )
@@ -65,6 +67,15 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 	bus.Send(commands.SeedStars{})
 	log.Info("catalog synced", "components", len(cat.Components), "hash", cat.Hash)
 
+	// The type check's compiler unpacks next to the database, once per version.
+	checker := tscheck.New(filepath.Dir(cfg.DBPath))
+	warmed := make(chan struct{})
+	go func() {
+		defer close(warmed)
+		if err := checker.Warm(); err != nil {
+			log.Error("type check unavailable", "err", err)
+		}
+	}()
 	srv := web.New(ctx, web.Deps{
 		Config:   cfg,
 		Log:      log,
@@ -74,6 +85,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		Catalog:  cat,
 		StaticFS: static.FS,
 		Content:  content.FS,
+		Checker:  checker,
 	})
-	return &App{Handler: srv.Handler(), Catalog: cat, close: closeAll}, nil
+	return &App{Handler: srv.Handler(), Catalog: cat, close: func() { closeAll(); <-warmed }}, nil
 }

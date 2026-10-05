@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Type checking in the playground: code that starts with `// @ts-check` is checked by TypeScript on the server after every edit and run, against the types of the patched Datastar build, and its problems are underlined in the editor. The compiler, TypeScript's native port, is embedded in the binary; release archives and the container image carry its licence and notices.
+- `sb-code-editor`: `diagnostics` underlines problems sent by the page or the server, the line under the code shows the one at the caret, and F8 and Shift+F8 move between them. A problem whose word has changed disappears, so an older list doesn't point at the wrong place. `sb-code-playground` hands its own `diagnostics` to its editors, per file.
+
 ## [0.6.0] - 2026-10-01
 
 Time of day and time zones in the date picker; rich cells, a column picker and exports in the data table; keyboard focus that survives the virtual scroll's windows; copying without the Clipboard API; a shadow token for every overlay; and four more Rocket fixes, filed upstream.

@@ -11,6 +11,7 @@ tasks:
 
   live:
     desc: Run the dev server with live reload (templ + air)
+    deps: [typescript]
     cmds:
       - go tool air
 
@@ -21,7 +22,7 @@ tasks:
 
   build:
     desc: Build the production binary
-    deps: [generate]
+    deps: [generate, typescript]
     vars:
       VERSION:
         sh: git describe --tags --always --dirty 2>/dev/null || echo dev
@@ -36,7 +37,7 @@ tasks:
 
   test:
     desc: Run all tests (includes validation of every component folder)
-    deps: [generate]
+    deps: [generate, typescript]
     cmds:
       - go vet ./...
       - go test ./...
@@ -65,6 +66,11 @@ tasks:
     desc: "Build the visits report from the web host's Caddy logs (tmp/visits-<date>.html)"
     cmds:
       - bash scripts/visits/report.sh {{.CLI_ARGS}}
+
+  typescript:
+    desc: Fetch the pinned TypeScript compiler the binary embeds for the playground's type check (once)
+    cmds:
+      - go run ./cmd/fetchtsc
 
   vendor-prism:
     desc: Rebuild the vendored Prism ES module used by sb-code-editor

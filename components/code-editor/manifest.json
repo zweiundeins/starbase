@@ -95,6 +95,16 @@
       "docs": {
         "description": "Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command)."
       }
+    },
+    {
+      "name": "diagnostics",
+      "attribute": "diagnostics",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Problems to underline, as JSON [{line, col, length, message, text}]: line and col 1-based, col and length in UTF-16 code units (a JS string index). With text, a problem shows only while the code there still reads text, so a list about an older version fades as the code changes."
+      }
     }
   ],
   "slots": [],

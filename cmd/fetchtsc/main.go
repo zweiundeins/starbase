@@ -8,6 +8,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -64,5 +65,5 @@ func run(goos, goarch, unpack string) error {
 	if err := os.MkdirAll(unpack, 0o755); err != nil {
 		return err
 	}
-	return tscheck.Unpack(tgz, unpack)
+	return tscheck.Unpack(bytes.NewReader(tgz), unpack)
 }

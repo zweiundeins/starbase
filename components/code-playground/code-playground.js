@@ -1,6 +1,17 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Requires <sb-code-editor> to be loaded on the page as well.
+
+// observeProps callbacks run inside the effect that set the attribute: reads
+// in them must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 const dedent = (text) => {
 	const lines = text.replace(/^\s*\n|\n\s*$/g, '').split('\n')
@@ -64,8 +75,9 @@ const styles = /* css */ `
 	.panes { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
 	.editors { border-inline-end: 0; border-block-end: 1px solid var(--_border); }
 }
-.editors sb-code-editor { block-size: 100%; --sb-code-editor-height: 100%; --sb-code-editor-min-height: 100%; }
+.editors sb-code-editor { block-size: 100%; --sb-code-editor-height: 100%; }
 .editors sb-code-editor::part(editor) { border: 0; border-radius: 0; }
+.editors sb-code-editor::part(problem) { margin: 0; padding: 0.4rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); }
 .preview { display: grid; grid-template-rows: minmax(0, 1fr) minmax(4.5rem, 30%); min-block-size: 0; }
 iframe { inline-size: 100%; block-size: 100%; border: 0; background: var(--sb-bg, #080D1D); }
 .console { display: flex; flex-direction: column-reverse; overflow: auto; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
@@ -86,6 +98,7 @@ rocket('sb-code-playground', {
 		delay: number.clamp(100, 5000).default(600).docs({ description: 'Auto-run debounce, in ms.' }),
 		base: string.trim.docs({ description: 'URL that relative imports in component.js resolve against (the folder its vendored files are served from).' }),
 		initial: json.default(() => ({})).docs({ description: 'Initial files as JSON {"component.js": "…"}, merged over the child scripts (a file here wins); handy for server-rendered pages.' }),
+		diagnostics: json.default(() => ({})).docs({ description: 'Problems per file, as JSON {"component.js": [{line, col, length, message, text}]}, for that file\'s editor (see sb-code-editor\'s diagnostics).' }),
 	}),
 	manifest: {
 		slots: [
@@ -98,7 +111,7 @@ rocket('sb-code-playground', {
 		],
 	},
 	renderOnPropChange: false,
-	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		let files = kept.get(host)
 		if (!files) {
@@ -116,6 +129,10 @@ rocket('sb-code-playground', {
 		$$.theme = props.theme
 		$$.status = ''
 		$$.lines = [] // console output
+		// Each editor's diagnostics attribute, by file index.
+		const diagnose = () => peek(() => ($$.diag = [...files.keys()].map((n) => JSON.stringify(props.diagnostics?.[n] ?? []))))
+		diagnose()
+		observeProps(diagnose, 'diagnostics')
 
 		const all = () => Object.fromEntries(files)
 		const frame = () => host.shadowRoot.querySelector('iframe')
@@ -219,6 +236,7 @@ rocket('sb-code-playground', {
 							<sb-code-editor data-file="${n}" language="${n.split('.').pop()}" value="${files[n]}"
 								role="tabpanel" aria-label="${n}"
 								data-show="$$active === ${i}"
+								data-attr:diagnostics="$$diag[${i}]"
 								data-on:input="@edit()"
 								data-on:sb-run__stop="@run()"></sb-code-editor>`)}
 					</div>

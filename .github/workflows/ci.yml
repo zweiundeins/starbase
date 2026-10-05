@@ -31,6 +31,8 @@ jobs:
           git diff --exit-code -- '*_templ.go'
       - name: Vet
         run: go vet ./... && go vet -tags dev ./...
+      - name: TypeScript compiler (the playground's type check and its tests)
+        run: go run ./cmd/fetchtsc
       - name: Let Chrome use its sandbox
         # Ubuntu 24.04 restricts unprivileged user namespaces, which Chrome's
         # sandbox needs; without this it would have to run with --no-sandbox.
@@ -75,6 +77,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      - name: TypeScript compiler for the target
+        run: go run ./cmd/fetchtsc -os ${{ matrix.goos }} -arch ${{ matrix.goarch }}
       - name: Build (pure Go, no cgo)
         env:
           GOOS: ${{ matrix.goos }}

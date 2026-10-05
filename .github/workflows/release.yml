@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      - name: TypeScript compiler for the target
+        run: go run ./cmd/fetchtsc -os ${{ matrix.goos }} -arch ${{ matrix.goarch }}
       - name: Build and package
         env:
           GOOS: ${{ matrix.goos }}
@@ -40,6 +42,9 @@ jobs:
           mkdir -p "dist/$name"
           go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o "dist/$name/starbase$ext" ./cmd/starbase
           cp README.md LICENSE CHANGELOG.md .env.example "dist/$name/"
+          # The embedded TypeScript compiler's licence and notices (Apache-2.0).
+          mkdir "dist/$name/typescript"
+          tar xzf internal/tscheck/dist/*.tgz -C "dist/$name/typescript" --strip-components=1 package/LICENSE package/NOTICE.txt
           cd dist
           if [ "$GOOS" = windows ]; then zip -qr "$name.zip" "$name"; else tar czf "$name.tar.gz" "$name"; fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

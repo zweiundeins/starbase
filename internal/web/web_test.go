@@ -28,6 +28,7 @@ import (
 	"starbase/internal/cqrs"
 	"starbase/internal/db"
 	"starbase/internal/queries"
+	"starbase/internal/tscheck"
 	"starbase/internal/web"
 	"starbase/static"
 )
@@ -66,7 +67,7 @@ func newServerBus(t *testing.T) (*httptest.Server, *http.Client, *cqrs.Bus, *cat
 	ts.Start()
 	cfg := config.Config{BaseURL: ts.URL, RepoURL: "https://example.com/repo"}
 	srv := web.New(ctx, web.Deps{Config: cfg, Log: log, Bus: bus, Hub: hub, Queries: queries.New(d.R),
-		Catalog: cat, StaticFS: static.FS, Content: content.FS})
+		Catalog: cat, StaticFS: static.FS, Content: content.FS, Checker: tscheck.New(t.TempDir())})
 	ts.Config.Handler = srv.Handler()
 	t.Cleanup(func() { cancel(); ts.Close() })
 	jar, _ := cookiejar.New(nil)

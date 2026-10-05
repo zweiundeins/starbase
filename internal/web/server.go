@@ -16,6 +16,7 @@ import (
 	"starbase/internal/config"
 	"starbase/internal/cqrs"
 	"starbase/internal/queries"
+	"starbase/internal/tscheck"
 )
 
 type Server struct {
@@ -42,6 +43,11 @@ type Server struct {
 	sizeLimitIP  *limiter
 	sizeMu       sync.Mutex
 	sizes        map[[32]byte]map[string]any // playground code → $_size (playground_size.go)
+	checker      *tscheck.Checker            // nil without an embedded compiler
+	checkLimit   *limiter                    // playground type checks, per session
+	checkLimitIP *limiter
+	checkMu      sync.Mutex
+	checks       map[[32]byte][]tscheck.Diagnostic // playground code → its diagnostics (playground_check.go)
 
 	exportLimit   *limiter // the star catalog's downloads, per session
 	exportLimitIP *limiter
@@ -57,6 +63,7 @@ type Deps struct {
 	Catalog  *catalog.Catalog
 	StaticFS fs.FS
 	Content  fs.FS
+	Checker  *tscheck.Checker // optional: the playground's type check
 }
 
 func New(ctx context.Context, d Deps) *Server {
@@ -80,6 +87,10 @@ func New(ctx context.Context, d Deps) *Server {
 		sizeLimit:    newLimiter(3, 20), // size measurements: the client debounces edits
 		sizeLimitIP:  newLimiter(10, 60),
 		sizes:        map[[32]byte]map[string]any{},
+		checker:      d.Checker,
+		checkLimit:   newLimiter(3, 20), // like sizes: after debounced edits and runs
+		checkLimitIP: newLimiter(10, 60),
+		checks:       map[[32]byte][]tscheck.Diagnostic{},
 		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
 
 		exportLimit:   newLimiter(0.2, 3), // a download every five seconds, three in a row
@@ -138,6 +149,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /playground/run", s.playgroundRun)
 	mux.HandleFunc("GET /playground/snippet/{id}", s.snippetJSON)
 	mux.HandleFunc("POST /playground/size", s.playgroundSize)
+	mux.HandleFunc("POST /playground/check", s.playgroundCheck)
 	mux.HandleFunc("GET /playground/preview/{commit}/{slug}/{file...}", s.servePreviewFile)
 
 	// Demo data: a read-only signal stream for the live examples.

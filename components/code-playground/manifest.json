@@ -85,6 +85,16 @@
       "docs": {
         "description": "Initial files as JSON {\"component.js\": \"…\"}, merged over the child scripts (a file here wins); handy for server-rendered pages."
       }
+    },
+    {
+      "name": "diagnostics",
+      "attribute": "diagnostics",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "Problems per file, as JSON {\"component.js\": [{line, col, length, message, text}]}, for that file's editor (see sb-code-editor's diagnostics)."
+      }
     }
   ],
   "slots": [
