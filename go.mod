@@ -6,11 +6,11 @@ require (
 	github.com/CAFxX/httpcompression v0.0.9
 	github.com/a-h/templ v0.3.1020
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/andybalholm/brotli v1.2.5
+	github.com/andybalholm/brotli v1.2.6
 	github.com/benbjohnson/hashfs v0.2.2
 	github.com/evanw/esbuild v0.28.2
 	github.com/starfederation/datastar-go v1.2.2
-	github.com/tdewolff/minify/v2 v2.24.17
+	github.com/tdewolff/minify/v2 v2.24.18
 	github.com/yuin/goldmark v1.8.6
 	go.abhg.dev/goldmark/frontmatter v0.3.0
 	golang.org/x/oauth2 v0.37.0
