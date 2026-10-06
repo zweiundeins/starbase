@@ -168,7 +168,7 @@ func remove(list []*treeNode, n *treeNode) []*treeNode {
 func renderSortableTree(id, state string) string {
 	root, _ := parseTree(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" class=\"demo-tree\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree"))
+	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" data-ignore-morph class=\"demo-tree\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree"))
 	b.WriteString("\t<div data-tree-children data-tree-parent=\"\" aria-label=\"Solar System\">\n")
 	var nodes func(list []*treeNode, indent string)
 	nodes = func(list []*treeNode, indent string) {
@@ -199,7 +199,7 @@ func renderSortableTree(id, state string) string {
 func renderSortableTreeCard(id, state string) string {
 	root, _ := parseTree(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" class=\"demo-tree-card\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree-card"))
+	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" data-ignore-morph class=\"demo-tree-card\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree-card"))
 	tabindex := "0"
 	var nodes func(list []*treeNode, parent, indent string)
 	nodes = func(list []*treeNode, parent, indent string) {
