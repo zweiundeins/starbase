@@ -4,6 +4,7 @@ tag: sb-sortable-tree
 category: data
 summary: Move files and folders by dragging or with Alt and the arrow keys. The server applies it.
 author: derekr
+license: Beerware
 source: https://github.com/derekr/pd-rockets/tree/4f4111722763d2aa8f5851c397af026fcbe97e4f/rocket/sortable-tree
 tags: [drag and drop, sortable, tree, file tree, folders, reorder, keyboard, pd rockets]
 since: 2026-10-06
@@ -12,40 +13,52 @@ preview: |
     .demo-tree-card { display: block; inline-size: 12rem; }
     .demo-tree-card [data-tree-children] { display: grid; gap: 2px; }
     .demo-tree-card [data-tree-children] [data-tree-children] { padding-inline-start: 1.1rem; }
-    .demo-tree-card [data-tree-row] { padding: 0.25rem 0.5rem; background: var(--sb-surface-card); color: var(--sb-text-1); }
+    .demo-tree-card [data-tree-row], [data-drag-preview][data-tree-row] { padding: 0.25rem 0.5rem; background: var(--sb-surface-card); color: var(--sb-text-1); cursor: grab; touch-action: none; user-select: none; }
+    .demo-tree-card [data-tree-row] { position: relative; }
     .demo-tree-card [data-tree-kind="folder"] > [data-tree-row] { font-weight: 600; }
+    .demo-tree-card [data-tree-row]:focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: -2px; }
+    .demo-tree-card [data-dragging] { opacity: 0.35; }
+    .demo-tree-card [data-tree-into] { background: var(--sb-brand-subtle); outline: 1px solid var(--sb-brand); outline-offset: -1px; }
+    .demo-tree-card [data-tree-before]::before, .demo-tree-card [data-tree-end]::after { content: ""; display: block; block-size: 3px; background: var(--sb-brand); }
+    .demo-tree-card [data-tree-before]::before { position: absolute; inset: -3px 0 auto; }
+    [data-drag-preview][data-tree-row] { box-shadow: var(--sb-shadow-overlay, 0 8px 16px rgb(0 0 0 / 0.35)); cursor: grabbing; }
+    @media (forced-colors: active) {
+      .demo-tree-card [data-tree-before]::before, .demo-tree-card [data-tree-end]::after { forced-color-adjust: none; background: Highlight; }
+      .demo-tree-card [data-tree-into], .demo-tree-card [data-tree-row]:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+      .demo-tree-card [data-dragging], [data-drag-preview][data-tree-row] { outline: 1px dashed CanvasText; outline-offset: -1px; }
+    }
   </style>
   <sb-sortable-tree class="demo-tree-card">
     <div data-tree-children>
       <div data-tree-node="earth" data-tree-kind="folder">
         <div data-tree-row tabindex="0">🪐 Earth</div>
         <div data-tree-children data-tree-parent="earth">
-          <div data-tree-node="moon"><div data-tree-row tabindex="0">🌑 Moon</div></div>
+          <div data-tree-node="moon"><div data-tree-row tabindex="-1">🌑 Moon</div></div>
         </div>
       </div>
       <div data-tree-node="mars" data-tree-kind="folder">
-        <div data-tree-row tabindex="0">🪐 Mars</div>
+        <div data-tree-row tabindex="-1">🪐 Mars</div>
         <div data-tree-children data-tree-parent="mars">
-          <div data-tree-node="phobos"><div data-tree-row tabindex="0">🌑 Phobos</div></div>
+          <div data-tree-node="phobos"><div data-tree-row tabindex="-1">🌑 Phobos</div></div>
         </div>
       </div>
     </div>
   </sb-sortable-tree>
 usage: |
-  <sb-sortable-tree data-on:sb-tree-move="@post('/files/move', {payload: evt.detail})">
-    <div data-tree-children>
-      <div data-tree-node="docs" data-tree-kind="folder">
+  <sb-sortable-tree id="files" data-on:sb-tree-move="@post('/files/move', {payload: evt.detail})">
+    <div data-tree-children data-tree-parent="">
+      <div id="file-docs" data-tree-node="docs" data-tree-kind="folder">
         <div data-tree-row tabindex="0">docs</div>
         <div data-tree-children data-tree-parent="docs">
-          <div data-tree-node="readme"><div data-tree-row tabindex="0">README.md</div></div>
+          <div id="file-readme" data-tree-node="readme"><div data-tree-row tabindex="0">README.md</div></div>
         </div>
       </div>
-      <div data-tree-node="license"><div data-tree-row tabindex="0">LICENSE</div></div>
+      <div id="file-license" data-tree-node="license"><div data-tree-row tabindex="0">LICENSE</div></div>
     </div>
   </sb-sortable-tree>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-sortable-tree`: the same code, with its names in Starbase's `sb-` prefix.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-sortable-tree`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets`. For this tree they open and close a folder with a click on its row, declare its move event for the API table below, skip the move animation when the reader prefers reduced motion, and let it nest inside the other PD rockets surfaces, or they inside it.
 
 Folders and files the server renders and arranges, in compact rows like a file explorer. Drag a row, or focus it and hold Alt while you press the arrow keys, to move it among its siblings, into a folder or out of one. The component shows where the row would land, then emits `sb-tree-move` with the row, the folder it leaves, the folder it goes to and the row it goes before. It moves nothing itself: the server applies the move and sends the tree back, and the morph puts each row in its place with a short animation.
 
@@ -87,6 +100,11 @@ The server renders the tree with its arrangement in `data-state`: each folder's 
   }
   .demo-tree [data-tree-before]::before { position: absolute; inset: -3px 0 auto; }
   [data-drag-preview][data-tree-row] { box-shadow: var(--sb-shadow-overlay, 0 8px 16px rgb(0 0 0 / 0.35)); cursor: grabbing; }
+  @media (forced-colors: active) {
+    .demo-tree [data-tree-before]::before, .demo-tree [data-tree-end]::after { forced-color-adjust: none; background: Highlight; }
+    .demo-tree [data-tree-into], .demo-tree [data-tree-row]:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+    .demo-tree [data-dragging], [data-drag-preview][data-tree-row] { border-style: dashed; }
+  }
 </style>
 <sb-sortable-tree id="solar-moons" class="demo-tree" data-state="earth(moon phobos) mars(deimos) jupiter(europa io) callisto"
 	data-on:sb-tree-move="@get('/demo/arrange/sortable-tree', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
@@ -139,13 +157,15 @@ The tree is your page's markup, in four kinds of element:
 
 Give each node a unique `id`. The morph then moves nodes when the server's order changes, and the component sees the move and closes the folders the reader closed again. Without ids the morph rewrites nodes in their places, and a closed folder can open again after an answer.
 
+Datastar's official release (v1.0.4) crashes on a morph that moves a node with an id when the node holds a Rocket component ([#1209](https://github.com/starfederation/datastar/issues/1209), fixed for its next release). The build the install snippets load has the fix, so with it a row may hold one, such as an `sb-relative-time` for a file's date. On the official release, keep Rocket components out of the rows, or the ids off the nodes.
+
 | Event | Detail | When |
 |---|---|---|
 | `sb-tree-move` | `{ itemId, fromParent, toParent, before }` | A row was dropped, or a keyboard move committed. `fromParent` and `toParent` are folder ids, `""` for the top level; `before` is the id of the node it now precedes, or `""` for the end of the folder. |
 
 A drop on the middle of a folder's row puts the node at the end of that folder; on the upper or lower part of a row, before or after it. The component never offers a folder a place inside itself, nor a file as a parent. The event bubbles: when trees are nested, check `evt.target` in a handler that several of them reach.
 
-Folders open and close in the browser alone: the component hides a closed folder's list and keeps `aria-expanded` on its row, and the server never hears of it. A move into a closed folder opens it once the server has answered.
+A click on a folder's row opens or closes it, and so do Arrow Right and Arrow Left on the focused row; a click on a control inside the row (a link, a button, a field) is left to that control. Folders open and close in the browser alone: the component hides a closed folder's list and keeps `aria-expanded` on its row, and the server never hears of it. A move into a closed folder opens it once the server has answered.
 
 ## Keyboard
 
@@ -278,8 +298,8 @@ The component adds no styles: the tree is your page's markup, styled by your pag
 - `data-tree-before` on the row the moving one would land before, `data-tree-into` on the row of the folder it would go into, and `data-tree-end` on the list it would land at the end of.
 - `data-key-staging` on the tree while a keyboard move waits for Alt to be released.
 - `hidden` on a closed folder's list, and `aria-expanded` on every folder's row.
-- The row under the pointer is a copy of the row in `<body>`, marked `data-drag-preview`, with the original's size in `--sb-source-width` and `--sb-source-height`. A `<template data-sb-preview>` inside a row replaces the copy.
-- A `<template data-sb-target="before">` (or `"into"`, `"end"`) directly inside the tree is copied into the marked row or list as a drop marker, marked `data-sb-target-indicator`.
+- The row under the pointer is a copy of the row in `<body>`, marked `data-drag-preview`, with the original's size in `--sb-source-width` and `--sb-source-height`. A `<template data-sb-preview>` that is a direct child of the row replaces the copy: its content goes in a `<div>` with the template's class. One deeper inside the row is ignored.
+- A `<template data-sb-target="before">` (or `"into"`, `"end"`; `data-sb-target=""` serves every kind without its own) is copied into the marked row or list as a drop marker: a `<span data-sb-target-indicator="<kind>">` with `position: absolute`, which your CSS places. The templates must be direct children of the tree; one inside a list or a row is ignored.
 
 The example above shows one way to draw them.
 
@@ -289,4 +309,4 @@ Rows are focusable elements of your page, so their names are yours: the demo lab
 
 ## Licence
 
-The code is PD rockets', under its Beer-Ware licence, in `LICENSE-pd-rockets.txt` next to it. `go run ./cmd/vendorpd` brings in a newer release.
+The code is PD rockets', with Starbase's patches, under its Beer-Ware licence, in `LICENSE-pd-rockets.txt` next to it. `go run ./cmd/vendorpd` brings in a newer release.
