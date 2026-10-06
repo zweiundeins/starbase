@@ -26,7 +26,12 @@ func TestSortableTreeClick(t *testing.T) {
 }
 
 const sortableTreePrelude = `
+// The page's render stream sends the whole page once it connects, which
+// puts the demo back as the server rendered it: move after that.
+let framed = false
+document.addEventListener('datastar-fetch', (e) => { framed ||= e.detail.el === document.body && e.detail.type === 'datastar-patch-elements' })
 await customElements.whenDefined('sb-sortable-tree')
+await until(() => framed, 10000)
 const tree = document.getElementById('solar-moons')
 const row = (id) => tree.querySelector('[data-tree-node="' + id + '"] > [data-tree-row]')
 const list = (id) => tree.querySelector('[data-tree-node="' + id + '"] > [data-tree-children]')
