@@ -134,7 +134,7 @@ a[aria-current]::before {
 .bar:focus-visible { outline: 2px solid var(--_brand-light); outline-offset: calc(var(--_step) * 2); }
 .bar .now { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .bar svg { inline-size: 12px; block-size: 8px; color: var(--_muted); transition: rotate 120ms; }
-.bar[aria-expanded="true"] svg { rotate: 180deg; }
+nav:has(.panel:popover-open) .bar svg { rotate: 180deg; }
 .bar .track { position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 3px; }
 
 /* The same stepped frame as the bar (a clip-path would cut the drop shadow). */
@@ -184,7 +184,7 @@ rocket('sb-toc', {
 		content: string.trim.docs({ description: 'CSS selector of the element whose headings it lists. Default: the closest <article>, else <main>, else the page. A list of links inside the element wins over it.' }),
 		levels: string.trim.default('h2').docs({ description: 'The headings to list, e.g. "h2 h3". Deeper levels are indented.' }),
 		label: string.trim.default('Contents').docs({ description: 'Heading of the list, and the accessible name of the navigation.' }),
-		startLabel: string.trim.docs({ description: 'Adds a first entry that leads back to the start of the content, e.g. "Intro". It is the current one until the first heading is reached.' }),
+		startLabel: string.trim.docs({ description: 'Adds a first entry that leads back to the start of the content, e.g. "Intro". It is the current one while the start of the content is in view.' }),
 		compact: string.trim.docs({ description: 'A media query. While it matches, the list folds into a bar with the current section and the reading progress, and opens from it, e.g. "(max-width: 64rem)".' }),
 		progress: bool.docs({ description: 'Show the reading progress under the heading as well (the compact bar always shows it).' }),
 	}),
@@ -212,7 +212,6 @@ rocket('sb-toc', {
 		$$.counter = ''
 		$$.progress = 0
 		$$.compact = false
-		$$.open = false
 	},
 	onFirstRender: ({ $$, action, cleanup, emit, host, observeProps, props, refs: { bar, panel, list } }) => {
 		// The sections: [{ id, text, level, el }], in plain closure state; the
@@ -258,16 +257,39 @@ rocket('sb-toc', {
 		// viewport, below the page's scroll padding. At the very bottom of the
 		// page, the last one, however short it is.
 		let first = true
+		// The scrollport the content is read in: its own scroll box (or one
+		// around it), else the page.
+		const scrollport = () => {
+			for (let n = content; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+				const o = getComputedStyle(n).overflowY
+				if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n
+			}
+			return null
+		}
 		const measure = (force) => {
 			frame = 0
-			const root = document.documentElement
-			const pad = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0
-			const line = pad + (innerHeight - pad) * 0.3
+			const box = scrollport()
+			const port = box ? box.getBoundingClientRect() : { top: 0, bottom: innerHeight, height: innerHeight }
+			const pad = parseFloat(getComputedStyle(box || document.documentElement).scrollPaddingTop) || 0
+			const top = port.top + pad
+			const line = top + (port.bottom - top) * 0.3
+			const scrolled = box ? box.scrollTop : scrollY
+			const atEnd = box ? box.scrollTop + box.clientHeight >= box.scrollHeight - 2 : innerHeight + scrollY >= document.documentElement.scrollHeight - 2
+			// The content as laid out: when it is the scroll box itself, its
+			// scrolled contents, not the box that stays put.
+			const cr = content?.getBoundingClientRect()
+			const own = content && content === box
+			const cTop = cr ? (own ? cr.top + content.clientTop - box.scrollTop : cr.top) : 0
+			const cHeight = cr ? (own ? box.scrollHeight : cr.height) : 0
+			const start = peek(() => $$.start)
 			let idx = -1
 			items.forEach((item, i) => item.el.getBoundingClientRect().top <= line && (idx = i))
 			const last = items.at(-1)
-			if (last && innerHeight + scrollY >= root.scrollHeight - 2 && last.el.getBoundingClientRect().top < innerHeight) idx = items.length - 1
-			const start = peek(() => $$.start)
+			if (last && atEnd && last.el.getBoundingClientRect().top < port.bottom) idx = items.length - 1
+			// The start entry is current while the start of the content is still
+			// in view below the scroll padding, however short the intro is, and
+			// before anything has been scrolled at all.
+			else if (start && content && (scrolled <= 0 || cTop >= top - 1)) idx = -1
 			const id = idx >= 0 ? items[idx].id : ''
 			const total = items.length + (start ? 1 : 0)
 			if (force || id !== peek(() => $$.active)) {
@@ -282,9 +304,8 @@ rocket('sb-toc', {
 			// end comes into view (or, for content shorter than that, when its
 			// end passes the line).
 			if (content) {
-				const r = content.getBoundingClientRect()
-				const span = r.height - (innerHeight - line)
-				const p = span > 0 ? (line - r.top) / span : (line - r.top) / (r.height || 1)
+				const span = cHeight - (port.bottom - line)
+				const p = span > 0 ? (line - cTop) / span : (line - cTop) / (cHeight || 1)
 				$$.progress = Math.round(Math.min(1, Math.max(0, p)) * 1000) / 10
 			}
 		}
@@ -299,7 +320,8 @@ rocket('sb-toc', {
 
 		let frame = 0
 		const schedule = () => (frame ||= requestAnimationFrame(() => measure(false)))
-		addEventListener('scroll', schedule, { passive: true })
+		// Captured, so a scroll box around the content is heard too.
+		addEventListener('scroll', schedule, { capture: true, passive: true })
 		addEventListener('resize', schedule)
 
 		// New markup collects again, once per frame: any change to the list
@@ -346,7 +368,7 @@ rocket('sb-toc', {
 		observeProps(media, 'compact')
 
 		cleanup(() => {
-			removeEventListener('scroll', schedule)
+			removeEventListener('scroll', schedule, { capture: true })
 			removeEventListener('resize', schedule)
 			cancelAnimationFrame(frame)
 			cancelAnimationFrame(pending)
@@ -375,8 +397,7 @@ rocket('sb-toc', {
 			history.replaceState(history.state, '', location.pathname + location.search)
 		})
 		action('toggled', ({ evt }) => {
-			$$.open = evt.newState === 'open'
-			if ($$.open) requestAnimationFrame(reveal)
+			if (evt.newState === 'open') requestAnimationFrame(reveal)
 			else if (refocus) bar.focus()
 			refocus = false
 		})
@@ -397,8 +418,7 @@ rocket('sb-toc', {
 			<div class="track" part="progress" aria-hidden="true" data-show="!$$compact && $$showProgress">
 				<span class="fill" data-style:inline-size="$$progress + '%'"></span>
 			</div>
-			<button class="bar" part="bar" type="button" popovertarget="panel" data-ref:bar data-show="$$compact"
-				data-attr:aria-expanded="String($$open)">
+			<button class="bar" part="bar" type="button" popovertarget="panel" data-ref:bar data-show="$$compact">
 				<span class="label" data-text="$$label"></span>
 				<span class="now" data-text="$$current"></span>
 				<span class="count" aria-hidden="true" data-text="$$counter"></span>

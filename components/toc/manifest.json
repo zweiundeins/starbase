@@ -38,7 +38,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Adds a first entry that leads back to the start of the content, e.g. \"Intro\". It is the current one until the first heading is reached."
+        "description": "Adds a first entry that leads back to the start of the content, e.g. \"Intro\". It is the current one while the start of the content is in view."
       }
     },
     {
