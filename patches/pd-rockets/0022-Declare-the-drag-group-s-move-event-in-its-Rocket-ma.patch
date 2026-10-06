@@ -1,0 +1,37 @@
+From 47bc3be978f14ca7afea1de5b03df84f70ded52b Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:08:18 +0000
+Subject: [PATCH 22/22] Declare the drag group's move event in its Rocket
+ manifest
+
+Tools that read Rocket manifests, such as API tables in docs, then list the event and its detail.
+---
+ rocket/drag-group/client.ts | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/rocket/drag-group/client.ts b/rocket/drag-group/client.ts
+index 6ba2c8e..ed0ebcd 100644
+--- a/rocket/drag-group/client.ts
++++ b/rocket/drag-group/client.ts
+@@ -14,6 +14,18 @@ type Target = { list: HTMLElement; toList: string; before: string };
+ 
+ rocket(dragGroupContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: dragGroupContract.events.move,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "An item was dropped, or a keyboard move was committed. detail: { itemId, fromList, toList, before }: the item, the ids of the lists it leaves and joins (the same for a move within a list), and the item it now precedes in toList, or an empty string for the end.",
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     cleanup(markRocketHost(host));
+     const { list: listSelector, item: itemSelector } = dragGroupContract.selectors;
+-- 
+2.55.0
+

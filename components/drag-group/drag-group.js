@@ -21,6 +21,17 @@ import { installPointerDrag } from "./core/pointer-drag.js";
 import { installTargetIndicator } from "./core/visual-outlets.js";
 rocket("sb-drag-group", {
     mode: "light",
+    manifest: {
+        events: [
+            {
+                name: dragGroupContract.events.move,
+                kind: "custom-event",
+                bubbles: true,
+                composed: true,
+                description: "An item was dropped, or a keyboard move was committed. detail: { itemId, fromList, toList, before }: the item, the ids of the lists it leaves and joins (the same for a move within a list), and the item it now precedes in toList, or an empty string for the end.",
+            },
+        ],
+    },
     setup({ host, cleanup }) {
         cleanup(markRocketHost(host));
         const { list: listSelector, item: itemSelector } = dragGroupContract.selectors;
@@ -30,6 +41,18 @@ rocket("sb-drag-group", {
         const itemId = (item) => owns(item) && item.closest(listSelector) ? (item.dataset.dragItem ?? null) : null;
         const lists = () => [...host.querySelectorAll(listSelector)].filter(owns);
         const itemsIn = (list) => [...list.querySelectorAll(itemSelector)].filter((item) => owns(item) && item.closest(listSelector) === list);
+        /** The item at `index` in the nearest list that way with items, or an empty list on the way that takes focus. */
+        const across = (list, direction, index) => {
+            const all = lists();
+            for (let at = all.indexOf(list) + direction; direction && at >= 0 && at < all.length; at += direction) {
+                const items = itemsIn(all[at]);
+                if (items.length)
+                    return items[Math.min(index, items.length - 1)];
+                if (all[at].hasAttribute("tabindex"))
+                    return all[at];
+            }
+            return undefined;
+        };
         const flip = installFlip({ host, itemSelector, itemId });
         const indicator = installTargetIndicator(host);
         const targetAt = (x, y, sourceId) => {
@@ -94,11 +117,23 @@ rocket("sb-drag-group", {
                 emitMove(id, target);
             },
         });
+        const onListKeyDown = (event) => {
+            const list = event.target;
+            if (event.defaultPrevented || !(list instanceof HTMLElement) || !list.matches(listSelector) || !owns(list))
+                return;
+            const next = across(list, keyboard.direction(event, "focus").x, 0);
+            if (next) {
+                event.preventDefault();
+                next.focus();
+            }
+        };
         const onKeyDown = (event) => {
             const item = keyboardItem(event, itemSelector, owns);
             const id = item && itemId(item);
-            if (!item || !id)
+            if (!item || !id) {
+                onListKeyDown(event);
                 return;
+            }
             if (keyboard.matches("cancel", event)) {
                 if (staging.current) {
                     event.preventDefault();
@@ -112,12 +147,8 @@ rocket("sb-drag-group", {
                 keyboard.matches("focusFirst", event) ||
                 keyboard.matches("focusLast", event)) {
                 const source = item.closest(listSelector);
-                const groupLists = lists();
                 const siblings = source ? itemsIn(source) : [];
                 const index = siblings.indexOf(item);
-                const listIndex = source ? groupLists.indexOf(source) : -1;
-                const nextList = focusDirection.x ? groupLists[listIndex + focusDirection.x] : null;
-                const neighbors = nextList ? itemsIn(nextList) : [];
                 const next = focusDirection.y < 0
                     ? siblings[index - 1]
                     : focusDirection.y > 0
@@ -126,7 +157,7 @@ rocket("sb-drag-group", {
                             ? siblings[0]
                             : keyboard.matches("focusLast", event)
                                 ? siblings.at(-1)
-                                : neighbors[Math.min(index, neighbors.length - 1)];
+                                : source && across(source, focusDirection.x, index);
                 if (next) {
                     event.preventDefault();
                     next.focus();
@@ -136,6 +167,7 @@ rocket("sb-drag-group", {
             const { x: horizontal, y: vertical } = keyboard.direction(event, "move");
             if (!horizontal && !vertical)
                 return;
+            event.preventDefault();
             const sourceList = item.closest(listSelector);
             const stagedTarget = staging.current?.itemId === id ? staging.current.target : null;
             const currentList = stagedTarget?.list ?? sourceList;
@@ -157,7 +189,6 @@ rocket("sb-drag-group", {
                 before = candidates[nextPosition]?.dataset.dragItem ?? "";
             }
             const target = { list, toList: list.dataset.dropList ?? "", before };
-            event.preventDefault();
             staging.set(item, { itemId: id, target }, event);
             mark(target);
         };
