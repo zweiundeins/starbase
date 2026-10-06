@@ -1,0 +1,39 @@
+From cd5fa3aa67bcad9e42a6c8f66ee934c083d144d3 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:00:27 +0000
+Subject: [PATCH 40/41] Declare the sortable tree's move event in its Rocket
+ manifest
+
+Rocket publishes a component's events from the manifest key, so tools that
+read the manifest (documentation, editors) can list pd-tree-move and the
+fields of its detail.
+---
+ rocket/sortable-tree/client.ts | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/rocket/sortable-tree/client.ts b/rocket/sortable-tree/client.ts
+index ef585b2..4064008 100644
+--- a/rocket/sortable-tree/client.ts
++++ b/rocket/sortable-tree/client.ts
+@@ -13,6 +13,18 @@ type Target = { list: HTMLElement; parentId: string; before: string; into: boole
+ 
+ rocket(sortableTreeContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: sortableTreeContract.events.move,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          'A row was dropped, or a keyboard move committed. detail: { itemId, fromParent, toParent, before }: the parents are folder ids, "" for the top level; before is the id of the node it now precedes, "" for the end of the folder.',
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     cleanup(markRocketHost(host));
+     const { node: nodeSelector, row: rowSelector, children: childrenSelector } = sortableTreeContract.selectors;
+-- 
+2.55.0
+

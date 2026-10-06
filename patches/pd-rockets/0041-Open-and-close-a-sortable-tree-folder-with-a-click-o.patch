@@ -1,0 +1,58 @@
+From cfc60cfec2064baa3c8764d13a9b6438a5af7a77 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:01:22 +0000
+Subject: [PATCH 41/41] Open and close a sortable tree folder with a click on
+ its row
+
+Folders opened and closed only with the arrow keys, so a pointer user had
+no way to open a closed folder. A click on a folder's row now toggles it,
+unless it lands on a control inside the row or a listener cancelled it. A
+drag captures the pointer on the host, so its click never reaches a row.
+---
+ rocket/sortable-tree/client.ts | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/rocket/sortable-tree/client.ts b/rocket/sortable-tree/client.ts
+index 4064008..444ab5a 100644
+--- a/rocket/sortable-tree/client.ts
++++ b/rocket/sortable-tree/client.ts
+@@ -279,6 +279,21 @@ rocket(sortableTreeContract.tag, {
+       staging.set(row, { id, target }, event);
+       mark(target);
+     };
++    const onClick = (event: MouseEvent) => {
++      const target = event.target as HTMLElement;
++      const row = target.closest<HTMLElement>(rowSelector);
++      const id = row && owns(target) ? rowId(row) : null;
++      const node = row && id ? nodeFor(row) : null;
++      const list =
++        node?.dataset.treeKind === "folder" ? node.querySelector<HTMLElement>(`:scope > ${childrenSelector}`) : null;
++      const control = target.closest(
++        "button, a, input, select, textarea, [contenteditable]:not([contenteditable='false'])",
++      );
++      if (!id || !list || control || event.defaultPrevented) return;
++      if (list.hidden) collapsed.delete(id);
++      else collapsed.add(id);
++      syncExpanded();
++    };
+     const dispose = installPointerDrag({
+       host,
+       itemSelector: rowSelector,
+@@ -290,12 +305,14 @@ rocket(sortableTreeContract.tag, {
+       commit: emitMove,
+     });
+     host.addEventListener("keydown", onKeyDown);
++    host.addEventListener("click", onClick);
+     cleanup(() => {
+       observer.disconnect();
+       pendingExpansion = null;
+       staging.dispose();
+       focus.dispose();
+       host.removeEventListener("keydown", onKeyDown);
++      host.removeEventListener("click", onClick);
+       dispose();
+       flip.dispose();
+       indicator.clear();
+-- 
+2.55.0
+
