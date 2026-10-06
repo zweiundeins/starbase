@@ -22,7 +22,7 @@ playground:
 
 The sections of a long page: a blog post, documentation, a report. The entry you are reading is marked as you scroll, a link jumps to its section, and a bar shows how far through you are. Put it in a sticky sidebar. On narrow screens, `compact` folds it into a bar with the current section, and the list opens from there.
 
-It lists the headings of `content` (by default the closest `<article>`, else `<main>`), `levels` deep. Headings without an `id` get one from their text. **Or render the list on the server:** put an `<ol>` (or `<ul>`) of `#id` links inside the element and it uses those. That list is also what readers and crawlers see without JavaScript; nested lists become indented levels.
+It lists the headings of `content` (by default the closest `<article>`, else `<main>`), `levels` deep, and keeps watching them, so headings that arrive later join the list. On a page with neither, it reads the whole `<body>` once and doesn't watch it; set `content` there. Headings without an `id` get one from their text, but only once the module runs: give them ids on the server, so a shared link to a section lands there on load. **Or render the list on the server:** put an `<ol>` (or `<ul>`) of `#id` links inside the element and it uses those. That list is also what readers and crawlers see without JavaScript; nested lists become indented levels.
 
 ## Examples
 
@@ -53,7 +53,7 @@ The playground above lists the sections of this page. A sidebar usually sits in 
 </div>
 ```
 
-`start-label` adds a first entry that leads back to the start of the content; it is the current one until the first heading scrolls past. The counter shows where you are (`3/7`), and `progress` adds the reading progress under the heading.
+`start-label` adds a first entry that leads back to the start of the content; it is the current one while the start of the content is in view, however short the intro. The counter shows where you are (`3/7`), and `progress` adds the reading progress under the heading.
 
 ### A list from the server
 
@@ -98,7 +98,7 @@ On a phone, make the bar sticky at the top of the article: the reader always see
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
 - **Size and place:** it is as wide as its container. For a sticky sidebar, set `position: sticky`, an `inset-block-start` and a `max-block-size` on the element; the list scrolls inside it.
-- **Where "current" starts:** a section is current once its heading passes 30% of the way down the viewport, below the page's `scroll-padding-top`. Set that on `html` for a fixed header; links land below it too.
+- **Where "current" starts:** a section is current once its heading passes 30% of the way down the viewport, below the page's `scroll-padding-top`. Set that on `html` for a fixed header; links land below it too. Content in its own scroll box (`overflow: auto`) is followed in that box: its top, its scroll padding, its end.
 - **8-bit details:** the label and the counter use `--sb-font-display`, the marker on the rail is square while `--sb-notch` is 1 (round at 0), the progress bar is made of blocks (a plain bar at 0), and the compact bar and its list have a stepped frame `--sb-frame-step` thick. `data-sb-style="smooth"` turns them all off.
 - **Colours:** entries are `--sb-text-2`, the current one `--sb-text-1` with a `--sb-brand` marker, on a `--sb-border` rail; hover is `--sb-surface-hover`. The label is `--sb-text-muted`. The compact bar and list are `--sb-surface-card` and cast `--sb-shadow-overlay`; the focus ring is `--sb-focus-ring`.
 - **Parts:** `nav`, `head`, `label`, `counter`, `progress`, `list`, `link` (every entry), `bar` and `panel` (the compact list). Your page's `::part()` rules win over the component's own, without `!important`.
