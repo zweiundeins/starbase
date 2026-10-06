@@ -236,6 +236,7 @@ input {
 	.line { background: CanvasText; box-shadow: none; }
 	.handle, .tag, .expand { forced-color-adjust: none; background: Canvas; color: CanvasText; }
 	.handle { box-shadow: inset 0 0 0 2px CanvasText; }
+	.expand:hover { background: Highlight; color: HighlightText; }
 	.expand:focus-visible { outline: 2px solid Highlight; }
 }
 `
@@ -245,8 +246,9 @@ rocket('sb-image-compare', {
 		position: number.clamp(0, 100).default(50).docs({ description: 'Where the divider sits, in percent from the start edge. A new position from the page or the server replaces the reader\'s.' }),
 		beforeLabel: string.trim.docs({ description: 'Tag over the before side (slot "before", on the start side of the divider).' }),
 		afterLabel: string.trim.docs({ description: 'Tag over the after side (slot "after", on the end side of the divider).' }),
-		label: string.trim.default('Comparison').docs({ description: 'Accessible name of the divider, and of the full screen view.' }),
+		label: string.trim.docs({ description: 'Accessible name of the divider, and of the full screen view. Without it, the element\'s aria-label, else "Comparison".' }),
 		expandable: bool.docs({ description: 'Show a button that opens the comparison full screen (Escape closes it).' }),
+		expanded: bool.docs({ description: 'Full screen, as view state: a changed attribute from the page or the server opens or closes it, a removed one is ignored. The reader\'s own opening and closing never touch it; sb-expand reports them.' }),
 		expandLabel: string.default('Full screen').docs({ description: 'Accessible name of the full screen button.' }),
 		closeLabel: string.default('Exit full screen').docs({ description: 'Accessible name of the button while full screen.' }),
 	}),
@@ -263,16 +265,23 @@ rocket('sb-image-compare', {
 	// A new position must not re-render: that would drop keyboard focus and
 	// close full screen. Everything that changes is driven by signals.
 	renderOnPropChange: false,
-	setup: ({ $$, adoptStyles, cleanup, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, adoptStyles, cleanup, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
+		// Moved or re-inserted while full screen (a morph does that): the browser
+		// closed the popover without a toggle event, so say so here.
+		const states = internalsOf(host).states
+		if (states.has('expanded')) {
+			states.delete('expanded')
+			emit('sb-expand', { expanded: false })
+		}
 		const sync = () =>
 			peek(() => {
 				$$.before = props.beforeLabel
 				$$.after = props.afterLabel
 				$$.expandable = props.expandable
 				$$.name = props.label || host.ariaLabel || 'Comparison'
-				$$.expandText = props.expandLabel || 'Full screen'
-				$$.closeText = props.closeLabel || 'Exit full screen'
+				$$.expandText = props.expandLabel
+				$$.closeText = props.closeLabel
 			})
 		sync()
 		observeProps(sync)
@@ -296,8 +305,27 @@ rocket('sb-image-compare', {
 		cleanup(() => watch.disconnect())
 		overrideProp('position', () => peek(() => $$.pos), (v) => peek(() => ($$.pos = clamp(Number(v)))))
 	},
-	onFirstRender: ({ $$, action, emit, host, refs: { frame, stage, input, button } }) => {
+	onFirstRender: ({ $$, action, cleanup, emit, host, overrideProp, props, refs: { frame, stage, input, button } }) => {
 		const states = internalsOf(host).states
+		// Full screen from the page or the server: served is its last word, so
+		// only a changed attribute wins and a removed one is ignored (morphs also
+		// strip reflected attributes), as with sb-popover's open.
+		const expand = (on) => {
+			if (!frame.isConnected || on === frame.matches(':popover-open')) return
+			on ? frame.showPopover() : frame.hidePopover()
+		}
+		let served = host.hasAttribute('expanded') ? props.expanded : null
+		if (served) expand(true)
+		const watchExpanded = new MutationObserver(() =>
+			peek(() => {
+				if (!host.hasAttribute('expanded')) return void (served = null)
+				if (props.expanded === served) return
+				expand((served = props.expanded))
+			}),
+		)
+		watchExpanded.observe(host, { attributeFilter: ['expanded'] })
+		cleanup(() => watchExpanded.disconnect())
+		overrideProp('expanded', () => peek(() => $$.open), (v) => peek(() => expand(!!v && v !== 'false')))
 		const report = () => emit('sb-position', { position: peek(() => Math.round($$.pos * 10) / 10) })
 		const at = (x) => {
 			const r = stage.getBoundingClientRect()
