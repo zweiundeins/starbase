@@ -35,10 +35,10 @@
       "name": "label",
       "attribute": "label",
       "type": "string",
-      "default": "Comparison",
+      "default": "",
       "required": false,
       "docs": {
-        "description": "Accessible name of the divider, and of the full screen view."
+        "description": "Accessible name of the divider, and of the full screen view. Without it, the element's aria-label, else \"Comparison\"."
       }
     },
     {
@@ -49,6 +49,16 @@
       "required": false,
       "docs": {
         "description": "Show a button that opens the comparison full screen (Escape closes it)."
+      }
+    },
+    {
+      "name": "expanded",
+      "attribute": "expanded",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Full screen, as view state: a changed attribute from the page or the server opens or closes it, a removed one is ignored. The reader's own opening and closing never touch it; sb-expand reports them."
       }
     },
     {
