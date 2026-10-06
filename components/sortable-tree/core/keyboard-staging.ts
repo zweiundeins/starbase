@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 /** Modifier-held preview lifecycle; surfaces own their target and semantic commit. */
 export function installKeyboardStaging<T>(options: {
   host: HTMLElement;
