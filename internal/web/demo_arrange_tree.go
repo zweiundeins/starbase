@@ -142,7 +142,11 @@ func arrangeSortableTree(state string, move json.RawMessage) (string, error) {
 	for _, id := range order {
 		*to = append(*to, byID[id])
 	}
-	return formatTree(root), nil
+	state = formatTree(root)
+	if _, err := parseTree(state); err != nil {
+		return "", fmt.Errorf("%q in %q nests the tree too deep", m.ItemID, m.ToParent)
+	}
+	return state, nil
 }
 
 func remove(list []*treeNode, n *treeNode) []*treeNode {
