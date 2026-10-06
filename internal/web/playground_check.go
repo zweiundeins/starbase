@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -59,9 +60,13 @@ func (s *Server) typecheck(ctx context.Context, slug, name, code string) []tsche
 	}
 	files := []tscheck.File{{Name: name, Source: code}}
 	if c, ok := s.catalog.Get(slug); ok {
+		// The code stands in for the component's own module: its other modules,
+		// and their TypeScript (helpers, declarations) when it has any.
 		mods, _ := s.catalog.ModuleFiles(c)
+		srcs, _ := s.catalog.TypeScriptFiles(c)
+		maps.Copy(mods, srcs)
 		for n, b := range mods {
-			if n != strings.TrimPrefix(c.Script, c.Slug+"/") {
+			if n != strings.TrimPrefix(c.Script, c.Slug+"/") && n != strings.TrimPrefix(c.SourceFile, c.Slug+"/") {
 				files = append(files, tscheck.File{Name: n, Source: string(b)})
 			}
 		}

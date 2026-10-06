@@ -104,14 +104,19 @@ func TestCompile(t *testing.T) {
 	}
 	ctx := context.Background()
 	js, ds, err := c.Compile(ctx, []File{
-		{"x/x.ts", "import { pad } from './vendor/pad.js'\n\n// Kept.\nexport const label: string = pad('a')\n"},
+		{"x/x.ts", "import { pad } from './vendor/pad.js'\nimport { twice } from './lib/twice.ts'\n\n// Kept.\nexport const label: string = twice(pad('a'))\n"},
+		{"x/lib/twice.ts", "export const twice = (s: string): string => s + s\n"},
 		{"x/vendor/pad.js", "export const pad = (s) => ' ' + s\n"},
+		{"x/vendor/pad.d.ts", "export declare const pad: (s: string) => string\n"},
 	})
 	if err != nil || len(ds) != 0 {
 		t.Fatal(err, ds)
 	}
-	if got := js["x/x.js"]; !strings.Contains(got, "// Kept.\nexport const label = pad('a');") || !strings.Contains(got, "from './vendor/pad.js'") {
+	if got := js["x/x.js"]; !strings.Contains(got, "// Kept.\nexport const label = twice(pad('a'));") || !strings.Contains(got, "from './vendor/pad.js'") || !strings.Contains(got, "from './lib/twice.js'") {
 		t.Errorf("emitted:\n%s", got)
+	}
+	if len(js) != 2 || !strings.Contains(js["x/lib/twice.js"], "export const twice = (s) => s + s;") {
+		t.Errorf("a helper module, and nothing for the declarations: %v", js)
 	}
 	js, ds, err = c.Compile(ctx, []File{{"x/x.ts", "export const f = (n) => n\n"}})
 	if err != nil || js != nil || len(ds) != 1 || ds[0].File != "x/x.ts" || ds[0].Code != 7006 {

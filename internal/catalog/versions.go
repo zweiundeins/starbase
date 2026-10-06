@@ -32,6 +32,22 @@ func (cat *Catalog) ModuleFiles(c *Component) (map[string][]byte, error) {
 	return out, err
 }
 
+// TypeScriptFiles returns the component's .ts and .d.ts files, keyed by
+// path inside the folder: its source, when it is written in TypeScript, and
+// the modules and declarations that source may import.
+func (cat *Catalog) TypeScriptFiles(c *Component) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	err := fs.WalkDir(cat.FS, c.Slug, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".ts") {
+			return err
+		}
+		b, err := fs.ReadFile(cat.FS, p)
+		out[strings.TrimPrefix(p, c.Slug+"/")] = b
+		return err
+	})
+	return out, err
+}
+
 // Loaded returns the module files a page using c actually loads: its main
 // module and every file reached from it through relative imports (static or
 // dynamic), by name inside the folder. A file only the docs' examples import

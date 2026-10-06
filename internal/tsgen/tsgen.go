@@ -1,7 +1,8 @@
 // Package tsgen compiles the components written in TypeScript. The source is
-// components/<slug>/<slug>.ts, type-checked strictly against the patched
-// Datastar build, and the <slug>.js next to it is what the compiler emits
-// for it, committed and served like any other component's module.
+// components/<slug>/<slug>.ts, with any helper .ts modules and .d.ts
+// declarations in its folder, type-checked strictly against the patched
+// Datastar build. Each .ts gets the .js next to it that the compiler emits,
+// committed and served like any other module of the component.
 // `go tool task ts` rewrites the .js files; a test fails when one is stale.
 package tsgen
 
@@ -21,55 +22,61 @@ import (
 // Header starts every generated file.
 const Header = "// Generated from %s by `go tool task ts`: edit the TypeScript, not this file.\n"
 
-// Result is a TypeScript component that has errors, or whose .js is (or,
-// with write, was) stale.
+// Result is a TypeScript module that has errors, or whose .js is (or, with
+// write, was) stale.
 type Result struct {
 	Source      string // the .ts, relative to the root
 	Stale       bool
 	Diagnostics []tscheck.Diagnostic // File is relative to components/
 }
 
-// Sources returns the TypeScript components under root, as
-// components/<slug>/<slug>.ts.
-func Sources(root string) ([]string, error) {
-	all, err := filepath.Glob(filepath.Join(root, "components", "*", "*.ts"))
-	var out []string
-	for _, f := range all {
-		slug := filepath.Base(filepath.Dir(f))
-		if filepath.Base(f) == slug+".ts" {
-			rel, _ := filepath.Rel(root, f)
-			out = append(out, filepath.ToSlash(rel))
-		}
-	}
-	return out, err
-}
-
-// Refresh compiles every TypeScript component under root in one program and,
-// with write, rewrites the .js files that differ. Nothing is written while
-// any component has errors.
+// Refresh compiles the TypeScript of every component under root in one
+// program and, with write, rewrites the .js files that differ. Nothing is
+// written while any module has errors.
 func Refresh(ctx context.Context, c *tscheck.Checker, root string, write bool) ([]Result, error) {
-	sources, err := Sources(root)
-	if err != nil || len(sources) == 0 {
+	dirs, err := filepath.Glob(filepath.Join(root, "components", "*"))
+	if err != nil {
 		return nil, err
 	}
 	var files []tscheck.File
-	for _, src := range sources {
-		slug := path.Base(path.Dir(src))
-		dir := filepath.Join(root, "components", slug)
-		// The component and the modules it may import (vendored files), not the .js it becomes.
+	var sources []string // relative to components/
+	for _, dir := range dirs {
+		var mods []tscheck.File
+		ts := map[string]bool{}
 		err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-			rel, _ := filepath.Rel(dir, p)
-			rel = filepath.ToSlash(rel)
-			if err != nil || d.IsDir() || rel == slug+".js" || !(rel == slug+".ts" || strings.HasSuffix(rel, ".js") || strings.HasSuffix(rel, ".mjs")) {
+			if err != nil || d.IsDir() {
 				return err
 			}
+			rel, _ := filepath.Rel(filepath.Join(root, "components"), p)
+			rel = filepath.ToSlash(rel)
+			if !strings.HasSuffix(rel, ".ts") && !strings.HasSuffix(rel, ".js") && !strings.HasSuffix(rel, ".mjs") {
+				return nil
+			}
 			b, err := os.ReadFile(p)
-			files = append(files, tscheck.File{Name: slug + "/" + rel, Source: string(b)})
+			mods = append(mods, tscheck.File{Name: rel, Source: string(b)})
+			if strings.HasSuffix(rel, ".ts") && !strings.HasSuffix(rel, ".d.ts") {
+				ts[strings.TrimSuffix(rel, ".ts")] = true
+			}
 			return err
 		})
 		if err != nil {
 			return nil, err
 		}
+		if len(ts) == 0 {
+			continue // a JavaScript component
+		}
+		// The .ts files, and the modules they may import: not the .js they become.
+		for _, f := range mods {
+			if !strings.HasSuffix(f.Name, ".js") || !ts[strings.TrimSuffix(f.Name, ".js")] {
+				files = append(files, f)
+			}
+			if strings.HasSuffix(f.Name, ".ts") && !strings.HasSuffix(f.Name, ".d.ts") {
+				sources = append(sources, f.Name)
+			}
+		}
+	}
+	if len(sources) == 0 {
+		return nil, nil
 	}
 	js, ds, err := c.Compile(ctx, files)
 	if err != nil {
@@ -79,23 +86,23 @@ func Refresh(ctx context.Context, c *tscheck.Checker, root string, write bool) (
 	if len(ds) > 0 {
 		by := map[string][]tscheck.Diagnostic{}
 		for _, d := range ds {
-			src := "components/" + path.Dir(d.File) + "/" + path.Base(path.Dir(d.File)) + ".ts"
-			by[src] = append(by[src], d)
+			by[d.File] = append(by[d.File], d)
 		}
 		for src, ds := range by {
-			out = append(out, Result{Source: src, Diagnostics: ds})
+			out = append(out, Result{Source: "components/" + src, Diagnostics: ds})
 		}
 		sort.Slice(out, func(i, j int) bool { return out[i].Source < out[j].Source })
 		return out, nil
 	}
+	sort.Strings(sources)
 	for _, src := range sources {
-		slug := path.Base(path.Dir(src))
-		want := fmt.Sprintf(Header, slug+".ts") + js[slug+"/"+slug+".js"]
-		file := filepath.Join(root, "components", slug, slug+".js")
+		name := strings.TrimSuffix(src, ".ts") + ".js"
+		want := fmt.Sprintf(Header, path.Base(src)) + js[name]
+		file := filepath.Join(root, "components", filepath.FromSlash(name))
 		if got, _ := os.ReadFile(file); string(got) == want {
 			continue
 		}
-		out = append(out, Result{Source: src, Stale: true})
+		out = append(out, Result{Source: "components/" + src, Stale: true})
 		if write {
 			if err := os.WriteFile(file, []byte(want), 0o644); err != nil {
 				return nil, err

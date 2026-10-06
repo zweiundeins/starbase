@@ -39,6 +39,8 @@ components/my-widget/
 
 A component can also be written in TypeScript: rename `my-widget.js` to `my-widget.ts` and run `go tool task ts`. It type-checks the file strictly against the types of Datastar and Rocket and writes the compiled `my-widget.js` next to it, which you commit too: the site, the install snippets and the pinned versions all serve the JavaScript, and the TypeScript is what the playground opens. A test fails when the two drift apart. Pull requests only: the submission form takes JavaScript.
 
+The TypeScript can import other `.ts` modules from the component's folder (`import { clamp } from './lib/clamp.ts'`, compiled to a `.js` next to each), vendored JavaScript, and `.d.ts` files that declare its types (`vendor/chart.d.ts` next to `vendor/chart.js`). As for JavaScript components, nothing else: no npm packages and no `require()`; vendor a library into the folder instead.
+
 The front matter drives the gallery card:
 
 ```yaml

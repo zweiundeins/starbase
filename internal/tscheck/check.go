@@ -205,17 +205,21 @@ func (c *Checker) Check(ctx context.Context, files []File) ([]Diagnostic, error)
 }
 
 // Compile type-checks the .ts files among files strictly, with the others as
-// the modules they may import, and returns the JavaScript the compiler emits
-// for each, comments kept, by the name of its .js. When the code has errors,
-// it returns their diagnostics (with File set) instead.
+// the modules they may import (.d.ts files declare types), and returns the
+// JavaScript the compiler emits for each .ts, comments kept, by the name of
+// its .js. When the code has errors, it returns their diagnostics (with File
+// set) instead.
 func (c *Checker) Compile(ctx context.Context, files []File) (map[string]string, []Diagnostic, error) {
-	var roots []string
+	var roots, emitted []string
 	for _, f := range files {
 		if !validName(f.Name) {
 			return nil, nil, fmt.Errorf("tscheck: bad file name %q", f.Name)
 		}
 		if strings.HasSuffix(f.Name, ".ts") {
 			roots = append(roots, f.Name)
+			if !strings.HasSuffix(f.Name, ".d.ts") {
+				emitted = append(emitted, f.Name)
+			}
 		}
 	}
 	work, done, err := c.workspace(ctx, files, map[string]any{
@@ -238,7 +242,7 @@ func (c *Checker) Compile(ctx context.Context, files []File) (map[string]string,
 		return nil, ds, err
 	}
 	js := map[string]string{}
-	for _, r := range roots {
+	for _, r := range emitted {
 		name := strings.TrimSuffix(r, ".ts") + ".js"
 		b, err := os.ReadFile(filepath.Join(work, "out", filepath.FromSlash(name)))
 		if err != nil {

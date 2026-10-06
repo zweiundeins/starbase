@@ -94,7 +94,7 @@ With integrity in place, a changed file is refused instead of run. The autoloade
 go tool task new -- my-widget --category forms --author your-handle
 ```
 
-This creates `components/my-widget/README.md` (front matter + docs, where ```` ```html preview ```` blocks become live demos) and `my-widget.js` (the `rocket('sb-my-widget', …)` definition). To write it in TypeScript, rename that to `my-widget.ts` and run `go tool task ts`, which type-checks it strictly and writes the `my-widget.js` the site serves (commit both). Open `/components/my-widget` in the dev server. The page publishes Rocket's manifest and the server writes `manifest.json`, which drives the API tables. No Go changes are needed. See [/contribute](content/contribute.md) for the house rules.
+This creates `components/my-widget/README.md` (front matter + docs, where ```` ```html preview ```` blocks become live demos) and `my-widget.js` (the `rocket('sb-my-widget', …)` definition). To write it in TypeScript, rename that to `my-widget.ts` and run `go tool task ts`, which type-checks it strictly, with any helper `.ts` modules and `.d.ts` declarations in its folder, and writes the `.js` the site serves next to each module (commit both). Open `/components/my-widget` in the dev server. The page publishes Rocket's manifest and the server writes `manifest.json`, which drives the API tables. No Go changes are needed. See [/contribute](content/contribute.md) for the house rules.
 
 Every component page also gets a **Playground**, generated from the manifest: number props become sliders, booleans toggles, `oneOf` selects and strings inputs. Each control is bound to a local signal that drives the live element through `data-attr`. Tune it in the README front matter:
 

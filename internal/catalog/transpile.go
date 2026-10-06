@@ -40,7 +40,27 @@ func Transpile(src string) (Transpiled, error) {
 		}
 		return Transpiled{}, e
 	}
-	return Transpiled{Code: string(res.Code), Lines: sourceLines(string(res.Map), strings.Count(string(res.Code), "\n")+1)}, nil
+	code := tsImports(string(res.Code))
+	return Transpiled{Code: code, Lines: sourceLines(string(res.Map), strings.Count(code, "\n")+1)}, nil
+}
+
+// tsImports points relative imports of TypeScript modules at the JavaScript
+// they are compiled to, as tsc does (./util.ts becomes ./util.js).
+func tsImports(code string) string {
+	var at []int // where each specifier's ".ts" starts
+	for _, re := range importRes {
+		for _, m := range re.FindAllStringSubmatchIndex(code, -1) {
+			spec := code[m[4]:m[5]]
+			if (strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "../")) && strings.HasSuffix(spec, ".ts") && !strings.HasSuffix(spec, ".d.ts") {
+				at = append(at, m[5]-len(".ts"))
+			}
+		}
+	}
+	b := []byte(code)
+	for _, i := range at {
+		copy(b[i:], ".js")
+	}
+	return string(b)
 }
 
 // sourceLines reads a source map's mappings: for each of n generated lines,
