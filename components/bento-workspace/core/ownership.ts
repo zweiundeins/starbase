@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 /**
  * Registered hosts define gesture ownership without coupling core to surface tags or DOM attributes.
  * The registry lives on globalThis, so surfaces bundled with their own copy of core still see each other when nested.

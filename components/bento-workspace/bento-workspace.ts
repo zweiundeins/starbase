@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 import { rocket } from "datastar";
 import { bentoContract, type BentoMoveDetail, type BentoPosition, type BentoResizeDetail } from "./contracts/bento.ts";
 import { installFlip } from "./core/flip.ts";
