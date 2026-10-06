@@ -122,7 +122,7 @@ func renderContextMenu(id, state string) string {
 	shown, removed, focus, _ := menuLists(state)
 	menu := id + "-menu"
 	var b strings.Builder
-	fmt.Fprintf(&b, "<div id=\"%s\" class=\"demo-menu\" data-state=\"%s\"\n\tdata-on:sb-menu-action=\"%s\">\n\t<ul aria-label=\"Planets\">\n", id, state, arrangeOn("context-menu"))
+	fmt.Fprintf(&b, "<div id=\"%s\" data-ignore-morph class=\"demo-menu\" data-state=\"%s\"\n\tdata-on:sb-menu-action=\"%s\">\n\t<ul aria-label=\"Planets\">\n", id, state, arrangeOn("context-menu"))
 	for k, item := range shown {
 		name := html.EscapeString(bodies()[item].Name)
 		var off []string
