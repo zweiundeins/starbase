@@ -61,6 +61,8 @@ usage: |                   # optional
 
 `preview:` is the gallery card's live demo, so tune it to look good in a card. `usage:` is the smallest markup that shows how you'd use the component in your own page; the installation snippets use it, and fall back to `preview:`. Keep it free of card sizing, demo-only signals and state, and assets that only exist on Starbase.
 
+Components are MIT licensed. Code that comes from elsewhere under another licence names it with `license:` (an SPDX id the catalog knows, e.g. `Beerware`), and its page shows it.
+
 A fenced block tagged `html preview` renders twice: live on the page and as copyable source.
 
 ````markdown

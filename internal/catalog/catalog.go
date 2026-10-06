@@ -10,6 +10,7 @@
 package catalog
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -35,10 +36,21 @@ type Meta struct {
 	Preview  string   `yaml:"preview"`  // the gallery card's live demo
 	Usage    string   `yaml:"usage"`    // optional: the smallest markup to paste into a page; installation snippets fall back to Preview
 	Source   string   `yaml:"source"`   // optional: upstream repository (pinned)
+	License  string   `yaml:"license"`  // optional: an SPDX id from licenses; MIT when empty
 	Unlisted bool     `yaml:"unlisted"` // part of the site, not the gallery: served and documented, but not browsed
 
 	Playground PlaygroundMeta `yaml:"playground"`
 }
+
+// licenses are the SPDX ids a component may name: MIT, Starbase's own, and
+// the licences of code vendored from elsewhere.
+var licenses = []string{"MIT", "Beerware"}
+
+// LicenseID is the component's SPDX licence id.
+func (m Meta) LicenseID() string { return cmp.Or(m.License, "MIT") }
+
+// LicenseURL is the licence's text on spdx.org.
+func (m Meta) LicenseURL() string { return "https://spdx.org/licenses/" + m.LicenseID() + ".html" }
 
 // InstallMarkup is the markup the installation snippets end with: the
 // component's usage, or its gallery preview when it has none.
@@ -244,6 +256,9 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	}
 	if c.Source != "" && !strings.HasPrefix(c.Source, "https://github.com/") {
 		problems = append(problems, "front matter: source must be a https://github.com/ URL")
+	}
+	if c.License != "" && !slices.Contains(licenses, c.License) {
+		problems = append(problems, fmt.Sprintf("front matter: license %q must be one of %s", c.License, strings.Join(licenses, ", ")))
 	}
 	if len(c.Summary) > 90 {
 		problems = append(problems, "front matter: summary must be at most 90 characters")

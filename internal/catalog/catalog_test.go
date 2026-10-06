@@ -61,7 +61,7 @@ func TestLoadValid(t *testing.T) {
 	if !ok {
 		t.Fatal("widget not found")
 	}
-	if c.Name != "Widget" || c.Script != "widget/widget.js" || c.Hash == "" {
+	if c.Name != "Widget" || c.Script != "widget/widget.js" || c.Hash == "" || c.LicenseID() != "MIT" {
 		t.Errorf("unexpected component: %+v", c.Meta)
 	}
 	if len(c.Headings) != 1 || c.Headings[0].ID != "examples" {
@@ -78,7 +78,7 @@ func TestLoadReportsEveryProblem(t *testing.T) {
 	bad := strings.NewReplacer(
 		"tag: sb-widget", "tag: widget",
 		"category: forms", "category: spaceships",
-		"since: 2026-09-21", "since: yesterday",
+		"since: 2026-09-21", "since: yesterday\nlicense: GPL-3.0",
 	).Replace(validReadme)
 	fsys := fstest.MapFS{
 		"widget/README.md":   {Data: []byte(bad)},
@@ -91,7 +91,7 @@ func TestLoadReportsEveryProblem(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected errors")
 	}
-	for _, want := range []string{"must look like sb-my-widget", "unknown category", "YYYY-MM-DD", "kebab-case", "missing nojs.js", "reserved for the Datastar build"} {
+	for _, want := range []string{"must look like sb-my-widget", "unknown category", "YYYY-MM-DD", "kebab-case", "missing nojs.js", "reserved for the Datastar build", `license "GPL-3.0"`} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error does not mention %q:\n%v", want, err)
 		}

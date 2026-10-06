@@ -786,7 +786,7 @@ func Footer(s Shell) templ.Component {
 			templ_7745c5c3_Var36 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<footer class=\"site-footer\"><div class=\"wrap\"><span class=\"made-with\">Built with Go, templ, SQLite and <a href=\"https://data-star.dev\">Datastar</a>.</span> <span>Components are MIT licensed by their authors · <a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<footer class=\"site-footer\"><div class=\"wrap\"><span class=\"made-with\">Built with Go, templ, SQLite and <a href=\"https://data-star.dev\">Datastar</a>.</span> <span>Components are MIT licensed unless their page names another licence · <a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

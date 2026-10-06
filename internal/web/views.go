@@ -82,7 +82,7 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 		"codeRepository":      cmp.Or(comp.Source, repo),
 		"programmingLanguage": "JavaScript",
 		"runtimePlatform":     "Web browser (Datastar Rocket)",
-		"license":             "https://opensource.org/licenses/MIT",
+		"license":             comp.LicenseURL(),
 		"keywords":            strings.Join(comp.Tags, ", "),
 		"dateCreated":         comp.Since,
 		"author":              map[string]any{"@type": "Person", "name": comp.Author, "url": "https://github.com/" + comp.Author},

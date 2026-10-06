@@ -37,6 +37,7 @@ templ ComponentPage(s Shell, v ComponentView) {
 					<span class="tag-chip">{ t }</span>
 				}
 				<span class="muted">Since { v.Card.Since }</span>
+				<a class="muted" href={ safe(v.Component.LicenseURL()) }>{ v.Component.LicenseID() } licence</a>
 				if v.Component.Sizes.Total.Min > 0 {
 					<a class="muted" href="#size" title="Download size: minified, brotli">{ FmtBytes(v.Component.Sizes.Total.Min) }</a>
 				}
