@@ -167,6 +167,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /demo/data/list", s.demoList)
 	mux.HandleFunc("GET /demo/data/rows", s.demoRows)
 	mux.HandleFunc("GET /demo/data/rows/export", s.demoRowsExport)
+	mux.HandleFunc("GET /demo/arrange/{kind}", s.demoArrange) // drag-and-drop demos (demo_arrange.go)
 	mux.HandleFunc("OPTIONS /demo/", demoPreflight)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
