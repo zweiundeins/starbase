@@ -152,7 +152,7 @@ The tree is your page's markup, in four kinds of element:
 
 - A list, `data-tree-children`: the top level directly inside the tree, and one in each folder, with `data-tree-parent="<the folder's id>"`. The top level's parent is `""`.
 - A node, `data-tree-node="<id>"`, in a list. With `data-tree-kind="folder"` it is a folder; any other node is a file.
-- A row, `data-tree-row`, directly inside its node: what you see, drag and focus. Rows need `tabindex="0"` to take the keyboard focus.
+- A row, `data-tree-row`, directly inside its node: what you see, drag and focus. Rows need a `tabindex` to take the keyboard focus: `"0"` on every row puts each in the Tab order, as in the demo; `"0"` on the first and `"-1"` on the rest makes the tree one Tab stop, and the arrow keys still reach every row.
 - A folder's list, directly inside the folder's node, after its row.
 
 Give each node a unique `id`. The morph then moves nodes when the server's order changes, and the component sees the move and closes the folders the reader closed again. Without ids the morph rewrites nodes in their places, and a closed folder can open again after an answer.
