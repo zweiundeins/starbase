@@ -14,6 +14,9 @@ import (
 	"starbase/components"
 )
 
+// indent is what the front matter's YAML adds to a gallery card's lines.
+var indent = regexp.MustCompile(`(?m)^[ \t]+`)
+
 var arrangeHostRe = regexp.MustCompile(`id="([^"]+)"[^>]*data-state="([^"]*)"\s+data-on:[a-z-]+="@get\('/demo/arrange/([a-z-]+)'`)
 
 // Every arrange demo in a README is markup the server renders for its state,
@@ -23,6 +26,7 @@ func TestArrangeDemosMatchTheServer(t *testing.T) {
 	found := 0
 	for _, p := range readmes {
 		b, _ := fs.ReadFile(components.FS, p)
+		b = indent.ReplaceAll(b, nil)
 		for _, m := range arrangeHostRe.FindAllStringSubmatch(string(b), -1) {
 			a, ok := arrangers[m[3]]
 			if !ok {
@@ -30,7 +34,7 @@ func TestArrangeDemosMatchTheServer(t *testing.T) {
 				continue
 			}
 			found++
-			if want := a.render(m[1], m[2]); !strings.Contains(string(b), want) {
+			if want := indent.ReplaceAllString(a.render(m[1], m[2]), ""); !strings.Contains(string(b), want) {
 				t.Errorf("%s: the %s demo isn't what the server renders; want:\n%s", p, m[1], want)
 			}
 		}

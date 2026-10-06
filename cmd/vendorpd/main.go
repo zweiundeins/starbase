@@ -134,7 +134,7 @@ func legal(text string) string {
 	for _, l := range strings.Split(strings.TrimSpace(text), "\n") {
 		b.WriteString(strings.TrimRight(" * "+l, " ") + "\n")
 	}
-	return b.String() + " */\n"
+	return b.String() + " */\n\n" // detached by the blank line, so tsc keeps it when the first declaration is a type
 }
 
 // closure is entry and every module it imports relatively, transitively,
