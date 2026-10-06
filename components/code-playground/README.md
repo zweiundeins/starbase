@@ -54,7 +54,7 @@ Give it child `<script type="text/plain" data-file="…">` elements: `component.
 
 ### Your own things in the bar
 
-Elements with `slot="bar"` go into the top bar, between the file tabs and the run status. `sb-change` (`detail.files`) tells you when the code changed, on every edit. The editors' own `change` and `sb-change` (`{ name, value }`) stay inside the playground. Starbase's `/playground` puts a live size line there: every edit (debounced) posts `component.js` to the server, which minifies and compresses it like the catalog's own modules.
+Elements with `slot="bar"` go into the top bar, between the file tabs and the run status. Declare the signals they read outside the playground: Rocket moves `data-signals` on a component's children into the component's own scope. `sb-change` (`detail.files`) tells you when the code changed, on every edit. The editors' own `change` and `sb-change` (`{ name, value }`) stay inside the playground. Starbase's `/playground` puts a live size line there: every edit (debounced) posts `component.js` to the server, which minifies and compresses it like the catalog's own modules.
 
 ```html
 <sb-code-playground data-on:sb-change__debounce.400ms="@post('/size', {payload: {code: evt.detail.files['component.js']}})">

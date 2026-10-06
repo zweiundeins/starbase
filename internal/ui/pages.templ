@@ -181,12 +181,13 @@ templ MissionControl() {
 
 // PlaygroundSize is the size line in the playground's top bar, from the
 // $_size signal (web/playground_size.go measures every edit). The server
-// renders the first numbers, so they show before any edit.
+// renders the first numbers, so they show before any edit. The page declares
+// $_size outside the playground: Rocket moves data-signals on a component's
+// children into the component's own scope.
 templ PlaygroundSize(size map[string]any) {
 	<span
 		slot="bar"
 		class="pg-size"
-		data-signals:_size={ templ.JSONString(size) }
 		data-class:is-stale="$_size.stale"
 		data-attr:title="$_size.title"
 		title={ sizeText(size, "title") }
@@ -280,7 +281,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				Switch to TypeScript, or start JavaScript with <code>{ "// @ts-check" }</code>, to check the code against Datastar's types.
 			</p>
 		</header>
-		<div class="code-page__island" data-ignore-morph>
+		<div class="code-page__island" data-ignore-morph data-signals:_size={ templ.JSONString(v.Size) }>
 			<sb-code-playground
 				initial={ v.Initial }
 				deps={ v.Deps }

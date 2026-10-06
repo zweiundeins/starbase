@@ -31,6 +31,7 @@ try {
 	const output = () => [...root.querySelectorAll('.console div div')].map((d) => d.textContent).join(' || ')
 	const editor = () => root.querySelector('sb-code-editor')
 	const box = () => [...root.querySelectorAll('.check')].find((l) => l.textContent.includes('TypeScript'))?.querySelector('input')
+	check('the size line has its first numbers', /^[\d.]+ (B|kB)$/.test(document.querySelector('.pg-size strong').textContent), true)
 
 	pg.files = { 'component.js': "const a = 1\n\nthrow new Error('js on line 3')\n" }
 	check('JavaScript: a thrown error comes with its line', await until(() => output().includes('js on line 3') && output()), 'js on line 3 (line 3)')
