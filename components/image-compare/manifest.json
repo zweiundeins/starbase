@@ -1,0 +1,101 @@
+{
+  "tag": "sb-image-compare",
+  "props": [
+    {
+      "name": "position",
+      "attribute": "position",
+      "type": "number",
+      "default": 50,
+      "required": false,
+      "docs": {
+        "description": "Where the divider sits, in percent from the start edge. A new position from the page or the server replaces the reader's."
+      }
+    },
+    {
+      "name": "beforeLabel",
+      "attribute": "before-label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Tag over the before side (slot \"before\", on the start side of the divider)."
+      }
+    },
+    {
+      "name": "afterLabel",
+      "attribute": "after-label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Tag over the after side (slot \"after\", on the end side of the divider)."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Comparison",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the divider, and of the full screen view."
+      }
+    },
+    {
+      "name": "expandable",
+      "attribute": "expandable",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show a button that opens the comparison full screen (Escape closes it)."
+      }
+    },
+    {
+      "name": "expandLabel",
+      "attribute": "expand-label",
+      "type": "string",
+      "default": "Full screen",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the full screen button."
+      }
+    },
+    {
+      "name": "closeLabel",
+      "attribute": "close-label",
+      "type": "string",
+      "default": "Exit full screen",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the button while full screen."
+      }
+    }
+  ],
+  "slots": [
+    {
+      "name": "before",
+      "description": "The before side, on the start side of the divider: an <img>, a <picture> (the page sizes its <img>), or any element."
+    },
+    {
+      "name": "after",
+      "description": "The after side, on the end side. It sets the size of the comparison."
+    }
+  ],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-position",
+      "bubbles": true,
+      "composed": true,
+      "description": "After a drag, a tap or a key moved the divider. detail: { position } (percent)."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-expand",
+      "bubbles": true,
+      "composed": true,
+      "description": "When full screen opens or closes. detail: { expanded }."
+    }
+  ]
+}
