@@ -79,7 +79,7 @@ func run(tag string, only []string) error {
 	if err != nil {
 		return err
 	}
-	header := fmt.Sprintf("// From PD rockets by derekr (%s, %s), under the Beer-Ware licence\n// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd` with patches/pd-rockets applied,\n// pd- names renamed to sb-.\n", repo, tag)
+	header := legal(fmt.Sprintf("From PD rockets by derekr (%s, %s), vendored by\n`go run ./cmd/vendorpd` with patches/pd-rockets applied, pd- names renamed to sb-.\n\n%s", repo, tag, license))
 	for _, s := range surfaces {
 		if only[0] != "" && !slices.Contains(only, s.slug) {
 			continue
@@ -124,6 +124,17 @@ func run(tag string, only []string) error {
 	}
 	fmt.Printf("vendored %s (%s) with %d patches; now run go tool task ts\n", tag, commit[:12], len(patches))
 	return nil
+}
+
+// legal is text as a /*! */ comment, which esbuild keeps in the .min files
+// and the bundle, so the licence notice goes wherever the code goes.
+func legal(text string) string {
+	var b strings.Builder
+	b.WriteString("/*!\n")
+	for _, l := range strings.Split(strings.TrimSpace(text), "\n") {
+		b.WriteString(strings.TrimRight(" * "+l, " ") + "\n")
+	}
+	return b.String() + " */\n"
 }
 
 // closure is entry and every module it imports relatively, transitively,
