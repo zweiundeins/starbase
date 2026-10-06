@@ -1,9 +1,11 @@
 // Command vendorpd brings PD rockets (https://github.com/derekr/pd-rockets,
-// by derekr, Beer-Ware licence) into components/: for each surface, its
-// TypeScript and the core modules it imports, with the pd- names renamed to
-// sb-, the runtime import pointed at 'datastar' and the relative imports at
-// the folder's own .ts files. The README, manifest and anything else of
-// Starbase's in those folders stay. Run `go tool task ts` after it.
+// by derekr, Beer-Ware licence) into components/: the release with the
+// patches in patches/pd-rockets applied (each an upstream candidate), then
+// for each surface its TypeScript and the core modules it imports, with the
+// pd- names renamed to sb-, the runtime import pointed at 'datastar' and the
+// relative imports at the folder's own .ts files. The README, manifest and
+// anything else of Starbase's in those folders stay. Run `go tool task ts`
+// after it.
 //
 //	go run ./cmd/vendorpd [-tag v2026-09-28-2] [-only sortable-list,drag-group]
 package main
@@ -42,17 +44,6 @@ var (
 	tagRe    = regexp.MustCompile(`\btag: "(sb-[a-z-]+)"`)
 )
 
-// fixes are the edits the vendored code needs here, each an upstream
-// candidate. A fix that no longer applies stops the run: look again.
-var fixes = []struct{ file, old, new, why string }{
-	{
-		"context-menu/context-menu.ts",
-		"setup({ host, cleanup }: { host: MenuHost; cleanup: (fn: () => void) => void }) {\n    installContextMenu(host, cleanup);",
-		"setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {\n    installContextMenu(host as MenuHost, cleanup);",
-		"the host gets the menu methods in setup: Rocket's typed setup context hands a plain element",
-	},
-}
-
 func main() {
 	tag := flag.String("tag", "v2026-09-28-2", "the PD rockets release to vendor")
 	only := flag.String("only", "", "vendor only these components (slugs, separated by commas)")
@@ -72,7 +63,14 @@ func run(tag string, only []string) error {
 	if out, err := exec.Command("git", "clone", "-q", "--depth", "1", "--branch", tag, repo+".git", tmp).CombinedOutput(); err != nil {
 		return fmt.Errorf("clone %s: %v: %s", tag, err, out)
 	}
-	sha, err := exec.Command("git", "-C", tmp, "rev-parse", "HEAD").Output()
+	patches, _ := filepath.Glob(filepath.Join("patches", "pd-rockets", "*.patch"))
+	if len(patches) > 0 {
+		args := append([]string{"-C", tmp, "-c", "user.name=vendor", "-c", "user.email=vendor@localhost", "am", "-q"}, abs(patches)...)
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			return fmt.Errorf("apply patches/pd-rockets: %v: %s", err, out)
+		}
+	}
+	sha, err := exec.Command("git", "-C", tmp, "rev-parse", tag+"^{commit}").Output()
 	if err != nil {
 		return err
 	}
@@ -81,7 +79,7 @@ func run(tag string, only []string) error {
 	if err != nil {
 		return err
 	}
-	header := fmt.Sprintf("// From PD rockets by derekr (%s, %s), under the Beer-Ware licence\n// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd`, pd- names renamed to sb-.\n", repo, tag)
+	header := fmt.Sprintf("// From PD rockets by derekr (%s, %s), under the Beer-Ware licence\n// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd` with patches/pd-rockets applied,\n// pd- names renamed to sb-.\n", repo, tag)
 	for _, s := range surfaces {
 		if only[0] != "" && !slices.Contains(only, s.slug) {
 			continue
@@ -111,14 +109,6 @@ func run(tag string, only []string) error {
 			} else if m := tagRe.FindStringSubmatch(code); m != nil && m[1] != "sb-"+s.slug {
 				return fmt.Errorf("%s: its tag is %s, but the component is sb-%s", f, m[1], s.slug)
 			}
-			for _, fx := range fixes {
-				if fx.file == s.slug+"/"+to {
-					if !strings.Contains(code, fx.old) {
-						return fmt.Errorf("%s: the fix (%s) no longer applies", fx.file, fx.why)
-					}
-					code = strings.Replace(code, fx.old, fx.new, 1)
-				}
-			}
 			out := filepath.Join(dir, filepath.FromSlash(to))
 			if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 				return err
@@ -132,7 +122,7 @@ func run(tag string, only []string) error {
 		}
 		fmt.Printf("%s: %d files from %s\n", dir, len(files), "rocket/"+s.dir)
 	}
-	fmt.Printf("vendored %s (%s); now run go tool task ts\n", tag, commit[:12])
+	fmt.Printf("vendored %s (%s) with %d patches; now run go tool task ts\n", tag, commit[:12], len(patches))
 	return nil
 }
 
@@ -233,4 +223,13 @@ func clear(dir string) error {
 		os.Remove(strings.TrimSuffix(f, ".ts") + ".js")
 	}
 	return nil
+}
+
+// abs makes paths absolute: git am runs in the clone.
+func abs(paths []string) []string {
+	out := make([]string, len(paths))
+	for i, p := range paths {
+		out[i], _ = filepath.Abs(p)
+	}
+	return out
 }

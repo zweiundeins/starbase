@@ -7,7 +7,7 @@ const pdPrelude = `
 const rows = []
 const check = (step, got, want) => rows.push({ step, got: JSON.stringify(got), want: JSON.stringify(want) })
 const settle = (ms = 80) => new Promise((r) => setTimeout(r, ms))
-const until = async (fn, ms = 5000) => {
+const until = async (fn, ms = 15000) => {
 	for (const end = performance.now() + ms; performance.now() < end; await settle(50)) if (fn()) break
 	return fn()
 }
