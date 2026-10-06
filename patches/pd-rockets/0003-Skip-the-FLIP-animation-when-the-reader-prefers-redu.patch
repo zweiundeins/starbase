@@ -1,0 +1,25 @@
+From d8d22a94ef9b2db4980b347618d31c0a7ea524b8 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 21:46:51 +0000
+Subject: [PATCH 3/3] Skip the FLIP animation when the reader prefers reduced
+ motion
+
+---
+ core/flip.ts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/flip.ts b/core/flip.ts
+index c32a724..75712ab 100644
+--- a/core/flip.ts
++++ b/core/flip.ts
+@@ -20,6 +20,7 @@ function capture(options: FlipOptions): Map<string, Rect> {
+ }
+ 
+ function play(options: FlipOptions, before: Map<string, Rect>): void {
++  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+   options.host.querySelectorAll<HTMLElement>(options.itemSelector).forEach((item) => {
+     const id = options.itemId(item);
+     const first = id ? before.get(id) : undefined;
+-- 
+2.55.0
+

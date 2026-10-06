@@ -1,0 +1,29 @@
+From ecd5cc6d05918bd55ff50517c66c3a182e8827ec Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 21:46:51 +0000
+Subject: [PATCH 2/3] Share the host registry between copies of core, so
+ separately bundled surfaces nest
+
+---
+ core/ownership.ts | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/core/ownership.ts b/core/ownership.ts
+index 630aebe..0ed3f77 100644
+--- a/core/ownership.ts
++++ b/core/ownership.ts
+@@ -1,5 +1,9 @@
+-/** Registered hosts define gesture ownership without coupling core to surface tags or DOM attributes. */
+-const hosts = new WeakSet<HTMLElement>();
++/**
++ * Registered hosts define gesture ownership without coupling core to surface tags or DOM attributes.
++ * The registry lives on globalThis, so surfaces bundled with their own copy of core still see each other when nested.
++ */
++const registry = globalThis as typeof globalThis & { [key: symbol]: WeakSet<HTMLElement> | undefined };
++const hosts = (registry[Symbol.for("pd-rockets.hosts")] ??= new WeakSet<HTMLElement>());
+ 
+ export function markRocketHost(host: HTMLElement): () => void {
+   hosts.add(host);
+-- 
+2.55.0
+
