@@ -169,7 +169,7 @@ rocket('sb-code-editor', {
         $$.code = live.get(host) ?? server();
         const mirror = () => Object.assign($$, { lang: props.language, gutter: props.lineNumbers, tab: props.tabSize, readonly: props.readonly, disabled: props.disabled });
         mirror();
-        observeProps(mirror, 'language', 'lineNumbers', 'tabSize', 'readonly', 'disabled');
+        observeProps(() => peek(mirror), 'language', 'lineNumbers', 'tabSize', 'readonly', 'disabled');
         Prism || import('./vendor/prism.js').then((m) => ((Prism = m.default), host.isConnected && ($$.ready = 1)));
         // Rocket clears local signals when the element is removed, and computeds
         // may run once more: treat missing code as empty.

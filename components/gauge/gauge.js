@@ -1,4 +1,15 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// observeProps callbacks run inside the effect that set the attribute (a
+// data-attr binding): reads in them must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
 const rgbCache = new Map()
@@ -80,7 +91,7 @@ rocket('sb-gauge', {
 			$$.shown = Number(props.value).toFixed(props.decimals) + props.unit
 		}
 		sync()
-		observeProps(sync)
+		observeProps(() => peek(sync))
 	},
 	render: ({ html, props: { label, min, max } }) => html`
 		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true"></canvas>

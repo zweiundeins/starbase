@@ -16,6 +16,8 @@ All notable changes to this project are documented here. The format follows
 
 - `sb-code-playground`: setting `files` while the console had output threw, and an error thrown while the code loads now shows its line.
 - The playground's size line read "undefined" until the first edit when its modules came from the browser's cache.
+- `sb-pixel-board`: a `palette` bound to a signal (`data-attr`) on an element added after load overflowed the stack. It, `sb-code-editor`, `sb-count-up`, `sb-gauge`, `sb-qr-code` and `sb-relative-time` no longer make such a binding depend on their own state.
+- `sb-tree`: selected rows and the open arrows stay visible in forced colours.
 
 ## [0.6.0] - 2026-10-01
 

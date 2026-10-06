@@ -1,4 +1,15 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// observeProps callbacks run inside the effect that set the attribute (a
+// data-attr binding): reads in them must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 // A 16-colour palette tuned to the site: space, steel, violet, sky, nature, fire.
 const PALETTE = [
@@ -214,9 +225,9 @@ rocket('sb-pixel-board', {
 		})
 		action('blur', () => (($$.cur = -1), redraw()))
 
-		observeProps(() => (decode(), redraw()), 'cells', 'size')
-		observeProps(() => ($$.palette = props.palette, redraw()), 'palette')
-		observeProps(() => ($$.color = props.color), 'color')
+		observeProps(() => peek(() => (decode(), redraw())), 'cells', 'size')
+		observeProps(() => peek(() => (($$.palette = props.palette), redraw())), 'palette')
+		observeProps(() => peek(() => ($$.color = props.color)), 'color')
 		if (from !== props.cells || buf?.length !== n() * n()) decode()
 		$$.label = () => ($$.v, describe($$.cur))
 		redraw()

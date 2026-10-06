@@ -66,6 +66,12 @@ const styles = /* css */ `
 .busy::after { content: "…"; animation: dots 1s steps(3) infinite; display: inline-block; inline-size: 1.2em; overflow: hidden; vertical-align: bottom; }
 @keyframes dots { from { inline-size: 0 } }
 @media (prefers-reduced-motion: reduce) { .caret::before, .busy::after { transition: none; animation: none; } }
+@media (forced-colors: active) {
+	.caret::before { forced-color-adjust: none; background: CanvasText; }
+	[role="treeitem"][aria-selected="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+	[role="treeitem"][aria-selected="true"] .caret::before { background: HighlightText; }
+	[role="treeitem"]:not([aria-selected="true"], :focus-visible):hover { outline: 1px solid Highlight; outline-offset: -1px; }
+}
 `
 
 rocket('sb-tree', {

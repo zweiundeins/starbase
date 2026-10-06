@@ -1,4 +1,15 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// observeProps callbacks run inside the effect that set the attribute (a
+// data-attr binding): reads in them must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 // Counts a number up (or down) to its value when it scrolls into view.
 //
@@ -86,11 +97,13 @@ rocket('sb-count-up', {
 		io.observe(host)
 		cleanup(() => (io.disconnect(), cancelAnimationFrame(raf)))
 
-		observeProps(() => {
-			update()
-			if (!counted) return show(props.from) // not seen yet: still waiting at the start
-			visible && !still ? count(shown, props.value) : settle()
-		})
+		observeProps(() =>
+			peek(() => {
+				update()
+				if (!counted) return show(props.from) // not seen yet: still waiting at the start
+				visible && !still ? count(shown, props.value) : settle()
+			}),
+		)
 	},
 	render: ({ html }) => html`<span><span class="sr" data-text="$$final"></span><span part="value" aria-hidden="true" data-text="$$text"></span></span>`,
 })
