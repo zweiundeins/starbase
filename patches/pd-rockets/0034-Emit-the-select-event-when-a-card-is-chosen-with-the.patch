@@ -1,0 +1,70 @@
+From a764c7f9a2955cbb4eb5dd5a286dd26f70a7bbb1 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:06:26 +0000
+Subject: [PATCH 34/35] Emit the select event when a card is chosen with the
+ pointer
+
+The Hono adapter describes pd-kanban-select as keyboard or pointer selection, but only arrow focus emitted it. A primary pointerdown on a card now emits it too, unless it lands on a control inside the card other than its handle, the same rule that decides whether a drag starts.
+---
+ rocket/kanban/client.ts | 25 ++++++++++++++++++++-----
+ 1 file changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 2641b47..6df05ad 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -79,18 +79,31 @@ rocket(kanbanContract.tag, {
+     const isCard = (element: HTMLElement) => element.matches(kanbanContract.selectors.card);
+     // A lane the page made focusable (tabindex) is a focus stop while it has no cards.
+     const emptyStop = (lane: HTMLElement) => lane.hasAttribute("tabindex") && cardsIn(lane).length === 0;
+-    const select = (stop: HTMLElement | undefined): void => {
+-      if (!stop) return;
+-      stop.focus();
+-      if (!isCard(stop)) return;
++    const emitSelect = (card: HTMLElement): void => {
+       host.dispatchEvent(
+         new CustomEvent(kanbanContract.events.select, {
+           bubbles: true,
+           composed: true,
+-          detail: { cardId: stop.dataset.kanbanCard ?? "" },
++          detail: { cardId: card.dataset.kanbanCard ?? "" },
+         }),
+       );
+     };
++    const select = (stop: HTMLElement | undefined): void => {
++      if (!stop) return;
++      stop.focus();
++      if (isCard(stop)) emitSelect(stop);
++    };
++    const onPointerDown = (event: PointerEvent) => {
++      const target = event.target;
++      if (event.button !== 0 || !(target instanceof HTMLElement) || !owns(target)) return;
++      if (
++        target.closest("button, a, input, select, textarea, [contenteditable]:not([contenteditable='false'])") &&
++        !target.closest(kanbanContract.selectors.cardMain)
++      )
++        return;
++      const card = target.closest<HTMLElement>(kanbanContract.selectors.card);
++      if (card && owns(card)) emitSelect(card);
++    };
+     const targetAt = (x: number, y: number, itemId: string): Target | null => {
+       const lane = document.elementFromPoint(x, y)?.closest<HTMLElement>(kanbanContract.selectors.lane);
+       if (!lane || !owns(lane)) return null;
+@@ -228,12 +241,14 @@ rocket(kanbanContract.tag, {
+       markTarget(target);
+     };
+     host.addEventListener("keydown", onKeyDown);
++    host.addEventListener("pointerdown", onPointerDown);
+     cleanup(() => {
+       staging.dispose();
+       focus.dispose();
+       pointerDispose();
+       flip.dispose();
+       host.removeEventListener("keydown", onKeyDown);
++      host.removeEventListener("pointerdown", onPointerDown);
+       clearMarks();
+       clearDragging();
+     });
+-- 
+2.55.0
+

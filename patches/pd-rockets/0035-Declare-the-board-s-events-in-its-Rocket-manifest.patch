@@ -1,0 +1,44 @@
+From 33fce89609d4dfb71621a6fc220fe205f2241e2d Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:06:47 +0000
+Subject: [PATCH 35/35] Declare the board's events in its Rocket manifest
+
+Rocket publishes the manifest with the element, so tools that read it, such as API tables and editors, list pd-kanban-move and pd-kanban-select with their details.
+---
+ rocket/kanban/client.ts | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 6df05ad..47a8131 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -14,6 +14,26 @@ type Target = { col: number; before: string; lane: HTMLElement };
+ 
+ rocket(kanbanContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: kanbanContract.events.move,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "A card was dropped, or a keyboard move committed. detail: { cardId, col, before }: col is the lane's " +
++          'data-col as a number, before the id of the card it now precedes in that lane, or "" for the end.',
++      },
++      {
++        name: kanbanContract.events.select,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description: "A card was selected: arrow focus moved to it, or the pointer pressed it. detail: { cardId }.",
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     cleanup(markRocketHost(host));
+     const owns = (element: HTMLElement) => ownsRocketElement(host, element);
+-- 
+2.55.0
+

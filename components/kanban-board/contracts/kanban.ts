@@ -1,5 +1,13 @@
-// From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), under the Beer-Ware licence
-// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd`, pd- names renamed to sb-.
+/*!
+ * From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), vendored by
+ * `go run ./cmd/vendorpd` with patches/pd-rockets applied, pd- names renamed to sb-.
+ *
+ * THE BEER-WARE LICENSE (Revision 42)
+ *
+ * PD rockets contributors wrote this software. As long as you retain this notice,
+ * you can do whatever you want with it. If we meet someday and you think this
+ * software is worth it, you can buy us a beer in return.
+ */
 import { cancelKeys, focusKeys, moveKeys } from "../core/keyboard.ts";
 
 export const kanbanContract = {
@@ -32,6 +40,8 @@ export type KanbanKeySlot =
   | "moveDown"
   | "moveLeft"
   | "moveRight"
+  | "moveFirst"
+  | "moveLast"
   | "cancel";
 
 export type KanbanKeyboard = Partial<Record<KanbanKeySlot, readonly string[]>>;
@@ -42,6 +52,8 @@ export const defaultKanbanKeyboard: Readonly<Record<KanbanKeySlot, readonly stri
   selectLeft: focusKeys.focusLeft,
   selectRight: focusKeys.focusRight,
   ...moveKeys,
+  moveFirst: ["Alt+Home"],
+  moveLast: ["Alt+End"],
   ...cancelKeys,
 };
 

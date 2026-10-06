@@ -2,5 +2,20 @@
   "tag": "sb-kanban-board",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-kanban-move",
+      "bubbles": true,
+      "composed": true,
+      "description": "A card was dropped, or a keyboard move committed. detail: { cardId, col, before }: col is the lane's data-col as a number, before the id of the card it now precedes in that lane, or \"\" for the end."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-kanban-select",
+      "bubbles": true,
+      "composed": true,
+      "description": "A card was selected: arrow focus moved to it, or the pointer pressed it. detail: { cardId }."
+    }
+  ]
 }

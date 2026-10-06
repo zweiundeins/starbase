@@ -1,0 +1,49 @@
+From 9fe2af66764d766c078c70fcfcbeec18140124a1 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:05:01 +0000
+Subject: [PATCH 31/35] Keep a card's row when a keyboard move changes lanes
+
+Alt+Left and Alt+Right put the card at the end of the neighbouring lane, wherever it was in its own. It now lands at the same index there, clamped to that lane's length, so the move matches what the reader sees, and Alt+Up and Alt+Down still adjust it before Alt is released.
+---
+ rocket/kanban/client.ts | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 25daf9c..be509fb 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -188,18 +188,19 @@ rocket(kanbanContract.tag, {
+       const currentIndex = currentLane ? allLanes.indexOf(currentLane) : sourceIndex;
+       const targetLane = allLanes[currentIndex + direction];
+       if (!targetLane) return;
+-      let before = "";
+-      if (rowDirection) {
+-        const candidates = cardsIn(targetLane).filter((candidate) => candidate !== card);
+-        const position = stagedTarget
+-          ? stagedTarget.before
+-            ? candidates.findIndex((candidate) => candidate.dataset.kanbanCard === stagedTarget.before)
+-            : candidates.length
+-          : cardsIn(targetLane).indexOf(card);
+-        const nextPosition = Math.max(0, Math.min(candidates.length, position + rowDirection));
+-        if (nextPosition === position) return;
+-        before = candidates[nextPosition]?.dataset.kanbanCard ?? "";
+-      }
++      const others = (inLane: HTMLElement) => cardsIn(inLane).filter((candidate) => candidate !== card);
++      const position = stagedTarget
++        ? stagedTarget.before
++          ? others(stagedTarget.lane).findIndex((candidate) => candidate.dataset.kanbanCard === stagedTarget.before)
++          : others(stagedTarget.lane).length
++        : lane
++          ? cardsIn(lane).indexOf(card)
++          : 0;
++      // Across lanes the card keeps its row, clamped to the target lane's length.
++      const candidates = others(targetLane);
++      const nextPosition = Math.max(0, Math.min(candidates.length, position + rowDirection));
++      if (!direction && nextPosition === position) return;
++      const before = candidates[nextPosition]?.dataset.kanbanCard ?? "";
+       const target: Target = { col: Number(targetLane.dataset.col ?? 0), before, lane: targetLane };
+       staging.set(card, { itemId, target }, event);
+       markTarget(target);
+-- 
+2.55.0
+
