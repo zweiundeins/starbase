@@ -1,0 +1,75 @@
+{
+  "tag": "sb-toc",
+  "props": [
+    {
+      "name": "content",
+      "attribute": "content",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "CSS selector of the element whose headings it lists. Default: the closest <article>, else <main>, else the page. A list of links inside the element wins over it."
+      }
+    },
+    {
+      "name": "levels",
+      "attribute": "levels",
+      "type": "string",
+      "default": "h2",
+      "required": false,
+      "docs": {
+        "description": "The headings to list, e.g. \"h2 h3\". Deeper levels are indented."
+      }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Contents",
+      "required": false,
+      "docs": {
+        "description": "Heading of the list, and the accessible name of the navigation."
+      }
+    },
+    {
+      "name": "startLabel",
+      "attribute": "start-label",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Adds a first entry that leads back to the start of the content, e.g. \"Intro\". It is the current one until the first heading is reached."
+      }
+    },
+    {
+      "name": "compact",
+      "attribute": "compact",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "A media query. While it matches, the list folds into a bar with the current section and the reading progress, and opens from it, e.g. \"(max-width: 64rem)\"."
+      }
+    },
+    {
+      "name": "progress",
+      "attribute": "progress",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "Show the reading progress under the heading as well (the compact bar always shows it)."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-section",
+      "bubbles": true,
+      "composed": true,
+      "description": "When the reader scrolls into another section. detail: { id } (empty before the first heading)."
+    }
+  ]
+}
