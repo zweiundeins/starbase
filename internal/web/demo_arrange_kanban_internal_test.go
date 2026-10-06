@@ -49,7 +49,7 @@ func TestArrangeKanban(t *testing.T) {
 func TestRenderKanban(t *testing.T) {
 	got := renderKanban("plan", "mars | | moon")
 	for _, want := range []string{
-		`<sb-kanban-board id="plan" class="demo-kanban" data-state="mars | | moon"`,
+		`<sb-kanban-board id="plan" data-ignore-morph class="demo-kanban" data-state="mars | | moon"`,
 		`<section data-kanban-lane data-col="7" tabindex="-1" aria-label="En route">`,
 		`<article id="plan-mars" data-kanban-card="mars" tabindex="0">`,
 		`<article id="plan-moon" data-kanban-card="moon" tabindex="0">`,

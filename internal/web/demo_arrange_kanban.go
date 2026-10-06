@@ -90,7 +90,7 @@ func renderKanban(id, state string) string {
 	lanes, _ := kanbanState(state)
 	esc := html.EscapeString
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" class=\"demo-kanban\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board"))
+	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board"))
 	for i, lane := range kanbanLanes {
 		fmt.Fprintf(&b, "\t<section data-kanban-lane data-col=\"%d\" tabindex=\"-1\" aria-label=\"%s\">\n\t\t<p class=\"demo-kanban__title\">%s</p>\n\t\t<div data-kanban-lane-cards>\n", lane.ID, esc(lane.Title), esc(lane.Title))
 		if i < len(lanes) {
@@ -111,7 +111,7 @@ func renderKanbanCard(id, state string) string {
 	lanes, _ := kanbanState(state)
 	esc := html.EscapeString
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" class=\"demo-kanban-card\" data-state=\"%s\" data-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board-card"))
+	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban-card\" data-state=\"%s\" data-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board-card"))
 	tab := "0"
 	for i, lane := range kanbanLanes {
 		fmt.Fprintf(&b, "<section data-kanban-lane data-col=\"%d\" tabindex=\"-1\" aria-label=\"%s\"><div data-kanban-lane-cards>", lane.ID, esc(lane.Title))
