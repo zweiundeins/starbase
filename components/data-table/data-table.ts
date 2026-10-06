@@ -1,7 +1,7 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // Host getters must not subscribe callers (e.g. data-bind's sync effect).
-const peek = (fn) => {
+const peek = <T>(fn: () => T): T => {
 	startPeeking()
 	try {
 		return fn()
@@ -13,23 +13,32 @@ const peek = (fn) => {
 // One ElementInternals per element: attachInternals() works once, and setup
 // runs again when the element is re-attached. Its custom states
 // (:state(pending)) are styleable from the page and morph-proof.
-const internals = new WeakMap()
-const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+const internals = new WeakMap<HTMLElement, ElementInternals>()
+const internalsOf = (host: HTMLElement) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)!
 
 // Pixel corners: notches every corner by p (3px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p: string) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+
+// A row from the server: its values by column key. A value is a scalar, or
+// a cell object {value, text, suffix, href, tone}.
+type Row = Record<string, unknown>
+type Cell = { value?: unknown; text?: unknown; suffix?: unknown; href?: unknown; tone?: unknown }
+type Align = 'start' | 'center' | 'end'
+type Column = { key: string; label: string; width?: unknown; align: Align; sortable: boolean }
+type Sort = { key: string; dir: '' | 'asc' | 'desc' }
+// A row as rendered, and its index in the server's order.
+type Shown = [Row | undefined, number]
 
 // Cells: numbers in the reader's format (4,242.5), isolated so a minus sign
 // stays in front in right-to-left text; the rest as text.
 const format = new Intl.NumberFormat()
-const text = (v) => (typeof v === 'number' ? '⁨' + format.format(v) + '⁩' : String(v ?? ''))
-// A cell is a value, or an object {value, text, suffix, href, tone}.
-const isCell = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
-const raw = (v) => (isCell(v) ? v.value : v)
-const tones = new Set(['info', 'success', 'warning', 'danger', 'neutral'])
+const text = (v: unknown) => (typeof v === 'number' ? '⁨' + format.format(v) + '⁩' : String(v ?? ''))
+const isCell = (v: unknown): v is Cell => v !== null && typeof v === 'object' && !Array.isArray(v)
+const raw = (v: unknown) => (isCell(v) ? v.value : v)
+const tones = new Set<unknown>(['info', 'success', 'warning', 'danger', 'neutral'])
 // Only http, https and mailto links: javascript:, data: and the rest stay text.
-const link = (href) => {
+const link = (href: unknown) => {
 	try {
 		const u = new URL(String(href), document.baseURI)
 		return ['http:', 'https:', 'mailto:'].includes(u.protocol) && u.href
@@ -39,9 +48,10 @@ const link = (href) => {
 }
 // What a rich row's template shows: t the text, s the suffix, h a checked
 // href, n the tone. Nothing here is ever parsed as markup.
-const rich = (v) => {
+type Rich = { t: string; s?: string; h?: string | false; n?: unknown }
+const rich = (v: unknown): Rich => {
 	if (!isCell(v)) return { t: text(v) }
-	const c = { t: v.text != null ? String(v.text) : text(v.value) }
+	const c: Rich = { t: v.text != null ? String(v.text) : text(v.value) }
 	if (v.suffix != null && v.suffix !== '') c.s = String(v.suffix)
 	if (v.href) c.h = link(v.href)
 	if (tones.has(v.tone)) c.n = v.tone
@@ -50,20 +60,22 @@ const rich = (v) => {
 // Local sorting: numbers by value, the rest as text in the reader's order
 // (numeric: "Io 2" before "Io 10"); missing values last in both directions.
 const collator = new Intl.Collator(undefined, { numeric: true })
-const missing = (v) => v == null || v === ''
-const sortKey = (v) => (isCell(v) ? (v.value ?? v.text) : v)
-const keys = (v) => (Array.isArray(v) ? v.map(String) : [])
+const missing = (v: unknown) => v == null || v === ''
+const sortKey = (v: unknown) => (isCell(v) ? (v.value ?? v.text) : v)
+const keys = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : [])
 const compare =
-	({ key, dir }) =>
-	([a], [b]) => {
+	({ key, dir }: Sort) =>
+	([a]: Shown, [b]: Shown) => {
 		const x = sortKey(a?.[key]), y = sortKey(b?.[key])
-		if (missing(x) || missing(y)) return missing(x) - missing(y)
+		if (missing(x) || missing(y)) return Number(missing(x)) - Number(missing(y))
 		return (dir === 'desc' ? -1 : 1) * (typeof x === 'number' && typeof y === 'number' ? x - y : collator.compare(String(x), String(y)))
 	}
-const align = (a) => (a === 'end' || a === 'right' ? 'end' : a === 'center' ? 'center' : 'start')
+const align = (a: unknown): Align => (a === 'end' || a === 'right' ? 'end' : a === 'center' ? 'center' : 'start')
 const anchors = CSS.supports('anchor-name: --a')
 // A control in the toolbar slot counts while it shows: not hidden, nor display: none (data-show).
-const visible = (slot) => !!slot?.assignedElements().some((e) => !e.hidden && e.style.display !== 'none')
+const visible = (slot: HTMLSlotElement | null | undefined) => !!slot?.assignedElements().some((e) => !(e as HTMLElement).hidden && (e as HTMLElement).style.display !== 'none')
+// sb-virtual-scroll, which the grid is.
+type VirtualScroll = HTMLElement & { scrollToIndex?: (i: number, options?: { block?: string }) => void }
 
 // The windowing is sb-virtual-scroll's: the rows are its children, the header
 // row sits in its header slot, and its role="grid" makes it the grid. Every
@@ -286,27 +298,28 @@ rocket('sb-data-table', {
 	renderOnPropChange: false,
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, emitCancellable, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		const $ = (s) => host.shadowRoot?.querySelector(s) // in the rendered template
+		const $ = <E extends Element = HTMLElement>(s: string) => host.shadowRoot?.querySelector<E>(s) // in the rendered template
+		const root = () => host.shadowRoot!
 		// What the server sent, in plain variables (only $$.rows or $$.rich is rendered).
 		// asked: the order an sb-sort of ours asked for, until rows in it arrive;
 		// olds: the orders it replaced, until `until`; dropped: the rows of the
 		// last answer not taken, which stay dropped.
 		// shown: the rows as rendered, [row, index in the server's order]; said:
 		// the server's last order, so only a new one replaces a local one.
-		let data = [], off = 0, cols = [], sort = { key: '', dir: '' }, sorted, asked = null, expire = 0
-		let olds = new Set(), until = 0, dropped, shown = [], said
+		let data: Row[] = [], off = 0, cols: Column[] = [], sort: Sort = { key: '', dir: '' }, sorted: string | undefined, asked: Sort | null = null, expire = 0
+		let olds = new Set<string>(), until = 0, dropped: unknown, shown: Shown[] = [], said: string | undefined
 		// all: every column; cols: the ones shown; hidden: the local list (view
 		// state); forced: a column shown although the list hides every one.
-		let all = [], hidden = keys(props.hiddenColumns), forced
-		const orderOf = (o) => o.key + ' ' + o.dir
-		const keyAt = (i) => {
+		let all: Column[] = [], hidden = keys(props.hiddenColumns), forced: string | false | undefined
+		const orderOf = (o: Sort) => o.key + ' ' + o.dir
+		const keyAt = (i: number) => {
 			const [r, j] = shown[i - off] ?? []
 			return r && String(raw(r[props.rowKey]) ?? j)
 		}
 		// Every row is here: the table sorts them itself.
 		const whole = () => off === 0 && data.length >= props.total
 		const show = () => {
-			shown = data.map((r, j) => [r, off + j])
+			shown = data.map((r, j): Shown => [r, off + j])
 			if (whole() && sort.key) shown.sort(compare(sort))
 			// As JSON: data-for clones plain rows fast, and a signal's rows would
 			// be proxies, which structuredClone refuses (a slow fallback).
@@ -319,7 +332,7 @@ rocket('sb-data-table', {
 		}
 		// A new order starts at the top.
 		const top = () => {
-			if (sorted !== undefined && orderOf(sort) !== sorted) $('.grid')?.scrollToIndex?.(0)
+			if (sorted !== undefined && orderOf(sort) !== sorted) $<VirtualScroll>('.grid')?.scrollToIndex?.(0)
 			sorted = orderOf(sort)
 		}
 		$$.rows = '[]'
@@ -330,27 +343,27 @@ rocket('sb-data-table', {
 		$$.menu = false
 		$$.slotted = false
 		// slotchange doesn't report a control hidden or shown in place.
-		const tools = new MutationObserver(() => ($$.slotted = visible($('slot[name="toolbar"]'))))
+		const tools = new MutationObserver(() => ($$.slotted = visible($<HTMLSlotElement>('slot[name="toolbar"]'))))
 		tools.observe(host, { subtree: true, attributeFilter: ['hidden', 'style'] })
 		cleanup(() => tools.disconnect())
-		action('toolbar', ({ el }) => ($$.slotted = visible(el)))
+		action('toolbar', ({ el }) => ($$.slotted = visible(el as HTMLSlotElement)))
 
 		// The menu's checkboxes follow the columns. A focused one stays with its
 		// column; when the server drops that column, the neighbour takes the focus.
-		const options = (before) => {
+		const options = (before: Column[]) => {
 			const menu = $('.menu')
-			const box = menu?.matches(':popover-open') && host.shadowRoot.activeElement
-			const was = box && menu.contains(box) && box.dataset.k != null ? { key: before[+box.dataset.k]?.key, j: +box.dataset.k } : null
+			const box = menu?.matches(':popover-open') ? (root().activeElement as HTMLElement | null) : null
+			const was = box && menu!.contains(box) && box.dataset.k != null ? { key: before[+box.dataset.k]?.key, j: +box.dataset.k } : null
 			const on = new Set(cols.map((c) => c.key))
 			$$.opts = JSON.stringify(all.map((c) => ({ l: c.label, h: !on.has(c.key), d: cols.length === 1 && on.has(c.key) })))
-			if (was)
+			if (was && menu)
 				requestAnimationFrame(() => {
 					const boxes = [...menu.querySelectorAll('input')]
 					let j = all.findIndex((c) => c.key === was.key)
 					if (j < 0) j = Math.min(was.j, boxes.length - 1)
 					// A disabled neighbour is skipped; with none left, the menu holds the focus.
 					const to = (boxes[j]?.disabled ? (boxes[j + 1] ?? boxes[j - 1]) : boxes[j]) ?? menu
-					const at = host.shadowRoot.activeElement, floor = !at && (!document.activeElement || document.activeElement === document.body)
+					const at = root().activeElement, floor = !at && (!document.activeElement || document.activeElement === document.body)
 					if (to !== at && (menu.contains(at) || floor)) to.focus()
 				})
 		}
@@ -367,7 +380,7 @@ rocket('sb-data-table', {
 			$$.fc = Math.max(0, Math.min($$.fc, cols.length - 1))
 			$$.picker = props.columnPicker
 			$$.clabel = props.columnsLabel
-			if (!props.columnPicker && $('.menu')?.matches(':popover-open')) $('.menu').hidePopover()
+			if (!props.columnPicker && $('.menu')?.matches(':popover-open')) $('.menu')!.hidePopover()
 			options(before)
 		}
 
@@ -375,13 +388,13 @@ rocket('sb-data-table', {
 		// not rendered: a tabindex on the list would take its rows out of the
 		// tab order), also after the rows re-rendered: only when the focus is in
 		// the table or fell on the floor, never when the user moved on.
-		const refocus = (scroll) =>
+		const refocus = (scroll?: boolean) =>
 			requestAnimationFrame(() => {
-				const active = document.activeElement, inner = host.shadowRoot.activeElement
-				if (!$$.hasFocus || (active && active !== document.body && active !== host) || (inner && !$('.grid').contains(inner))) return
+				const active = document.activeElement, inner = root().activeElement
+				if (!$$.hasFocus || (active && active !== document.body && active !== host) || (inner && !$('.grid')!.contains(inner))) return
 				const cell = $('.grid [tabindex="0"]')
 				const el = cell ?? $('.head')
-				if (el && host.shadowRoot.activeElement !== el) el.focus({ preventScroll: true })
+				if (el && root().activeElement !== el) el.focus({ preventScroll: true })
 				if (scroll && cell && $$.fr >= 0) cell.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 			})
 
@@ -395,7 +408,7 @@ rocket('sb-data-table', {
 			$$.buf = props.buffer
 			$$.loading = props.loading
 			const key = String(props.sort?.key ?? '')
-			const now = { key, dir: !key ? '' : props.sort.dir === 'desc' ? 'desc' : 'asc' }
+			const now: Sort = { key, dir: !key ? '' : props.sort.dir === 'desc' ? 'desc' : 'asc' }
 			const order = orderOf(now)
 			// While our sb-sort is unanswered, only its order is taken, and for a
 			// while after it rows in an order it replaced are late answers to
@@ -436,8 +449,8 @@ rocket('sb-data-table', {
 		overrideProp('hiddenColumns', () => peek(() => [...hidden]), (v) => peek(() => ((hidden = keys(v)), take())))
 		// A new selected or hidden-columns attribute from the server wins, even [] on a fresh element;
 		// the same one again keeps the user's choice, and a removed one is ignored (morphs strip reflected ones).
-		const words = {}
-		const heard = (k) => {
+		const words: Record<string, string | null> = {}
+		const heard = (k: string) => {
 			const a = host.getAttribute(k)
 			const news = a !== null && a !== words[k]
 			words[k] = a
@@ -455,7 +468,7 @@ rocket('sb-data-table', {
 		// With confirm, :state(pending) marks a selection the server hasn't
 		// confirmed yet (compared as sets); revert() returns to the server's.
 		const states = internalsOf(host).states
-		const same = (a, b) => a.toSorted().join('\n') === b.toSorted().join('\n')
+		const same = (a: string[], b: string[]) => a.toSorted().join('\n') === b.toSorted().join('\n')
 		// keys(): the teardown deletes $$.sel, then runs the effect below once more.
 		const sync = () => peek(() => states[props.confirm && !same(keys($$.sel), keys(props.selected)) ? 'add' : 'delete']('pending'))
 		effect(() => (JSON.stringify($$.sel), sync()))
@@ -467,41 +480,42 @@ rocket('sb-data-table', {
 			value: (format = 'csv') => peek(() => emit('sb-export', { name: props.name, format: String(format), sort: { key: sort.key, dir: sort.dir }, columns: cols.map((c) => c.key), selected: keys($$.sel) })),
 		})
 
-		const pick = (i, toggle) => {
+		const pick = (i: number, toggle: boolean) => {
 			const k = keyAt(i)
 			if (props.selection === 'none' || k == null) return
 			const has = $$.sel.includes(k)
 			if (has && !toggle) return
-			$$.sel = props.selection === 'multiple' ? (has ? $$.sel.filter((x) => x !== k) : [...$$.sel, k]) : has ? [] : [k]
+			$$.sel = props.selection === 'multiple' ? (has ? $$.sel.filter((x: string) => x !== k) : [...$$.sel, k]) : has ? [] : [k]
 			emit('change')
 			emit('sb-change', { name: props.name, value: [...$$.sel] })
 		}
-		const activate = (i) => {
+		const activate = (i: number) => {
 			const k = keyAt(i)
 			if (k != null) emit('sb-row-activate', { key: k })
 		}
 
 		// Rows in view: the list's height minus the header's.
-		const inView = () => Math.max(1, Math.floor(($('.grid').clientHeight - $('.head').offsetHeight) / props.rowHeight))
+		const inView = () => Math.max(1, Math.floor(($('.grid')!.clientHeight - $('.head')!.offsetHeight) / props.rowHeight))
 
 		// The list asks for a window: ask the page, with the order to send it in.
 		action('window', ({ evt }) => {
-			evt.stopPropagation()
-			emit('sb-window', { offset: evt.detail.offset, count: evt.detail.count, ...(asked ?? sort) })
+			const e = evt as CustomEvent<{ offset: number; count: number }>
+			e.stopPropagation()
+			emit('sb-window', { offset: e.detail.offset, count: e.detail.count, ...(asked ?? sort) })
 		})
-		action('sort', (_, j) => {
+		action('sort', (_, j: number) => {
 			const c = cols[j]
 			$$.fr = -1
 			$$.fc = j
 			if (!c?.sortable) return
-			const next = { key: c.key, dir: sort.key === c.key && sort.dir === 'asc' ? 'desc' : 'asc' }
+			const next: Sort = { key: c.key, dir: sort.key === c.key && sort.dir === 'asc' ? 'desc' : 'asc' }
 			// The window to answer with: the top one, the view and its buffers.
 			const count = inView() + 1 + 2 * Math.ceil(props.buffer / props.rowHeight)
 			// With every row here, sort them now; the page still hears of it.
 			if (whole()) return (sort = next), show(), top(), refocus(), emit('sb-sort', { ...next, offset: 0, count })
 			olds.add(orderOf(sort)).add(orderOf(asked ?? sort))
 			asked = next
-			olds.delete(orderOf(asked))
+			olds.delete(orderOf(next))
 			until = performance.now() + 10000
 			// A sort that never comes back (or comes back in another order) stops
 			// holding the rows up after a while.
@@ -511,78 +525,81 @@ rocket('sb-data-table', {
 		})
 		// Clicks on rows, heard on the grid (a cell's focusin moved the focus
 		// there). The clicks of a double click don't select twice.
-		const rowOf = (evt) => evt.target.closest('.row')?.dataset.r
-		const follow = (evt, a) => {
-			const i = +a.closest('.row').dataset.r, c = cols[+a.closest('[data-c]').dataset.c]
+		const rowOf = (evt: Event) => (evt.target as Element).closest<HTMLElement>('.row')?.dataset.r
+		const follow = (evt: Event, a: HTMLAnchorElement) => {
+			const i = +a.closest<HTMLElement>('.row')!.dataset.r!, c = cols[+a.closest<HTMLElement>('[data-c]')!.dataset.c!]
 			const v = shown[i - off]?.[0]?.[c?.key]
 			if (c && !emitCancellable('sb-cell-activate', { key: keyAt(i), column: c.key, value: raw(v) ?? null, href: a.href })) evt.preventDefault()
 		}
 		action('click', ({ evt }) => {
-			const a = evt.target.closest('a[href]')
-			if (a) return follow(evt, a)
-			evt.detail < 2 && rowOf(evt) && pick(+rowOf(evt), props.selection === 'multiple')
+			const e = evt as MouseEvent
+			const a = (e.target as Element).closest<HTMLAnchorElement>('a[href]')
+			if (a) return follow(e, a)
+			e.detail < 2 && rowOf(e) && pick(+rowOf(e)!, props.selection === 'multiple')
 		})
 		// A middle click opens a link in a new tab: the page may cancel that too.
-		action('aux', ({ evt }) => { const a = evt.button === 1 && evt.target.closest('a[href]'); a && follow(evt, a) })
-		action('activate', ({ evt }) => !evt.target.closest('a[href]') && rowOf(evt) && activate(+rowOf(evt)))
+		action('aux', ({ evt }) => { const e = evt as MouseEvent, a = e.button === 1 && (e.target as Element).closest<HTMLAnchorElement>('a[href]'); a && follow(e, a) })
+		action('activate', ({ evt }) => !(evt!.target as Element).closest('a[href]') && rowOf(evt!) && activate(+rowOf(evt!)!))
 		// Focus can also arrive by Tab or a click: keep the roving focus in step.
 		action('focusin', ({ evt }) => {
 			$$.hasFocus = true
-			const c = evt.target.closest?.('[data-c]')
-			if (c) ($$.fr = +c.closest('[data-r]').dataset.r), ($$.fc = +c.dataset.c)
+			const c = (evt!.target as Element).closest?.<HTMLElement>('[data-c]')
+			if (c) ($$.fr = +c.closest<HTMLElement>('[data-r]')!.dataset.r!), ($$.fc = +c.dataset.c!)
 		})
 		action('focusout', ({ evt }) => {
 			// A cell re-rendered away also "loses" focus, but that's not leaving
 			// (refocus picks it up): decide a frame later, when it is gone.
-			const t = evt.target
-			requestAnimationFrame(() => t.isConnected && !$('.grid')?.contains(host.shadowRoot?.activeElement) && ($$.hasFocus = false))
+			const t = evt!.target as Element
+			requestAnimationFrame(() => t.isConnected && !$('.grid')?.contains(host.shadowRoot?.activeElement ?? null) && ($$.hasFocus = false))
 		})
 
 		// The column menu: a popover (auto: light dismiss and Escape are the
 		// browser's) that holds the focus like a dialog.
 		action('menu', ({ el, evt }) =>
 			peek(() => {
-				const button = $('.columns')
+				const menu = el as HTMLElement, button = $('.columns')!
 				// Closing with the focus inside: it goes back to the button, or to the
 				// grid when the server took the picker away.
-				if (evt.newState !== 'open') return el.contains(host.shadowRoot.activeElement) && (props.columnPicker ? button : ($('.grid [tabindex="0"]') ?? $('.head'))).focus()
+				if ((evt as ToggleEvent).newState !== 'open') return menu.contains(root().activeElement) && (props.columnPicker ? button : ($('.grid [tabindex="0"]') ?? $('.head')))!.focus()
 				if (anchors) return
 				const r = button.getBoundingClientRect()
 				const rtl = host.matches(':dir(rtl)')
-				Object.assign(el.style, { position: 'fixed', inset: 'auto', top: r.bottom + 4 + 'px', [rtl ? 'left' : 'right']: (rtl ? r.left : document.documentElement.clientWidth - r.right) + 'px' })
+				Object.assign(menu.style, { position: 'fixed', inset: 'auto', top: r.bottom + 4 + 'px', [rtl ? 'left' : 'right']: (rtl ? r.left : document.documentElement.clientWidth - r.right) + 'px' })
 			}),
 		)
 		action('menuToggle', ({ el, evt }) =>
 			peek(() => {
-				$$.menu = evt.newState === 'open'
-				if ($$.menu) (el.querySelector('input:not(:disabled)') ?? el).focus()
+				$$.menu = (evt as ToggleEvent).newState === 'open'
+				if ($$.menu) (el!.querySelector<HTMLElement>('input:not(:disabled)') ?? (el as HTMLElement)).focus()
 			}),
 		)
 		action('menuKey', ({ el, evt }) => {
 			// The browser closes the menu. Stopped here, the Escape can't also
 			// close a drawer or popover the table sits in.
-			if (evt.key === 'Escape') return evt.stopPropagation()
-			if (evt.key !== 'Tab') return
-			evt.preventDefault()
-			const f = [...el.querySelectorAll('input:not(:disabled)')]
-			const i = f.indexOf(host.shadowRoot.activeElement)
-			f[i < 0 ? (evt.shiftKey ? f.length - 1 : 0) : (i + (evt.shiftKey ? -1 : 1) + f.length) % f.length]?.focus()
+			const e = evt as KeyboardEvent
+			if (e.key === 'Escape') return e.stopPropagation()
+			if (e.key !== 'Tab') return
+			e.preventDefault()
+			const f = [...el!.querySelectorAll<HTMLInputElement>('input:not(:disabled)')]
+			const i = f.indexOf(root().activeElement as HTMLInputElement)
+			f[i < 0 ? (e.shiftKey ? f.length - 1 : 0) : (i + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus()
 		})
 		// A checkbox: the column shows or hides at once, and the page hears of
 		// it. The list is the user's view, so a forced column counts as shown.
 		action('pickColumn', ({ evt }) =>
 			peek(() => {
-				const c = all[+evt.target.dataset.k]
+				const box = evt!.target as HTMLInputElement, c = all[+box.dataset.k!]
 				if (!c) return
 				hidden = hidden.filter((k) => k !== c.key && k !== forced)
-				if (!evt.target.checked) hidden.push(c.key)
+				if (!box.checked) hidden.push(c.key)
 				take()
 				emit('sb-columns', { name: props.name, hidden: [...hidden] })
 			}),
 		)
 		// The grid keys of WAI-ARIA; moves past the rendered rows scroll there,
 		// and the rows come with the next window.
-		action('key', ({ evt }) => {
+		action('key', ({ evt: e }) => {
+			const evt = e as KeyboardEvent, target = evt.target as Element
 			const last = cols.length - 1
 			if (evt.altKey || evt.metaKey || last < 0) return
 			let r = $$.fr, c = $$.fc
@@ -607,8 +624,8 @@ rocket('sb-data-table', {
 				case 'Enter': {
 					// A header's sort button clicks itself, and so does a cell's link
 					// (its click emits sb-cell-activate).
-					if (r < 0) return evt.target.localName === 'button' || evt.preventDefault()
-					const a = evt.key === 'Enter' && evt.target.closest('[data-c]')?.querySelector('a[href]')
+					if (r < 0) return target.localName === 'button' || evt.preventDefault()
+					const a = evt.key === 'Enter' && target.closest('[data-c]')?.querySelector<HTMLAnchorElement>('a[href]')
 					a ? a.click() : evt.key === 'Enter' ? activate(r) : pick(r, true)
 					return evt.preventDefault()
 				}
@@ -618,19 +635,20 @@ rocket('sb-data-table', {
 			evt.preventDefault()
 			$$.fr = r = Math.max(-1, Math.min(r, $$.n - 1))
 			$$.fc = Math.max(0, Math.min(c, last))
-			if (r >= 0) $('.grid').scrollToIndex?.(r, { block: 'nearest' })
+			if (r >= 0) $<VirtualScroll>('.grid')!.scrollToIndex?.(r, { block: 'nearest' })
 			refocus(true)
 		})
 	},
 	// Runs on every connect, after the render.
-	onFirstRender: ({ $$, refs: { grid, parts, tools } }) => {
+	onFirstRender: ({ $$, refs }) => {
+		const { grid, parts, tools } = refs as { grid: HTMLElement; parts: HTMLElement; tools: HTMLSlotElement }
 		grid.append(...parts.childNodes)
 		$$.slotted = visible(tools)
 	},
 	render: ({ html }) => {
 		// $$rows (plain cells) or $$rich (cell objects): the same rows either way.
 		// r?. and || '[]': data-for can re-evaluate once with its signals gone.
-		const loop = (list, content) => html`
+		const loop = (list: string, content: DocumentFragment | null) => html`
 			<!-- No ids on these repeated elements: the morph would park and move them.
 			     Few bindings per cell: each one is compiled again for every row. -->
 			<template data-for="r in JSON.parse($$${list} || '[]')">
