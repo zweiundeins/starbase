@@ -25,7 +25,7 @@ preview: |
       .demo-group-card [data-drop-before]::before, .demo-group-card [data-drop-end]::after { background: Highlight; }
     }
   </style>
-  <sb-drag-group id="drag-group-card" class="demo-group-card" data-state="planets=earth,ceres dwarfs=pluto"
+  <sb-drag-group id="drag-group-card" data-ignore-morph class="demo-group-card" data-state="planets=earth,ceres dwarfs=pluto"
     data-on:sb-drag-group-move="@get('/demo/arrange/drag-group-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
     <section data-drop-list="planets">
       <div data-drag-item="earth">🪐 Earth</div>
@@ -99,7 +99,7 @@ Ceres and Venus start in the wrong list. The server renders both lists with thei
     .demo-group :is([data-drag-item], [data-drop-list]):focus-visible { outline-color: Highlight; }
   }
 </style>
-<sb-drag-group id="sort-bodies" class="demo-group" data-state="planets=earth,ceres,mars,jupiter dwarfs=pluto,venus"
+<sb-drag-group id="sort-bodies" data-ignore-morph class="demo-group" data-state="planets=earth,ceres,mars,jupiter dwarfs=pluto,venus"
 	data-on:sb-drag-group-move="@get('/demo/arrange/drag-group', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
 	<p id="sort-bodies-keys" hidden>To move it, hold Alt and press the arrow keys.</p>
 	<section data-drop-list="planets" tabindex="-1" aria-label="Planets">
@@ -184,7 +184,7 @@ func arrangeDragGroup(state string, move json.RawMessage) (string, error) {
 func renderDragGroup(id, state string) string {
 	g, _ := parseGroup(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-drag-group id=\"%s\" class=\"demo-group\" data-state=\"%s\"\n\tdata-on:sb-drag-group-move=\"%s\">\n", id, state, arrangeOn("drag-group"))
+	fmt.Fprintf(&b, "<sb-drag-group id=\"%s\" data-ignore-morph class=\"demo-group\" data-state=\"%s\"\n\tdata-on:sb-drag-group-move=\"%s\">\n", id, state, arrangeOn("drag-group"))
 	fmt.Fprintf(&b, "\t<p id=\"%s-keys\" hidden>To move it, hold Alt and press the arrow keys.</p>\n", id)
 	for _, name := range g.names {
 		fmt.Fprintf(&b, "\t<section data-drop-list=\"%s\" tabindex=\"-1\" aria-label=\"%s\">\n\t\t<span class=\"demo-group__title\">%s</span>\n", name, groupLists[name], groupLists[name])

@@ -87,7 +87,7 @@ func arrangeDragGroup(state string, move json.RawMessage) (string, error) {
 func renderDragGroup(id, state string) string {
 	g, _ := parseGroup(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-drag-group id=\"%s\" class=\"demo-group\" data-state=\"%s\"\n\tdata-on:sb-drag-group-move=\"%s\">\n", id, state, arrangeOn("drag-group"))
+	fmt.Fprintf(&b, "<sb-drag-group id=\"%s\" data-ignore-morph class=\"demo-group\" data-state=\"%s\"\n\tdata-on:sb-drag-group-move=\"%s\">\n", id, state, arrangeOn("drag-group"))
 	fmt.Fprintf(&b, "\t<p id=\"%s-keys\" hidden>To move it, hold Alt and press the arrow keys.</p>\n", id)
 	for _, name := range g.names {
 		fmt.Fprintf(&b, "\t<section data-drop-list=\"%s\" tabindex=\"-1\" aria-label=\"%s\">\n\t\t<span class=\"demo-group__title\">%s</span>\n", name, groupLists[name], groupLists[name])
@@ -105,7 +105,7 @@ func renderDragGroup(id, state string) string {
 func renderDragGroupCard(id, state string) string {
 	g, _ := parseGroup(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-drag-group id=\"%s\" class=\"demo-group-card\" data-state=\"%s\"\n\tdata-on:sb-drag-group-move=\"%s\">\n", id, state, arrangeOn("drag-group-card"))
+	fmt.Fprintf(&b, "<sb-drag-group id=\"%s\" data-ignore-morph class=\"demo-group-card\" data-state=\"%s\"\n\tdata-on:sb-drag-group-move=\"%s\">\n", id, state, arrangeOn("drag-group-card"))
 	for _, name := range g.names {
 		fmt.Fprintf(&b, "\t<section data-drop-list=\"%s\">\n", name)
 		for _, item := range g.items[name] {
