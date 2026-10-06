@@ -10,14 +10,42 @@ tags: [inline edit, rename, edit in place, title, double click, pd rockets]
 since: 2026-10-06
 preview: |
   <style>
-    .demo-edit-card { display: grid; gap: 6px; inline-size: min(100%, 12rem); }
-    .demo-edit-card [data-inline-edit-trigger] { display: block; box-sizing: border-box; inline-size: 100%; margin: 0; padding: 0.4rem 0.7rem; border: 1px dashed var(--sb-border); background: var(--sb-surface-card); color: var(--sb-text-1); font: inherit; text-align: start; cursor: text; }
-    .demo-edit-card [data-inline-edit-trigger]:focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: 2px; }
-    @media (forced-colors: active) { .demo-edit-card [data-inline-edit-trigger]:focus-visible { outline-color: Highlight; } }
+    .demo-edit-card { display: grid; gap: 8px; inline-size: min(100%, 12rem); }
+    .demo-edit-card .demo-edit { display: grid; gap: 2px; color: var(--sb-text-1); }
+    .demo-edit-card .demo-edit__body { color: var(--sb-text-2); font-size: 0.75rem; }
+    .demo-edit-card :is([data-inline-edit-trigger], [data-inline-edit-input]) { box-sizing: border-box; inline-size: 100%; margin: 0; padding: 0.4rem 0.7rem; border: 1px dashed var(--sb-border); background: var(--sb-surface-card); color: inherit; font: inherit; text-align: start; }
+    .demo-edit-card [data-inline-edit-trigger] { cursor: text; }
+    .demo-edit-card [data-inline-edit-input] { border-style: solid; border-color: var(--sb-brand); background: var(--sb-surface-inset); }
+    .demo-edit-card :focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: 2px; }
+    .demo-edit-card [aria-invalid="true"] { border-color: var(--sb-danger); }
+    .demo-edit-card [aria-busy="true"] :is([data-inline-edit-trigger], [data-inline-edit-input]) { opacity: 0.6; }
+    .demo-edit-card :is(.demo-edit__problem, .demo-edit__failed) { color: var(--sb-danger); font-size: 0.75rem; }
+    @media (forced-colors: active) {
+      .demo-edit-card :focus-visible { outline-color: Highlight; }
+      .demo-edit-card [aria-invalid="true"] { border: 3px double CanvasText; }
+    }
   </style>
   <div class="demo-edit-card">
-    <sb-inline-edit data-context-id="earth"><button type="button" data-inline-edit-trigger><span data-inline-edit-value>Blue Marble</span></button></sb-inline-edit>
-    <sb-inline-edit data-context-id="mars"><button type="button" data-inline-edit-trigger><span data-inline-edit-value>Red Planet</span></button></sb-inline-edit>
+  <sb-inline-edit id="card-nick-earth" class="demo-edit" data-context-id="earth" data-state="body=earth name=Blue+Marble"
+  	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
+  	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_card_nick_earth_key}}})"
+  	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_card_nick_earth_key}}})"
+  	data-indicator="_card_nick_earth_saving" data-attr:aria-busy="String($_card_nick_earth_saving)" data-preserve-attr="aria-busy"
+  	data-on:datastar-fetch="evt.detail.el === el && ['started', 'error', 'retries-failed'].includes(evt.detail.type) && ($_card_nick_earth_failed = evt.detail.type !== 'started')">
+  	<span class="demo-edit__body">🪐 Earth</span>
+  	<button type="button" data-inline-edit-trigger aria-label="Blue Marble, nickname of Earth: press Enter to rename"><span data-inline-edit-value>Blue Marble</span></button>
+  	<span id="card-nick-earth-failed" class="demo-edit__failed" role="alert" data-text="$_card_nick_earth_failed ? 'Nothing changed: the request failed. Try again.' : ''"></span>
+  </sb-inline-edit>
+  <sb-inline-edit id="card-nick-mars" class="demo-edit" data-context-id="mars" data-state="body=mars name=Red+Planet"
+  	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
+  	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_card_nick_mars_key}}})"
+  	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_card_nick_mars_key}}})"
+  	data-indicator="_card_nick_mars_saving" data-attr:aria-busy="String($_card_nick_mars_saving)" data-preserve-attr="aria-busy"
+  	data-on:datastar-fetch="evt.detail.el === el && ['started', 'error', 'retries-failed'].includes(evt.detail.type) && ($_card_nick_mars_failed = evt.detail.type !== 'started')">
+  	<span class="demo-edit__body">🪐 Mars</span>
+  	<button type="button" data-inline-edit-trigger aria-label="Red Planet, nickname of Mars: press Enter to rename"><span data-inline-edit-value>Red Planet</span></button>
+  	<span id="card-nick-mars-failed" class="demo-edit__failed" role="alert" data-text="$_card_nick_mars_failed ? 'Nothing changed: the request failed. Try again.' : ''"></span>
+  </sb-inline-edit>
   </div>
 usage: |
   <sb-inline-edit data-context-id="42"
