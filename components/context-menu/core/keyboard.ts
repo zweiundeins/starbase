@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 type KeyEvent = Pick<KeyboardEvent, "key" | "code" | "altKey" | "shiftKey" | "metaKey" | "ctrlKey">;
 
 export const focusKeys = {

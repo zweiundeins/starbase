@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 export const contextMenuContract = {
   tag: "sb-context-menu",
   selectors: { trigger: "[data-menu-for]", item: '[role="menuitem"], [role="menuitemradio"]' },

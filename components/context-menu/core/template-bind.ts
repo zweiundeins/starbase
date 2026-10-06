@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 /** Bind text and inert metadata; never interpolate into executable directives or URLs. */
 export function bindTemplate(template: HTMLTemplateElement, context: Record<string, string>): DocumentFragment {
   const fragment = template.content.cloneNode(true) as DocumentFragment;
