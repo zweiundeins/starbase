@@ -17,6 +17,12 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// What a move must not lose, per host: the divider's position, full screen's
+// aspect ratio and the server's last word on position and expanded. Rocket
+// drops $$ on disconnect and reruns setup when the element comes back, which
+// would start again from the attributes.
+const kept = new WeakMap()
+
 const clamp = (v) => Math.min(100, Math.max(0, Number.isFinite(v) ? v : 50))
 
 // Pixel corners: notches every corner by --_n (2px times --sb-notch; at 0 the
@@ -237,7 +243,7 @@ input {
 	.handle, .tag, .expand { forced-color-adjust: none; background: Canvas; color: CanvasText; }
 	.handle { box-shadow: inset 0 0 0 2px CanvasText; }
 	.expand:hover { background: Highlight; color: HighlightText; }
-	.expand:focus-visible { outline: 2px solid Highlight; }
+	.expand:focus-visible { box-shadow: none; outline: 2px solid Highlight; }
 }
 `
 
@@ -259,21 +265,18 @@ rocket('sb-image-compare', {
 		],
 		events: [
 			{ name: 'sb-position', kind: 'custom-event', bubbles: true, composed: true, description: 'After a drag, a tap or a key moved the divider. detail: { position } (percent).' },
-			{ name: 'sb-expand', kind: 'custom-event', bubbles: true, composed: true, description: 'When full screen opens or closes. detail: { expanded }.' },
+			{ name: 'sb-expand', kind: 'custom-event', bubbles: true, composed: true, description: "When full screen opens or closes. detail: { expanded, reason }, reason being 'reader' (button, Escape), 'server' (the expanded attribute) or 'api' (the expanded property)." },
 		],
 	},
 	// A new position must not re-render: that would drop keyboard focus and
 	// close full screen. Everything that changes is driven by signals.
 	renderOnPropChange: false,
-	setup: ({ $$, adoptStyles, cleanup, emit, host, observeProps, overrideProp, props }) => {
+	setup: ({ $$, adoptStyles, cleanup, effect, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
-		// Moved or re-inserted while full screen (a morph does that): the browser
-		// closed the popover without a toggle event, so say so here.
-		const states = internalsOf(host).states
-		if (states.has('expanded')) {
-			states.delete('expanded')
-			emit('sb-expand', { expanded: false })
-		}
+		const keep = kept.get(host) ?? kept.set(host, { pos: null, ratio: '', at: null, full: null }).get(host)
+		// The custom state outlives a move: full screen stays open (onFirstRender
+		// reopens it if the browser closed it on the way).
+		$$.open = internalsOf(host).states.has('expanded')
 		const sync = () =>
 			peek(() => {
 				$$.before = props.beforeLabel
@@ -285,47 +288,58 @@ rocket('sb-image-compare', {
 			})
 		sync()
 		observeProps(sync)
-		$$.pos = clamp(props.position)
-		$$.ratio = ''
-		$$.open = false
+		$$.ratio = keep.ratio
+		$$.pos = keep.pos ?? clamp(props.position)
+		effect(() => {
+			const pos = $$.pos
+			if (pos != null) keep.pos = pos
+		})
 		// A position attribute from the page or the server wins when it
 		// changes; re-sending the same markup changes nothing. The attribute is
 		// watched, not the prop: position="50" on an element rendered without
 		// one decodes to the same 50, and must still take back a drag.
-		let served = host.hasAttribute('position') ? props.position : null
-		const watch = new MutationObserver(() =>
+		const serve = () =>
 			peek(() => {
-				if (!host.hasAttribute('position')) return void (served = null)
-				if (props.position === served) return
-				served = props.position
-				$$.pos = clamp(served)
-			}),
-		)
-		watch.observe(host, { attributeFilter: ['position'] })
+				if (!host.hasAttribute('position')) return void (keep.at = null)
+				if (props.position === keep.at) return
+				keep.at = props.position
+				$$.pos = clamp(keep.at)
+			})
+		serve()
+		// The host's aria-label is the name's fallback, so a new one renames it.
+		const watch = new MutationObserver(() => {
+			sync()
+			serve()
+		})
+		watch.observe(host, { attributeFilter: ['position', 'aria-label'] })
 		cleanup(() => watch.disconnect())
 		overrideProp('position', () => peek(() => $$.pos), (v) => peek(() => ($$.pos = clamp(Number(v)))))
 	},
 	onFirstRender: ({ $$, action, cleanup, emit, host, overrideProp, props, refs: { frame, stage, input, button } }) => {
 		const states = internalsOf(host).states
-		// Full screen from the page or the server: served is its last word, so
-		// only a changed attribute wins and a removed one is ignored (morphs also
-		// strip reflected attributes), as with sb-popover's open.
-		const expand = (on) => {
+		// Full screen from the page or the server: keep.full is its last word,
+		// so only a changed attribute wins and a removed one is ignored (morphs
+		// also strip reflected attributes), as with sb-popover's open. It
+		// survives a move, so a re-insert doesn't reopen what the reader closed.
+		// cause says who asked for the next toggle.
+		const keep = kept.get(host)
+		let cause = null
+		const expand = (on, why) => {
 			if (!frame.isConnected || on === frame.matches(':popover-open')) return
+			cause = why
 			on ? frame.showPopover() : frame.hidePopover()
 		}
-		let served = host.hasAttribute('expanded') ? props.expanded : null
-		if (served) expand(true)
-		const watchExpanded = new MutationObserver(() =>
+		const serve = () =>
 			peek(() => {
-				if (!host.hasAttribute('expanded')) return void (served = null)
-				if (props.expanded === served) return
-				expand((served = props.expanded))
-			}),
-		)
+				if (!host.hasAttribute('expanded')) return void (keep.full = null)
+				if (props.expanded === keep.full) return
+				keep.full = props.expanded
+				expand(keep.full, 'server')
+			})
+		const watchExpanded = new MutationObserver(serve)
 		watchExpanded.observe(host, { attributeFilter: ['expanded'] })
 		cleanup(() => watchExpanded.disconnect())
-		overrideProp('expanded', () => peek(() => $$.open), (v) => peek(() => expand(!!v && v !== 'false')))
+		overrideProp('expanded', () => peek(() => $$.open), (v) => peek(() => expand(!!v && v !== 'false', 'api')))
 		const report = () => emit('sb-position', { position: peek(() => Math.round($$.pos * 10) / 10) })
 		const at = (x) => {
 			const r = stage.getBoundingClientRect()
@@ -380,14 +394,19 @@ rocket('sb-image-compare', {
 		// Full screen fits the stage to the viewport by its aspect ratio,
 		// measured while it is still in the page.
 		action('measure', ({ evt }) => {
-			if (evt.newState === 'open') $$.ratio = String(stage.offsetWidth / (stage.offsetHeight || 1))
+			if (evt.newState === 'open') $$.ratio = keep.ratio = String(stage.offsetWidth / (stage.offsetHeight || 1))
 		})
 		action('toggled', ({ evt }) => {
 			const open = evt.newState === 'open'
+			const reason = cause ?? 'reader'
+			cause = null
+			// Opened by the page, the server or a move, the focus would stay
+			// behind the dialog: bring it to the divider.
+			if (open && !frame.contains(frame.getRootNode().activeElement)) input.focus({ preventScroll: true })
 			if (open === peek(() => $$.open)) return
 			$$.open = open
 			open ? states.add('expanded') : states.delete('expanded')
-			emit('sb-expand', { expanded: open })
+			emit('sb-expand', { expanded: open, reason })
 		})
 		// Full screen is a popover, not a modal: keep Tab between the divider
 		// and the close button, and the wheel from scrolling the page behind.
@@ -401,6 +420,10 @@ rocket('sb-image-compare', {
 			evt.preventDefault()
 			next.focus()
 		})
+		// Only now that measure and toggled exist: reopen what a move closed
+		// (it never said it was closed), then apply the attribute if it changed.
+		if (peek(() => $$.open)) expand(true, 'move')
+		serve()
 	},
 	render: ({ html }) => html`
 		<div class="frame" id="frame" part="frame" popover="auto" data-ref:frame
@@ -433,7 +456,7 @@ rocket('sb-image-compare', {
 			<button class="expand" part="expand" type="button" popovertarget="frame" data-ref:button
 				data-attr:aria-label="$$open ? $$closeText : $$expandText"
 				data-attr:title="$$open ? $$closeText : $$expandText"
-				data-show="$$expandable">
+				data-show="$$expandable || $$open">
 				<svg class="open" viewBox="0 0 10 10" width="20" height="20" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><path d="M0 0h4v1h-4zM6 0h4v1h-4zM0 1h1v1h-1zM9 1h1v1h-1zM0 2h1v1h-1zM9 2h1v1h-1zM0 3h1v1h-1zM9 3h1v1h-1zM0 6h1v1h-1zM9 6h1v1h-1zM0 7h1v1h-1zM9 7h1v1h-1zM0 8h1v1h-1zM9 8h1v1h-1zM0 9h4v1h-4zM6 9h4v1h-4z"/></svg>
 				<svg class="close" viewBox="0 0 10 10" width="20" height="20" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><path d="M1 1h2v1h-2zM7 1h2v1h-2zM2 2h2v1h-2zM6 2h2v1h-2zM3 3h4v1h-4zM4 4h2v1h-2zM3 5h4v1h-4zM2 6h2v1h-2zM6 6h2v1h-2zM1 7h2v1h-2zM7 7h2v1h-2zM1 8h1v1h-1zM8 8h1v1h-1z"/></svg>
 			</button>
