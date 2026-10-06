@@ -1,6 +1,14 @@
 // Generated from sortable-list.ts by `go tool task ts`: edit the TypeScript, not this file.
-// From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), under the Beer-Ware licence
-// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd`, pd- names renamed to sb-.
+/*!
+ * From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), vendored by
+ * `go run ./cmd/vendorpd` with patches/pd-rockets applied, pd- names renamed to sb-.
+ *
+ * THE BEER-WARE LICENSE (Revision 42)
+ *
+ * PD rockets contributors wrote this software. As long as you retain this notice,
+ * you can do whatever you want with it. If we meet someday and you think this
+ * software is worth it, you can buy us a beer in return.
+ */
 import { rocket } from "datastar";
 import { installFlip } from "./core/flip.js";
 import { installFocusRecovery } from "./core/focus-recovery.js";
@@ -13,6 +21,17 @@ import { installTargetIndicator } from "./core/visual-outlets.js";
 import { sortableListContract } from "./contracts/sortable-list.js";
 rocket("sb-sortable-list", {
     mode: "light",
+    manifest: {
+        events: [
+            {
+                name: sortableListContract.events.move,
+                kind: "custom-event",
+                bubbles: true,
+                composed: true,
+                description: 'An item was dropped, or a keyboard move committed. detail: { itemId, before }, where before is the id of the item it now precedes, or "" for the end.',
+            },
+        ],
+    },
     setup({ host, cleanup }) {
         cleanup(markRocketHost(host));
         const owns = (item) => ownsRocketElement(host, item);
@@ -31,9 +50,19 @@ rocket("sb-sortable-list", {
         const items = () => [...host.querySelectorAll(sortableListContract.selectors.item)].filter(owns);
         const flip = installFlip({ host, itemSelector: sortableListContract.selectors.item, itemId });
         const indicator = installTargetIndicator(host);
+        // A drop up to an item's height above or below the list lands at that end, so the list needs no padding there.
+        const nearEnd = (x, y) => {
+            const all = items();
+            const list = host.getBoundingClientRect();
+            const first = all[0]?.getBoundingClientRect();
+            const last = all.at(-1)?.getBoundingClientRect();
+            if (!first || !last || x < list.left || x > list.right)
+                return false;
+            return (y < first.top && y >= first.top - first.height) || (y >= last.bottom && y < last.bottom + last.height);
+        };
         const targetAt = (x, y, sourceId) => {
             const hit = document.elementFromPoint(x, y);
-            if (!hit || !owns(hit))
+            if (!(hit && owns(hit)) && !nearEnd(x, y))
                 return null;
             const candidates = items()
                 .filter((item) => item.dataset.sortableItem !== sourceId)

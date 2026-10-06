@@ -2,5 +2,13 @@
   "tag": "sb-sortable-list",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-sortable-move",
+      "bubbles": true,
+      "composed": true,
+      "description": "An item was dropped, or a keyboard move committed. detail: { itemId, before }, where before is the id of the item it now precedes, or \"\" for the end."
+    }
+  ]
 }
