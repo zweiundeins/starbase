@@ -39,3 +39,74 @@ try {
 }
 await report()
 `
+
+// TestSortableListDrag drags items of the demo with the pointer: onto an
+// item, and just outside the list's ends (patches/pd-rockets 0010), which
+// lands there; farther away a drop does nothing.
+func TestSortableListDrag(t *testing.T) {
+	_, body := probe(t, "/components/sortable-list", pdPrelude+sortableListDragJS)
+	copyRows(t, body)
+}
+
+const sortableListDragJS = `
+try {
+	await customElements.whenDefined('sb-sortable-list')
+	const list = () => document.getElementById('inner-planets')
+	const item = (id) => list().querySelector('[data-sortable-item="' + id + '"]')
+	const order = () => [...list().querySelectorAll('[data-sortable-item]')].map((i) => i.dataset.sortableItem).join(' ')
+	const moves = []
+	document.addEventListener('sb-sortable-move', (e) => moves.push(e.detail))
+	const move = async (id, to, want) => {
+		const before = list().dataset.state
+		moves.length = 0
+		await drag(item(id), to)
+		await until(() => list().dataset.state !== before, want === before ? 600 : 15000)
+		return [moves, list().dataset.state, order()]
+	}
+	const point = (id, y) => {
+		const r = item(id).getBoundingClientRect()
+		return { x: r.left + r.width / 2, y: y(r) }
+	}
+	list().scrollIntoView({ block: 'center' })
+
+	let want = 'mercury earth mars venus'
+	check('onto the upper half of an item', await move('earth', point('mars', (r) => r.top + r.height / 4), want), [[{ itemId: 'earth', before: 'mars' }], want, want])
+	check('the drag cleaned up', [document.querySelector('[data-drag-preview]'), list().hasAttribute('data-drag-active'), list().querySelector('[data-dragging], [data-drop-before]')], [null, false, null])
+
+	want = 'earth mars venus mercury'
+	check('just below the last item', await move('mercury', point('venus', (r) => r.bottom + 10), want), [[{ itemId: 'mercury', before: '' }], want, want])
+
+	want = 'venus earth mars mercury'
+	check('just above the first item', await move('venus', point('earth', (r) => r.top - 10), want), [[{ itemId: 'venus', before: 'earth' }], want, want])
+
+	check('far below the list', await move('earth', point('mercury', (r) => r.bottom + r.height * 3), want), [[], want, want])
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`
+
+// TestSortableListCard drags in the gallery card, which the server answers
+// like the demo.
+func TestSortableListCard(t *testing.T) {
+	_, body := probe(t, "/?q=sortable+list", pdPrelude+sortableListCardJS)
+	copyRows(t, body)
+}
+
+const sortableListCardJS = `
+try {
+	await customElements.whenDefined('sb-sortable-list')
+	const list = () => document.getElementById('sortable-list-card')
+	list().scrollIntoView({ block: 'center' })
+	const earth = list().querySelector('[data-sortable-item="earth"]')
+	const venus = list().querySelector('[data-sortable-item="venus"]').getBoundingClientRect()
+	await drag(earth, { x: venus.left + venus.width / 2, y: venus.bottom + 4 })
+	await until(() => list().dataset.state !== 'earth mars venus')
+	check('the card moved earth to the end', [list().dataset.state, [...list().querySelectorAll('[data-sortable-item]')].map((i) => i.textContent)], ['mars venus earth', ['🪐 Mars', '🪐 Venus', '🪐 Earth']])
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`
