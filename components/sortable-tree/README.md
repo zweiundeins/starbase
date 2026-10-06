@@ -28,7 +28,7 @@ preview: |
       .demo-tree-card [data-dragging], [data-drag-preview][data-tree-row] { outline: 1px dashed CanvasText; outline-offset: -1px; }
     }
   </style>
-  <sb-sortable-tree id="sortable-tree-card" class="demo-tree-card" data-state="earth(moon) mars(phobos)"
+  <sb-sortable-tree id="sortable-tree-card" data-ignore-morph class="demo-tree-card" data-state="earth(moon) mars(phobos)"
     data-on:sb-tree-move="@get('/demo/arrange/sortable-tree-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
     <div data-tree-children data-tree-parent="">
       <div id="sortable-tree-card-earth" data-tree-node="earth" data-tree-kind="folder">
@@ -107,7 +107,7 @@ The server renders the tree with its arrangement in `data-state`: each folder's 
     .demo-tree [data-dragging], [data-drag-preview][data-tree-row] { border-style: dashed; }
   }
 </style>
-<sb-sortable-tree id="solar-moons" class="demo-tree" data-state="earth(moon phobos) mars(deimos) jupiter(europa io) callisto"
+<sb-sortable-tree id="solar-moons" data-ignore-morph class="demo-tree" data-state="earth(moon phobos) mars(deimos) jupiter(europa io) callisto"
 	data-on:sb-tree-move="@get('/demo/arrange/sortable-tree', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
 	<div data-tree-children data-tree-parent="" aria-label="Solar System">
 		<div id="solar-moons-earth" data-tree-node="earth" data-tree-kind="folder">
@@ -265,7 +265,7 @@ func arrangeSortableTree(state string, move json.RawMessage) (string, error) {
 func renderSortableTree(id, state string) string {
 	root, _ := parseTree(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" class=\"demo-tree\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree"))
+	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" data-ignore-morph class=\"demo-tree\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree"))
 	b.WriteString("\t<div data-tree-children data-tree-parent=\"\" aria-label=\"Solar System\">\n")
 	var nodes func(list []*treeNode, indent string)
 	nodes = func(list []*treeNode, indent string) {
