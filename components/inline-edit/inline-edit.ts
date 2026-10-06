@@ -1,5 +1,13 @@
-// From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), under the Beer-Ware licence
-// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd`, pd- names renamed to sb-.
+/*!
+ * From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), vendored by
+ * `go run ./cmd/vendorpd` with patches/pd-rockets applied, pd- names renamed to sb-.
+ *
+ * THE BEER-WARE LICENSE (Revision 42)
+ *
+ * PD rockets contributors wrote this software. As long as you retain this notice,
+ * you can do whatever you want with it. If we meet someday and you think this
+ * software is worth it, you can buy us a beer in return.
+ */
 import { rocket } from "datastar";
 import {
   inlineEditContract,
@@ -9,9 +17,43 @@ import {
 
 rocket("sb-inline-edit", {
   mode: "light",
+  manifest: {
+    events: [
+      {
+        name: inlineEditContract.events.request,
+        kind: "custom-event",
+        bubbles: true,
+        composed: true,
+        description:
+          "A double press on the trigger, or Enter or F2 while it has the focus. detail: { contextId }. " +
+          "Render the field.",
+      },
+      {
+        name: inlineEditContract.events.commit,
+        kind: "custom-event",
+        bubbles: true,
+        composed: true,
+        description:
+          "Enter in the field, or the field lost the focus, with a text other than the saved one it started from. " +
+          "detail: { contextId, value }. Save it and render the title, or refuse it.",
+      },
+      {
+        name: inlineEditContract.events.cancel,
+        kind: "custom-event",
+        bubbles: true,
+        composed: true,
+        description:
+          "Escape in the field, or the field lost the focus with the saved text in it. detail: { contextId }. " +
+          "Render the title again.",
+      },
+    ],
+  },
   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
     let lastPress = 0;
     let cancelling = false;
+    // The saved text each field started from, read when it took the focus.
+    const startedFrom = new WeakMap<HTMLInputElement, string | null | undefined>();
+    const savedText = () => host.querySelector(inlineEditContract.selectors.value)?.textContent;
     const contextId = () => host.dataset.contextId ?? "";
     const emit = <T>(name: string, detail: T) =>
       host.dispatchEvent(new CustomEvent<T>(name, { bubbles: true, composed: true, detail }));
@@ -33,35 +75,65 @@ rocket("sb-inline-edit", {
       emit<InlineEditRequestDetail>(inlineEditContract.events.request, { contextId: contextId() });
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return;
       const input = inputFor(event.target);
-      if (!input || event.defaultPrevented || event.isComposing) return;
+      if (!input) {
+        const onTrigger =
+          event.target instanceof Element &&
+          event.target.matches(inlineEditContract.selectors.trigger) &&
+          host.contains(event.target);
+        if (onTrigger && (event.key === "Enter" || event.key === "F2")) {
+          event.preventDefault();
+          if (event.repeat) return;
+          emit<InlineEditRequestDetail>(inlineEditContract.events.request, { contextId: contextId() });
+        }
+        return;
+      }
       if (event.key === "Enter") {
         event.preventDefault();
-        input.blur();
+        if (!event.repeat) input.blur();
       } else if (event.key === "Escape") {
         event.preventDefault();
         cancelling = true;
+        startedFrom.delete(input);
         emit<InlineEditRequestDetail>(inlineEditContract.events.cancel, { contextId: contextId() });
         input.blur();
         cancelling = false;
       }
     };
+    const onFocusIn = (event: FocusEvent) => {
+      const input = inputFor(event.target);
+      if (input && !startedFrom.has(input)) startedFrom.set(input, savedText());
+    };
     const onFocusOut = (event: FocusEvent) => {
       if (cancelling) return;
       const input = inputFor(event.target);
       if (!input) return;
-      if (input.value === host.querySelector(inlineEditContract.selectors.value)?.textContent) {
-        emit<InlineEditRequestDetail>(inlineEditContract.events.cancel, { contextId: contextId() });
-      } else {
-        emit<InlineEditCommitDetail>(inlineEditContract.events.commit, { contextId: contextId(), value: input.value });
-      }
+      // A morph that removes or moves the field blurs it on the way: decide once the page has settled.
+      queueMicrotask(() => {
+        const root = input.getRootNode();
+        const focused = (root instanceof Document || root instanceof ShadowRoot) && root.activeElement === input;
+        if (!input.isConnected || focused) return;
+        const saved = startedFrom.has(input) ? startedFrom.get(input) : savedText();
+        startedFrom.delete(input);
+        if (input.value === saved) {
+          emit<InlineEditRequestDetail>(inlineEditContract.events.cancel, { contextId: contextId() });
+        } else {
+          emit<InlineEditCommitDetail>(inlineEditContract.events.commit, {
+            contextId: contextId(),
+            value: input.value,
+          });
+        }
+      });
     };
     host.addEventListener("pointerdown", onPointerDown);
     host.addEventListener("keydown", onKeyDown);
+    host.addEventListener("focusin", onFocusIn);
     host.addEventListener("focusout", onFocusOut);
     cleanup(() => {
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("keydown", onKeyDown);
+      host.removeEventListener("focusin", onFocusIn);
       host.removeEventListener("focusout", onFocusOut);
     });
   },

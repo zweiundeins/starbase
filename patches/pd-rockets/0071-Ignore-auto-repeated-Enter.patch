@@ -1,0 +1,35 @@
+From 24e7cdef20f8d330a807eb183f075aaa4f13d73d Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:09:56 +0000
+Subject: [PATCH 71/73] Ignore auto-repeated Enter
+
+Holding Enter on the trigger requested the field, and the next repeat landed in the field the page had just
+rendered and focused, which closed it again. A repeat now neither requests nor commits; its default stays
+prevented, so it can't submit a form either.
+---
+ rocket/inline-edit/client.ts | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/inline-edit/client.ts b/rocket/inline-edit/client.ts
+index f41ecfa..8243859 100644
+--- a/rocket/inline-edit/client.ts
++++ b/rocket/inline-edit/client.ts
+@@ -41,13 +41,14 @@ rocket(inlineEditContract.tag, {
+           host.contains(event.target);
+         if (onTrigger && (event.key === "Enter" || event.key === "F2")) {
+           event.preventDefault();
++          if (event.repeat) return;
+           emit<InlineEditRequestDetail>(inlineEditContract.events.request, { contextId: contextId() });
+         }
+         return;
+       }
+       if (event.key === "Enter") {
+         event.preventDefault();
+-        input.blur();
++        if (!event.repeat) input.blur();
+       } else if (event.key === "Escape") {
+         event.preventDefault();
+         cancelling = true;
+-- 
+2.55.0
+

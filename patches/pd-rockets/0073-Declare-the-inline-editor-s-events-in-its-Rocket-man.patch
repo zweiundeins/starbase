@@ -1,0 +1,57 @@
+From 376caa523636c187de3cea0dfe4b8a59a5292e96 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:11:02 +0000
+Subject: [PATCH 73/73] Declare the inline editor's events in its Rocket
+ manifest
+
+Rocket publishes a manifest per component; with the events declared, tools that read it (API tables, editor
+hints) list request, commit and cancel with their detail.
+---
+ rocket/inline-edit/client.ts | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/rocket/inline-edit/client.ts b/rocket/inline-edit/client.ts
+index 62429ed..0da01b7 100644
+--- a/rocket/inline-edit/client.ts
++++ b/rocket/inline-edit/client.ts
+@@ -8,6 +8,37 @@ import {
+ 
+ rocket(inlineEditContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: inlineEditContract.events.request,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "A double press on the trigger, or Enter or F2 while it has the focus. detail: { contextId }. " +
++          "Render the field.",
++      },
++      {
++        name: inlineEditContract.events.commit,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "Enter in the field, or the field lost the focus, with a text other than the saved one it started from. " +
++          "detail: { contextId, value }. Save it and render the title, or refuse it.",
++      },
++      {
++        name: inlineEditContract.events.cancel,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "Escape in the field, or the field lost the focus with the saved text in it. detail: { contextId }. " +
++          "Render the title again.",
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     let lastPress = 0;
+     let cancelling = false;
+-- 
+2.55.0
+
