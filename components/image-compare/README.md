@@ -23,6 +23,7 @@ playground:
   content: '<img slot="before" src="/art/hero.svg" alt="" width="360" height="168" style="image-rendering: pixelated; filter: grayscale(1) contrast(1.4) brightness(0.8)"><img slot="after" src="/art/hero.svg" alt="" width="360" height="168" style="image-rendering: pixelated">'
   style: "inline-size: min(100%, 28rem)"
   sync: {sb-position: [position]}
+  exclude: [expanded]
 ---
 
 Two pictures of the same size, stacked, with a divider the reader drags to reveal one or the other: a raw and a processed telescope frame, a redesign, two profiler traces of the same page load. Drag anywhere on the picture, tap or click to jump, or focus the divider and use the arrow keys. With `expandable`, a button opens the comparison full screen, among the stars.
@@ -44,7 +45,7 @@ Without a label, the divider's value text says "Before" and "After"; with labels
 
 ### Full screen
 
-`expandable` adds a button in the corner. Full screen is a popover over a starfield: the same slotted images move to the top layer, scaled to fit the viewport, and the divider keeps its position. Escape or the button closes it; Tab stays between the divider and the button meanwhile. `sb-expand` reports both, and `:state(expanded)` styles the open element from the page. The page or the server can open and close it too: a changed `expanded` attribute wins, and a removed one changes nothing, so a morph that drops it doesn't close the reader's view. Full screen shows the images the browser already chose for the page: with `srcset`, list a candidate as wide as the screen and keep `sizes` honest, or the picture is upscaled.
+`expandable` adds a button in the corner. Full screen is a popover over a starfield: the same slotted images move to the top layer, scaled to fit the viewport, and the divider keeps its position. Escape or the button closes it; Tab stays between the divider and the button meanwhile. `sb-expand` reports both, with a `reason` (`reader`, `server` or `api`), so a page that stores the state doesn't post the server's own changes back; `:state(expanded)` styles the open element from the page. The page or the server can open and close it too: a changed `expanded` attribute wins, `expanded="false"` closes it, and a removed attribute changes nothing, so a morph that drops it doesn't close the reader's view. With Datastar, bind it as `data-attr:expanded="$_full ? 'true' : 'false'"`: `data-attr` removes the attribute for `false`, and a removed attribute changes nothing. Opened that way, the focus moves to the divider, and the close button shows even without `expandable`. Moved or re-inserted (a morph does both), the element keeps full screen, the divider's position and the server's last word. Full screen shows the images the browser already chose for the page: with `srcset`, list a candidate as wide as the screen and keep `sizes` honest, or the picture is upscaled.
 
 ```html preview
 <sb-image-compare expandable before-label="Infrared" after-label="Visible" style="inline-size: min(100%, 30rem)">
@@ -128,6 +129,6 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 The divider is a native range input, invisible over the picture: Tab focuses it (the frame gets a focus ring), the arrow keys move it by 1%, Page Up/Down by 10%, Home and End to either edge. Its value text names both sides; `label` names the control, else the element's own `aria-label`, else "Comparison". Pointer drags move the same value, and after a drag or a tap the divider has the focus, so the keys continue from there.
 
-On touch screens a horizontal drag moves the divider and a vertical swipe scrolls the page without moving it. Full screen is announced as a dialog named by `label`; `expand-label` and `close-label` name the button in your language. In right-to-left text the before side sits on the right.
+On touch screens a horizontal drag moves the divider and a vertical swipe scrolls the page without moving it. Full screen is announced as a dialog named like the divider (`label`, else the element's `aria-label`, else "Comparison"); `expand-label` and `close-label` name the button in your language. In right-to-left text the before side sits on the right.
 
 Give each image its own alt text: a reader who can't see the pictures needs to know what differs.
