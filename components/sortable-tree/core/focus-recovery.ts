@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 /** Restore a keyboard-moved item after a later DOM patch, unless the user chose another focus target. */
 export function installFocusRecovery(host: HTMLElement): {
   expect: (source: HTMLElement, findConfirmed: () => HTMLElement | null) => void;

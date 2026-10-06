@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 export const sortableTreeContract = {
   tag: "sb-sortable-tree",
   selectors: {
