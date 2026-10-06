@@ -64,7 +64,7 @@ Elements with `slot="bar"` go into the top bar, between the file tabs and the ru
 
 ### Problems
 
-`diagnostics` maps file names to lists of problems, `{"component.js": [{line, col, length, message, text}]}`, and hands each list to that file's editor (see sb-code-editor's [problems](/components/code-editor#problems)). Starbase's `/playground` fills it from a type check on the server: every edit and run of `component.ts`, or of a `component.js` that starts with `// @ts-check`, goes to TypeScript, which checks it against the types of Datastar and Rocket.
+`diagnostics` maps file names to lists of problems, `{"component.js": [{line, col, length, message, text}]}`, and hands each list to that file's editor (see sb-code-editor's [problems](/components/code-editor#problems)). Starbase's `/playground` fills it from a type check on the server: on every run (with Auto on, shortly after each edit), `component.ts`, or a `component.js` that starts with `// @ts-check`, goes to TypeScript, which checks it against the types of Datastar and Rocket.
 
 ### TypeScript
 

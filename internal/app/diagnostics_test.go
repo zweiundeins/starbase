@@ -99,7 +99,8 @@ try {
 		const pg = document.querySelector('sb-code-playground')
 		pg.files = { 'component.js': "// @ts-check\nimport { rocket } from 'datastar'\nrocket('sb-x', { props: ({ string }) => ({ label: string }), setup: ({ props }) => props.lable })\n" }
 		const ed = pg.shadowRoot.querySelector('sb-code-editor[data-file="component.js"]')
-		const got = await until(() => [...ed.shadowRoot.querySelectorAll('.diag mark')].map((m) => m.textContent).join())
+		// The first check unpacks the compiler: seconds under -race on a slow runner.
+		const got = await until(() => [...ed.shadowRoot.querySelectorAll('.diag mark')].map((m) => m.textContent).join(), 30000)
 		check('the playground underlines what the type check found', got, 'lable')
 		check('with its message', ed.shadowRoot.querySelector('[part="problem"]').textContent.includes("Did you mean 'label'?"), true)
 	}

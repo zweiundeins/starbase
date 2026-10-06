@@ -244,7 +244,8 @@ func sizeExpr(component string) string {
 // moduleExpr is the payload's name and code of the playground's module.
 const moduleExpr = "name: 'component.ts' in evt.detail.files ? 'component.ts' : 'component.js', code: evt.detail.files['component.ts'] ?? evt.detail.files['component.js'] ?? ''"
 
-// checkExpr type-checks the module after edits and runs; the answer is
+// checkExpr type-checks the module on every run: each carries the files as
+// they are, and a newer request cancels the one in flight. The answer is
 // $_diag, the playground's diagnostics as JSON (web/playground_check.go).
 func checkExpr(component string) string {
 	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", " + moduleExpr + "}})"
@@ -287,7 +288,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				typescript
 				data-signals:_diag="'{}'"
 				data-attr:diagnostics="$_diag"
-				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) + "; " + checkExpr(v.Component) }
+				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) }
 				data-on:sb-run={ checkExpr(v.Component) }
 			>
 				@PlaygroundSize(v.Size)

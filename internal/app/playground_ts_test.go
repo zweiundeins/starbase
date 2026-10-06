@@ -46,7 +46,8 @@ try {
 
 	if (compiler) {
 		pg.files = { 'component.ts': "export const n: number = 'four'\n" }
-		check('the type check reaches the editor', await until(() => editor().shadowRoot.querySelector('.diag mark')?.textContent), 'n')
+		// The first check unpacks the compiler: seconds under -race on a slow runner.
+		check('the type check reaches the editor', await until(() => editor().shadowRoot.querySelector('.diag mark')?.textContent, 30000), 'n')
 	}
 
 	box().click()
