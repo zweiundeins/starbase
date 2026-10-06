@@ -1,0 +1,34 @@
+From 87cd004fdb8002f5fd661f840566f386d8e406d3 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:04:30 +0000
+Subject: [PATCH 30/35] Keep Alt+Left and Alt+Right on the board at its first
+ and last lane
+
+A move key that had nowhere to go returned before calling preventDefault, so Alt+Left in the first lane went back in the browser's history and Alt+Right in the last lane went forward. The board now claims every move key it matches.
+---
+ rocket/kanban/client.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 57f6f79..25daf9c 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -179,6 +179,7 @@ rocket(kanbanContract.tag, {
+       }
+       const { x: direction, y: rowDirection } = keyboard.direction(event, "move");
+       if (!direction && !rowDirection) return;
++      event.preventDefault();
+       const lane = card.closest<HTMLElement>(kanbanContract.selectors.lane);
+       const allLanes = lanes();
+       const sourceIndex = lane ? allLanes.indexOf(lane) : -1;
+@@ -200,7 +201,6 @@ rocket(kanbanContract.tag, {
+         before = candidates[nextPosition]?.dataset.kanbanCard ?? "";
+       }
+       const target: Target = { col: Number(targetLane.dataset.col ?? 0), before, lane: targetLane };
+-      event.preventDefault();
+       staging.set(card, { itemId, target }, event);
+       markTarget(target);
+     };
+-- 
+2.55.0
+

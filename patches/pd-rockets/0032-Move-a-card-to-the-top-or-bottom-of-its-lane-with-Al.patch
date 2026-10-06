@@ -1,0 +1,73 @@
+From 18e74c96b7e6e59f0c1ac841c83c4722a3647895 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:05:17 +0000
+Subject: [PATCH 32/35] Move a card to the top or bottom of its lane with
+ Alt+Home and Alt+End
+
+Two key slots, moveFirst and moveLast, configurable like the others (data-key-move-first, data-key-move-last). In a staged move they apply to the lane the card is staged in.
+---
+ contracts/kanban.ts     |  4 ++++
+ rocket/kanban/client.ts | 11 +++++++++--
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/contracts/kanban.ts b/contracts/kanban.ts
+index 8cec90b..aac68a8 100644
+--- a/contracts/kanban.ts
++++ b/contracts/kanban.ts
+@@ -30,6 +30,8 @@ export type KanbanKeySlot =
+   | "moveDown"
+   | "moveLeft"
+   | "moveRight"
++  | "moveFirst"
++  | "moveLast"
+   | "cancel";
+ 
+ export type KanbanKeyboard = Partial<Record<KanbanKeySlot, readonly string[]>>;
+@@ -40,6 +42,8 @@ export const defaultKanbanKeyboard: Readonly<Record<KanbanKeySlot, readonly stri
+   selectLeft: focusKeys.focusLeft,
+   selectRight: focusKeys.focusRight,
+   ...moveKeys,
++  moveFirst: ["Alt+Home"],
++  moveLast: ["Alt+End"],
+   ...cancelKeys,
+ };
+ 
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index be509fb..f7465cc 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -31,6 +31,8 @@ rocket(kanbanContract.tag, {
+         moveDown: defaultKanbanKeyboard.moveDown,
+         moveLeft: defaultKanbanKeyboard.moveLeft,
+         moveRight: defaultKanbanKeyboard.moveRight,
++        moveFirst: defaultKanbanKeyboard.moveFirst,
++        moveLast: defaultKanbanKeyboard.moveLast,
+         cancel: defaultKanbanKeyboard.cancel,
+       },
+       {
+@@ -178,7 +180,8 @@ rocket(kanbanContract.tag, {
+         return;
+       }
+       const { x: direction, y: rowDirection } = keyboard.direction(event, "move");
+-      if (!direction && !rowDirection) return;
++      const edge = keyboard.matches("moveFirst", event) ? -1 : keyboard.matches("moveLast", event) ? 1 : 0;
++      if (!direction && !rowDirection && !edge) return;
+       event.preventDefault();
+       const lane = card.closest<HTMLElement>(kanbanContract.selectors.lane);
+       const allLanes = lanes();
+@@ -198,7 +201,11 @@ rocket(kanbanContract.tag, {
+           : 0;
+       // Across lanes the card keeps its row, clamped to the target lane's length.
+       const candidates = others(targetLane);
+-      const nextPosition = Math.max(0, Math.min(candidates.length, position + rowDirection));
++      const nextPosition = edge
++        ? edge < 0
++          ? 0
++          : candidates.length
++        : Math.max(0, Math.min(candidates.length, position + rowDirection));
+       if (!direction && nextPosition === position) return;
+       const before = candidates[nextPosition]?.dataset.kanbanCard ?? "";
+       const target: Target = { col: Number(targetLane.dataset.col ?? 0), before, lane: targetLane };
+-- 
+2.55.0
+
