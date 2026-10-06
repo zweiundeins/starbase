@@ -444,9 +444,12 @@ try {
 	for (; s <= 60; s++) {
 		deep().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true, cancelable: true }))
 		await settle(grid)
-		const got = deep()?.closest?.('[data-r]')?.dataset.r
+		// A window that re-renders the rows moves the focus back a frame later.
+		let got = deep()?.closest?.('[data-r]')?.dataset.r
+		for (let f = 0; f < 10 && got !== String(r + s); f++) (await frame()), (got = deep()?.closest?.('[data-r]')?.dataset.r)
 		if (got !== String(r + s)) {
-			check(c, 'key ' + s, got ?? describe(deep()), r + s)
+			const row0 = dt.shadowRoot.querySelector('.grid [tabindex="0"]')?.closest('[data-r]')?.dataset.r
+			check(c, 'key ' + s + ' (the tab stop is on row ' + row0 + ', ' + windows + ' windows)', got ?? describe(deep()), r + s)
 			break
 		}
 	}
