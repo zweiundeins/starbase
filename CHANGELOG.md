@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - TypeScript in the playground: a switch turns `component.js` into `component.ts`, which runs with its types stripped on the server, its errors reported at the lines written. TypeScript, and JavaScript that starts with `// @ts-check`, is checked by TypeScript on the server on every run, against the types of the patched Datastar build, and its problems are underlined in the editor. TypeScript snippets can't be submitted as components yet. The compiler, TypeScript's native port, is embedded in the binary; release archives and the container image carry its licence and notices.
+- Components can be written in TypeScript: `go tool task ts` type-checks `<slug>.ts` strictly, with helper modules and `.d.ts` declarations from its folder, and writes the committed `.js` that the site, the install snippets and the pinned versions serve. `sb-data-table`, `sb-date-picker` and `sb-dropdown` are TypeScript now (their modules are the compiler's output, so they get new versions that behave the same), and the playground opens them as TypeScript.
 - `sb-code-editor`: highlights TypeScript (`language="ts"`), and `diagnostics` underlines problems sent by the page or the server, the line under the code shows the one at the caret, and F8 and Shift+F8 move between them. A problem whose word has changed disappears, so an older list doesn't point at the wrong place. `sb-code-playground` hands its own `diagnostics` to its editors, per file.
 
 ### Fixed
