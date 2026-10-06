@@ -54,7 +54,7 @@ const styles = /* css */ `
 
 rocket('sb-typewriter', {
 	props: ({ bool, json, number, oneOf, string }) => ({
-		phrases: json.default([]).docs({ description: 'Phrases to type in turn, each erased before the next, as a JSON array of strings. Without it, the element\'s own text is typed once.' }),
+		phrases: json.default(() => []).docs({ description: 'Phrases to type in turn, each erased before the next, as a JSON array of strings. Without it, the element\'s own text is typed once.' }),
 		loop: bool.docs({ description: 'With phrases: start over after the last one, for as long as the element is on screen.' }),
 		prompt: string.docs({ description: 'Text in front of the typed text that is there from the start, e.g. "$ ".' }),
 		cursor: oneOf('block', 'bar', 'underscore', 'none').default('block').docs({ description: 'The cursor\'s shape. It blinks while it waits.' }),
@@ -85,6 +85,8 @@ rocket('sb-typewriter', {
 		$$.rest = ''
 		$$.sr = ''
 		$$.blink = true
+		$$.at = ''
+		$$.placed = false
 	},
 	onFirstRender: ({ $$, cleanup, emit, host, observeProps, props, refs: { stack, rest, cursor } }) => {
 		const still = matchMedia('(prefers-reduced-motion: reduce)')
@@ -119,8 +121,8 @@ rocket('sb-typewriter', {
 			const h = parseFloat(getComputedStyle(cursor).blockSize) || 0
 			const x = rtl ? r.right - box.left - w : r.left - box.left
 			const y = props.cursor === 'underscore' ? r.bottom - box.top - h - r.height * 0.08 : r.top - box.top + (r.height - h) / 2
-			cursor.style.translate = `${Math.round(x * 2) / 2}px ${Math.round(y * 2) / 2}px`
-			cursor.classList.add('placed')
+			$$.at = `${Math.round(x * 2) / 2}px ${Math.round(y * 2) / 2}px`
+			$$.placed = true
 		}
 		const show = () => {
 			const g = list[k] || []
@@ -171,10 +173,14 @@ rocket('sb-typewriter', {
 			n = 0
 			phase = 'wait'
 			if (still.matches) {
-				n = (list[k] || []).length
+				const g = list[k] || []
+				n = g.length
 				phase = 'done'
 				$$.blink = false
-				return show()
+				show()
+				// Shown at once, but complete all the same: listeners attached in
+				// the same pass still hear it.
+				return void queueMicrotask(() => emit('sb-typed', { text: g.join(''), index: k }))
 			}
 			show()
 			$$.blink = true
@@ -196,7 +202,13 @@ rocket('sb-typewriter', {
 		const watch = new MutationObserver(load)
 		watch.observe(host, { childList: true, characterData: true, subtree: true })
 		still.addEventListener('change', restart)
-		observeProps(load, 'phrases')
+		// peek: the callback runs inside the effect of whoever set the
+		// attribute (data-attr), which must not subscribe to what load reads.
+		observeProps(() => peek(load), 'phrases')
+		// A new cursor shape or prompt moves the cursor without a character typed.
+		const replace = () => requestAnimationFrame(place)
+		observeProps(replace, 'cursor')
+		observeProps(replace, 'prompt')
 		load()
 		cleanup(() => {
 			clearTimeout(timer)
@@ -212,7 +224,7 @@ rocket('sb-typewriter', {
 				<span class="sizer" aria-hidden="true"><span data-text="$$prompt"></span><span data-text="t ?? ''"></span></span>
 			</template>
 			<span class="live" aria-hidden="true"><span class="prompt" part="prompt" data-text="$$prompt"></span><span data-text="$$typed"></span><span class="rest" data-ref:rest data-text="$$rest"></span></span>
-			<span class="cursor" part="cursor" data-ref:cursor aria-hidden="true"></span>
+			<span class="cursor" part="cursor" data-ref:cursor aria-hidden="true" data-style:translate="$$at" data-class:placed="$$placed"></span>
 			<span class="sr" data-text="$$sr"></span>
 		</span>
 	`,
