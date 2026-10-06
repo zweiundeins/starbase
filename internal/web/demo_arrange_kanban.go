@@ -10,6 +10,7 @@ import (
 
 func init() {
 	arrangers["kanban-board"] = arranger{arrange: arrangeKanban, render: renderKanban}
+	arrangers["kanban-board-card"] = arranger{arrange: arrangeKanban, render: renderKanbanCard}
 }
 
 // A kanbanLane is a lane of the demo board. Its ID is its data-col: a move
@@ -98,6 +99,29 @@ func renderKanban(id, state string) string {
 			}
 		}
 		b.WriteString("\t\t</div>\n\t</section>\n")
+	}
+	b.WriteString("</sb-kanban-board>")
+	return b.String()
+}
+
+// renderKanbanCard is the gallery card's board: the same lanes and moves in
+// markup small enough for the card, with names only. Its first card is the
+// card's one Tab stop, and the arrows reach the others.
+func renderKanbanCard(id, state string) string {
+	lanes, _ := kanbanState(state)
+	esc := html.EscapeString
+	var b strings.Builder
+	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" class=\"demo-kanban-card\" data-state=\"%s\" data-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board-card"))
+	tab := "0"
+	for i, lane := range kanbanLanes {
+		fmt.Fprintf(&b, "<section data-kanban-lane data-col=\"%d\" tabindex=\"-1\" aria-label=\"%s\"><div data-kanban-lane-cards>", lane.ID, esc(lane.Title))
+		if i < len(lanes) {
+			for _, card := range lanes[i] {
+				fmt.Fprintf(&b, "<article id=\"%s-%s\" data-kanban-card=\"%s\" tabindex=\"%s\">%s</article>", esc(id), esc(card), esc(card), tab, esc(bodies()[card].Name))
+				tab = "-1"
+			}
+		}
+		b.WriteString("</div></section>\n")
 	}
 	b.WriteString("</sb-kanban-board>")
 	return b.String()

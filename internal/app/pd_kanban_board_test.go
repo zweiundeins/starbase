@@ -11,6 +11,35 @@ func TestKanbanBoardMove(t *testing.T) {
 	copyRows(t, body)
 }
 
+// TestKanbanBoardGalleryCard drags a card in the gallery's live preview: the
+// server answers it, and the card is one Tab stop that nothing overflows.
+func TestKanbanBoardGalleryCard(t *testing.T) {
+	_, body := probe(t, "/", pdPrelude+kanbanCardJS)
+	copyRows(t, body)
+}
+
+const kanbanCardJS = `
+try {
+	await customElements.whenDefined('sb-kanban-board')
+	const board = () => document.getElementById('kanban-board-card')
+	board().scrollIntoView({ block: 'center' })
+	const preview = board().closest('.card__preview')
+	check('one Tab stop', [...preview.querySelectorAll('*')].filter((e) => e.tabIndex >= 0).map((e) => e.dataset.kanbanCard), ['mars'])
+	const over = [board(), ...board().querySelectorAll('[data-kanban-lane], [data-kanban-card]')].filter((e) => e.scrollWidth > e.clientWidth + 1)
+	check('nothing overflows', over.map((e) => e.dataset.kanbanCard ?? e.dataset.col ?? 'board'), [])
+	const moves = []
+	board().addEventListener('sb-kanban-move', (e) => moves.push(e.detail))
+	await drag(board().querySelector('[data-kanban-card="mars"]'), board().querySelector('[data-col="9"]'))
+	check('a drop into the empty lane', moves, [{ cardId: 'mars', col: 9, before: '' }])
+	await until(() => board().dataset.state === 'io | moon | mars')
+	check('the server moved it', [board().dataset.state, board().querySelector('[data-col="9"] [data-kanban-card]')?.id], ['io | moon | mars', 'kanban-board-card-mars'])
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`
+
 const kanbanBoardJS = `
 try {
 	await customElements.whenDefined('sb-kanban-board')

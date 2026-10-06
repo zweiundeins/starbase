@@ -62,3 +62,25 @@ func TestRenderKanban(t *testing.T) {
 		t.Errorf("want two cards:\n%s", got)
 	}
 }
+
+// The gallery card's board answers moves like the demo, is one Tab stop,
+// and fits the card: names without icons.
+func TestRenderKanbanCard(t *testing.T) {
+	got := renderKanbanCard("card", "io | mars moon |")
+	for _, want := range []string{
+		`data-on:sb-kanban-move="@get('/demo/arrange/kanban-board-card'`,
+		`<article id="card-io" data-kanban-card="io" tabindex="0">Io</article>`,
+		`<article id="card-mars" data-kanban-card="mars" tabindex="-1">Mars</article>`,
+		`<section data-kanban-lane data-col="9" tabindex="-1" aria-label="Visited"><div data-kanban-lane-cards></div></section>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("no %s in\n%s", want, got)
+		}
+	}
+	if n := strings.Count(got, `tabindex="0"`); n != 1 {
+		t.Errorf("%d Tab stops, want 1:\n%s", n, got)
+	}
+	if arrangers["kanban-board-card"].arrange == nil {
+		t.Error("the card's moves have no arranger")
+	}
+}

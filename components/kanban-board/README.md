@@ -15,21 +15,21 @@ preview: |
     .demo-kanban-card [data-kanban-lane][data-drop-active] { border-color: var(--sb-brand); }
     .demo-kanban-card [data-kanban-lane-cards] { display: grid; align-content: start; gap: 4px; min-block-size: 3.5rem; }
     .demo-kanban-card [data-kanban-card], [data-drag-preview][data-kanban-card] { position: relative; padding: 0.25rem 0.4rem; border: 1px solid var(--sb-border); background: var(--sb-surface-card); color: var(--sb-text-1); font-size: 0.75rem; white-space: nowrap; cursor: grab; touch-action: none; user-select: none; }
-    .demo-kanban-card [data-kanban-card]:focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: 1px; }
+    .demo-kanban-card [data-kanban-card]:focus-visible, .demo-kanban-card [data-kanban-lane]:focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: 1px; }
     .demo-kanban-card [data-dragging] { opacity: 0.35; }
     .demo-kanban-card [data-drop-before]::before, .demo-kanban-card [data-drop-end]::after { content: ""; display: block; block-size: 2px; background: var(--sb-brand); }
     .demo-kanban-card [data-drop-before]::before { position: absolute; inset: -4px 0 auto; }
     @media (forced-colors: active) {
       .demo-kanban-card [data-kanban-lane][data-drop-active] { outline: 2px solid Highlight; outline-offset: -2px; }
-      .demo-kanban-card [data-kanban-card]:focus-visible { outline-color: Highlight; }
+      .demo-kanban-card [data-kanban-card]:focus-visible, .demo-kanban-card [data-kanban-lane]:focus-visible { outline-color: Highlight; }
       .demo-kanban-card [data-drop-before]::before, .demo-kanban-card [data-drop-end]::after { forced-color-adjust: none; background: Highlight; }
       .demo-kanban-card [data-dragging] { border: 1px dashed CanvasText; }
     }
   </style>
-  <sb-kanban-board class="demo-kanban-card">
-    <section data-kanban-lane data-col="1" aria-label="To visit"><div data-kanban-lane-cards><article data-kanban-card="mars" tabindex="0">Mars</article><article data-kanban-card="io" tabindex="-1">Io</article></div></section>
-    <section data-kanban-lane data-col="2" aria-label="En route"><div data-kanban-lane-cards><article data-kanban-card="moon" tabindex="-1">Moon</article></div></section>
-    <section data-kanban-lane data-col="3" aria-label="Visited"><div data-kanban-lane-cards></div></section>
+  <sb-kanban-board id="kanban-board-card" class="demo-kanban-card" data-state="mars io | moon |" data-on:sb-kanban-move="@get('/demo/arrange/kanban-board-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
+    <section data-kanban-lane data-col="4" tabindex="-1" aria-label="To visit"><div data-kanban-lane-cards><article id="kanban-board-card-mars" data-kanban-card="mars" tabindex="0">Mars</article><article id="kanban-board-card-io" data-kanban-card="io" tabindex="-1">Io</article></div></section>
+    <section data-kanban-lane data-col="7" tabindex="-1" aria-label="En route"><div data-kanban-lane-cards><article id="kanban-board-card-moon" data-kanban-card="moon" tabindex="-1">Moon</article></div></section>
+    <section data-kanban-lane data-col="9" tabindex="-1" aria-label="Visited"><div data-kanban-lane-cards></div></section>
   </sb-kanban-board>
 usage: |
   <sb-kanban-board data-on:sb-kanban-move="@post('/board/move', {payload: evt.detail, requestCancellation: 'disabled'})">
