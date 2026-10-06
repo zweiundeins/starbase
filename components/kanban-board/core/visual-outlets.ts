@@ -8,6 +8,7 @@
  * you can do whatever you want with it. If we meet someday and you think this
  * software is worth it, you can buy us a beer in return.
  */
+
 /** Use a server-rendered fragment for the floating pointer preview, or clone the item by default. */
 export function dragPreviewFor(item: HTMLElement): HTMLElement {
   const template = item.querySelector<HTMLTemplateElement>(":scope > template[data-sb-preview]");
