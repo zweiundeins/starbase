@@ -31,6 +31,29 @@ type Target = Cell & { grid: HTMLElement; gridId: string };
 
 rocket("sb-bento-workspace", {
   mode: "light",
+  manifest: {
+    events: [
+      {
+        name: bentoContract.events.move,
+        kind: "custom-event",
+        bubbles: true,
+        composed: true,
+        description:
+          "A tile was dropped on another cell or grid, or a keyboard move was released. detail: { itemId, fromGrid, " +
+          "toGrid, updates }, where updates holds the new place { itemId, grid, col, row, width, height } of every " +
+          "tile that changes in the grid the tile lands in, the tile included.",
+      },
+      {
+        name: bentoContract.events.resize,
+        kind: "custom-event",
+        bubbles: true,
+        composed: true,
+        description:
+          "A tile was resized by its handle or the keyboard. detail: { itemId, grid, updates }, with updates as for " +
+          "the move.",
+      },
+    ],
+  },
   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
     cleanup(markRocketHost(host));
     const { grid: gridSelector, item: itemSelector, resize: resizeSelector } = bentoContract.selectors;
@@ -180,6 +203,26 @@ rocket("sb-bento-workspace", {
       if (pendingTimer) clearTimeout(pendingTimer);
       pendingTimer = setTimeout(clearProjection, 2000);
     };
+    // A DOM patch that reuses tiles by position would leave the focus on whichever tile takes the old place.
+    const expectFocus = (id: string, target: Target) => {
+      const source = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
+        (candidate) => itemId(candidate) === id,
+      );
+      if (source?.contains(document.activeElement))
+        focus.expect(source, () => {
+          const item = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
+            (candidate) => itemId(candidate) === id,
+          );
+          if (!item || gridFor(item)?.dataset.bentoGrid !== target.gridId) return null;
+          const position = cells(item);
+          return position.col === target.col &&
+            position.row === target.row &&
+            position.width === target.width &&
+            position.height === target.height
+            ? item
+            : null;
+        });
+    };
     const emitMove = (id: string, target: Target) => {
       const item = [...host.querySelectorAll<HTMLElement>(itemSelector)].find((candidate) => itemId(candidate) === id);
       const fromGrid = item && gridFor(item)?.dataset.bentoGrid;
@@ -231,7 +274,10 @@ rocket("sb-bento-workspace", {
       retainPreviewOnCommit: true,
       canStart: (event) => !(event.target as HTMLElement).closest(resizeSelector),
       beforeCommit: (id, rect) => flip.prepare({ itemId: id, rect }),
-      commit: emitMove,
+      commit: (id, target) => {
+        expectFocus(id, target);
+        emitMove(id, target);
+      },
     });
 
     let resizing: {
@@ -304,6 +350,7 @@ rocket("sb-bento-workspace", {
       }
       resizing = null;
       host.removeAttribute("data-resize-active");
+      expectFocus(item.dataset.bentoItem ?? "", target);
       flip.prepare();
       emitResize(item.dataset.bentoItem ?? "", target);
     };
@@ -316,23 +363,7 @@ rocket("sb-bento-workspace", {
       owns,
       onCancel: () => mark(null),
       onCommit: ({ id, target, kind }) => {
-        const source = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
-          (candidate) => itemId(candidate) === id,
-        );
-        if (source)
-          focus.expect(source, () => {
-            const item = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
-              (candidate) => itemId(candidate) === id,
-            );
-            if (!item || gridFor(item)?.dataset.bentoGrid !== target.gridId) return null;
-            const position = cells(item);
-            return position.col === target.col &&
-              position.row === target.row &&
-              position.width === target.width &&
-              position.height === target.height
-              ? item
-              : null;
-          });
+        expectFocus(id, target);
         flip.prepare();
         if (kind === "move") emitMove(id, target);
         else emitResize(id, target);

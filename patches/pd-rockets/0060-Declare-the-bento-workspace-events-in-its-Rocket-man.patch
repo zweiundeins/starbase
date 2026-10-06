@@ -1,0 +1,50 @@
+From c4cb9aa36eeff7961bbcfd16d451abf033885d9d Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:03:32 +0000
+Subject: [PATCH 60/61] Declare the bento workspace events in its Rocket
+ manifest
+
+Tools that read a component's manifest, such as a catalog's API table,
+then list pd-bento-move and pd-bento-resize with the fields of their
+detail.
+---
+ rocket/bento/client.ts | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/rocket/bento/client.ts b/rocket/bento/client.ts
+index 2db6d2d..64d0a04 100644
+--- a/rocket/bento/client.ts
++++ b/rocket/bento/client.ts
+@@ -22,6 +22,29 @@ type Target = Cell & { grid: HTMLElement; gridId: string };
+ 
+ rocket(bentoContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: bentoContract.events.move,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "A tile was dropped on another cell or grid, or a keyboard move was released. detail: { itemId, fromGrid, " +
++          "toGrid, updates }, where updates holds the new place { itemId, grid, col, row, width, height } of every " +
++          "tile that changes in the grid the tile lands in, the tile included.",
++      },
++      {
++        name: bentoContract.events.resize,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "A tile was resized by its handle or the keyboard. detail: { itemId, grid, updates }, with updates as for " +
++          "the move.",
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     cleanup(markRocketHost(host));
+     const { grid: gridSelector, item: itemSelector, resize: resizeSelector } = bentoContract.selectors;
+-- 
+2.55.0
+
