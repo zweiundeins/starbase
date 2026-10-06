@@ -47,7 +47,7 @@ Put the text inside it. That is what search engines and readers without JavaScri
 </h3>
 ```
 
-`sb-typed` fires each time a phrase is complete, with its `text` and `index`.
+`sb-typed` fires each time a phrase is complete, with its `text` and `index`; with reduced motion, once for the phrase shown.
 
 ### Cursors
 
