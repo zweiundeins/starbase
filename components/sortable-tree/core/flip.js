@@ -11,6 +11,8 @@ function capture(options) {
     return result;
 }
 function play(options, before) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches)
+        return;
     options.host.querySelectorAll(options.itemSelector).forEach((item) => {
         const id = options.itemId(item);
         const first = id ? before.get(id) : undefined;

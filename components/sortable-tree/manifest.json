@@ -2,5 +2,13 @@
   "tag": "sb-sortable-tree",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-tree-move",
+      "bubbles": true,
+      "composed": true,
+      "description": "A row was dropped, or a keyboard move committed. detail: { itemId, fromParent, toParent, before }: the parents are folder ids, \"\" for the top level; before is the id of the node it now precedes, \"\" for the end of the folder."
+    }
+  ]
 }

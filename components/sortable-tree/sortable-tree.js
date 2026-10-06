@@ -1,6 +1,14 @@
 // Generated from sortable-tree.ts by `go tool task ts`: edit the TypeScript, not this file.
-// From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), under the Beer-Ware licence
-// in LICENSE-pd-rockets.txt. Vendored by `go run ./cmd/vendorpd`, pd- names renamed to sb-.
+/*!
+ * From PD rockets by derekr (https://github.com/derekr/pd-rockets, v2026-09-28-2), vendored by
+ * `go run ./cmd/vendorpd` with patches/pd-rockets applied, pd- names renamed to sb-.
+ *
+ * THE BEER-WARE LICENSE (Revision 42)
+ *
+ * PD rockets contributors wrote this software. As long as you retain this notice,
+ * you can do whatever you want with it. If we meet someday and you think this
+ * software is worth it, you can buy us a beer in return.
+ */
 import { rocket } from "datastar";
 import { sortableTreeContract } from "./contracts/sortable-tree.js";
 import { installFlip } from "./core/flip.js";
@@ -12,6 +20,17 @@ import { installPointerDrag } from "./core/pointer-drag.js";
 import { installTargetIndicator } from "./core/visual-outlets.js";
 rocket("sb-sortable-tree", {
     mode: "light",
+    manifest: {
+        events: [
+            {
+                name: sortableTreeContract.events.move,
+                kind: "custom-event",
+                bubbles: true,
+                composed: true,
+                description: 'A row was dropped, or a keyboard move committed. detail: { itemId, fromParent, toParent, before }: the parents are folder ids, "" for the top level; before is the id of the node it now precedes, "" for the end of the folder.',
+            },
+        ],
+    },
     setup({ host, cleanup }) {
         cleanup(markRocketHost(host));
         const { node: nodeSelector, row: rowSelector, children: childrenSelector } = sortableTreeContract.selectors;
@@ -274,6 +293,21 @@ rocket("sb-sortable-tree", {
             staging.set(row, { id, target }, event);
             mark(target);
         };
+        const onClick = (event) => {
+            const target = event.target;
+            const row = target.closest(rowSelector);
+            const id = row && owns(target) ? rowId(row) : null;
+            const node = row && id ? nodeFor(row) : null;
+            const list = node?.dataset.treeKind === "folder" ? node.querySelector(`:scope > ${childrenSelector}`) : null;
+            const control = target.closest("button, a, input, select, textarea, [contenteditable]:not([contenteditable='false'])");
+            if (!id || !list || control || event.defaultPrevented)
+                return;
+            if (list.hidden)
+                collapsed.delete(id);
+            else
+                collapsed.add(id);
+            syncExpanded();
+        };
         const dispose = installPointerDrag({
             host,
             itemSelector: rowSelector,
@@ -285,12 +319,14 @@ rocket("sb-sortable-tree", {
             commit: emitMove,
         });
         host.addEventListener("keydown", onKeyDown);
+        host.addEventListener("click", onClick);
         cleanup(() => {
             observer.disconnect();
             pendingExpansion = null;
             staging.dispose();
             focus.dispose();
             host.removeEventListener("keydown", onKeyDown);
+            host.removeEventListener("click", onClick);
             dispose();
             flip.dispose();
             indicator.clear();
