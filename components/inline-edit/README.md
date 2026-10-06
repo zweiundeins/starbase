@@ -26,7 +26,7 @@ preview: |
     }
   </style>
   <div class="demo-edit-card">
-  <sb-inline-edit id="card-nick-earth" class="demo-edit" data-context-id="earth" data-state="body=earth name=Blue+Marble"
+  <sb-inline-edit id="card-nick-earth" data-ignore-morph class="demo-edit" data-context-id="earth" data-state="body=earth name=Blue+Marble"
   	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
   	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_card_nick_earth_key}}})"
   	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_card_nick_earth_key}}})"
@@ -36,7 +36,7 @@ preview: |
   	<button type="button" data-inline-edit-trigger aria-label="Blue Marble, nickname of Earth: press Enter to rename"><span data-inline-edit-value>Blue Marble</span></button>
   	<span id="card-nick-earth-failed" class="demo-edit__failed" role="alert" data-text="$_card_nick_earth_failed ? 'Nothing changed: the request failed. Try again.' : ''"></span>
   </sb-inline-edit>
-  <sb-inline-edit id="card-nick-mars" class="demo-edit" data-context-id="mars" data-state="body=mars name=Red+Planet"
+  <sb-inline-edit id="card-nick-mars" data-ignore-morph class="demo-edit" data-context-id="mars" data-state="body=mars name=Red+Planet"
   	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
   	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_card_nick_mars_key}}})"
   	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_card_nick_mars_key}}})"
@@ -101,7 +101,7 @@ Double-press a nickname, or focus it and press Enter or F2, then type a new one.
   }
 </style>
 <div class="demo-edits">
-<sb-inline-edit id="nick-earth" class="demo-edit" data-context-id="earth" data-state="body=earth name=Blue+Marble"
+<sb-inline-edit id="nick-earth" data-ignore-morph class="demo-edit" data-context-id="earth" data-state="body=earth name=Blue+Marble"
 	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
 	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_nick_earth_key}}})"
 	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_nick_earth_key}}})"
@@ -111,7 +111,7 @@ Double-press a nickname, or focus it and press Enter or F2, then type a new one.
 	<button type="button" data-inline-edit-trigger aria-label="Blue Marble, nickname of Earth: press Enter to rename"><span data-inline-edit-value>Blue Marble</span></button>
 	<span id="nick-earth-failed" class="demo-edit__failed" role="alert" data-text="$_nick_earth_failed ? 'Nothing changed: the request failed. Try again.' : ''"></span>
 </sb-inline-edit>
-<sb-inline-edit id="nick-mars" class="demo-edit" data-context-id="mars" data-state="body=mars name=Red+Planet"
+<sb-inline-edit id="nick-mars" data-ignore-morph class="demo-edit" data-context-id="mars" data-state="body=mars name=Red+Planet"
 	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
 	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_nick_mars_key}}})"
 	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_nick_mars_key}}})"
@@ -121,7 +121,7 @@ Double-press a nickname, or focus it and press Enter or F2, then type a new one.
 	<button type="button" data-inline-edit-trigger aria-label="Red Planet, nickname of Mars: press Enter to rename"><span data-inline-edit-value>Red Planet</span></button>
 	<span id="nick-mars-failed" class="demo-edit__failed" role="alert" data-text="$_nick_mars_failed ? 'Nothing changed: the request failed. Try again.' : ''"></span>
 </sb-inline-edit>
-<sb-inline-edit id="nick-jupiter" class="demo-edit" data-context-id="jupiter" data-state="body=jupiter name=Gas+Giant"
+<sb-inline-edit id="nick-jupiter" data-ignore-morph class="demo-edit" data-context-id="jupiter" data-state="body=jupiter name=Gas+Giant"
 	data-on:sb-inline-edit-request="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'request', contextId: evt.detail.contextId}}})"
 	data-on:sb-inline-edit-commit="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $_nick_jupiter_key}}})"
 	data-on:sb-inline-edit-cancel="@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: {type: 'cancel', contextId: evt.detail.contextId, key: $_nick_jupiter_key}}})"
@@ -222,7 +222,7 @@ func renderInlineEdit(id, state string) string {
 		return fmt.Sprintf("\n\tdata-on:%s=\"@get('/demo/arrange/inline-edit', {requestCancellation: 'disabled', payload: {id: el.id, state: el.dataset.state, move: %s}})\"", event, move)
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-inline-edit id=\"%s\" class=\"demo-edit\" data-context-id=\"%s\" data-state=\"%s\"", id, n.body, html.EscapeString(state))
+	fmt.Fprintf(&b, "<sb-inline-edit id=\"%s\" data-ignore-morph class=\"demo-edit\" data-context-id=\"%s\" data-state=\"%s\"", id, n.body, html.EscapeString(state))
 	b.WriteString(on("sb-inline-edit-request", "{type: 'request', contextId: evt.detail.contextId}"))
 	b.WriteString(on("sb-inline-edit-commit", "{type: 'commit', contextId: evt.detail.contextId, value: evt.detail.value, key: $"+signal+"_key}"))
 	b.WriteString(on("sb-inline-edit-cancel", "{type: 'cancel', contextId: evt.detail.contextId, key: $"+signal+"_key}"))
