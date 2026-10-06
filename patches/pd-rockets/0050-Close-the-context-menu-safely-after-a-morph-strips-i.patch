@@ -1,0 +1,60 @@
+From d330299de66c8559c2a13172ee50bdb2f8e13285 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:08:42 +0000
+Subject: [PATCH 50/58] Close the context menu safely after a morph strips its
+ popover attribute
+
+A server morph that replaces the open host's attributes removes popover, which hides the
+host without a toggle event. close() then threw in hidePopover() before it cleared its
+state, so every later open threw as well. Clear the state first and hide only a popover
+that is still open; isOpen() also checks that the host is shown.
+---
+ rocket/context-menu/client.ts | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index cec8a78..2b8772e 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -78,7 +78,7 @@ function setupMenu(
+   const closeTo = (depth: number, refocus = false) => {
+     while (levels.length > depth) {
+       const level = levels.pop()!;
+-      level.menu.hidePopover();
++      if (level.menu.matches(":popover-open")) level.menu.hidePopover();
+       level.unposition();
+       level.trigger.setAttribute("aria-expanded", "false");
+       if (refocus && levels.length === depth) level.trigger.focus();
+@@ -86,13 +86,16 @@ function setupMenu(
+   };
+   const close = (refocus = false) => {
+     if (!content) return;
++    // A morph can strip popover from the open host, so forget the menu first and hide only what is shown.
++    const closing = content;
++    const cloned = clonedContent;
++    content = null;
++    clonedContent = false;
+     closeTo(0);
+-    host.hidePopover();
++    if (host.matches(":popover-open")) host.hidePopover();
+     unpositionRoot?.();
+     unpositionRoot = null;
+-    if (clonedContent) content.remove();
+-    content = null;
+-    clonedContent = false;
++    if (cloned) closing.remove();
+     host.dispatchEvent(
+       new CustomEvent<MenuScopeDetail>(contextMenuContract.events.scope, {
+         bubbles: true,
+@@ -166,7 +169,7 @@ function setupMenu(
+   };
+   host.openFor = openFor;
+   host.closeMenu = close;
+-  host.isOpen = () => !!content;
++  host.isOpen = () => !!content && host.matches(":popover-open");
+   const ownsTrigger = (element: Element): HTMLElement | null => {
+     const found = element.closest<HTMLElement>(contextMenuContract.selectors.trigger);
+     return found?.dataset.menuFor === host.id ? found : null;
+-- 
+2.55.0
+

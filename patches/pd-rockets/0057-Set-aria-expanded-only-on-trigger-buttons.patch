@@ -1,0 +1,55 @@
+From 002a7983aa0f99fb5e41892a3397f1807bd7bda3 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:10:22 +0000
+Subject: [PATCH 57/58] Set aria-expanded only on trigger buttons
+
+A right click on a row set aria-expanded on the row, a list item or similar that has no
+expanded state, so assistive technology announced it as a collapsible item. Only the
+buttons and links that open the menu on click take aria-expanded now.
+---
+ rocket/context-menu/client.ts | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 70b7465..ceebfc6 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -11,6 +11,8 @@ import { showPositionedPopover } from "../../core/popover";
+ import { cancelKeys, keyboardBindings, platformFocusKeys } from "../../core/keyboard";
+ 
+ type Level = { trigger: HTMLElement; menu: HTMLElement; unposition: () => void };
++// Triggers that open the menu on click, the only ones that take aria-expanded.
++const menuButton = "button, a";
+ type MenuHost = ContextMenuHost;
+ 
+ /** Install menu mechanics on a server-owned light-DOM host (including fetched fragments). */
+@@ -107,7 +109,7 @@ function setupMenu(
+     const previous = trigger;
+     trigger = null;
+     if (previous) {
+-      previous.setAttribute("aria-expanded", "false");
++      if (previous.matches(menuButton)) previous.setAttribute("aria-expanded", "false");
+       if (refocus && previous.isConnected) previous.focus();
+     }
+   };
+@@ -159,7 +161,7 @@ function setupMenu(
+     host.setAttribute("role", "menu");
+     host.tabIndex = -1;
+     host.toggleAttribute("data-mobile-sheet", mobile.matches);
+-    source.setAttribute("aria-expanded", "true");
++    if (source.matches(menuButton)) source.setAttribute("aria-expanded", "true");
+     unpositionRoot =
+       options.mobileSheet && mobile.matches
+         ? showSheet(host)
+@@ -198,7 +200,7 @@ function setupMenu(
+     const source = event.target instanceof Element && ownsTrigger(event.target);
+     const again = source === pressedTrigger && event.detail > 0;
+     pressedTrigger = null;
+-    if (source && source.matches("button, a")) {
++    if (source && source.matches(menuButton)) {
+       event.preventDefault();
+       if (again) close(true);
+       else openFor(source);
+-- 
+2.55.0
+

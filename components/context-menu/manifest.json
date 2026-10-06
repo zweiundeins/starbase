@@ -2,5 +2,20 @@
   "tag": "sb-context-menu",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-menu-action",
+      "bubbles": true,
+      "composed": true,
+      "description": "An item with data-action was chosen. detail: { action, contextId }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-menu-scope",
+      "bubbles": true,
+      "composed": false,
+      "description": "The menu opened (active: true) or closed. detail: { root, active }."
+    }
+  ]
 }

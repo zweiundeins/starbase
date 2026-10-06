@@ -1,0 +1,27 @@
+From 4d52d91722e159b1287084b539b5e225101ea555 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:09:06 +0000
+Subject: [PATCH 52/58] Hide submenus until they open
+
+A submenu became a popover only when it first opened, so until then it showed inside its
+parent menu unless the page hid it. Make every submenu a popover when the menu opens.
+---
+ rocket/context-menu/client.ts | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 08876f3..46f00b2 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -150,6 +150,8 @@ function setupMenu(
+       content.append(bindTemplate(template, { ...context, contextId }));
+       host.append(content);
+     } else content = live ?? host;
++    // Submenus stay hidden until they open.
++    for (const submenu of content.querySelectorAll<HTMLElement>('[role="menu"]')) submenu.popover = "auto";
+     // A server morph may replace setup-only attributes with the original HTML.
+     host.popover = "auto";
+     host.setAttribute("role", "menu");
+-- 
+2.55.0
+
