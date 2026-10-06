@@ -27,7 +27,7 @@ preview: |
     }
   </style>
   <p id="sortable-list-card-hint" class="visually-hidden">Drag a planet, or focus it and press the arrow keys while you hold Alt.</p>
-  <sb-sortable-list id="sortable-list-card" class="demo-sortable" role="list" data-on:sb-sortable-move="@get('/demo/arrange/sortable-list', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})" data-state="earth mars venus">
+  <sb-sortable-list id="sortable-list-card" data-ignore-morph class="demo-sortable" role="list" data-on:sb-sortable-move="@get('/demo/arrange/sortable-list', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})" data-state="earth mars venus">
     <div data-sortable-item="earth" role="listitem" tabindex="0" aria-describedby="sortable-list-card-hint">🪐 Earth</div>
     <div data-sortable-item="mars" role="listitem" tabindex="0" aria-describedby="sortable-list-card-hint">🪐 Mars</div>
     <div data-sortable-item="venus" role="listitem" tabindex="0" aria-describedby="sortable-list-card-hint">🪐 Venus</div>
@@ -84,7 +84,7 @@ The server renders the list with its order in `data-state`. A move sends that or
 </style>
 <div class="demo-sortable-box">
 <p id="inner-planets-hint">Drag a planet, or focus it and press the arrow keys while you hold Alt. Releasing Alt sends the move.</p>
-<sb-sortable-list id="inner-planets" class="demo-sortable" role="list" data-state="earth mercury mars venus"
+<sb-sortable-list id="inner-planets" data-ignore-morph class="demo-sortable" role="list" data-state="earth mercury mars venus"
 	data-on:sb-sortable-move="@get('/demo/arrange/sortable-list', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
 	<div data-sortable-item="earth" role="listitem" tabindex="0" aria-describedby="inner-planets-hint">🪐 Earth</div>
 	<div data-sortable-item="mercury" role="listitem" tabindex="0" aria-describedby="inner-planets-hint">🪐 Mercury</div>
@@ -144,7 +144,7 @@ func arrangeSortableList(state string, move json.RawMessage) (string, error) {
 func renderSortableList(id, state string) string {
 	id, state = html.EscapeString(id), html.EscapeString(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-sortable-list id=\"%s\" class=\"demo-sortable\" role=\"list\" data-state=\"%s\"\n\tdata-on:sb-sortable-move=\"%s\">\n", id, state, arrangeOn("sortable-list"))
+	fmt.Fprintf(&b, "<sb-sortable-list id=\"%s\" data-ignore-morph class=\"demo-sortable\" role=\"list\" data-state=\"%s\"\n\tdata-on:sb-sortable-move=\"%s\">\n", id, state, arrangeOn("sortable-list"))
 	for _, item := range strings.Fields(state) {
 		fmt.Fprintf(&b, "\t<div data-sortable-item=\"%s\" role=\"listitem\" tabindex=\"0\" aria-describedby=\"%s-hint\">%s</div>\n", item, id, label(item))
 	}

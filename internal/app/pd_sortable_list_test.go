@@ -33,6 +33,13 @@ try {
 	release('Alt')
 	await settle(400)
 	check('a cancelled move', list.dataset.state, 'mercury earth mars venus')
+
+	// Another frame of the page (here: the next install tab) leaves the demo as the reader arranged it.
+	const tab = () => document.querySelector('sb-tabs.install-tabs')?.getAttribute('selected')
+	const was = tab()
+	await fetch('/cmd/install-tab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tab: was === '1' ? 'autoloader' : 'component' }) })
+	await until(() => tab() !== was)
+	check('a page frame keeps the arrangement', [tab() !== was, list.dataset.state, order()], [true, 'mercury earth mars venus', 'mercury earth mars venus'])
 	check('no errors', errors, [])
 } catch (e) {
 	rows.push({ step: 'script', error: String(e?.stack || e) })
