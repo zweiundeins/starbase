@@ -37,6 +37,8 @@ components/my-widget/
 └── manifest.json   generated in dev from Rocket's manifest, commit it
 ```
 
+A component can also be written in TypeScript: rename `my-widget.js` to `my-widget.ts` and run `go tool task ts`. It type-checks the file strictly against the types of Datastar and Rocket and writes the compiled `my-widget.js` next to it, which you commit too: the site, the install snippets and the pinned versions all serve the JavaScript, and the TypeScript is what the playground opens. A test fails when the two drift apart. Pull requests only: the submission form takes JavaScript.
+
 The front matter drives the gallery card:
 
 ```yaml

@@ -96,3 +96,25 @@ func TestValidName(t *testing.T) {
 		}
 	}
 }
+
+func TestCompile(t *testing.T) {
+	c := New(t.TempDir())
+	if c == nil {
+		t.Skip("no compiler embedded: go run ./cmd/fetchtsc")
+	}
+	ctx := context.Background()
+	js, ds, err := c.Compile(ctx, []File{
+		{"x/x.ts", "import { pad } from './vendor/pad.js'\n\n// Kept.\nexport const label: string = pad('a')\n"},
+		{"x/vendor/pad.js", "export const pad = (s) => ' ' + s\n"},
+	})
+	if err != nil || len(ds) != 0 {
+		t.Fatal(err, ds)
+	}
+	if got := js["x/x.js"]; !strings.Contains(got, "// Kept.\nexport const label = pad('a');") || !strings.Contains(got, "from './vendor/pad.js'") {
+		t.Errorf("emitted:\n%s", got)
+	}
+	js, ds, err = c.Compile(ctx, []File{{"x/x.ts", "export const f = (n) => n\n"}})
+	if err != nil || js != nil || len(ds) != 1 || ds[0].File != "x/x.ts" || ds[0].Code != 7006 {
+		t.Errorf("a strict error: %v %v %+v", err, js, ds)
+	}
+}

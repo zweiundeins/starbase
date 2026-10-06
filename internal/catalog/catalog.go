@@ -51,11 +51,14 @@ func (m Meta) InstallMarkup() string {
 
 type Component struct {
 	Meta
-	Slug     string
-	Script   string // path inside the components FS, e.g. "button/button.js"
-	DocHTML  string
-	Manifest *Manifest
-	Hash     string // content hash over every file in the folder
+	Slug   string
+	Script string // path inside the components FS, e.g. "button/button.js"
+	// SourceFile is the file the component is written in: Script, or the
+	// <slug>.ts that Script is compiled from (internal/tsgen).
+	SourceFile string
+	DocHTML    string
+	Manifest   *Manifest
+	Hash       string // content hash over every file in the folder
 	// Integrity is the SRI hash of the component's module (<slug>.js).
 	Integrity string
 	Headings  []Heading
@@ -186,6 +189,10 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 		return nil, fmt.Errorf("missing README.md")
 	}
 	c := &Component{Slug: slug, Script: path.Join(slug, slug+".js")}
+	c.SourceFile = c.Script
+	if _, err := fs.Stat(fsys, path.Join(slug, slug+".ts")); err == nil {
+		c.SourceFile = path.Join(slug, slug+".ts")
+	}
 	c.DocHTML, err = RenderMarkdown(readme, &c.Meta)
 	if err != nil {
 		return nil, fmt.Errorf("README.md: %w", err)

@@ -57,6 +57,12 @@ tasks:
     cmds:
       - go run ./cmd/listings {{.CLI_ARGS}}
 
+  ts:
+    desc: Compile the TypeScript components (components/<slug>/<slug>.ts) into their .js
+    deps: [typescript]
+    cmds:
+      - go run ./cmd/tsgen {{.CLI_ARGS}}
+
   new:
     desc: "Scaffold a component: task new -- my-widget --category forms"
     cmds:

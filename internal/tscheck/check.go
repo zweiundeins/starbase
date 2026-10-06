@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
@@ -152,6 +153,7 @@ type Diagnostic struct {
 	Text    string `json:"text"`   // the word at Line:Col, so an editor can tell when it moved
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+	File    string `json:"file,omitempty"` // set by Compile, which reports every file's
 }
 
 // Check type-checks files[0], with the other files as the modules it may
@@ -169,46 +171,12 @@ func (c *Checker) Check(ctx context.Context, files []File) ([]Diagnostic, error)
 			return nil, fmt.Errorf("tscheck: bad file name %q", f.Name)
 		}
 	}
-	if err := c.Warm(); err != nil {
-		return nil, err
-	}
-	select {
-	case c.slot <- struct{}{}:
-		defer func() { <-c.slot }()
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-	work, err := os.MkdirTemp("", "tscheck-")
+	strict := strings.HasSuffix(files[0].Name, "ts")
+	work, done, err := c.workspace(ctx, files, map[string]any{"strict": strict, "noEmit": true}, files[0].Name)
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(work)
-	if work, err = filepath.EvalSymlinks(work); err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		name := filepath.Join(work, filepath.FromSlash(f.Name))
-		if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(name, []byte(f.Source), 0o644); err != nil {
-			return nil, err
-		}
-	}
-	strict := strings.HasSuffix(files[0].Name, "ts")
-	config, _ := json.Marshal(map[string]any{
-		"compilerOptions": map[string]any{
-			"target": "esnext", "module": "esnext", "moduleResolution": "bundler",
-			"lib": []string{"esnext", "dom", "dom.iterable"}, "types": []string{},
-			"allowJs": true, "checkJs": false, "strict": strict, "skipLibCheck": true,
-			"noEmit": true, "allowImportingTsExtensions": true,
-			"paths": map[string][]string{"datastar": {filepath.Join(c.dir, "types", "bundles", "datastar-rocket.d.ts")}},
-		},
-		"files": []string{files[0].Name},
-	})
-	if err := os.WriteFile(filepath.Join(work, "tsconfig.json"), config, 0o644); err != nil {
-		return nil, err
-	}
+	defer done()
 
 	// The first run only resolves the program: every file the compiler
 	// would read must be one of these, or nothing of the check is shown.
@@ -233,7 +201,99 @@ func (c *Checker) Check(ctx context.Context, files []File) ([]Diagnostic, error)
 	if exit != 0 && !strings.Contains(out, "error TS") {
 		return nil, fmt.Errorf("tscheck: exited with %d: %s", exit, firstLine(out))
 	}
-	return parse(out, files[0])
+	return parse(out, files[:1], false)
+}
+
+// Compile type-checks the .ts files among files strictly, with the others as
+// the modules they may import, and returns the JavaScript the compiler emits
+// for each, comments kept, by the name of its .js. When the code has errors,
+// it returns their diagnostics (with File set) instead.
+func (c *Checker) Compile(ctx context.Context, files []File) (map[string]string, []Diagnostic, error) {
+	var roots []string
+	for _, f := range files {
+		if !validName(f.Name) {
+			return nil, nil, fmt.Errorf("tscheck: bad file name %q", f.Name)
+		}
+		if strings.HasSuffix(f.Name, ".ts") {
+			roots = append(roots, f.Name)
+		}
+	}
+	work, done, err := c.workspace(ctx, files, map[string]any{
+		"strict": true, "outDir": "out", "rootDir": ".", "removeComments": false, "newLine": "lf",
+		"noEmitOnError": true, "rewriteRelativeImportExtensions": true,
+	}, roots...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer done()
+	out, exit, err := c.run(ctx, work, "--pretty", "false")
+	if err != nil {
+		return nil, nil, err
+	}
+	if exit != 0 {
+		ds, err := parse(out, files, true)
+		if err == nil && len(ds) == 0 {
+			err = fmt.Errorf("tscheck: exited with %d: %s", exit, firstLine(out))
+		}
+		return nil, ds, err
+	}
+	js := map[string]string{}
+	for _, r := range roots {
+		name := strings.TrimSuffix(r, ".ts") + ".js"
+		b, err := os.ReadFile(filepath.Join(work, "out", filepath.FromSlash(name)))
+		if err != nil {
+			return nil, nil, err
+		}
+		js[name] = string(b)
+	}
+	return js, nil, nil
+}
+
+// workspace writes files and a tsconfig.json with the options every run
+// shares, plus these, into a temporary folder, and holds the one slot
+// for runs until done is called.
+func (c *Checker) workspace(ctx context.Context, files []File, options map[string]any, roots ...string) (string, func(), error) {
+	if err := c.Warm(); err != nil {
+		return "", nil, err
+	}
+	select {
+	case c.slot <- struct{}{}:
+	case <-ctx.Done():
+		return "", nil, ctx.Err()
+	}
+	work, err := os.MkdirTemp("", "tscheck-")
+	done := func() {
+		os.RemoveAll(work)
+		<-c.slot
+	}
+	if err == nil {
+		work, err = filepath.EvalSymlinks(work)
+	}
+	for _, f := range files {
+		if err != nil {
+			break
+		}
+		name := filepath.Join(work, filepath.FromSlash(f.Name))
+		if err = os.MkdirAll(filepath.Dir(name), 0o755); err == nil {
+			err = os.WriteFile(name, []byte(f.Source), 0o644)
+		}
+	}
+	opts := map[string]any{
+		"target": "esnext", "module": "esnext", "moduleResolution": "bundler",
+		"lib": []string{"esnext", "dom", "dom.iterable"}, "types": []string{},
+		"allowJs": true, "checkJs": false, "skipLibCheck": true, "allowImportingTsExtensions": true,
+		"paths": map[string][]string{"datastar": {filepath.Join(c.dir, "types", "bundles", "datastar-rocket.d.ts")}},
+	}
+	maps.Copy(opts, options)
+	config, _ := json.Marshal(map[string]any{"compilerOptions": opts, "files": roots})
+	if err == nil {
+		err = os.WriteFile(filepath.Join(work, "tsconfig.json"), config, 0o644)
+	}
+	if err != nil {
+		done()
+		return "", nil, err
+	}
+	return work, done, nil
 }
 
 // run runs the compiler on work/tsconfig.json and returns what it printed
@@ -271,9 +331,13 @@ func (c *Checker) run(ctx context.Context, work string, args ...string) (string,
 var diagLine = regexp.MustCompile(`^(.+)\((\d+),(\d+)\): error TS(\d+): (.*)$`)
 
 // parse reads the compiler's --pretty false output: a line per diagnostic,
-// followed by indented lines that continue its message.
-func parse(out string, f File) ([]Diagnostic, error) {
-	lines := strings.Split(f.Source, "\n")
+// followed by indented lines that continue its message. It keeps the
+// diagnostics in files, with their File set when named is true.
+func parse(out string, files []File, named bool) ([]Diagnostic, error) {
+	lines := map[string][]string{}
+	for _, f := range files {
+		lines[f.Name] = strings.Split(f.Source, "\n")
+	}
 	var ds []Diagnostic
 	var last *Diagnostic // the diagnostic continuation lines belong to, if it is kept
 	sc := bufio.NewScanner(strings.NewReader(out))
@@ -293,14 +357,19 @@ func parse(out string, f File) ([]Diagnostic, error) {
 			}
 			continue
 		}
-		if filepath.ToSlash(m[1]) != f.Name || len(ds) == maxResults {
+		name := filepath.ToSlash(m[1])
+		src, ok := lines[name]
+		if !ok || len(ds) == maxResults {
 			continue
 		}
 		line, _ := strconv.Atoi(m[2])
 		col, _ := strconv.Atoi(m[3])
 		code, _ := strconv.Atoi(m[4])
-		w := wordAt(lines, line, col)
+		w := wordAt(src, line, col)
 		ds = append(ds, Diagnostic{Line: line, Col: col, Length: max(len(w), 1), Text: string(utf16.Decode(w)), Code: code, Message: m[5]})
+		if named {
+			ds[len(ds)-1].File = name
+		}
 		last = &ds[len(ds)-1]
 	}
 	return ds, nil

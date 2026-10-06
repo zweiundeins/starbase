@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -343,11 +344,11 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 		if !ok {
 			return view{}, errNotFound
 		}
-		src, err := fs.ReadFile(s.catalog.FS, comp.Script)
+		src, err := fs.ReadFile(s.catalog.FS, comp.SourceFile)
 		if err != nil {
 			return view{}, err
 		}
-		files = map[string]string{"component.js": string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
+		files = map[string]string{"component" + path.Ext(comp.SourceFile): string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
 		v.Component, v.ComponentName = comp.Slug, comp.Name
 		v.Base = "/c/" + comp.Slug + "@" + comp.Hash + "/"
 	}
