@@ -184,7 +184,7 @@ func renderBento(id, state string) string {
 		return "invalid bento state: " + err.Error()
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" class=\"demo-bento\" data-state=\"%s\"\n\tdata-on:sb-bento-move=\"%s\"\n\tdata-on:sb-bento-resize=\"%[3]s\">\n", id, state, arrangeOn("bento-workspace"))
+	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" data-ignore-morph class=\"demo-bento\" data-state=\"%s\"\n\tdata-on:sb-bento-move=\"%s\"\n\tdata-on:sb-bento-resize=\"%[3]s\">\n", id, state, arrangeOn("bento-workspace"))
 	for _, g := range d.grids {
 		fmt.Fprintf(&b, "\t<div class=\"demo-bento__panel\">\n\t\t<span class=\"demo-bento__label\">%s</span>\n", g.label)
 		fmt.Fprintf(&b, "\t\t<div data-bento-grid=\"%s\" data-columns=\"%d\" role=\"group\" aria-label=\"%s\">\n", g.id, g.columns, g.label)
@@ -212,7 +212,7 @@ func renderBentoCard(id, state string) string {
 		return "invalid bento state: " + err.Error()
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" class=\"demo-bento-card\" data-state=\"%s\"\n    data-on:sb-bento-move=\"%s\">\n", id, state, arrangeOn("bento-card"))
+	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" data-ignore-morph class=\"demo-bento-card\" data-state=\"%s\"\n    data-on:sb-bento-move=\"%s\">\n", id, state, arrangeOn("bento-card"))
 	g := d.grids[0]
 	fmt.Fprintf(&b, "    <div data-bento-grid=\"%s\" data-columns=\"%d\">\n", g.id, g.columns)
 	for _, t := range tiles {
