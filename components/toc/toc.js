@@ -35,7 +35,6 @@ const styles = /* css */ `
 	--_focus: var(--sb-focus-ring, 0 0 0 2px #080D1D, 0 0 0 4px #B09AFF);
 	--_shadow: var(--sb-shadow-overlay, 0 12px 24px rgb(0 0 0 / 0.55));
 	--_notch: var(--sb-notch, 1);
-	--_n: calc(2px * var(--_notch));
 	/* the gap between the progress bar's blocks: 2px in 8-bit, none when smooth */
 	--_seg: calc(2px * var(--_notch));
 	display: flex;
@@ -133,7 +132,7 @@ a[aria-current]::before {
 .bar:hover { background: var(--_hover); }
 .bar:focus-visible { outline: 2px solid var(--_brand-light); outline-offset: calc(var(--_step) * 2); }
 .bar .now { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.bar svg { inline-size: 12px; block-size: 8px; color: var(--_muted); transition: rotate 120ms; }
+.bar svg { inline-size: 12px; block-size: 8px; color: var(--_muted); }
 nav:has(.panel:popover-open) .bar svg { rotate: 180deg; }
 .bar .track { position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 3px; }
 
@@ -169,6 +168,7 @@ nav:has(.panel:popover-open) .bar svg { rotate: 180deg; }
 
 @media (prefers-reduced-motion: no-preference) {
 	.fill { transition: inline-size 120ms linear; }
+	.bar svg { transition: rotate 120ms; }
 }
 @media (forced-colors: active) {
 	ol { border-inline-start: 2px solid CanvasText; }
@@ -219,9 +219,17 @@ rocket('sb-toc', {
 		let items = []
 		let content = null
 		let shown = ''
+		const root = host.shadowRoot
 
-		const resolve = () =>
-			(props.content && document.querySelector(props.content)) || host.closest('article') || document.querySelector('main') || document.body
+		// An invalid selector falls back to the default, like one that matches nothing.
+		const query = (sel) => {
+			try {
+				return document.querySelector(sel)
+			} catch {
+				return null
+			}
+		}
+		const resolve = () => (props.content && query(props.content)) || host.closest('article') || document.querySelector('main') || document.body
 
 		// A list of links inside the element (the server's, and what readers
 		// without JavaScript see) wins; else the headings of the content.
@@ -248,7 +256,19 @@ rocket('sb-toc', {
 			const json = JSON.stringify(items.map(({ id, text, level }) => [id, text, level]))
 			if (json !== shown) {
 				shown = json
+				// The rows are reused by position, so a focused link would end up
+				// on another section, or gone: keep the focus on its section, else
+				// on the entry that took its place.
+				const links = () => [...list.querySelectorAll('template ~ li a')]
+				const was = root.activeElement?.closest?.('li a')
+				const at = was ? links().indexOf(was) : -1
+				const href = was?.getAttribute('href')
 				$$.items = items.map(({ id, text, level }) => ({ id, text, level }))
+				if (at >= 0) {
+					const now = links()
+					const next = now.find((a) => a.getAttribute('href') === href) ?? now[Math.min(at, now.length - 1)] ?? list.querySelector('a:not([hidden] a)')
+					if (next && next !== root.activeElement) next.focus({ preventScroll: true })
+				}
 			}
 			measure(true)
 		}
@@ -256,11 +276,12 @@ rocket('sb-toc', {
 		// The current section: the last heading above a line 30% down the
 		// viewport, below the page's scroll padding. At the very bottom of the
 		// page, the last one, however short it is.
-		let first = true
 		// The scrollport the content is read in: its own scroll box (or one
-		// around it), else the page.
+		// around it), else the page. The body is a scroll box of its own only
+		// when the root's overflow isn't visible; else its overflow is the page's.
 		const scrollport = () => {
-			for (let n = content; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+			for (let n = content; n && n !== document.documentElement; n = n.parentElement) {
+				if (n === document.body && getComputedStyle(document.documentElement).overflowY === 'visible') break
 				const o = getComputedStyle(n).overflowY
 				if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n
 			}
@@ -288,18 +309,27 @@ rocket('sb-toc', {
 			if (last && atEnd && last.el.getBoundingClientRect().top < port.bottom) idx = items.length - 1
 			// The start entry is current while the start of the content is still
 			// in view below the scroll padding, however short the intro is, and
-			// before anything has been scrolled at all.
-			else if (start && content && (scrolled <= 0 || cTop >= top - 1)) idx = -1
+			// before anything has been scrolled at all, until the first heading
+			// reaches the top.
+			else if (start && content && (scrolled <= 0 || cTop >= top - 1) && !(items[0]?.el.getBoundingClientRect().top <= top + 1)) idx = -1
+			// The section a link led to, while its heading sits between the top
+			// and the line (or anywhere in view at the end of the page, which
+			// can't bring it up): short sections would otherwise mark another.
+			const hash = decodeURIComponent(location.hash.slice(1))
+			const led = hash ? items.findIndex((i) => i.id === hash) : -1
+			if (led >= 0) {
+				const t = items[led].el.getBoundingClientRect().top
+				if (t >= top - 1 && (t <= line || (atEnd && t < port.bottom))) idx = led
+			}
 			const id = idx >= 0 ? items[idx].id : ''
 			const total = items.length + (start ? 1 : 0)
 			if (force || id !== peek(() => $$.active)) {
 				$$.active = id
 				$$.current = idx >= 0 ? items[idx].text : start || items[0]?.text || ''
 				$$.counter = total ? `${Math.max(idx + (start ? 2 : 1), 1)}/${total}` : ''
-				if (!first && !force) emit('sb-section', { id })
+				if (!force) emit('sb-section', { id })
 				requestAnimationFrame(reveal)
 			}
-			first = false
 			// Progress: 0 when the content's top reaches the line, 100 when its
 			// end comes into view (or, for content shorter than that, when its
 			// end passes the line).
@@ -323,6 +353,8 @@ rocket('sb-toc', {
 		// Captured, so a scroll box around the content is heard too.
 		addEventListener('scroll', schedule, { capture: true, passive: true })
 		addEventListener('resize', schedule)
+		// A link to a section already in view doesn't scroll.
+		addEventListener('hashchange', schedule)
 
 		// New markup collects again, once per frame: any change to the list
 		// inside the element, and changes in the content that touch a heading
@@ -370,6 +402,7 @@ rocket('sb-toc', {
 		cleanup(() => {
 			removeEventListener('scroll', schedule, { capture: true })
 			removeEventListener('resize', schedule)
+			removeEventListener('hashchange', schedule)
 			cancelAnimationFrame(frame)
 			cancelAnimationFrame(pending)
 			watch.disconnect()
@@ -380,7 +413,6 @@ rocket('sb-toc', {
 		// bar; a picked section keeps it, the page moves on to that section.
 		let refocus = false
 		let picking = false
-		const root = host.shadowRoot
 		const close = () => {
 			if (!panel.matches(':popover-open')) return
 			picking = true // hidePopover() runs beforetoggle synchronously
@@ -393,7 +425,9 @@ rocket('sb-toc', {
 		action('start', ({ evt }) => {
 			evt.preventDefault()
 			close()
-			;(content && content !== document.body ? content : document.documentElement).scrollIntoView({ block: 'start' })
+			// Content that scrolls on its own goes back to its own top.
+			if (content && content === scrollport()) content.scrollTo({ top: 0 })
+			else (content && content !== document.body ? content : document.documentElement).scrollIntoView({ block: 'start' })
 			history.replaceState(history.state, '', location.pathname + location.search)
 		})
 		action('toggled', ({ evt }) => {

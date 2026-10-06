@@ -22,7 +22,7 @@ playground:
 
 The sections of a long page: a blog post, documentation, a report. The entry you are reading is marked as you scroll, a link jumps to its section, and a bar shows how far through you are. Put it in a sticky sidebar. On narrow screens, `compact` folds it into a bar with the current section, and the list opens from there.
 
-It lists the headings of `content` (by default the closest `<article>`, else `<main>`), `levels` deep, and keeps watching them, so headings that arrive later join the list. On a page with neither, it reads the whole `<body>` once and doesn't watch it; set `content` there. Headings without an `id` get one from their text, but only once the module runs: give them ids on the server, so a shared link to a section lands there on load. **Or render the list on the server:** put an `<ol>` (or `<ul>`) of `#id` links inside the element and it uses those. That list is also what readers and crawlers see without JavaScript; nested lists become indented levels.
+It lists the headings of `content` (by default the closest `<article>`, else `<main>`), `levels` deep, and keeps watching them, so headings that arrive later join the list. On a page with neither, it reads the whole `<body>` once and doesn't watch it; there, point `content` at an element inside the body. Headings without an `id` get one from their text, but only once the module runs: give them ids on the server, so a shared link to a section lands there on load. **Or render the list on the server:** put an `<ol>` (or `<ul>`) of `#id` links inside the element and it uses those. That list is also what readers and crawlers see without JavaScript; nested lists become indented levels.
 
 ## Examples
 
