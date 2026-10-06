@@ -26,7 +26,7 @@ preview: |
       .demo-kanban-card [data-dragging] { border: 1px dashed CanvasText; }
     }
   </style>
-  <sb-kanban-board id="kanban-board-card" class="demo-kanban-card" data-state="mars io | moon |" data-on:sb-kanban-move="@get('/demo/arrange/kanban-board-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
+  <sb-kanban-board id="kanban-board-card" data-ignore-morph class="demo-kanban-card" data-state="mars io | moon |" data-on:sb-kanban-move="@get('/demo/arrange/kanban-board-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
     <section data-kanban-lane data-col="4" tabindex="-1" aria-label="To visit"><div data-kanban-lane-cards><article id="kanban-board-card-mars" data-kanban-card="mars" tabindex="0">Mars</article><article id="kanban-board-card-io" data-kanban-card="io" tabindex="-1">Io</article></div></section>
     <section data-kanban-lane data-col="7" tabindex="-1" aria-label="En route"><div data-kanban-lane-cards><article id="kanban-board-card-moon" data-kanban-card="moon" tabindex="-1">Moon</article></div></section>
     <section data-kanban-lane data-col="9" tabindex="-1" aria-label="Visited"><div data-kanban-lane-cards></div></section>
@@ -100,7 +100,7 @@ Since each request carries the arrangement the page had when it left, two moves 
     [data-drag-preview][data-kanban-card] { border: 2px solid Highlight; }
   }
 </style>
-<sb-kanban-board id="mission-board" class="demo-kanban" data-state="mars jupiter neptune | europa titan | moon"
+<sb-kanban-board id="mission-board" data-ignore-morph class="demo-kanban" data-state="mars jupiter neptune | europa titan | moon"
 	data-on:sb-kanban-move="@get('/demo/arrange/kanban-board', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
 	<section data-kanban-lane data-col="4" tabindex="-1" aria-label="To visit">
 		<p class="demo-kanban__title">To visit</p>
@@ -220,7 +220,7 @@ func renderKanban(id, state string) string {
 	lanes, _ := kanbanState(state)
 	esc := html.EscapeString
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" class=\"demo-kanban\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board"))
+	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\">\n", esc(id), esc(state), arrangeOn("kanban-board"))
 	for i, lane := range kanbanLanes {
 		fmt.Fprintf(&b, "\t<section data-kanban-lane data-col=\"%d\" tabindex=\"-1\" aria-label=\"%s\">\n\t\t<p class=\"demo-kanban__title\">%s</p>\n\t\t<div data-kanban-lane-cards>\n", lane.ID, esc(lane.Title), esc(lane.Title))
 		if i < len(lanes) {
