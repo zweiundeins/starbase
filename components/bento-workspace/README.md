@@ -1,22 +1,34 @@
 ---
 name: Bento Workspace
 tag: sb-bento-workspace
-category: layout
+category: experimental
 summary: Move and resize tiles on CSS grids by pointer or keyboard. The server places them.
 author: derekr
+license: Beerware
 source: https://github.com/derekr/pd-rockets/tree/4f4111722763d2aa8f5851c397af026fcbe97e4f/rocket/bento
 tags: [drag and drop, dashboard, grid, bento, tiles, resize, keyboard, pd rockets]
 since: 2026-10-06
 preview: |
   <style>
-    .demo-bento-card [data-bento-grid] { display: grid; grid-template-columns: repeat(3, 4rem); grid-auto-rows: 2.5rem; gap: 6px; }
-    .demo-bento-card [data-bento-item] { display: grid; place-items: center; border: 1px solid var(--sb-border); background: var(--sb-surface-card); color: var(--sb-text-1); font-size: 0.75rem; }
+    .demo-bento-card { display: block; inline-size: 100%; max-inline-size: 16rem; }
+    .demo-bento-card [data-bento-grid] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 2.5rem; gap: 6px; }
+    .demo-bento-card [data-bento-item], [data-drag-preview][data-bento-item] { display: grid; place-items: center; min-inline-size: 0; border: 1px solid var(--sb-border); background: var(--sb-surface-card); color: var(--sb-text-1); font-size: 0.75rem; cursor: grab; touch-action: none; user-select: none; }
+    .demo-bento-card :is([data-dragging], [data-bento-projecting]) { opacity: 0.35; }
+    .demo-bento-card [data-bento-target] { border: 2px dashed var(--sb-brand); background: color-mix(in oklch, var(--sb-brand) 14%, transparent); }
+    [data-drag-preview][data-bento-item] { box-shadow: var(--sb-shadow-overlay, 0 8px 16px rgb(0 0 0 / 0.35)); cursor: grabbing; }
+    @media (prefers-reduced-motion: no-preference) { .demo-bento-card[data-drag-active] [data-bento-item] { transition: transform 160ms ease; } }
+    @media (forced-colors: active) {
+      .demo-bento-card [data-bento-target] { border-color: Highlight; }
+      .demo-bento-card :is([data-dragging], [data-bento-projecting]) { opacity: 1; border: 2px dashed CanvasText; }
+      [data-drag-preview][data-bento-item] { border: 2px solid Highlight; }
+    }
   </style>
-  <sb-bento-workspace class="demo-bento-card">
+  <sb-bento-workspace id="bento-card" class="demo-bento-card" data-state="deck thrust.1.1.2.2 fuel.3.1.1.1 crew.3.2.1.1"
+    data-on:sb-bento-move="@get('/demo/arrange/bento-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
     <div data-bento-grid="deck" data-columns="3">
-      <div data-bento-item="thrust" data-bento-col="1" data-bento-row="1" data-bento-width="2" data-bento-height="2" style="grid-column: 1 / span 2; grid-row: 1 / span 2" tabindex="0">Thrust</div>
-      <div data-bento-item="fuel" data-bento-col="3" data-bento-row="1" data-bento-width="1" data-bento-height="1" style="grid-column: 3; grid-row: 1" tabindex="0">Fuel</div>
-      <div data-bento-item="crew" data-bento-col="3" data-bento-row="2" data-bento-width="1" data-bento-height="1" style="grid-column: 3; grid-row: 2" tabindex="0">Crew</div>
+      <div data-bento-item="thrust" data-bento-col="1" data-bento-row="1" data-bento-width="2" data-bento-height="2" style="grid-column: 1 / span 2; grid-row: 1 / span 2">Thrust</div>
+      <div data-bento-item="fuel" data-bento-col="3" data-bento-row="1" data-bento-width="1" data-bento-height="1" style="grid-column: 3 / span 1; grid-row: 1 / span 1">Fuel</div>
+      <div data-bento-item="crew" data-bento-col="3" data-bento-row="2" data-bento-width="1" data-bento-height="1" style="grid-column: 3 / span 1; grid-row: 2 / span 1">Crew</div>
     </div>
   </sb-bento-workspace>
 usage: |
@@ -29,15 +41,15 @@ usage: |
   </sb-bento-workspace>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-bento-workspace`: the same code, with its names in Starbase's `sb-` prefix. Upstream calls it experimental.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-bento-workspace`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets`. For this surface they let it nest with the other PD rockets surfaces, drop its slide under reduced motion, declare its events and keep the focus on a tile moved by pointer. Upstream calls it experimental.
 
-Tiles on one or more CSS grids, which the server renders and places. Drag a tile to another cell or grid, drag its corner to resize it, or do both from the keyboard. The component shows the layout the change would give: tiles in the way move down to the next free row. Then it emits `sb-bento-move` or `sb-bento-resize` with every position that changed. It places nothing itself: the server applies the positions and sends the tiles back, and the morph puts each one in its place with a short animation.
+Tiles on one or more CSS grids, which the server renders and places. Drag a tile to another cell or grid, drag its corner to resize it, or do both from the keyboard. The component shows the layout the change would give: tiles in the way move down to the next free row. Then it emits `sb-bento-move` or `sb-bento-resize` with every position that changed. It places nothing itself: the server applies the positions and sends the tiles back, and the morph puts each one in its place. When a tile changes grid, the tiles slide to their new places; a move within a grid lands at once.
 
 ## Examples
 
 ### A mission dashboard on two grids
 
-Each tile holds another component (a gauge, two meters, a sparkline). The server renders the dashboard with its layout in `data-state`. A move or a resize sends that layout with the event's detail to `/demo/arrange/bento-workspace`, which checks the new positions (every tile inside its grid, none overlapping) and answers with the dashboard rendered again. Nothing is stored: try it in two tabs.
+Each tile holds another component (a gauge, two meters, a sparkline). The server renders the dashboard with its layout in `data-state`. A move or a resize sends that layout with the event's detail to `/demo/arrange/bento-workspace`, which checks the new positions (every tile inside its grid and its first 30 rows, none overlapping) and answers with the dashboard rendered again. A move it refuses, such as one past row 30, falls back after 2 seconds. Nothing is stored: try it in two tabs.
 
 ```html preview
 <style>
@@ -71,10 +83,9 @@ Each tile holds another component (a gauge, two meters, a sparkline). The server
     touch-action: none;
     user-select: none;
   }
-  .demo-bento [data-bento-item] { transition: transform 160ms ease; }
-  .demo-bento :is(sb-meter, sb-sparkline) { inline-size: 100%; }
-  .demo-bento sb-gauge { --sb-gauge-size: 8rem; }
-  .demo-bento [data-bento-item] p { margin: 0; }
+  :is(.demo-bento, [data-drag-preview][data-bento-item]) :is(sb-meter, sb-sparkline) { inline-size: 100%; }
+  :is(.demo-bento, [data-drag-preview][data-bento-item]) sb-gauge { --sb-gauge-size: 8rem; }
+  :is(.demo-bento [data-bento-item], [data-drag-preview][data-bento-item]) p { margin: 0; }
   .demo-bento [data-bento-item]:focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: 2px; }
   .demo-bento[data-key-staging] [data-bento-item]:focus { border-color: var(--sb-brand); }
   .demo-bento :is([data-dragging], [data-bento-projecting]) { opacity: 0.35; }
@@ -91,8 +102,17 @@ Each tile holds another component (a gauge, two meters, a sparkline). The server
     cursor: nwse-resize;
   }
   [data-drag-preview][data-bento-item] { box-shadow: var(--sb-shadow-overlay, 0 8px 16px rgb(0 0 0 / 0.35)); cursor: grabbing; }
-  @media (prefers-reduced-motion: reduce) { .demo-bento [data-bento-item] { transition: none; } }
-  @media (forced-colors: active) { .demo-bento [data-bento-resize] { forced-color-adjust: none; background: linear-gradient(135deg, transparent 50%, CanvasText 50%); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .demo-bento:is([data-drag-active], [data-resize-active], [data-key-staging]) [data-bento-item] { transition: transform 160ms ease; }
+  }
+  @media (forced-colors: active) {
+    .demo-bento [data-bento-resize] { forced-color-adjust: none; background: linear-gradient(135deg, transparent 50%, CanvasText 50%); }
+    .demo-bento [data-bento-item]:focus-visible { outline-color: Highlight; }
+    .demo-bento[data-key-staging] [data-bento-item]:focus { border: 2px solid Highlight; }
+    .demo-bento [data-bento-target] { border-color: Highlight; }
+    .demo-bento :is([data-dragging], [data-bento-projecting]) { opacity: 1; border: 2px dashed CanvasText; }
+    [data-drag-preview][data-bento-item] { border: 2px solid Highlight; }
+  }
 </style>
 <sb-bento-workspace id="mission-deck" class="demo-bento" data-state="deck thrust.1.1.2.2 fuel.3.1.2.1 speed.3.2.2.1 shelf shields.1.1.2.1 crew.1.2.1.1"
 	data-on:sb-bento-move="@get('/demo/arrange/bento-workspace', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
@@ -139,7 +159,7 @@ Each tile holds another component (a gauge, two meters, a sparkline). The server
 
 Each element with `data-bento-grid="<id>"` inside the workspace is a grid, and each element with `data-bento-item="<id>"` inside a grid is a tile. The component reads a tile's place from `data-bento-col`, `data-bento-row`, `data-bento-width` and `data-bento-height` (cells, counted from 1), and a grid's width from `data-columns` (default 4). Your markup places the tiles to match, for example with `grid-column` and `grid-row`, and gives each tile `tabindex="0"`. An element with `data-bento-resize` inside a tile is its resize handle.
 
-The pointer geometry needs CSS grids with `grid-template-columns` of that many columns and a fixed `grid-auto-rows`. Rows have no limit; a tile is at most 5 rows high.
+The pointer geometry needs CSS grids with `grid-template-columns` of that many columns and a fixed `grid-auto-rows`. The component sets no limit on rows (the demo's server refuses rows past 30); a tile is at most 5 rows high.
 
 | Event | Detail | When |
 |---|---|---|
@@ -152,7 +172,7 @@ The pointer geometry needs CSS grids with `grid-template-columns` of that many c
 
 | Keys | Action |
 |---|---|
-| Arrow keys, or h / j / k / l | Focus the nearest tile in that direction, crossing to the next grid at an edge |
+| Arrow keys, or h / j / k / l | Focus the nearest tile in that direction; at a grid's edge, Left and Up go to the previous grid, Right and Down to the next |
 | Home / End | Focus the first / last tile |
 | Alt + arrow keys, or Alt + h / j / k / l | Move the focused tile one cell; past a grid's left or right edge it goes to the neighbouring grid. Releasing Alt sends the move |
 | Shift + arrow keys | Resize the focused tile; releasing Shift sends the resize |
@@ -165,12 +185,12 @@ On macOS, Ctrl + n and Ctrl + p also move the focus. Each action takes its keys 
 
 The server owns the layout. A handler checks the positions, applies them and renders the tiles again; this is the demo's, which keeps the layout in the markup instead of a database:
 
-```go source=internal/web/demo_arrange_bento.go#arrangeBento,renderBento
-// arrangeBento applies an sb-bento-move ({itemId, fromGrid, toGrid, updates})
+```go source=internal/web/demo_arrange_bento.go#bentoDemo.arrange,renderBento
+// arrange applies an sb-bento-move ({itemId, fromGrid, toGrid, updates})
 // or an sb-bento-resize ({itemId, grid, updates}): updates are the new places
 // of every tile that changed in the grid the tile lands in.
-func arrangeBento(state string, move json.RawMessage) (string, error) {
-	tiles, err := parseBento(state)
+func (d bentoDemo) arrange(state string, move json.RawMessage) (string, error) {
+	tiles, err := d.parse(state)
 	if err != nil {
 		return "", err
 	}
@@ -197,22 +217,23 @@ func arrangeBento(state string, move json.RawMessage) (string, error) {
 		}
 		tiles[i] = bentoTile{u.ItemID, u.Grid, u.Col, u.Row, u.Width, u.Height}
 	}
-	if err := checkBento(tiles); err != nil {
+	if err := d.check(tiles); err != nil {
 		return "", err
 	}
-	return formatBento(tiles), nil
+	return d.format(tiles), nil
 }
 
 // renderBento is the dashboard's markup: the host the morph replaces, a
 // grid per panel, and each tile at its place.
 func renderBento(id, state string) string {
-	tiles, err := parseBento(state)
+	d := bentoDashboard
+	tiles, err := d.parse(state)
 	if err != nil {
 		return "invalid bento state: " + err.Error()
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" class=\"demo-bento\" data-state=\"%s\"\n\tdata-on:sb-bento-move=\"%s\"\n\tdata-on:sb-bento-resize=\"%[3]s\">\n", id, state, arrangeOn("bento-workspace"))
-	for _, g := range bentoGrids {
+	for _, g := range d.grids {
 		fmt.Fprintf(&b, "\t<div class=\"demo-bento__panel\">\n\t\t<span class=\"demo-bento__label\">%s</span>\n", g.label)
 		fmt.Fprintf(&b, "\t\t<div data-bento-grid=\"%s\" data-columns=\"%d\" role=\"group\" aria-label=\"%s\">\n", g.id, g.columns, g.label)
 		for _, t := range tiles {
@@ -220,8 +241,8 @@ func renderBento(id, state string) string {
 				continue
 			}
 			fmt.Fprintf(&b, "\t\t\t<article data-bento-item=\"%s\" data-bento-col=\"%d\" data-bento-row=\"%d\" data-bento-width=\"%d\" data-bento-height=\"%d\"\n", t.id, t.col, t.row, t.width, t.height)
-			fmt.Fprintf(&b, "\t\t\t\tstyle=\"grid-column: %d / span %d; grid-row: %d / span %d\" tabindex=\"0\" aria-label=\"%s\">\n", t.col, t.width, t.row, t.height, bentoTiles[t.id].label)
-			fmt.Fprintf(&b, "\t\t\t\t%s\n\t\t\t\t<span data-bento-resize aria-hidden=\"true\"></span>\n\t\t\t</article>\n", bentoTiles[t.id].body)
+			fmt.Fprintf(&b, "\t\t\t\tstyle=\"grid-column: %d / span %d; grid-row: %d / span %d\" tabindex=\"0\" aria-label=\"%s\">\n", t.col, t.width, t.row, t.height, d.tiles[t.id].label)
+			fmt.Fprintf(&b, "\t\t\t\t%s\n\t\t\t\t<span data-bento-resize aria-hidden=\"true\"></span>\n\t\t\t</article>\n", d.tiles[t.id].body)
 		}
 		b.WriteString("\t\t</div>\n\t</div>\n")
 	}
@@ -235,16 +256,16 @@ func renderBento(id, state string) string {
 The component adds no styles: the workspace, its grids and its tiles are your page's markup, styled by your page's CSS. While a tile moves or grows, it marks the elements involved:
 
 - `data-drag-active` on the workspace and `data-dragging` on the tile while you drag it; `data-resize-active` on the workspace and `data-bento-resizing` on the tile while you drag its handle.
-- `data-bento-projecting` on the tile whose new place is shown, and a `data-bento-target` element in the grid at that place. The tiles in the way move there with an inline `transform`, and a grid that needs more rows gets a `min-height`.
+- `data-bento-projecting` on the tile whose new place is shown, and a `data-bento-target` element in the grid at that place. The tiles in the way move there with an inline `transform`, and a grid that needs more rows gets a `min-height`. Transition that `transform` only while `data-drag-active`, `data-resize-active` or `data-key-staging` is on the workspace, as the example does: the morph swaps it for the new grid place at once, and a transition would then start the tile a row too far.
 - `data-key-staging` on the workspace while a keyboard move or resize waits for its key to be released.
-- The tile under the pointer is a copy of it in `<body>`, marked `data-drag-preview`, with the original's size in `--sb-source-width` and `--sb-source-height`. A `<template data-sb-preview>` inside a tile replaces the copy.
-- A `<template data-sb-target="cell">` inside the workspace is copied into the target cell, marked `data-sb-target-indicator`.
+- The tile under the pointer is a copy of it in `<body>`, marked `data-drag-preview`, with the original's size in `--sb-source-width` and `--sb-source-height`. Rules scoped to the workspace don't reach it: the example scopes its tile rules with `:is(.demo-bento, [data-drag-preview][data-bento-item])`. A `<template data-sb-preview>` that is a direct child of a tile replaces the copy.
+- A `<template data-sb-target="cell">` that is a direct child of the workspace is copied into the target cell, marked `data-sb-target-indicator`.
 
 The shown layout stays for up to 2 seconds, or until the server's answer replaces it. The example above shows one way to draw all of it.
 
 ## Accessibility
 
-Tiles are focusable elements of your page, so their roles and names are yours; the example gives each grid `role="group"` and a name, and each tile an `aria-label`. Moving and resizing need no pointer. The component announces nothing itself: when the server sends the new layout, the moved tile keeps the focus.
+Tiles are focusable elements of your page, so their roles and names are yours; the example gives each grid `role="group"` and a name, and each tile an `aria-label`. Moving and resizing need no pointer. The component announces nothing itself. A tile you move or resize, by keyboard or pointer, keeps the focus if it had it, when the server's answer comes within 2 seconds and puts the tile where the component showed it.
 
 ## Licence
 

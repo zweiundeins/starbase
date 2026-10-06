@@ -10,23 +10,39 @@ import (
 )
 
 func init() {
-	arrangers["bento-workspace"] = arranger{arrange: arrangeBento, render: renderBento}
+	arrangers["bento-workspace"] = arranger{arrange: bentoDashboard.arrange, render: renderBento}
+	arrangers["bento-card"] = arranger{arrange: bentoCard.arrange, render: renderBentoCard}
 }
 
-// The bento demo is a dashboard: its grids, in order, and its tiles, each
-// holding one of Starbase's components with a fixed reading.
+// A bento demo is its grids, in order, its tiles, each with a label and what
+// it holds, and how many rows a grid may use.
+type bentoDemo struct {
+	grids []bentoGrid
+	tiles map[string]struct{ label, body string }
+	rows  int
+}
+
 var (
-	bentoGrids = []bentoGrid{{"deck", "Deck", 4}, {"shelf", "Shelf", 2}}
-	bentoTiles = map[string]struct{ label, body string }{
-		"thrust":  {"Thrust", `<sb-gauge value="72" label="Thrust" unit="%"></sb-gauge>`},
-		"fuel":    {"Fuel", `<sb-meter label="Fuel" value="64" unit="%"></sb-meter>`},
-		"speed":   {"Speed", `<sb-sparkline values="[12,18,15,22,30,26,34,41]" show-value unit=" km/s"></sb-sparkline>`},
-		"shields": {"Shields", `<sb-meter label="Shields" value="88" unit="%"></sb-meter>`},
-		"crew":    {"Crew", `<p><strong>7</strong> aboard</p>`},
+	// bentoDashboard is the README's example: each tile holds one of
+	// Starbase's components with a fixed reading.
+	bentoDashboard = bentoDemo{
+		grids: []bentoGrid{{"deck", "Deck", 4}, {"shelf", "Shelf", 2}},
+		tiles: map[string]struct{ label, body string }{
+			"thrust":  {"Thrust", `<sb-gauge value="72" label="Thrust" unit="%"></sb-gauge>`},
+			"fuel":    {"Fuel", `<sb-meter label="Fuel" value="64" unit="%"></sb-meter>`},
+			"speed":   {"Speed", `<sb-sparkline values="[12,18,15,22,30,26,34,41]" show-value unit=" km/s"></sb-sparkline>`},
+			"shields": {"Shields", `<sb-meter label="Shields" value="88" unit="%"></sb-meter>`},
+			"crew":    {"Crew", `<p><strong>7</strong> aboard</p>`},
+		},
+		rows: 30, // five tiles of at most five rows, stacked, and room to spare
+	}
+	// bentoCard is the gallery card's: three labels on one grid.
+	bentoCard = bentoDemo{
+		grids: []bentoGrid{{"deck", "Deck", 3}},
+		tiles: map[string]struct{ label, body string }{"thrust": {"Thrust", "Thrust"}, "fuel": {"Fuel", "Fuel"}, "crew": {"Crew", "Crew"}},
+		rows:  6,
 	}
 )
-
-const bentoRows = 30 // five tiles of at most five rows, stacked
 
 type bentoGrid struct {
 	id, label string
@@ -51,16 +67,16 @@ type bentoUpdate struct {
 	Height int    `json:"height"`
 }
 
-// parseBento reads a state and checks it holds every tile once, inside its
-// grid, without overlaps.
-func parseBento(state string) ([]bentoTile, error) {
+// parse reads a state and checks it holds every tile once, inside its grid,
+// without overlaps.
+func (d bentoDemo) parse(state string) ([]bentoTile, error) {
 	var tiles []bentoTile
 	g := -1
 	for _, w := range strings.Fields(state) {
 		id, pos, ok := strings.Cut(w, ".")
 		if !ok {
-			if g++; g >= len(bentoGrids) || bentoGrids[g].id != w {
-				return nil, fmt.Errorf("%q: the grids are deck and shelf, in that order", w)
+			if g++; g >= len(d.grids) || d.grids[g].id != w {
+				return nil, fmt.Errorf("%q: not the demo's next grid", w)
 			}
 			continue
 		}
@@ -72,26 +88,27 @@ func parseBento(state string) ([]bentoTile, error) {
 		if g < 0 || len(parts) != 4 {
 			return nil, fmt.Errorf("%q: a tile is id.col.row.width.height, after its grid", w)
 		}
-		tiles = append(tiles, bentoTile{id, bentoGrids[g].id, n[0], n[1], n[2], n[3]})
+		tiles = append(tiles, bentoTile{id, d.grids[g].id, n[0], n[1], n[2], n[3]})
 	}
-	if g != len(bentoGrids)-1 {
+	if g != len(d.grids)-1 {
 		return nil, fmt.Errorf("%q lacks a grid", state)
 	}
-	return tiles, checkBento(tiles)
+	return tiles, d.check(tiles)
 }
 
-// checkBento holds every tile once, inside its grid, and no two overlap.
-func checkBento(tiles []bentoTile) error {
+// check holds every tile once, inside its grid, and no two overlap.
+func (d bentoDemo) check(tiles []bentoTile) error {
 	seen := map[string]bool{}
 	for i, t := range tiles {
-		_, known := bentoTiles[t.id]
-		gi := slices.IndexFunc(bentoGrids, func(g bentoGrid) bool { return g.id == t.grid })
+		_, known := d.tiles[t.id]
+		gi := slices.IndexFunc(d.grids, func(g bentoGrid) bool { return g.id == t.grid })
 		if !known || seen[t.id] || gi < 0 {
 			return fmt.Errorf("%q is no tile of the demo, or there twice", t.id)
 		}
 		seen[t.id] = true
-		cols := bentoGrids[gi].columns
-		if t.col < 1 || t.width < 1 || t.col+t.width-1 > cols || t.row < 1 || t.height < 1 || t.height > 5 || t.row+t.height-1 > bentoRows {
+		// Subtracting from the bounds: a sum of two large numbers would overflow.
+		cols := d.grids[gi].columns
+		if t.col < 1 || t.width < 1 || t.width > cols-t.col+1 || t.row < 1 || t.height < 1 || t.height > 5 || t.height > d.rows-t.row+1 {
 			return fmt.Errorf("%s is outside its grid", t.id)
 		}
 		for _, u := range tiles[:i] {
@@ -100,17 +117,17 @@ func checkBento(tiles []bentoTile) error {
 			}
 		}
 	}
-	if len(seen) != len(bentoTiles) {
+	if len(seen) != len(d.tiles) {
 		return fmt.Errorf("a tile is missing")
 	}
 	return nil
 }
 
-// formatBento is the state of an arrangement: each grid's tiles in reading order.
-func formatBento(tiles []bentoTile) string {
+// format is the state of an arrangement: each grid's tiles in reading order.
+func (d bentoDemo) format(tiles []bentoTile) string {
 	slices.SortStableFunc(tiles, func(a, b bentoTile) int { return cmp.Or(cmp.Compare(a.row, b.row), cmp.Compare(a.col, b.col)) })
 	var words []string
-	for _, g := range bentoGrids {
+	for _, g := range d.grids {
 		words = append(words, g.id)
 		for _, t := range tiles {
 			if t.grid == g.id {
@@ -121,11 +138,11 @@ func formatBento(tiles []bentoTile) string {
 	return strings.Join(words, " ")
 }
 
-// arrangeBento applies an sb-bento-move ({itemId, fromGrid, toGrid, updates})
+// arrange applies an sb-bento-move ({itemId, fromGrid, toGrid, updates})
 // or an sb-bento-resize ({itemId, grid, updates}): updates are the new places
 // of every tile that changed in the grid the tile lands in.
-func arrangeBento(state string, move json.RawMessage) (string, error) {
-	tiles, err := parseBento(state)
+func (d bentoDemo) arrange(state string, move json.RawMessage) (string, error) {
+	tiles, err := d.parse(state)
 	if err != nil {
 		return "", err
 	}
@@ -152,22 +169,23 @@ func arrangeBento(state string, move json.RawMessage) (string, error) {
 		}
 		tiles[i] = bentoTile{u.ItemID, u.Grid, u.Col, u.Row, u.Width, u.Height}
 	}
-	if err := checkBento(tiles); err != nil {
+	if err := d.check(tiles); err != nil {
 		return "", err
 	}
-	return formatBento(tiles), nil
+	return d.format(tiles), nil
 }
 
 // renderBento is the dashboard's markup: the host the morph replaces, a
 // grid per panel, and each tile at its place.
 func renderBento(id, state string) string {
-	tiles, err := parseBento(state)
+	d := bentoDashboard
+	tiles, err := d.parse(state)
 	if err != nil {
 		return "invalid bento state: " + err.Error()
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" class=\"demo-bento\" data-state=\"%s\"\n\tdata-on:sb-bento-move=\"%s\"\n\tdata-on:sb-bento-resize=\"%[3]s\">\n", id, state, arrangeOn("bento-workspace"))
-	for _, g := range bentoGrids {
+	for _, g := range d.grids {
 		fmt.Fprintf(&b, "\t<div class=\"demo-bento__panel\">\n\t\t<span class=\"demo-bento__label\">%s</span>\n", g.label)
 		fmt.Fprintf(&b, "\t\t<div data-bento-grid=\"%s\" data-columns=\"%d\" role=\"group\" aria-label=\"%s\">\n", g.id, g.columns, g.label)
 		for _, t := range tiles {
@@ -175,11 +193,32 @@ func renderBento(id, state string) string {
 				continue
 			}
 			fmt.Fprintf(&b, "\t\t\t<article data-bento-item=\"%s\" data-bento-col=\"%d\" data-bento-row=\"%d\" data-bento-width=\"%d\" data-bento-height=\"%d\"\n", t.id, t.col, t.row, t.width, t.height)
-			fmt.Fprintf(&b, "\t\t\t\tstyle=\"grid-column: %d / span %d; grid-row: %d / span %d\" tabindex=\"0\" aria-label=\"%s\">\n", t.col, t.width, t.row, t.height, bentoTiles[t.id].label)
-			fmt.Fprintf(&b, "\t\t\t\t%s\n\t\t\t\t<span data-bento-resize aria-hidden=\"true\"></span>\n\t\t\t</article>\n", bentoTiles[t.id].body)
+			fmt.Fprintf(&b, "\t\t\t\tstyle=\"grid-column: %d / span %d; grid-row: %d / span %d\" tabindex=\"0\" aria-label=\"%s\">\n", t.col, t.width, t.row, t.height, d.tiles[t.id].label)
+			fmt.Fprintf(&b, "\t\t\t\t%s\n\t\t\t\t<span data-bento-resize aria-hidden=\"true\"></span>\n\t\t\t</article>\n", d.tiles[t.id].body)
 		}
 		b.WriteString("\t\t</div>\n\t</div>\n")
 	}
 	b.WriteString("</sb-bento-workspace>")
+	return b.String()
+}
+
+// renderBentoCard is the gallery card's markup: plain tiles, which take no
+// focus, so the gallery gets no tab stops. It is indented to sit as it is in
+// the README's front matter.
+func renderBentoCard(id, state string) string {
+	d := bentoCard
+	tiles, err := d.parse(state)
+	if err != nil {
+		return "invalid bento state: " + err.Error()
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" class=\"demo-bento-card\" data-state=\"%s\"\n    data-on:sb-bento-move=\"%s\">\n", id, state, arrangeOn("bento-card"))
+	g := d.grids[0]
+	fmt.Fprintf(&b, "    <div data-bento-grid=\"%s\" data-columns=\"%d\">\n", g.id, g.columns)
+	for _, t := range tiles {
+		fmt.Fprintf(&b, "      <div data-bento-item=\"%s\" data-bento-col=\"%d\" data-bento-row=\"%d\" data-bento-width=\"%d\" data-bento-height=\"%d\" style=\"grid-column: %[2]d / span %[4]d; grid-row: %[3]d / span %[5]d\">%[6]s</div>\n",
+			t.id, t.col, t.row, t.width, t.height, d.tiles[t.id].body)
+	}
+	b.WriteString("    </div>\n  </sb-bento-workspace>")
 	return b.String()
 }
