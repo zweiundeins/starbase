@@ -22,7 +22,7 @@ playground:
 
 Types its text out, character by character, behind a blinking cursor: a hero line, a terminal prompt, a tagline that keeps changing. It takes its font, size and colour from where you put it.
 
-Put the text inside it. That is what search engines and readers without JavaScript see, and what screen readers announce, all at once rather than letter by letter. The finished text is laid out from the start, invisibly, so the line breaks never change and nothing around it moves while it types. It starts when it comes into view and pauses while it is out of it; with reduced motion, the text is simply there.
+Put the text inside it. That is what search engines and readers without JavaScript see, and what screen readers announce, all at once rather than letter by letter. The finished text is laid out from the start, invisibly, so the line breaks never change and nothing around it moves while it types. It starts when it comes into view and pauses while it is out of it; with reduced motion, the text is there at once.
 
 ## Examples
 
@@ -47,7 +47,7 @@ Put the text inside it. That is what search engines and readers without JavaScri
 </h3>
 ```
 
-`sb-typed` fires each time a phrase is complete, with its `text` and `index`; with reduced motion, once for the phrase shown.
+`sb-typed` fires each time a phrase is complete, with its `text` and `index`; with reduced motion, for the phrase shown, and again when new text arrives.
 
 ### Cursors
 

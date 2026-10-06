@@ -31,9 +31,10 @@ const styles = /* css */ `
 .stack > :not(.cursor) { grid-area: 1 / 1; }
 .sizer, .rest { visibility: hidden; }
 .cursor {
+	/* physical: place() measures from the stack's top left, in RTL too */
 	position: absolute;
-	inset-block-start: 0;
-	inset-inline-start: 0;
+	top: 0;
+	left: 0;
 	inline-size: 0.55em;
 	block-size: 0.95em;
 	background: var(--_cursor);
@@ -49,6 +50,10 @@ const styles = /* css */ `
 @keyframes sb-typewriter-blink { 50% { opacity: 0; } }
 @media (forced-colors: active) {
 	.cursor { forced-color-adjust: none; background: CanvasText; }
+}
+@media print {
+	.rest { visibility: visible; }
+	.cursor { display: none; }
 }
 `
 
@@ -188,9 +193,9 @@ rocket('sb-typewriter', {
 		}
 
 		// Starts when it comes into view, and pauses while it is out of it.
-		const io = new IntersectionObserver(([e]) => {
+		const io = new IntersectionObserver((entries) => {
 			const was = visible
-			visible = e.isIntersecting
+			visible = entries.at(-1).isIntersecting
 			if (visible && !was && phase !== 'done') wait(phase === 'wait' ? props.delay : props.interval)
 		})
 		io.observe(host)
@@ -221,7 +226,7 @@ rocket('sb-typewriter', {
 	render: ({ html }) => html`
 		<span class="stack" part="text" data-ref:stack data-class:blink="$$blink" data-class:bar="$$shape === 'bar'" data-class:underscore="$$shape === 'underscore'" data-class:none="$$shape === 'none'">
 			<template data-for="t in $$all">
-				<span class="sizer" aria-hidden="true"><span data-text="$$prompt"></span><span data-text="t ?? ''"></span></span>
+				<span class="sizer" aria-hidden="true"><span part="prompt" data-text="$$prompt"></span><span data-text="t ?? ''"></span></span>
 			</template>
 			<span class="live" aria-hidden="true"><span class="prompt" part="prompt" data-text="$$prompt"></span><span data-text="$$typed"></span><span class="rest" data-ref:rest data-text="$$rest"></span></span>
 			<span class="cursor" part="cursor" data-ref:cursor aria-hidden="true" data-style:translate="$$at" data-class:placed="$$placed"></span>
