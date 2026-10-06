@@ -1,15 +1,15 @@
 # Patches to PD rockets
 
 `go run ./cmd/vendorpd` applies these to [PD rockets](https://github.com/derekr/pd-rockets) (by derekr) at the
-pinned release before it vendors the surfaces. Each one is a commit against that repository, ready to offer
-upstream; drop it once a release carries the change.
+pinned release, in file name order, before it vendors the surfaces. Each one is a commit against that repository,
+ready to offer upstream; its message says what it changes. Drop it once a release carries the change, and when one
+is offered, add the pull request's link to its message.
 
-| Patch | What it changes | Upstream |
-|---|---|---|
-| 0001 | `pd-context-menu`'s setup types its host as the plain element Rocket hands it and casts it where the menu methods are installed | not offered yet |
-| 0002 | `core/ownership.ts` keeps its host registry on `globalThis` (`Symbol.for`), so surfaces that each carry their own copy of core, as Starbase's folders do, still nest | not offered yet |
-| 0003 | `core/flip.ts` skips its move animation under `prefers-reduced-motion: reduce` | not offered yet |
+Numbers: 0001 to 0009 for `core/` and changes across surfaces (0001, the context menu's host type, predates the
+blocks), then ten per surface, so patches made on different branches never collide: 0010 sortable-list,
+0020 drag-group, 0030 kanban, 0040 sortable-tree, 0050 context-menu, 0060 bento, 0070 inline-edit.
 
-To make one: clone the repository at the pinned tag, commit the change with a neutral author (their AGENTS.md asks
-for one), and `git format-patch` it into this folder with the next number. Keep a patch to one surface's own files
-(`rocket/<surface>/`, `contracts/<surface>.ts`) where you can: a change to `core/` reaches every surface's copy.
+To make one: clone the repository at the pinned tag, `git am` the patches before yours, commit the change with a
+neutral author (their AGENTS.md asks for one), and `git format-patch --start-number <n>` it into this folder. Keep a
+surface's patch to its own files (`rocket/<surface>/`, `contracts/<surface>.ts`): a change to `core/` reaches every
+surface's copy.
