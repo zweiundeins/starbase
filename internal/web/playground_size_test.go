@@ -3,6 +3,7 @@ package web_test
 import (
 	"io"
 	"io/fs"
+	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -11,12 +12,13 @@ import (
 )
 
 // The playground's size line measures like the catalog: a component's own
-// source gets the numbers of its size table.
+// source gets the numbers of its size table, also when it is written in
+// TypeScript (dropdown): raw is then the TypeScript as written.
 func TestPlaygroundSize(t *testing.T) {
 	ts, c, _, cat := newServerBus(t)
-	measure := func(slug, code string) string {
+	measure := func(slug, name, code string) string {
 		t.Helper()
-		body := `{"component":` + strconv.Quote(slug) + `,"code":` + strconv.Quote(code) + `}`
+		body := `{"component":` + strconv.Quote(slug) + `,"name":` + strconv.Quote(name) + `,"code":` + strconv.Quote(code) + `}`
 		res := post(t, c, ts.URL+"/playground/size", body, "same-origin")
 		b, _ := io.ReadAll(res.Body)
 		if res.StatusCode != 200 {
@@ -27,9 +29,9 @@ func TestPlaygroundSize(t *testing.T) {
 	// dropdown renders <sb-dropdown> itself (submenus): its own tag is not a dependency.
 	for _, slug := range []string{"code-editor", "code-playground", "button", "dropdown"} {
 		comp, _ := cat.Get(slug)
-		src, _ := fs.ReadFile(cat.FS, comp.Script)
-		got := measure(slug, string(src))
-		want := []string{`"own":"` + ui.FmtBytes(comp.Sizes.Files[0].Min) + `"`, `"raw":"` + ui.FmtBytes(comp.Sizes.Files[0].Raw) + `"`}
+		src, _ := fs.ReadFile(cat.FS, comp.SourceFile)
+		got := measure(slug, "component"+path.Ext(comp.SourceFile), string(src))
+		want := []string{`"own":"` + ui.FmtBytes(comp.Sizes.Files[0].Min) + `"`, `"raw":"` + ui.FmtBytes(len(src)) + `"`}
 		if comp.Sizes.Total.Min != comp.Sizes.Files[0].Min {
 			want = append(want, `"total":"`+ui.FmtBytes(comp.Sizes.Total.Min)+`"`)
 		} else {
@@ -42,7 +44,7 @@ func TestPlaygroundSize(t *testing.T) {
 		}
 	}
 	// Code that doesn't parse only marks the last numbers stale.
-	if got := measure("", "rocket('sb-x', {"); !strings.Contains(got, `"stale":true`) || strings.Contains(got, `"own"`) {
+	if got := measure("", "", "rocket('sb-x', {"); !strings.Contains(got, `"stale":true`) || strings.Contains(got, `"own"`) {
 		t.Errorf("unparseable code:\n%s", got)
 	}
 	if res := post(t, c, ts.URL+"/playground/size", `{"code":"1"}`, "cross-site"); res.StatusCode != 403 {
