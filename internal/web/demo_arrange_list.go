@@ -37,7 +37,7 @@ func arrangeSortableList(state string, move json.RawMessage) (string, error) {
 func renderSortableList(id, state string) string {
 	id, state = html.EscapeString(id), html.EscapeString(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-sortable-list id=\"%s\" class=\"demo-sortable\" role=\"list\" data-state=\"%s\"\n\tdata-on:sb-sortable-move=\"%s\">\n", id, state, arrangeOn("sortable-list"))
+	fmt.Fprintf(&b, "<sb-sortable-list id=\"%s\" data-ignore-morph class=\"demo-sortable\" role=\"list\" data-state=\"%s\"\n\tdata-on:sb-sortable-move=\"%s\">\n", id, state, arrangeOn("sortable-list"))
 	for _, item := range strings.Fields(state) {
 		fmt.Fprintf(&b, "\t<div data-sortable-item=\"%s\" role=\"listitem\" tabindex=\"0\" aria-describedby=\"%s-hint\">%s</div>\n", item, id, label(item))
 	}
