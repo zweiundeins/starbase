@@ -2,5 +2,20 @@
   "tag": "sb-bento-workspace",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-bento-move",
+      "bubbles": true,
+      "composed": true,
+      "description": "A tile was dropped on another cell or grid, or a keyboard move was released. detail: { itemId, fromGrid, toGrid, updates }, where updates holds the new place { itemId, grid, col, row, width, height } of every tile that changes in the grid the tile lands in, the tile included."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-bento-resize",
+      "bubbles": true,
+      "composed": true,
+      "description": "A tile was resized by its handle or the keyboard. detail: { itemId, grid, updates }, with updates as for the move."
+    }
+  ]
 }
