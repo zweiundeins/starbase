@@ -1,0 +1,5 @@
+THE BEER-WARE LICENSE (Revision 42)
+
+PD rockets contributors wrote this software. As long as you retain this notice,
+you can do whatever you want with it. If we meet someday and you think this
+software is worth it, you can buy us a beer in return.
