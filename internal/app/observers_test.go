@@ -27,6 +27,7 @@ const cases = [
 	['sb-qr-code', 'value', JSON.stringify('https://example.com'), '$_v', ''],
 	['sb-relative-time', 'datetime', JSON.stringify(new Date(Date.now() - 5000).toISOString()), '$_v', ' sync'],
 	['sb-code-editor', 'language', JSON.stringify('css'), '$_v', ' value="a { color: red }"'],
+	['sb-typewriter', 'phrases', JSON.stringify(['alpha bravo', 'charlie']), 'JSON.stringify($_v)', ' loop interval="5" delay="0" hold="50"'],
 ]
 try {
 	for (const [tag, attr, value, expr, extra] of cases) {
