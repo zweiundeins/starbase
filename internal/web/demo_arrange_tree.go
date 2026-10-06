@@ -9,6 +9,7 @@ import (
 
 func init() {
 	arrangers["sortable-tree"] = arranger{arrange: arrangeSortableTree, render: renderSortableTree}
+	arrangers["sortable-tree-card"] = arranger{arrange: arrangeSortableTree, render: renderSortableTreeCard}
 }
 
 // A treeNode is a body in the tree: a folder (with children, maybe none)
@@ -189,5 +190,39 @@ func renderSortableTree(id, state string) string {
 	}
 	nodes(root, "\t\t")
 	b.WriteString("\t</div>\n</sb-sortable-tree>")
+	return b.String()
+}
+
+// renderSortableTreeCard is the gallery card's tree: without labels, and
+// with one tab stop (the arrow keys reach the other rows), since the gallery
+// is a page of cards.
+func renderSortableTreeCard(id, state string) string {
+	root, _ := parseTree(state)
+	var b strings.Builder
+	fmt.Fprintf(&b, "<sb-sortable-tree id=\"%s\" class=\"demo-tree-card\" data-state=\"%s\"\n\tdata-on:sb-tree-move=\"%s\">\n", id, state, arrangeOn("sortable-tree-card"))
+	tabindex := "0"
+	var nodes func(list []*treeNode, parent, indent string)
+	nodes = func(list []*treeNode, parent, indent string) {
+		fmt.Fprintf(&b, "%s<div data-tree-children data-tree-parent=\"%s\">\n", indent, parent)
+		for _, n := range list {
+			kind, expanded := "file", ""
+			if n.folder {
+				kind, expanded = "folder", ` aria-expanded="true"`
+			}
+			row := fmt.Sprintf("<div data-tree-row tabindex=\"%s\"%s>%s</div>", tabindex, expanded, label(n.id))
+			tabindex = "-1"
+			fmt.Fprintf(&b, "%s\t<div id=\"%s-%s\" data-tree-node=\"%s\" data-tree-kind=\"%s\">", indent, id, n.id, n.id, kind)
+			if !n.folder {
+				b.WriteString(row + "</div>\n")
+				continue
+			}
+			fmt.Fprintf(&b, "\n%s\t\t%s\n", indent, row)
+			nodes(n.children, n.id, indent+"\t\t")
+			fmt.Fprintf(&b, "%s\t</div>\n", indent)
+		}
+		fmt.Fprintf(&b, "%s</div>\n", indent)
+	}
+	nodes(root, "", "\t")
+	b.WriteString("</sb-sortable-tree>")
 	return b.String()
 }

@@ -28,18 +28,19 @@ preview: |
       .demo-tree-card [data-dragging], [data-drag-preview][data-tree-row] { outline: 1px dashed CanvasText; outline-offset: -1px; }
     }
   </style>
-  <sb-sortable-tree class="demo-tree-card">
-    <div data-tree-children>
-      <div data-tree-node="earth" data-tree-kind="folder">
-        <div data-tree-row tabindex="0">🪐 Earth</div>
+  <sb-sortable-tree id="sortable-tree-card" class="demo-tree-card" data-state="earth(moon) mars(phobos)"
+    data-on:sb-tree-move="@get('/demo/arrange/sortable-tree-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
+    <div data-tree-children data-tree-parent="">
+      <div id="sortable-tree-card-earth" data-tree-node="earth" data-tree-kind="folder">
+        <div data-tree-row tabindex="0" aria-expanded="true">🪐 Earth</div>
         <div data-tree-children data-tree-parent="earth">
-          <div data-tree-node="moon"><div data-tree-row tabindex="-1">🌑 Moon</div></div>
+          <div id="sortable-tree-card-moon" data-tree-node="moon" data-tree-kind="file"><div data-tree-row tabindex="-1">🌑 Moon</div></div>
         </div>
       </div>
-      <div data-tree-node="mars" data-tree-kind="folder">
-        <div data-tree-row tabindex="-1">🪐 Mars</div>
+      <div id="sortable-tree-card-mars" data-tree-node="mars" data-tree-kind="folder">
+        <div data-tree-row tabindex="-1" aria-expanded="true">🪐 Mars</div>
         <div data-tree-children data-tree-parent="mars">
-          <div data-tree-node="phobos"><div data-tree-row tabindex="-1">🌑 Phobos</div></div>
+          <div id="sortable-tree-card-phobos" data-tree-node="phobos" data-tree-kind="file"><div data-tree-row tabindex="-1">🌑 Phobos</div></div>
         </div>
       </div>
     </div>
