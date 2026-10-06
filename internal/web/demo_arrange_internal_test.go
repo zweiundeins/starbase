@@ -1,7 +1,12 @@
 package web
 
 import (
+	"encoding/json"
+	"errors"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -54,6 +59,29 @@ func TestMoveBefore(t *testing.T) {
 	for _, bad := range [][2]string{{"x", ""}, {"a", "a"}, {"a", "x"}} {
 		if _, err := moveBefore([]string{"a", "b"}, bad[0], bad[1]); err == nil {
 			t.Errorf("%q before %q: no error", bad[0], bad[1])
+		}
+	}
+}
+
+// Refusals carry the CORS header too: without it the playground's sandbox
+// sees a network error, and Datastar retries it for minutes.
+func TestArrangeRefusalsAreReadable(t *testing.T) {
+	arrangers["refuse"] = arranger{arrange: func(string, json.RawMessage) (string, error) { return "", errors.New("no") }}
+	defer delete(arrangers, "refuse")
+	for _, tc := range []struct {
+		kind, query string
+		code        int
+	}{
+		{"nope", `{}`, http.StatusNotFound},
+		{"refuse", `{"id":"1 2"}`, http.StatusBadRequest},
+		{"refuse", `{"id":"demo"}`, http.StatusUnprocessableEntity},
+	} {
+		r := httptest.NewRequest("GET", "/demo/arrange/"+tc.kind+"?datastar="+url.QueryEscape(tc.query), nil)
+		r.SetPathValue("kind", tc.kind)
+		w := httptest.NewRecorder()
+		(&Server{}).demoArrange(w, r)
+		if w.Code != tc.code || w.Header().Get("Access-Control-Allow-Origin") != "*" {
+			t.Errorf("%s %s: %d, ACAO %q", tc.kind, tc.query, w.Code, w.Header().Get("Access-Control-Allow-Origin"))
 		}
 	}
 }

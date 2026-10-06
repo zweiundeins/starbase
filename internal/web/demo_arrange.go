@@ -21,6 +21,7 @@ import (
 // arrangement, which the morph applies. Stateless: the arrangement travels
 // with the request, so any page, and the playground's sandbox, can use it.
 func (s *Server) demoArrange(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public, and the playground's sandbox reads refusals too
 	a, ok := arrangers[r.PathValue("kind")]
 	if !ok {
 		http.NotFound(w, r)
@@ -40,7 +41,6 @@ func (s *Server) demoArrange(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
 	datastar.NewSSE(w, r).PatchElements(a.render(p.ID, state))
 }
 
