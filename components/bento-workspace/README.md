@@ -23,7 +23,7 @@ preview: |
       [data-drag-preview][data-bento-item] { border: 2px solid Highlight; }
     }
   </style>
-  <sb-bento-workspace id="bento-card" class="demo-bento-card" data-state="deck thrust.1.1.2.2 fuel.3.1.1.1 crew.3.2.1.1"
+  <sb-bento-workspace id="bento-card" data-ignore-morph class="demo-bento-card" data-state="deck thrust.1.1.2.2 fuel.3.1.1.1 crew.3.2.1.1"
     data-on:sb-bento-move="@get('/demo/arrange/bento-card', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
     <div data-bento-grid="deck" data-columns="3">
       <div data-bento-item="thrust" data-bento-col="1" data-bento-row="1" data-bento-width="2" data-bento-height="2" style="grid-column: 1 / span 2; grid-row: 1 / span 2">Thrust</div>
@@ -114,7 +114,7 @@ Each tile holds another component (a gauge, two meters, a sparkline). The server
     [data-drag-preview][data-bento-item] { border: 2px solid Highlight; }
   }
 </style>
-<sb-bento-workspace id="mission-deck" class="demo-bento" data-state="deck thrust.1.1.2.2 fuel.3.1.2.1 speed.3.2.2.1 shelf shields.1.1.2.1 crew.1.2.1.1"
+<sb-bento-workspace id="mission-deck" data-ignore-morph class="demo-bento" data-state="deck thrust.1.1.2.2 fuel.3.1.2.1 speed.3.2.2.1 shelf shields.1.1.2.1 crew.1.2.1.1"
 	data-on:sb-bento-move="@get('/demo/arrange/bento-workspace', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
 	data-on:sb-bento-resize="@get('/demo/arrange/bento-workspace', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
 	<div class="demo-bento__panel">
@@ -232,7 +232,7 @@ func renderBento(id, state string) string {
 		return "invalid bento state: " + err.Error()
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" class=\"demo-bento\" data-state=\"%s\"\n\tdata-on:sb-bento-move=\"%s\"\n\tdata-on:sb-bento-resize=\"%[3]s\">\n", id, state, arrangeOn("bento-workspace"))
+	fmt.Fprintf(&b, "<sb-bento-workspace id=\"%s\" data-ignore-morph class=\"demo-bento\" data-state=\"%s\"\n\tdata-on:sb-bento-move=\"%s\"\n\tdata-on:sb-bento-resize=\"%[3]s\">\n", id, state, arrangeOn("bento-workspace"))
 	for _, g := range d.grids {
 		fmt.Fprintf(&b, "\t<div class=\"demo-bento__panel\">\n\t\t<span class=\"demo-bento__label\">%s</span>\n", g.label)
 		fmt.Fprintf(&b, "\t\t<div data-bento-grid=\"%s\" data-columns=\"%d\" role=\"group\" aria-label=\"%s\">\n", g.id, g.columns, g.label)
