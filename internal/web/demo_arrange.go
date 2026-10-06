@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -41,7 +42,74 @@ func (s *Server) demoArrange(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
-	datastar.NewSSE(w, r).PatchElements(a.render(p.ID, state))
+	datastar.NewSSE(w, r).PatchElements(answer(a.render(p.ID, state)))
+}
+
+// answer readies a demo's markup for its own patch. Its host carries
+// data-ignore-morph, so the page's frames leave a rearranged demo alone, but
+// Datastar also skips a patch whose old and new element both carry it: the
+// answer swaps it for data-preserve-attr, which keeps it on the host.
+func answer(markup string) string {
+	name, attrs, end := startTag(markup)
+	i := slices.IndexFunc(attrs, func(a attr) bool { return a.name == "data-ignore-morph" })
+	if i < 0 {
+		return markup
+	}
+	preserve := ` data-preserve-attr="data-ignore-morph"`
+	var b strings.Builder
+	b.WriteString("<" + name)
+	for _, a := range slices.Delete(attrs, i, i+1) {
+		if v, ok := strings.CutPrefix(a.raw, `data-preserve-attr="`); ok {
+			a.raw, preserve = `data-preserve-attr="data-ignore-morph `+v, ""
+		}
+		b.WriteString(" " + a.raw)
+	}
+	return b.String() + preserve + ">" + markup[end:]
+}
+
+type attr struct{ name, raw string }
+
+// startTag reads the start tag markup opens with: its name, its attributes
+// and where it ends (after its >). Values may hold > inside quotes.
+func startTag(markup string) (name string, attrs []attr, end int) {
+	i := strings.IndexAny(markup, " \t\n\r>")
+	if !strings.HasPrefix(markup, "<") || i < 0 {
+		return "", nil, 0
+	}
+	name = markup[1:i]
+	for i < len(markup) {
+		for i < len(markup) && strings.ContainsRune(" \t\n\r", rune(markup[i])) {
+			i++
+		}
+		if i >= len(markup) || markup[i] == '>' || markup[i] == '/' {
+			break
+		}
+		start := i
+		for i < len(markup) && !strings.ContainsRune(" \t\n\r=>", rune(markup[i])) {
+			i++
+		}
+		name := markup[start:i]
+		if i < len(markup) && markup[i] == '=' {
+			i++
+			if i < len(markup) && (markup[i] == '"' || markup[i] == '\'') {
+				q := markup[i]
+				if j := strings.IndexByte(markup[i+1:], q); j >= 0 {
+					i += j + 2
+				} else {
+					return "", nil, 0
+				}
+			} else {
+				for i < len(markup) && !strings.ContainsRune(" \t\n\r>", rune(markup[i])) {
+					i++
+				}
+			}
+		}
+		attrs = append(attrs, attr{name, markup[start:i]})
+	}
+	if i >= len(markup) || markup[i] != '>' {
+		return "", nil, 0
+	}
+	return name, attrs, i + 1
 }
 
 // An arranger is one demo: how a move changes its arrangement, and its

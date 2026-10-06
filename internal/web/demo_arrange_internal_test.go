@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -34,6 +35,9 @@ func TestArrangeDemosMatchTheServer(t *testing.T) {
 				continue
 			}
 			found++
+			if _, attrs, _ := startTag(a.render(m[1], m[2])); !slices.ContainsFunc(attrs, func(a attr) bool { return a.name == "data-ignore-morph" }) {
+				t.Errorf("%s: the %s demo's host needs data-ignore-morph, or the page's next frame undoes its moves", p, m[1])
+			}
 			if want := indent.ReplaceAllString(a.render(m[1], m[2]), ""); !strings.Contains(string(b), want) {
 				t.Errorf("%s: the %s demo isn't what the server renders; want:\n%s", p, m[1], want)
 			}
@@ -86,6 +90,20 @@ func TestArrangeRefusalsAreReadable(t *testing.T) {
 		(&Server{}).demoArrange(w, r)
 		if w.Code != tc.code || w.Header().Get("Access-Control-Allow-Origin") != "*" {
 			t.Errorf("%s %s: %d, ACAO %q", tc.kind, tc.query, w.Code, w.Header().Get("Access-Control-Allow-Origin"))
+		}
+	}
+}
+
+func TestAnswerKeepsTheHostAnIsland(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{`<sb-x id="a" data-ignore-morph data-state="b c"><p>x</p></sb-x>`, `<sb-x id="a" data-state="b c" data-preserve-attr="data-ignore-morph"><p>x</p></sb-x>`},
+		{"<sb-x\n\tdata-ignore-morph id=a data-on:x=\"$y > 1 && @get('/z')\">", `<sb-x id=a data-on:x="$y > 1 && @get('/z')" data-preserve-attr="data-ignore-morph">`},
+		{`<sb-x data-preserve-attr="style" data-ignore-morph="">`, `<sb-x data-preserve-attr="data-ignore-morph style">`},
+		{`<sb-x id="a"><i data-ignore-morph></i></sb-x>`, `<sb-x id="a"><i data-ignore-morph></i></sb-x>`},
+		{`<sb-x id="a`, `<sb-x id="a`},
+	} {
+		if got := answer(tc.in); got != tc.want {
+			t.Errorf("answer(%q)\n got %q\nwant %q", tc.in, got, tc.want)
 		}
 	}
 }
