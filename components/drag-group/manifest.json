@@ -2,5 +2,13 @@
   "tag": "sb-drag-group",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-drag-group-move",
+      "bubbles": true,
+      "composed": true,
+      "description": "An item was dropped, or a keyboard move was committed. detail: { itemId, fromList, toList, before }: the item, the ids of the lists it leaves and joins (the same for a move within a list), and the item it now precedes in toList, or an empty string for the end."
+    }
+  ]
 }
