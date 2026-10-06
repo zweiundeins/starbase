@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"strings"
 )
 
@@ -31,12 +32,14 @@ func arrangeSortableList(state string, move json.RawMessage) (string, error) {
 }
 
 // renderSortableList is the list's markup: the host the morph replaces,
-// with the arrangement in data-state and an item per body.
+// with the arrangement in data-state and an item per body. Every item points
+// at the page's keyboard hint, the element with the id <id>-hint.
 func renderSortableList(id, state string) string {
+	id, state = html.EscapeString(id), html.EscapeString(state)
 	var b strings.Builder
-	fmt.Fprintf(&b, "<sb-sortable-list id=\"%s\" class=\"demo-sortable\" data-state=\"%s\"\n\tdata-on:sb-sortable-move=\"%s\">\n", id, state, arrangeOn("sortable-list"))
+	fmt.Fprintf(&b, "<sb-sortable-list id=\"%s\" class=\"demo-sortable\" role=\"list\" data-state=\"%s\"\n\tdata-on:sb-sortable-move=\"%s\">\n", id, state, arrangeOn("sortable-list"))
 	for _, item := range strings.Fields(state) {
-		fmt.Fprintf(&b, "\t<div data-sortable-item=\"%s\" tabindex=\"0\">%s</div>\n", item, label(item))
+		fmt.Fprintf(&b, "\t<div data-sortable-item=\"%s\" role=\"listitem\" tabindex=\"0\" aria-describedby=\"%s-hint\">%s</div>\n", item, id, label(item))
 	}
 	b.WriteString("</sb-sortable-list>")
 	return b.String()
