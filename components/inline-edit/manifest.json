@@ -2,5 +2,27 @@
   "tag": "sb-inline-edit",
   "props": [],
   "slots": [],
-  "events": []
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-inline-edit-request",
+      "bubbles": true,
+      "composed": true,
+      "description": "A double press on the trigger, or Enter or F2 while it has the focus. detail: { contextId }. Render the field."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-inline-edit-commit",
+      "bubbles": true,
+      "composed": true,
+      "description": "Enter in the field, or the field lost the focus, with a text other than the saved one it started from. detail: { contextId, value }. Save it and render the title, or refuse it."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-inline-edit-cancel",
+      "bubbles": true,
+      "composed": true,
+      "description": "Escape in the field, or the field lost the focus with the saved text in it. detail: { contextId }. Render the title again."
+    }
+  ]
 }
