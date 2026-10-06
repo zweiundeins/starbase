@@ -1,0 +1,77 @@
+From 83ac809bc27e885086a432edd8d2a3de9222eb64 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:08:56 +0000
+Subject: [PATCH 51/58] Focus the first menu item on open instead of choosing
+ it on Enter
+
+The menu took the focus itself and Enter on it chose the first item, so Enter twice on a
+trigger ran an action the reader never saw focused, a delete if that came first. Opening a
+menu or submenu now focuses its first item (focusFirst defaults to true), and Enter or
+Space on the menu element does nothing.
+---
+ rocket/context-menu/client.ts | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 2b8772e..08876f3 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -29,7 +29,7 @@ export function installContextMenu(
+     inlineContent = false,
+     captureTriggers = true,
+     mobileQuery = "(max-width: 650px)",
+-    focusFirst = false,
++    focusFirst = true,
+   } = options;
+   setupMenu(host, cleanup, {
+     inlineContent,
+@@ -75,6 +75,7 @@ function setupMenu(
+     [...menu.querySelectorAll<HTMLElement>(contextMenuContract.selectors.item)].filter(
+       (item) => item.closest('[role="menu"]') === menu && !item.matches(":disabled, [aria-disabled='true']"),
+     );
++  const focusIn = (menu: HTMLElement) => ((options.focusFirst && itemsIn(menu)[0]) || menu).focus();
+   const closeTo = (depth: number, refocus = false) => {
+     while (levels.length > depth) {
+       const level = levels.pop()!;
+@@ -122,7 +123,7 @@ function setupMenu(
+         levels[depth]!.unposition =
+           options.mobileSheet && mobile.matches ? showSheet(submenu) : showPositionedPopover(submenu, button, "beside");
+       }
+-      if (focus) (options.focusFirst ? itemsIn(submenu)[0] : submenu)?.focus();
++      if (focus) focusIn(submenu);
+       return;
+     }
+     closeTo(depth);
+@@ -133,7 +134,7 @@ function setupMenu(
+       options.mobileSheet && mobile.matches ? showSheet(submenu) : showPositionedPopover(submenu, button, "beside");
+     levels.push({ trigger: button, menu: submenu, unposition });
+     button.setAttribute("aria-expanded", "true");
+-    if (focus) (options.focusFirst ? itemsIn(submenu)[0] : submenu)?.focus();
++    if (focus) focusIn(submenu);
+   };
+   const openFor = (source: HTMLElement, point?: { x: number; y: number }, context: Record<string, string> = {}) => {
+     const template = host.querySelector<HTMLTemplateElement>(":scope > template[data-pd-menu]");
+@@ -159,7 +160,7 @@ function setupMenu(
+       options.mobileSheet && mobile.matches
+         ? showSheet(host)
+         : showPositionedPopover(host, point ?? source, point ? "point" : "below");
+-    (options.focusFirst ? itemsIn(host)[0] : host)?.focus();
++    focusIn(host);
+     host.dispatchEvent(
+       new CustomEvent<MenuScopeDetail>(contextMenuContract.events.scope, {
+         bubbles: true,
+@@ -254,11 +255,6 @@ function setupMenu(
+     }
+     const items = itemsIn(scope);
+     if (!items.length) return;
+-    if ((event.key === "Enter" || event.key === " ") && active === scope) {
+-      event.preventDefault();
+-      items[0]?.click();
+-      return;
+-    }
+     const direction = keyboard.matches("focusNext", event) ? 1 : keyboard.matches("focusPrevious", event) ? -1 : 0;
+     if (!direction && !keyboard.matches("focusFirst", event) && !keyboard.matches("focusLast", event)) return;
+     event.preventDefault();
+-- 
+2.55.0
+
