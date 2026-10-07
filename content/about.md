@@ -16,7 +16,7 @@ The site is itself a Datastar app, built the way Datastar recommends: **CQRS** o
 
 - **Commands:** starring a component, filtering the gallery or picking a theme is a short `POST`. It is validated, queued, and answers `204 No Content`.
 - **One writer:** a single goroutine drains the queue, applies every queued command in one transaction, commits, and then wakes only the affected render streams.
-- **Queries:** every open tab holds one long-lived SSE stream. After each relevant commit the server re-renders the whole page from one read snapshot and sends it. Datastar morphs the difference, and Brotli, sharing one window across frames, keeps resends tiny.
+- **Queries:** every open tab holds one long-lived SSE stream. After each relevant commit the server re-renders the whole page from one read snapshot and sends it. Datastar morphs the difference, and Brotli, sharing one window across frames, keeps resends tiny. The page opens its stream with `retry: 'always'`: Datastar's default reopens a stream only after an error, so a stream the server ends cleanly (a deploy, a restart) would stay closed.
 - **Server-owned UI state:** your filters and sort order live in SQLite per tab, not in client JavaScript. The URL stays in sync, so links are shareable.
 
 Go, [templ](https://templ.guide), SQLite (pure Go, no cgo), Datastar and Rocket. No Node, no bundler.
