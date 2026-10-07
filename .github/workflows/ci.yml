@@ -36,12 +36,30 @@ jobs:
       - name: Let Chrome use its sandbox
         # Ubuntu 24.04 restricts unprivileged user namespaces, which Chrome's
         # sandbox needs; without this it would have to run with --no-sandbox.
-        # Before the tests: TestCodeEditorLinesAlign drives headless Chrome too.
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Test
-        run: go test -race ./...
+        # internal/app (the headless Chrome tests) runs in its own job.
+        run: go test -race $(go list -f '{{if ne .ImportPath "starbase/internal/app"}}{{.ImportPath}}{{end}}' ./...)
       - name: Component manifests are up to date (headless Chrome)
         run: go run -tags dev ./cmd/manifests --check
+
+  browser:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: TypeScript compiler (the playground's type check and its tests)
+        run: go run ./cmd/fetchtsc
+      - name: Let Chrome use its sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: Test in headless Chrome
+        run: go test -race -timeout 25m ./internal/app/
 
   vulncheck:
     name: govulncheck
