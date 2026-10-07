@@ -37,6 +37,15 @@ func TestSizes(t *testing.T) {
 	if pg.Sizes.Total != pg.Sizes.Own.Add(editor.Sizes.Own) {
 		t.Errorf("total: %+v", pg.Sizes.Total)
 	}
+	// The one-file bundle: one request where the modules make one per file,
+	// and fewer bytes, since brotli sees them together.
+	kanban, _ := cat.Get("kanban-board")
+	if b := kanban.Sizes.BundleFiles; len(b) != 1 || b[0].Name != "kanban-board.bundle.min.js" || kanban.Sizes.Bundle.Min == 0 || kanban.Sizes.Bundle.Min >= kanban.Sizes.Own.Min {
+		t.Errorf("kanban-board's bundle: %+v, %+v (the module files: %+v)", b, kanban.Sizes.Bundle, kanban.Sizes.Own)
+	}
+	if b := editor.Sizes.BundleFiles; len(b) != 2 || b[1].Name != "vendor/prism.min.js" || b[1].Size.Min != editor.Sizes.Files[1].Min {
+		t.Errorf("code-editor's bundle and the Prism it loads lazily: %+v", b)
+	}
 	// A file only the docs' examples import is not part of the download.
 	auto, _ := cat.Get("autoloader")
 	for _, f := range auto.Sizes.Files {

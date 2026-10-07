@@ -63,6 +63,11 @@ tasks:
     cmds:
       - go run ./cmd/tsgen {{.CLI_ARGS}}
 
+  dist:
+    desc: "Write components as one file each, as the site serves them: task dist -- -out js kanban-board modal"
+    cmds:
+      - go run ./cmd/dist {{.CLI_ARGS}}
+
   new:
     desc: "Scaffold a component: task new -- my-widget --category forms"
     cmds:

@@ -54,6 +54,12 @@ func (cat *Catalog) TypeScriptFiles(c *Component) (map[string][]byte, error) {
 // (autoloader's demo-badge.js) is served and versioned like the others, but
 // not counted in the component's download size.
 func (cat *Catalog) Loaded(c *Component, files map[string][]byte) map[string]bool {
+	return reach(files, strings.TrimPrefix(c.Script, c.Slug+"/"))
+}
+
+// reach returns the files reached from start (by name inside the folder)
+// through relative imports, static or dynamic, start included.
+func reach(files map[string][]byte, start string) map[string]bool {
 	seen := map[string]bool{}
 	var walk func(string)
 	walk = func(name string) {
@@ -71,7 +77,7 @@ func (cat *Catalog) Loaded(c *Component, files map[string][]byte) map[string]boo
 			}
 		}
 	}
-	walk(strings.TrimPrefix(c.Script, c.Slug+"/"))
+	walk(start)
 	return seen
 }
 

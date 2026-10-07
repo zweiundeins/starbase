@@ -34,6 +34,11 @@ type Sizes struct {
 	Uses  []NamedSize // components it renders (transitively), by tag, all their files
 	Own   Size        // sum of Files
 	Total Size        // Own plus Uses
+	// BundleFiles are the one-file bundle (BundleName) and the files it
+	// loads lazily, each minified and compressed on its own (Min is Brotli):
+	// what a page loads instead of Files. Bundle is their sum.
+	BundleFiles []NamedSize
+	Bundle      Size
 }
 
 // compressed measures b the way it is served: precompress keeps the brotli
@@ -136,6 +141,20 @@ func (cat *Catalog) ownSizes(c *Component) (Sizes, error) {
 		}
 		s.Files = append(s.Files, NamedSize{n, sz})
 		s.Own = s.Own.Add(sz)
+	}
+	bundle, err := cat.BundleOf(c)
+	if err != nil {
+		return Sizes{}, err
+	}
+	for _, n := range append([]string{BundleName(c.Slug)}, bundle.Lazy...) {
+		b, ok := mins[n]
+		if !ok {
+			b = files[n] // an already-minified vendored file
+		}
+		sz := compressed(b)
+		sz.Min = sz.Brotli
+		s.BundleFiles = append(s.BundleFiles, NamedSize{n, sz})
+		s.Bundle = s.Bundle.Add(sz)
 	}
 	ownSizes.Store(c.Hash, s)
 	return s, nil

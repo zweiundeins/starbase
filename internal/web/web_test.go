@@ -668,7 +668,7 @@ func TestPrecompressedAssets(t *testing.T) {
 	ts, _, _, cat := newServerBus(t)
 	button, _ := cat.Get("button")
 	client := &http.Client{Transport: &http.Transport{DisableCompression: true}} // see the raw encoding
-	for _, u := range []string{"/c/" + button.VersionedMinScript(), "/c/" + button.VersionedScript(), "/c/autoloader.js", "/c/bundle.js"} {
+	for _, u := range []string{"/c/" + button.VersionedMinScript(), "/c/" + button.VersionedScript(), "/c/" + button.VersionedBundle(), "/c/autoloader.js", "/c/bundle.js"} {
 		want, _ := func() ([]byte, error) {
 			req, _ := http.NewRequest("GET", ts.URL+u, nil)
 			res, err := client.Do(req) // identity

@@ -77,9 +77,13 @@ func probeFull(t *testing.T, host, path, script string, handlers func(app http.H
 				a.Handler.ServeHTTP(w, r)
 				return
 			}
+			h := http.Handler(a.Handler)
+			if x := extra[page]; x != nil { // a test's own page, which gets the script too
+				h = x
+			}
 			r.Header.Del("Accept-Encoding")
 			rec := httptest.NewRecorder()
-			a.Handler.ServeHTTP(rec, r)
+			h.ServeHTTP(rec, r)
 			for k, v := range rec.Header() {
 				if k != "Content-Security-Policy" && k != "Content-Length" {
 					w.Header()[k] = v

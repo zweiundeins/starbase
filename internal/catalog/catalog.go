@@ -169,9 +169,10 @@ func Load(fsys fs.FS) (*Catalog, error) {
 }
 
 // minFormat is part of every component's version hash. A version's .min
-// files are frozen the first time they are stored (min.go), so a change to
-// how they are made (esbuild options, shrink.go) must change it: every
-// component then gets a new version, whose .min files are made the new way.
+// files and its one-file bundle are frozen the first time they are stored
+// (min.go, onefile.go), so a change to how they are made (esbuild options,
+// shrink.go, the bundle's banner) must change it: every component then gets a
+// new version, whose files are made the new way.
 const minFormat = "min3"
 
 // The Datastar + Rocket build pages load (static/vendor, patches/rocket) is
@@ -256,6 +257,11 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	}
 	if c.Source != "" && !strings.HasPrefix(c.Source, "https://github.com/") {
 		problems = append(problems, "front matter: source must be a https://github.com/ URL")
+	}
+	for _, name := range []string{slug + ".bundle.js", BundleName(slug)} {
+		if _, err := fs.Stat(fsys, path.Join(slug, name)); err == nil {
+			problems = append(problems, fmt.Sprintf("%s is reserved for the one-file bundle: rename it", name))
+		}
 	}
 	if c.License != "" && !slices.Contains(licenses, c.License) {
 		problems = append(problems, fmt.Sprintf("front matter: license %q must be one of %s", c.License, strings.Join(licenses, ", ")))

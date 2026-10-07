@@ -16,6 +16,7 @@ import (
 // so other sites can pin exactly what they reviewed:
 //
 //	/c/<slug>@<hash>/<file>.js      one version of a component's file
+//	/c/<slug>@<hash>/<slug>.bundle.min.js  that version in one file (catalog/onefile.go)
 //	/c/@<catalog>/autoloader.js     a snapshot of the whole catalog's autoloader
 //	/c/@<catalog>/importmap.json    SRI hashes for everything that snapshot loads
 //
