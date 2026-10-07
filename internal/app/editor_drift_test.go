@@ -68,6 +68,7 @@ func TestCodeEditorLinesAlign(t *testing.T) {
 	cfg.BaseURL = base
 	cfg.DBPath = filepath.Join(t.TempDir(), "db.sqlite")
 	cfg.GitHubClientID, cfg.GitHubClientSecret = "", ""
+	copySeeded(t, cfg.DBPath)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	a, err := app.New(ctx, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))

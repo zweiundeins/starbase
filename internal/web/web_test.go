@@ -171,7 +171,7 @@ func TestRenderStream(t *testing.T) {
 	ts, c := newServer(t)
 	get(t, c, ts.URL+"/")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, ts.URL+"/", strings.NewReader(`{"tabid":"tab12345"}`))
 	req.Header.Set("Content-Type", "application/json")

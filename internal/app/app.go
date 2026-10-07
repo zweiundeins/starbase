@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -26,12 +27,23 @@ import (
 type App struct {
 	Handler http.Handler
 	Catalog *catalog.Catalog
+	bus     *cqrs.Bus
 	close   func()
 }
 
 // Close stops the command bus and closes the database. Call it after the
 // HTTP server has shut down.
 func (a *App) Close() { a.close() }
+
+// Settle returns once the commands sent before it, such as the startup
+// seeding, are applied: the bus applies them in order.
+func (a *App) Settle(ctx context.Context) error { return a.bus.Exec(ctx, settled{}) }
+
+// settled changes nothing; Settle waits for it.
+type settled struct{}
+
+func (settled) Apply(context.Context, *sql.Tx) error { return nil }
+func (settled) Scope() string                        { return "" } // touches no view
 
 // New builds the app. ctx bounds the lifetime of render streams: cancel it
 // to end them (e.g. before http.Server.Shutdown).
@@ -80,5 +92,5 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		Content:  content.FS,
 		Checker:  checker,
 	})
-	return &App{Handler: srv.Handler(), Catalog: cat, close: closeAll}, nil
+	return &App{Handler: srv.Handler(), Catalog: cat, bus: bus, close: closeAll}, nil
 }

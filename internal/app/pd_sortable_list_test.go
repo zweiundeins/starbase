@@ -23,6 +23,7 @@ try {
 	release('Alt')
 	await until(() => list.dataset.state !== 'earth mercury mars venus')
 	check('the server applied it', [list.dataset.state, order()], ['mercury earth mars venus', 'mercury earth mars venus'])
+	await until(() => document.activeElement?.dataset?.sortableItem === 'earth', 5000) // focus recovery runs after the morph
 	check('the moved item keeps the focus', document.activeElement?.dataset?.sortableItem, 'earth')
 
 	// Escape cancels a staged move: nothing is sent.

@@ -2,7 +2,9 @@ package app_test
 
 import (
 	"context"
+	"errors"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -135,6 +137,7 @@ func startApp(t *testing.T, host string) (*app.App, string, net.Listener) {
 	cfg.BaseURL = base
 	cfg.DBPath = filepath.Join(t.TempDir(), "db.sqlite")
 	cfg.GitHubClientID, cfg.GitHubClientSecret = "", ""
+	copySeeded(t, cfg.DBPath)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	a, err := app.New(ctx, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -143,6 +146,59 @@ func startApp(t *testing.T, host string) (*app.App, string, net.Listener) {
 	}
 	t.Cleanup(func() { a.Close() })
 	return a, base, ln
+}
+
+// seeded is a database seeded once per test binary, which every test app
+// starts from: 100,000 demo stars seeded per app made the package slow
+// under -race, and everything running beside it.
+var seeded = sync.OnceValues(func() (string, error) {
+	dir, err := os.MkdirTemp("", "starbase-seeded-")
+	if err != nil {
+		return "", err
+	}
+	seededDir = dir
+	cfg := config.Load()
+	cfg.DBPath = filepath.Join(dir, "db.sqlite")
+	cfg.GitHubClientID, cfg.GitHubClientSecret = "", ""
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	a, err := app.New(ctx, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		return "", err
+	}
+	defer a.Close()
+	return cfg.DBPath, a.Settle(ctx)
+})
+
+var seededDir string
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if seededDir != "" {
+		os.RemoveAll(seededDir)
+	}
+	os.Exit(code)
+}
+
+// copySeeded puts a copy of the seeded database at path.
+func copySeeded(t *testing.T, path string) {
+	t.Helper()
+	from, err := seeded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"", "-wal"} {
+		b, err := os.ReadFile(from + suffix)
+		if suffix != "" && errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err == nil {
+			err = os.WriteFile(path+suffix, b, 0o600)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // runChrome loads url in headless Chrome, with extra flags, and returns what
