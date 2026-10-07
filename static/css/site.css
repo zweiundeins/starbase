@@ -804,7 +804,7 @@
 		&::before {
 			--_h: 1rem;
 			--_n: calc(2px * var(--sb-notch));
-			content: "live demo";
+			content: "live demo" / ""; /* a hint for the eye: screen readers skip it */
 			position: absolute;
 			z-index: calc(var(--sb-z-raised) + 1);
 			inset-block-start: calc(var(--sb-space-3) - var(--_h) / 2);
