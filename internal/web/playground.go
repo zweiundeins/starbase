@@ -337,7 +337,7 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 			return view{}, err
 		}
 		files = p.Files
-		v.Preview = cmp.Or(p.Name, "This component")
+		v.Preview, v.PreviewRef = cmp.Or(p.Name, "This component"), ref
 		v.Base = "/playground/preview/" + ref + "/"
 	} else if slug := q.Get("component"); slug != "" {
 		comp, ok := s.catalog.Get(slug)

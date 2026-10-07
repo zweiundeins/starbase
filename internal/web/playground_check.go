@@ -19,14 +19,15 @@ import (
 
 // POST /playground/check type-checks the playground's component.ts, or its
 // component.js when it opts in with // @ts-check, against the patched
-// Datastar build and the files of the component it was opened from
-// (internal/tscheck). It is a query, like /playground/size, and answers with
-// a patch of $_diag: the diagnostics per file as JSON, the playground's
-// diagnostics attribute. A string, because a patched object would merge
-// into the last one.
+// Datastar build and the files of the component it was opened from, or of
+// the pull request preview (internal/tscheck). It is a query, like
+// /playground/size, and answers with a patch of $_diag: the diagnostics per
+// file as JSON, the playground's diagnostics attribute. A string, because a
+// patched object would merge into the last one.
 func (s *Server) playgroundCheck(w http.ResponseWriter, r *http.Request) {
 	var p struct {
 		Component string `json:"component"`
+		Preview   string `json:"preview"` // <commit>/<slug>
 		Name      string `json:"name"`
 		Code      string `json:"code"`
 	}
@@ -40,18 +41,19 @@ func (s *Server) playgroundCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := cmp.Or(p.Name, "component.js")
-	ds, _ := json.Marshal(map[string]any{name: s.typecheck(r.Context(), p.Component, name, p.Code)})
+	ds, _ := json.Marshal(map[string]any{name: s.typecheck(r.Context(), p.Component, p.Preview, name, p.Code)})
 	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{"_diag": string(ds)})
 }
 
 // typecheck returns the diagnostics of code, as file name in the folder of
-// the component slug: none when there is no compiler, or when JavaScript
-// doesn't ask for a check. Results are memoized by content, like sizes.
-func (s *Server) typecheck(ctx context.Context, slug, name, code string) []tscheck.Diagnostic {
+// the component slug, or of the pull request preview ref: none when there is
+// no compiler, or when JavaScript doesn't ask for a check. Results are
+// memoized by content, like sizes.
+func (s *Server) typecheck(ctx context.Context, slug, ref, name, code string) []tscheck.Diagnostic {
 	if s.checker == nil || (strings.HasSuffix(name, ".js") && !strings.Contains(code, "@ts-check")) {
 		return []tscheck.Diagnostic{}
 	}
-	key := sha256.Sum256([]byte(slug + "\x00" + name + "\x00" + code))
+	key := sha256.Sum256([]byte(slug + "\x00" + ref + "\x00" + name + "\x00" + code))
 	s.checkMu.Lock()
 	ds, ok := s.checks[key]
 	s.checkMu.Unlock()
@@ -69,6 +71,15 @@ func (s *Server) typecheck(ctx context.Context, slug, name, code string) []tsche
 			if n != strings.TrimPrefix(c.Script, c.Slug+"/") && n != strings.TrimPrefix(c.SourceFile, c.Slug+"/") {
 				files = append(files, tscheck.File{Name: n, Source: string(b)})
 			}
+		}
+	} else if ref != "" {
+		mods, err := s.previews.modules(ctx, ref)
+		if err != nil {
+			s.log.Warn("type check", "preview", ref, "err", err)
+			return []tscheck.Diagnostic{}
+		}
+		for n, src := range mods {
+			files = append(files, tscheck.File{Name: n, Source: src})
 		}
 	}
 	ds, err := s.checker.Check(ctx, files)

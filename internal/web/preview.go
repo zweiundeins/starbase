@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -31,14 +32,22 @@ import (
 var commitRe = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 const (
-	maxPreviewFile = 512 << 10
-	maxPreviews    = 64
-	maxVendorBytes = 2 << 20 // per vendored file, as in the submission bot
+	maxPreviewFile    = 512 << 10
+	maxPreviews       = 64
+	maxVendorBytes    = 2 << 20 // per vendored file, as in the submission bot
+	maxPreviewModules = 64      // files the type check reads beside the module
+	maxModuleBytes    = 4 << 20 // their total, as in the submission bot
 )
 
 type preview struct {
 	Name  string
-	Files map[string]string
+	Files map[string]string // component.js (component.ts when written in TypeScript) and index.html
+
+	dir     string // its folder at the commit, on the raw file host
+	slug    string
+	main    string // component.js or component.ts
+	mu      sync.Mutex
+	modules map[string]string // see previewCache.modules
 }
 
 type previewCache struct {
@@ -169,13 +178,19 @@ func (c *previewCache) get(ctx context.Context, ref string) (*preview, error) {
 	return e.p, e.err
 }
 
+// fetch reads the component's module and examples. A component written in
+// TypeScript opens as its <slug>.ts, like ?component= (catalog.Component.SourceFile).
 func (c *previewCache) fetch(ctx context.Context, commit, slug string) (*preview, error) {
-	dir := c.raw + "/" + commit + "/components/" + slug + "/"
-	js, err := c.file(ctx, dir+slug+".js")
+	p := &preview{dir: c.raw + "/" + commit + "/components/" + slug + "/", slug: slug, main: "component.ts"}
+	src, err := c.file(ctx, p.dir+slug+".ts", maxPreviewFile)
+	if errors.Is(err, errNoPreview) {
+		p.main = "component.js"
+		src, err = c.file(ctx, p.dir+slug+".js", maxPreviewFile)
+	}
 	if err != nil {
 		return nil, err
 	}
-	readme, err := c.file(ctx, dir+"README.md")
+	readme, err := c.file(ctx, p.dir+"README.md", maxPreviewFile)
 	if err != nil {
 		return nil, err
 	}
@@ -183,13 +198,75 @@ func (c *previewCache) fetch(ctx context.Context, commit, slug string) (*preview
 	if _, err := catalog.RenderMarkdown(readme, &meta); err != nil {
 		return nil, fmt.Errorf("README.md: %w", err)
 	}
-	return &preview{
-		Name:  meta.Name,
-		Files: map[string]string{"component.js": string(js), "index.html": strings.Join(catalog.Examples(readme), "\n\n") + "\n"},
-	}, nil
+	p.Name = meta.Name
+	p.Files = map[string]string{p.main: string(src), "index.html": strings.Join(catalog.Examples(readme), "\n\n") + "\n"}
+	return p, nil
 }
 
-func (c *previewCache) file(ctx context.Context, url string) ([]byte, error) {
+// moduleName matches the names the type check takes (tscheck.File).
+var moduleName = regexp.MustCompile(`^(?:[\w-][\w.-]*/)*[\w-][\w.-]*\.m?[jt]s$`)
+
+// modules returns the files of the folder of preview ref that its module,
+// as committed, reaches through relative imports: what the type check reads
+// beside it, as it reads a catalog component's folder. They are fetched on
+// the first check, a round of imports at a time, and kept with the preview.
+// A file that is missing or too large is left out, so the check reports it.
+// A ref that is no preview has none.
+func (c *previewCache) modules(ctx context.Context, ref string) (map[string]string, error) {
+	p, err := c.get(ctx, ref)
+	if errors.Is(err, errNoPreview) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.modules != nil {
+		return p.modules, nil
+	}
+	seen := map[string]bool{p.slug + ".ts": true, p.slug + ".js": true} // the module itself, checked as p.main
+	out := map[string]string{}
+	var next []string
+	follow := func(name, code string) {
+		for _, spec := range catalog.Imports(code) {
+			to := path.Join(path.Dir(name), spec)
+			if (strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "../")) && moduleName.MatchString(to) && !seen[to] && len(seen) <= maxPreviewModules {
+				seen[to] = true
+				next = append(next, to)
+			}
+		}
+	}
+	follow(p.main, p.Files[p.main])
+	total := 0
+	for len(next) > 0 {
+		round := next
+		next = nil
+		bodies := make([][]byte, len(round))
+		errs := make([]error, len(round))
+		var wg sync.WaitGroup
+		for i, name := range round {
+			wg.Go(func() { bodies[i], errs[i] = c.file(ctx, p.dir+name, maxVendorBytes) })
+		}
+		wg.Wait()
+		for i, name := range round {
+			switch err := errs[i]; {
+			case errors.Is(err, errNoPreview), errors.Is(err, errTooLarge):
+			case err != nil:
+				return nil, err // not kept: the next check tries again
+			case total+len(bodies[i]) <= maxModuleBytes:
+				total += len(bodies[i])
+				out[name] = string(bodies[i])
+				follow(name, out[name])
+			}
+		}
+	}
+	p.modules = out
+	return out, nil
+}
+
+var errTooLarge = errors.New("file too large")
+
+func (c *previewCache) file(ctx context.Context, url string, max int) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -205,15 +282,17 @@ func (c *previewCache) file(ctx context.Context, url string) ([]byte, error) {
 	case res.StatusCode != http.StatusOK:
 		return nil, fmt.Errorf("fetching %s: %s", url, res.Status)
 	}
-	b, err := io.ReadAll(io.LimitReader(res.Body, maxPreviewFile+1))
-	if err == nil && len(b) > maxPreviewFile {
-		err = fmt.Errorf("%s is larger than %d KB", url, maxPreviewFile>>10)
+	b, err := io.ReadAll(io.LimitReader(res.Body, int64(max)+1))
+	if err == nil && len(b) > max {
+		err = fmt.Errorf("%s is larger than %d KB: %w", url, max>>10, errTooLarge)
 	}
 	return b, err
 }
 
-// servePreviewFile serves a preview's other .js files (vendored libraries)
-// from the pinned commit, so relative imports work in the playground. It
+// servePreviewFile serves a preview's other .js files (its modules and
+// vendored libraries; the runner points a TypeScript module's imports of
+// ./x.ts at the committed x.js) from the pinned commit, so relative imports
+// work in the playground. It
 // streams them; a commit's files never change, so browsers cache them for good.
 func (s *Server) servePreviewFile(w http.ResponseWriter, r *http.Request) {
 	commit, slug, file := r.PathValue("commit"), r.PathValue("slug"), r.PathValue("file")

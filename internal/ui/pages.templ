@@ -211,6 +211,7 @@ type CodePlaygroundView struct {
 	Component     string // slug, when opened from a component page
 	ComponentName string
 	Preview       string // component name, when opened as a pull request preview
+	PreviewRef    string // its <commit>/<slug>
 	Base          string // folder relative imports resolve against (vendored files)
 	Loaded        string // snippet id from ?s=
 	Author        string // snippet author (GitHub login), if any
@@ -248,8 +249,8 @@ const moduleExpr = "name: 'component.ts' in evt.detail.files ? 'component.ts' : 
 // checkExpr type-checks the module on every run: each carries the files as
 // they are, and a newer request cancels the one in flight. The answer is
 // $_diag, the playground's diagnostics as JSON (web/playground_check.go).
-func checkExpr(component string) string {
-	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", " + moduleExpr + "}})"
+func checkExpr(component, preview string) string {
+	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", preview: " + jsString(preview) + ", " + moduleExpr + "}})"
 }
 
 func shareExpr(component string) string {
@@ -290,7 +291,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				data-signals:_diag="'{}'"
 				data-attr:diagnostics="$_diag"
 				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) }
-				data-on:sb-run={ checkExpr(v.Component) }
+				data-on:sb-run={ checkExpr(v.Component, v.PreviewRef) }
 			>
 				@PlaygroundSize(v.Size)
 			</sb-code-playground>
