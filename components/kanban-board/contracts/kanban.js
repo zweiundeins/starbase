@@ -16,10 +16,13 @@ export const kanbanContract = {
         lane: "[data-kanban-lane]",
         card: "[data-kanban-card]",
         cardMain: "[data-kanban-card-main]",
+        laneGrip: "[data-kanban-lane-grip]",
+        laneStep: "[data-kanban-lane-step]",
     },
     events: {
         move: "sb-kanban-move",
         select: "sb-kanban-select",
+        laneMove: "sb-kanban-lane-move",
     },
 };
 export const defaultKanbanKeyboard = {

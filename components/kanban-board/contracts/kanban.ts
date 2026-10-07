@@ -17,10 +17,13 @@ export const kanbanContract = {
     lane: "[data-kanban-lane]",
     card: "[data-kanban-card]",
     cardMain: "[data-kanban-card-main]",
+    laneGrip: "[data-kanban-lane-grip]",
+    laneStep: "[data-kanban-lane-step]",
   },
   events: {
     move: "sb-kanban-move",
     select: "sb-kanban-select",
+    laneMove: "sb-kanban-lane-move",
   },
 } as const;
 
@@ -31,6 +34,9 @@ export type KanbanMoveDetail = {
 };
 
 export type KanbanSelectDetail = { cardId: string };
+
+/** A lane moved: col is its data-col, before the data-col of the lane it now precedes, or "" for the end. */
+export type KanbanLaneMoveDetail = { col: number; before: string };
 
 export type KanbanKeySlot =
   | "selectNext"

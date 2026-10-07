@@ -1,0 +1,33 @@
+From c65fd713fe25334a38232e8e6d73ae12150a3191 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 16:51:30 +0000
+Subject: [PATCH 38/38] Declare the lane move event in the board's Rocket
+ manifest
+
+---
+ rocket/kanban/client.ts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index d07724d..e774413 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -38,6 +38,15 @@ rocket(kanbanContract.tag, {
+         composed: true,
+         description: "A card was selected: arrow focus moved to it, or the pointer pressed it. detail: { cardId }.",
+       },
++      {
++        name: kanbanContract.events.laneMove,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: " +
++          'col is its data-col as a number, before the data-col of the lane it now precedes, or "" for the end.',
++      },
+     ],
+   },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+-- 
+2.55.0
+

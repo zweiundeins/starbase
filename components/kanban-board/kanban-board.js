@@ -18,7 +18,8 @@ import { installKeyboardStaging } from "./core/keyboard-staging.js";
 import { markRocketHost, ownsRocketElement } from "./core/ownership.js";
 import { installPointerDrag } from "./core/pointer-drag.js";
 import { installTargetIndicator } from "./core/visual-outlets.js";
-import { kanbanContract, defaultKanbanKeyboard } from "./contracts/kanban.js";
+import { kanbanContract, defaultKanbanKeyboard, } from "./contracts/kanban.js";
+import { installLaneMoves, laneBefore } from "./lane-moves.js";
 rocket("sb-kanban-board", {
     mode: "light",
     manifest: {
@@ -37,6 +38,14 @@ rocket("sb-kanban-board", {
                 bubbles: true,
                 composed: true,
                 description: "A card was selected: arrow focus moved to it, or the pointer pressed it. detail: { cardId }.",
+            },
+            {
+                name: kanbanContract.events.laneMove,
+                kind: "custom-event",
+                bubbles: true,
+                composed: true,
+                description: "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: " +
+                    'col is its data-col as a number, before the data-col of the lane it now precedes, or "" for the end.',
             },
         ],
     },
@@ -178,7 +187,78 @@ rocket("sb-kanban-board", {
             beforeCommit: (id, rect) => flip.prepare({ itemId: id, rect }),
             commit: emitMove,
         });
+        const laneFlip = installFlip({
+            host,
+            itemSelector: kanbanContract.selectors.lane,
+            itemId: (lane) => (owns(lane) ? (lane.dataset.col ?? null) : null),
+        });
+        const emitLaneMove = (lane, target, rect) => {
+            const col = lane.dataset.col ?? "";
+            const before = laneBefore(lanes(), lane, target);
+            if (before === null || col === "" || !Number.isFinite(Number(col)))
+                return false;
+            laneFlip.prepare(rect ? { itemId: col, rect } : undefined);
+            host.dispatchEvent(new CustomEvent(kanbanContract.events.laneMove, {
+                bubbles: true,
+                composed: true,
+                detail: { col: Number(col), before },
+            }));
+            return true;
+        };
+        const laneMoves = installLaneMoves({ host, lanes, owns, commit: emitLaneMove });
+        const laneStaging = installKeyboardStaging({
+            host,
+            owns,
+            onCancel: () => laneMoves.mark(null, null),
+            onCommit: ({ lane, target, grip }) => {
+                laneMoves.mark(null, null);
+                const col = lane.dataset.col;
+                const before = laneBefore(lanes(), lane, target);
+                if (before === null)
+                    return;
+                focus.expect(grip, () => {
+                    const all = lanes();
+                    const moved = all.find((candidate) => candidate.dataset.col === col);
+                    if (!moved || (all[all.indexOf(moved) + 1]?.dataset.col ?? "") !== before)
+                        return null;
+                    return moved.querySelector(kanbanContract.selectors.laneGrip);
+                });
+                emitLaneMove(lane, target);
+            },
+        });
+        // Alt and the arrows on a grip stage a lane move, committed when Alt is released.
+        const onGripKey = (event, grip) => {
+            const lane = grip.closest(kanbanContract.selectors.lane);
+            if (!lane || !owns(lane))
+                return;
+            if (keyboard.matches("cancel", event)) {
+                const staged = !!laneStaging.current;
+                laneStaging.cancel();
+                if (laneMoves.cancel() || staged)
+                    event.preventDefault();
+                return;
+            }
+            const { x: direction, y } = keyboard.direction(event, "move");
+            const edge = keyboard.matches("moveFirst", event) ? -1 : keyboard.matches("moveLast", event) ? 1 : 0;
+            if (!direction && !y && !edge)
+                return;
+            event.preventDefault();
+            const all = lanes();
+            const at = laneStaging.current?.lane === lane ? laneStaging.current.target : lane;
+            const target = edge < 0 ? all[0] : edge > 0 ? all.at(-1) : direction ? all[all.indexOf(at) + direction] : undefined;
+            if (!target)
+                return;
+            laneStaging.set(grip, { lane, target, grip }, event);
+            laneMoves.mark(lane, target);
+        };
         const onKeyDown = (event) => {
+            const grip = event.target instanceof HTMLElement && !event.defaultPrevented && !event.isComposing
+                ? event.target.closest(kanbanContract.selectors.laneGrip)
+                : null;
+            if (grip && owns(grip)) {
+                onGripKey(event, grip);
+                return;
+            }
             const card = keyboardItem(event, kanbanContract.selectors.card, owns, kanbanContract.selectors.cardMain);
             const itemId = card?.dataset.kanbanCard;
             const laneStop = card ? null : keyboardItem(event, kanbanContract.selectors.lane, owns);
@@ -190,6 +270,8 @@ rocket("sb-kanban-board", {
                     event.preventDefault();
                     staging.cancel();
                 }
+                if (laneMoves.cancel())
+                    event.preventDefault();
                 clearDragging();
                 return;
             }
@@ -275,6 +357,9 @@ rocket("sb-kanban-board", {
             focus.dispose();
             pointerDispose();
             flip.dispose();
+            laneStaging.dispose();
+            laneMoves.dispose();
+            laneFlip.dispose();
             host.removeEventListener("keydown", onKeyDown);
             host.removeEventListener("pointerdown", onPointerDown);
             clearMarks();

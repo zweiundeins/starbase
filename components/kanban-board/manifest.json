@@ -16,6 +16,13 @@
       "bubbles": true,
       "composed": true,
       "description": "A card was selected: arrow focus moved to it, or the pointer pressed it. detail: { cardId }."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-kanban-lane-move",
+      "bubbles": true,
+      "composed": true,
+      "description": "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: col is its data-col as a number, before the data-col of the lane it now precedes, or \"\" for the end."
     }
   ]
 }

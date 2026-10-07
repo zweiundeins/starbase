@@ -1,0 +1,90 @@
+From 784f3986e236c0fee3528339cf4863cba176aa24 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 16:50:58 +0000
+Subject: [PATCH 37/38] Move a lane with Alt and the arrows while its grip has
+ the focus
+
+Alt+Left and Alt+Right on a lane's grip stage a lane move, Alt+Home and Alt+End stage one to the first or last place, and releasing Alt commits it like a card move; Escape cancels it, and also a pointer drag of a lane. The marks are the pointer drag's, and the grip keeps the focus when the server's answer moves the lane.
+---
+ rocket/kanban/client.ts | 50 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 64b1ca0..d07724d 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -201,7 +201,55 @@ rocket(kanbanContract.tag, {
+       return true;
+     };
+     const laneMoves = installLaneMoves({ host, lanes, owns, commit: emitLaneMove });
++    const laneStaging = installKeyboardStaging<{ lane: HTMLElement; target: HTMLElement; grip: HTMLElement }>({
++      host,
++      owns,
++      onCancel: () => laneMoves.mark(null, null),
++      onCommit: ({ lane, target, grip }) => {
++        laneMoves.mark(null, null);
++        const col = lane.dataset.col;
++        const before = laneBefore(lanes(), lane, target);
++        if (before === null) return;
++        focus.expect(grip, () => {
++          const all = lanes();
++          const moved = all.find((candidate) => candidate.dataset.col === col);
++          if (!moved || (all[all.indexOf(moved) + 1]?.dataset.col ?? "") !== before) return null;
++          return moved.querySelector<HTMLElement>(kanbanContract.selectors.laneGrip);
++        });
++        emitLaneMove(lane, target);
++      },
++    });
++    // Alt and the arrows on a grip stage a lane move, committed when Alt is released.
++    const onGripKey = (event: KeyboardEvent, grip: HTMLElement): void => {
++      const lane = grip.closest<HTMLElement>(kanbanContract.selectors.lane);
++      if (!lane || !owns(lane)) return;
++      if (keyboard.matches("cancel", event)) {
++        const staged = !!laneStaging.current;
++        laneStaging.cancel();
++        if (laneMoves.cancel() || staged) event.preventDefault();
++        return;
++      }
++      const { x: direction, y } = keyboard.direction(event, "move");
++      const edge = keyboard.matches("moveFirst", event) ? -1 : keyboard.matches("moveLast", event) ? 1 : 0;
++      if (!direction && !y && !edge) return;
++      event.preventDefault();
++      const all = lanes();
++      const at = laneStaging.current?.lane === lane ? laneStaging.current.target : lane;
++      const target =
++        edge < 0 ? all[0] : edge > 0 ? all.at(-1) : direction ? all[all.indexOf(at) + direction] : undefined;
++      if (!target) return;
++      laneStaging.set(grip, { lane, target, grip }, event);
++      laneMoves.mark(lane, target);
++    };
+     const onKeyDown = (event: KeyboardEvent) => {
++      const grip =
++        event.target instanceof HTMLElement && !event.defaultPrevented && !event.isComposing
++          ? event.target.closest<HTMLElement>(kanbanContract.selectors.laneGrip)
++          : null;
++      if (grip && owns(grip)) {
++        onGripKey(event, grip);
++        return;
++      }
+       const card = keyboardItem(event, kanbanContract.selectors.card, owns, kanbanContract.selectors.cardMain);
+       const itemId = card?.dataset.kanbanCard;
+       const laneStop = card ? null : keyboardItem(event, kanbanContract.selectors.lane, owns);
+@@ -212,6 +260,7 @@ rocket(kanbanContract.tag, {
+           event.preventDefault();
+           staging.cancel();
+         }
++        if (laneMoves.cancel()) event.preventDefault();
+         clearDragging();
+         return;
+       }
+@@ -293,6 +342,7 @@ rocket(kanbanContract.tag, {
+       focus.dispose();
+       pointerDispose();
+       flip.dispose();
++      laneStaging.dispose();
+       laneMoves.dispose();
+       laneFlip.dispose();
+       host.removeEventListener("keydown", onKeyDown);
+-- 
+2.55.0
+
