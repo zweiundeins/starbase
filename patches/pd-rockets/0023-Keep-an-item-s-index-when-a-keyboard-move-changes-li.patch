@@ -1,0 +1,49 @@
+From f2c80c318c72bba8fdb36bc8e3564ea7656e52db Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 19:54:04 +0000
+Subject: [PATCH] Keep an item's index when a keyboard move changes lists
+
+Alt+Left and Alt+Right put the item at the end of the neighbouring list, wherever it was in its own. It now lands at the same index there, clamped to that list's length, so the move matches what the reader sees, and Alt+Up and Alt+Down still adjust it before Alt is released.
+---
+ rocket/drag-group/client.ts | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/rocket/drag-group/client.ts b/rocket/drag-group/client.ts
+index ed0ebcd..cc34aeb 100644
+--- a/rocket/drag-group/client.ts
++++ b/rocket/drag-group/client.ts
+@@ -171,18 +171,19 @@ rocket(dragGroupContract.tag, {
+       const allLists = lists();
+       const list = currentList && allLists[allLists.indexOf(currentList) + horizontal];
+       if (!list) return;
+-      let before = "";
+-      if (vertical) {
+-        const candidates = itemsIn(list).filter((candidate) => candidate !== item);
+-        const position = stagedTarget
+-          ? stagedTarget.before
+-            ? candidates.findIndex((candidate) => candidate.dataset.dragItem === stagedTarget.before)
+-            : candidates.length
+-          : itemsIn(list).indexOf(item);
+-        const nextPosition = Math.max(0, Math.min(candidates.length, position + vertical));
+-        if (nextPosition === position) return;
+-        before = candidates[nextPosition]?.dataset.dragItem ?? "";
+-      }
++      const others = (inList: HTMLElement) => itemsIn(inList).filter((candidate) => candidate !== item);
++      const position = stagedTarget
++        ? stagedTarget.before
++          ? others(stagedTarget.list).findIndex((candidate) => candidate.dataset.dragItem === stagedTarget.before)
++          : others(stagedTarget.list).length
++        : sourceList
++          ? itemsIn(sourceList).indexOf(item)
++          : 0;
++      // Across lists the item keeps its index, clamped to the target list's length.
++      const candidates = others(list);
++      const nextPosition = Math.max(0, Math.min(candidates.length, position + vertical));
++      if (!horizontal && nextPosition === position) return;
++      const before = candidates[nextPosition]?.dataset.dragItem ?? "";
+       const target = { list, toList: list.dataset.dropList ?? "", before };
+       staging.set(item, { itemId: id, target }, event);
+       mark(target);
+-- 
+2.55.0
+

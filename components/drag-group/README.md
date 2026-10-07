@@ -46,7 +46,7 @@ usage: |
   </sb-drag-group>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-drag-group`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`, which for this surface keep Alt and an arrow key on an item from reaching the browser, let the arrow keys reach empty lists, list the move event in the manifest, let it nest in other PD rockets components, and skip the move animation when the reader prefers reduced motion.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-drag-group`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`, which for this surface keep Alt and an arrow key on an item from reaching the browser, let the arrow keys reach empty lists, keep an item's place when Alt and the arrows take it to another list, list the move event in the manifest, let it nest in other PD rockets components, and skip the move animation when the reader prefers reduced motion.
 
 Several lists whose items the server renders and arranges. Drag an item within its list or into another one, or focus it and hold Alt while you press the arrow keys. The component shows where the item would land, then emits `sb-drag-group-move` with the item, the list it comes from, the list it goes to and the item it goes before. It moves nothing itself: the server applies the move and sends the lists back, and the morph puts each item in its place with a short animation.
 
@@ -137,10 +137,10 @@ Groups are independent: an item never leaves its group. A sortable list or anoth
 | Arrow Left / Arrow Right, or h / l | Focus the item at the same place in the next list to the left / right that has items, or an empty list on the way that has a `tabindex` |
 | Home / End | Focus the first / last item in the list |
 | Alt + Arrow Down / Up, or Alt + j / k | Move the focused item down / up its list |
-| Alt + Arrow Left / Right, or Alt + h / l | Move the focused item to the end of the list to the left / right |
+| Alt + Arrow Left / Right, or Alt + h / l | Move the focused item into the list to the left / right, at the same place (at the end of a shorter list) |
 | Escape | Cancel a move before Alt is released |
 
-Moves add up while Alt is held: Alt + Arrow Right and then Alt + Arrow Up places the item above the last one of the next list. Releasing Alt sends the move. On macOS, Ctrl + n and Ctrl + p also move the focus. Each action takes its keys from a `data-key-<action>` attribute on the group, a space-separated list such as `data-key-focus-next="ArrowDown n"`; an empty value turns the action off. A key with modifiers names them with `+`, as in `Alt+ArrowUp` or `Ctrl+n`. Give the move keys one, such as `data-key-move-up="Alt+ArrowUp Alt+w"`: its release sends the move, so a move key without a modifier sends each step on its own. The actions are `focus-next`, `focus-previous`, `focus-left`, `focus-right`, `focus-first`, `focus-last`, `move-up`, `move-down`, `move-left`, `move-right` and `cancel`.
+Moves add up while Alt is held: each key moves the item on from where the last one put it, so Alt + Arrow Right and then Alt + Arrow Up places it in the next list, one place higher than it was in its own. Releasing Alt sends the move. On macOS, Ctrl + n and Ctrl + p also move the focus. Each action takes its keys from a `data-key-<action>` attribute on the group, a space-separated list such as `data-key-focus-next="ArrowDown n"`; an empty value turns the action off. A key with modifiers names them with `+`, as in `Alt+ArrowUp` or `Ctrl+n`. Give the move keys one, such as `data-key-move-up="Alt+ArrowUp Alt+w"`: its release sends the move, so a move key without a modifier sends each step on its own. The actions are `focus-next`, `focus-previous`, `focus-left`, `focus-right`, `focus-first`, `focus-last`, `move-up`, `move-down`, `move-left`, `move-right` and `cancel`.
 
 ## On the server
 

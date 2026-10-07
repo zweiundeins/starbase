@@ -181,18 +181,19 @@ rocket("sb-drag-group", {
       const allLists = lists();
       const list = currentList && allLists[allLists.indexOf(currentList) + horizontal];
       if (!list) return;
-      let before = "";
-      if (vertical) {
-        const candidates = itemsIn(list).filter((candidate) => candidate !== item);
-        const position = stagedTarget
-          ? stagedTarget.before
-            ? candidates.findIndex((candidate) => candidate.dataset.dragItem === stagedTarget.before)
-            : candidates.length
-          : itemsIn(list).indexOf(item);
-        const nextPosition = Math.max(0, Math.min(candidates.length, position + vertical));
-        if (nextPosition === position) return;
-        before = candidates[nextPosition]?.dataset.dragItem ?? "";
-      }
+      const others = (inList: HTMLElement) => itemsIn(inList).filter((candidate) => candidate !== item);
+      const position = stagedTarget
+        ? stagedTarget.before
+          ? others(stagedTarget.list).findIndex((candidate) => candidate.dataset.dragItem === stagedTarget.before)
+          : others(stagedTarget.list).length
+        : sourceList
+          ? itemsIn(sourceList).indexOf(item)
+          : 0;
+      // Across lists the item keeps its index, clamped to the target list's length.
+      const candidates = others(list);
+      const nextPosition = Math.max(0, Math.min(candidates.length, position + vertical));
+      if (!horizontal && nextPosition === position) return;
+      const before = candidates[nextPosition]?.dataset.dragItem ?? "";
       const target = { list, toList: list.dataset.dropList ?? "", before };
       staging.set(item, { itemId: id, target }, event);
       mark(target);

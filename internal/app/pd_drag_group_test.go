@@ -66,16 +66,40 @@ try {
 	check('neither stages a move', group.hasAttribute('data-key-staging'), false)
 	release('Alt')
 
+	// Across lists an item keeps its index, clamped to the other list's length
+	// (patch 0023): Mars, second of the planets, lands above Ceres, and
+	// Alt+Down takes it one further before Alt is released.
+	item('mars').focus()
+	press(item('mars'), 'ArrowRight', { altKey: true })
+	check('Alt+Right keeps the index', group.querySelector('[data-drop-before]')?.dataset.dragItem, 'ceres')
+	press(item('mars'), 'ArrowDown', { altKey: true })
+	check('Alt+Down moves it on from there', group.querySelector('[data-drop-before]')?.dataset.dragItem, 'venus')
+	release('Alt')
+	await until(() => group.dataset.state !== across)
+	const kept = 'planets=earth,jupiter dwarfs=pluto,ceres,mars,venus'
+	check('a move to the same index in the other list', [group.dataset.state, lists()], [kept, kept])
+	check('it keeps the focus there too', document.activeElement?.dataset?.dragItem, 'mars')
+
+	// Third of the dwarfs, Mars goes back to the end of the two planets.
+	press(item('mars'), 'ArrowLeft', { altKey: true })
+	check('Alt+Left clamps the index to the shorter list', [list('planets').hasAttribute('data-drop-end'), group.querySelector('[data-drop-before]')], [true, null])
+	release('Alt')
+	await until(() => group.dataset.state !== kept)
+	const clamped = 'planets=earth,jupiter,mars dwarfs=pluto,ceres,venus'
+	check('a move clamped to the end', [group.dataset.state, lists()], [clamped, clamped])
+
 	// The pointer: Earth to the end of the dwarfs. Its id lets the morph move it with the focus.
 	moves.length = 0
+	await settle(250)
+	item('earth').focus()
 	await drag(item('earth'), { x: center(item('venus')).x, y: item('venus').getBoundingClientRect().bottom - 2 })
-	await until(() => group.dataset.state !== across)
-	const dropped = 'planets=mars,jupiter dwarfs=pluto,ceres,venus,earth'
+	await until(() => group.dataset.state !== clamped)
+	const dropped = 'planets=jupiter,mars dwarfs=pluto,ceres,venus,earth'
 	check('a drop sends the move', moves, [{ itemId: 'earth', fromList: 'planets', toList: 'dwarfs', before: '' }])
 	check('the server applies the drop', [group.dataset.state, lists()], [dropped, dropped])
 	check('the dropped item keeps the focus', document.activeElement?.dataset?.dragItem, 'earth')
 
-	// Empty the planets: Mars and Jupiter go right.
+	// Empty the planets: Mars and Jupiter go right, each to its index there.
 	for (const id of ['mars', 'jupiter']) {
 		const before = group.dataset.state
 		item(id).focus()
@@ -83,7 +107,7 @@ try {
 		release('Alt')
 		await until(() => group.dataset.state !== before)
 	}
-	const emptied = 'planets= dwarfs=pluto,ceres,venus,earth,mars,jupiter'
+	const emptied = 'planets= dwarfs=jupiter,pluto,mars,ceres,venus,earth'
 	check('the planets are empty', [group.dataset.state, lists()], [emptied, emptied])
 
 	// The arrows reach the empty list (it has tabindex="-1"), and go on from it.
@@ -91,14 +115,14 @@ try {
 	press(item('pluto'), 'ArrowLeft')
 	check('Arrow Left focuses the empty list', document.activeElement?.dataset?.dropList, 'planets')
 	press(list('planets'), 'ArrowRight')
-	check('Arrow Right from it focuses the first item there', document.activeElement?.dataset?.dragItem, 'pluto')
+	check('Arrow Right from it focuses the first item there', document.activeElement?.dataset?.dragItem, 'jupiter')
 
 	// A drop into the empty list.
 	moves.length = 0
 	await settle(250)
 	await drag(item('venus'), list('planets'))
 	await until(() => group.dataset.state !== emptied)
-	const into = 'planets=venus dwarfs=pluto,ceres,earth,mars,jupiter'
+	const into = 'planets=venus dwarfs=jupiter,pluto,mars,ceres,earth'
 	check('a drop into the empty list', moves, [{ itemId: 'venus', fromList: 'dwarfs', toList: 'planets', before: '' }])
 	check('the server fills it', [group.dataset.state, lists()], [into, into])
 	check('no errors', errors, [])
