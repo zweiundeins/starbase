@@ -3,7 +3,10 @@
 `go run ./cmd/vendorpd` applies these to [PD rockets](https://github.com/derekr/pd-rockets) (by derekr) at the
 pinned release, in file name order, before it vendors the surfaces. Each one is a commit against that repository,
 ready to offer upstream; its message says what it changes. Drop it once a release carries the change, and when one
-is offered, add the pull request's link to its message.
+is offered, add the pull request's link to its message. They are proposed in upstream issues, one per surface and
+one for `core/`: [#2](https://github.com/derekr/pd-rockets/issues/2) sortable-list, [#3](https://github.com/derekr/pd-rockets/issues/3) drag-group,
+[#4](https://github.com/derekr/pd-rockets/issues/4) kanban, [#5](https://github.com/derekr/pd-rockets/issues/5) sortable-tree, [#6](https://github.com/derekr/pd-rockets/issues/6) context-menu,
+[#7](https://github.com/derekr/pd-rockets/issues/7) bento, [#8](https://github.com/derekr/pd-rockets/issues/8) inline-edit, [#9](https://github.com/derekr/pd-rockets/issues/9) core.
 
 Numbers: 0001 to 0009 for `core/` and changes across surfaces (0001, the context menu's host type, predates the
 blocks), then ten per surface, so patches made on different branches never collide: 0010 sortable-list,
