@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Every component as one file: `/c/<slug>@<hash>/<slug>.bundle.min.js` holds all its modules in one minified module that imports only `datastar` (`sb-kanban-board`: one request instead of twelve in three rounds), frozen and pinned like the other versioned files. The "This component" and "Self-host" install tabs offer it, and `go run ./cmd/dist -out <dir> [slug ...]` writes the same bytes from a checkout.
+
 ## [0.7.0] - 2026-10-07
 
 Ten new components, seven of them drag-and-drop and editing surfaces from derekr's PD rockets; TypeScript in the playground, with a type check on every run, and components written in TypeScript; and a licence on every component page.

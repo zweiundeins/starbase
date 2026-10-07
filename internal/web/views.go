@@ -145,7 +145,8 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 			}
 		}
 	}
-	pinnedMap := fmt.Sprintf(`<script type="importmap">
+	pinMap := func(entries string) string {
+		return fmt.Sprintf(`<script type="importmap">
   {
     "imports": { "datastar": %q },
     "integrity": {
@@ -153,9 +154,41 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
     }
   }
 </script>
-`, dsURL, entries.String())
+`, dsURL, entries)
+	}
+	pinnedMap := pinMap(entries.String())
 
-	// This component (and what it renders), pinned to this version.
+	// This component (and what it renders), pinned to this version: each as
+	// one file (catalog/onefile.go), and what those load lazily pinned
+	// through the import map.
+	var oneEntries, oneScripts strings.Builder
+	fmt.Fprintf(&oneEntries, "      %q: %q", dsURL, s.assets.datastarSRI)
+	for _, d := range all {
+		bundle, err := s.catalog.BundleOf(d)
+		if err != nil {
+			return v, err
+		}
+		for _, p := range bundle.Lazy {
+			sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, p)
+			if err != nil {
+				return v, err
+			}
+			if sri != "" {
+				fmt.Fprintf(&oneEntries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
+			}
+		}
+		sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, catalog.BundleName(d.Slug))
+		if err != nil {
+			return v, err
+		}
+		if sri == "" { // not stored yet: the first sync stores exactly these bytes
+			sri = catalog.SRI(bundle.Body)
+		}
+		fmt.Fprintf(&oneScripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, d.VersionedBundle(), sri)
+	}
+	v.Component = snippet(pinMap(oneEntries.String()) + oneScripts.String() + "\n" + usage)
+
+	// The same, as the module files: the minified module of each, pinned.
 	var scripts strings.Builder
 	for _, d := range all {
 		script, sri, err := s.pinnedScript(rc, d)
@@ -163,8 +196,9 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 			return v, err
 		}
 		fmt.Fprintf(&scripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, script, sri)
+		v.ModuleFiles += len(d.Sizes.Files)
 	}
-	v.Component = snippet(pinnedMap + scripts.String() + "\n" + usage)
+	v.ComponentModules = snippet(pinnedMap + scripts.String() + "\n" + usage)
 
 	// Today's catalog snapshot: its autoloader, and integrity for Datastar
 	// and every file this component loads (importmap.json has them all).
@@ -180,17 +214,22 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	}
 
 	// Self-host: the files, and an import map at your own Datastar.
-	var own strings.Builder
+	var own, ownModules strings.Builder
 	for _, d := range all {
 		g := ui.SelfHostGroup{Tag: d.Tag}
+		u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
+		for _, f := range d.Sizes.BundleFiles {
+			g.Bundle = append(g.Bundle, ui.SelfHostFile{Name: f.Name, Min: u + f.Name, Size: f.Size})
+		}
 		for _, f := range d.Sizes.Files {
-			u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
 			g.Files = append(g.Files, ui.SelfHostFile{Name: f.Name, Min: u + catalog.MinOf(f.Name), Readable: u + f.Name, Size: f.Size})
 		}
 		v.Files = append(v.Files, g)
-		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))
+		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.BundleName(d.Slug))
+		fmt.Fprintf(&ownModules, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))
 	}
 	v.SelfHost = snippet(importMap("/js/datastar-rocket.js") + own.String() + "\n" + usage)
+	v.SelfHostModules = snippet(importMap("/js/datastar-rocket.js") + ownModules.String() + "\n" + usage)
 	return v, nil
 }
 

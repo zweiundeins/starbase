@@ -19,26 +19,30 @@ type Snippet struct {
 // InstallView is a component page's Installation section: one sb-tabs
 // panel per way of loading it (model.InstallTabs, in that order).
 type InstallView struct {
-	Tab        string   // the selected tab's key (a session preference)
-	Autoloader Snippet  // import map + the latest autoloader
-	Component  Snippet  // import map + this version's module and its dependencies'
-	Deps       []string // tags of the components it renders (transitively)
-	Pinned     Snippet  // today's catalog snapshot, with integrity; Raw is empty before it is stored
-	ImportMap  string   // URL of the snapshot's full import map (integrity for every file)
-	SelfHost   Snippet  // import map at your own Datastar, and your copies of the files
-	Files      []SelfHostGroup
-	Datastar   string // where to get datastar-rocket.js
-	Patches    string // the fixes in that build (patches/rocket on GitHub)
+	Tab              string   // the selected tab's key (a session preference)
+	Autoloader       Snippet  // import map + the latest autoloader
+	Component        Snippet  // import map + this version's one-file bundle and its dependencies'
+	ComponentModules Snippet  // the same with the minified module files
+	ModuleFiles      int      // how many module files ComponentModules loads
+	Deps             []string // tags of the components it renders (transitively)
+	Pinned           Snippet  // today's catalog snapshot, with integrity; Raw is empty before it is stored
+	ImportMap        string   // URL of the snapshot's full import map (integrity for every file)
+	SelfHost         Snippet  // import map at your own Datastar, and your copies of the bundles
+	SelfHostModules  Snippet  // the same with copies of the module files
+	Files            []SelfHostGroup
+	Datastar         string // where to get datastar-rocket.js
+	Patches          string // the fixes in that build (patches/rocket on GitHub)
 }
 
 // SelfHostGroup is one component's files to copy (the component, then each
 // component it renders).
 type SelfHostGroup struct {
-	Tag   string
-	Files []SelfHostFile
+	Tag    string
+	Bundle []SelfHostFile // the one-file bundle, then what it loads lazily (no readable URL)
+	Files  []SelfHostFile // the module files
 }
 
-// SelfHostFile is one module file: its versioned minified and readable URLs.
+// SelfHostFile is one file: its versioned minified and readable URLs.
 type SelfHostFile struct {
 	Name, Min, Readable string
 	Size                catalog.Size
@@ -91,4 +95,28 @@ func depSep(i, n int) string {
 	default:
 		return ", so those are pinned here too."
 	}
+}
+
+// moduleFiles counts module files: "one file", "12 files".
+func moduleFiles(n int) string {
+	if n == 1 {
+		return "one file"
+	}
+	return strconv.Itoa(n) + " files"
+}
+
+// bundleLink and bundleNote describe the i-th file of a one-file bundle:
+// the bundle, then what it loads lazily.
+func bundleLink(i int) string {
+	if i == 0 {
+		return "one file"
+	}
+	return "minified"
+}
+
+func bundleNote(i int, s catalog.Size) string {
+	if i == 0 {
+		return FmtBytes(s.Min) + " brotli"
+	}
+	return FmtBytes(s.Min) + " brotli, loaded on first use"
 }

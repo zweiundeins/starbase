@@ -117,7 +117,18 @@ templ SizeTable(sz catalog.Sizes) {
 				}
 			</table>
 		</div>
+		if len(sz.BundleFiles) > 0 && len(sz.BundleFiles) < len(sz.Files) {
+			<p>All its modules in one file (<code>{ sz.BundleFiles[0].Name }</code>, see <a href="#installation">Installation</a>): { FmtBytes(sz.Bundle.Min) } brotli, { requests(len(sz.BundleFiles)) } instead of { strconv.Itoa(len(sz.Files)) }.</p>
+		}
 	}
+}
+
+// requests counts requests: "one request", "2 requests".
+func requests(n int) string {
+	if n == 1 {
+		return "one request"
+	}
+	return strconv.Itoa(n) + " requests"
 }
 
 templ sizeRow(name string, s catalog.Size, uses bool) {

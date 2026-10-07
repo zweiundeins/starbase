@@ -19,7 +19,7 @@ templ Installation(v InstallView) {
 		</div>
 		<div slot={ installSlot("component") } class="install-panel">
 			<p>
-				Load just this component, pinned to this version: the minified module with its integrity hash, so the browser refuses it if a single byte changes.
+				Load just this component, pinned to this version: all its modules in one minified file with its integrity hash, so the browser refuses it if a single byte changes.
 				if len(v.Deps) > 0 {
 					It renders
 					for i, t := range v.Deps {
@@ -28,6 +28,8 @@ templ Installation(v InstallView) {
 				}
 			</p>
 			@snippetBlock(v.Component)
+			<p>Or the minified module files ({ moduleFiles(v.ModuleFiles) }, which the browser requests as it finds their imports), each pinned in the import map:</p>
+			@snippetBlock(v.ComponentModules)
 		</div>
 		<div slot={ installSlot("pinned") } class="install-panel">
 			if v.Pinned.Raw != "" {
@@ -38,7 +40,24 @@ templ Installation(v InstallView) {
 			}
 		</div>
 		<div slot={ installSlot("self-host") } class="install-panel">
-			<p>Components import only <code>datastar</code> and their own files, so copying the folder is enough: save these files, keeping each component's folder, and point the import map at your own copy of <a href={ safe(v.Datastar) }>datastar-rocket.js</a> (the <code>/js/</code> paths stand for yours).</p>
+			<p>Components import only <code>datastar</code> and their own files, so copying is enough: save each component's one file (and a file it loads on first use, keeping its folder), and point the import map at your own copy of <a href={ safe(v.Datastar) }>datastar-rocket.js</a> (the <code>/js/</code> paths stand for yours).</p>
+			<ul class="install-files">
+				for _, g := range v.Files {
+					<li>
+						<code>{ "<" + g.Tag + ">" }</code>
+						<ul>
+							for i, f := range g.Bundle {
+								<li>
+									<code>{ f.Name }</code>
+									<a href={ safe(f.Min) }>{ bundleLink(i) }</a> <span class="muted">{ bundleNote(i, f.Size) }</span>
+								</li>
+							}
+						</ul>
+					</li>
+				}
+			</ul>
+			@snippetBlock(v.SelfHost)
+			<p>Or copy the module files, keeping each component's folder, and load each component's module:</p>
 			<ul class="install-files">
 				for _, g := range v.Files {
 					<li>
@@ -56,7 +75,7 @@ templ Installation(v InstallView) {
 					</li>
 				}
 			</ul>
-			@snippetBlock(v.SelfHost)
+			@snippetBlock(v.SelfHostModules)
 		</div>
 	</sb-tabs>
 }

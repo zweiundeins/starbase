@@ -57,4 +57,8 @@ func TestComponentBundleURL(t *testing.T) {
 	if _, body := get(t, c, u); body != frozen {
 		t.Errorf("the stored bundle should be served, got %.100s", body)
 	}
+	_, page := get(t, c, ts.URL+"/components/kanban-board")
+	if !strings.Contains(installPanels(t, page)["this-component"][0], `src="`+u+`" integrity="`+catalog.SRI([]byte(frozen))+`"`) {
+		t.Error("the install snippet should pin the stored bundle's integrity")
+	}
 }

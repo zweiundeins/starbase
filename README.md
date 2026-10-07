@@ -76,6 +76,7 @@ Every component page's Installation section has this snippet with the current ca
 | URL | |
 |---|---|
 | `/c/<slug>@<hash>/<file>.js` | one version of a component's file (its module and vendored files) |
+| `/c/<slug>@<hash>/<slug>.bundle.min.js` | one version of a component as one file (see below) |
 | `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions |
 | `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load, Datastar's included |
 | `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.4 release with Starbase's fixes (`patches/rocket`), until they are released upstream |
@@ -83,6 +84,18 @@ Every component page's Installation section has this snippet with the current ca
 The components also run on the official Datastar release; the fixes are listed in `patches/rocket/README.md`.
 
 With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`.
+
+### One file per component
+
+A component's modules also come as one minified module, `/c/<slug>@<hash>/<slug>.bundle.min.js`. The browser fetches a component's module files in as many rounds as its imports are deep: `sb-kanban-board` has twelve, in three rounds. Its bundle is one request. A bundle imports `datastar` from your import map and nothing else, except a library the component loads on first use, which stays a file next to it (`vendor/prism.min.js` for `sb-code-editor`). A component that renders another (`sb-code-playground` renders `sb-code-editor`) loads that one's bundle too. The "This component" and "Self-host" tabs of a component page have the snippet, with integrity hashes.
+
+To vendor the same files from a checkout of this repository:
+
+```sh
+go run ./cmd/dist -out js kanban-board modal   # or: go tool task dist -- -out js kanban-board modal
+```
+
+This writes `js/kanban-board.js`, `js/modal.js`, the components they render and the files they load on first use, and prints each file's integrity. Each `<slug>.js` is byte for byte the bundle the site serves for that version; its first line names it, for example `/*! sb-kanban-board, version kanban-board@<hash>: its modules in one file */`.
 
 ## Adding a component
 

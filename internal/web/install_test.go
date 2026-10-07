@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,25 +16,27 @@ import (
 	"starbase/static"
 )
 
-// installPanels returns the Installation section's snippets by slot, as
-// their copy buttons copy them.
-func installPanels(t *testing.T, page string) map[string]string {
+// installPanels returns the Installation section's snippets by slot, in
+// order, as their copy buttons copy them.
+func installPanels(t *testing.T, page string) map[string][]string {
 	t.Helper()
 	i := strings.Index(page, `<sb-tabs class="install-tabs"`)
 	j := strings.Index(page[max(i, 0):], "</sb-tabs>")
 	if i < 0 || j < 0 {
 		t.Fatal("no installation tabs")
 	}
-	section := page[i : i+j]
-	out := map[string]string{}
-	re := regexp.MustCompile(`(?s)<div slot="([a-z-]+)" class="install-panel">.*?<sb-copy-button class="code-copy" value="([^"]*)"`)
-	for _, m := range re.FindAllStringSubmatch(section, -1) {
-		out[m[1]] = html.UnescapeString(m[2])
+	out := map[string][]string{}
+	for _, panel := range strings.Split(page[i:i+j], `<div slot="`)[1:] {
+		slot, rest, _ := strings.Cut(panel, `"`)
+		for _, m := range copyRe.FindAllStringSubmatch(rest, -1) {
+			out[slot] = append(out[slot], html.UnescapeString(m[1]))
+		}
 	}
 	return out
 }
 
 var (
+	copyRe      = regexp.MustCompile(`<sb-copy-button class="code-copy" value="([^"]*)"`)
 	scriptRe    = regexp.MustCompile(`<script type="module" src="([^"]+)"(?: integrity="([^"]+)")?></script>`)
 	selectedRe  = regexp.MustCompile(`<sb-tabs class="install-tabs" labels="[^"]*" selected="(\d)"`)
 	integrityRe = regexp.MustCompile(`"integrity": (\{[^}]*\})`)
@@ -62,35 +65,42 @@ func TestInstallSnippets(t *testing.T) {
 	if usage == "" || usage == strings.TrimSpace(slider.Preview) {
 		t.Fatalf("the slider needs a usage: that differs from its preview for this test, got %q", usage)
 	}
-	for slot, snip := range p {
-		if strings.Contains(snip, "<!--") {
-			t.Errorf("%s: snippets carry no comments:\n%s", slot, snip)
+	for slot, snips := range p {
+		for _, snip := range snips {
+			if strings.Contains(snip, "<!--") {
+				t.Errorf("%s: snippets carry no comments:\n%s", slot, snip)
+			}
+			if !strings.HasSuffix(snip, usage) {
+				t.Errorf("%s: should end with the component's markup:\n%s", slot, snip)
+			}
 		}
-		if !strings.HasSuffix(snip, usage) {
-			t.Errorf("%s: should end with the component's markup:\n%s", slot, snip)
-		}
+	}
+	if n := []int{len(p["autoloader"]), len(p["this-component"]), len(p["pinned"]), len(p["self-host"])}; !slices.Equal(n, []int{1, 2, 1, 2}) {
+		t.Fatalf("snippets per panel: %v", n)
 	}
 
 	// Autoloader: the latest autoloader and the pinned Datastar build.
 	datastarURL := ts.URL + "/c/datastar@" + catalog.VersionHash(static.Datastar()) + "/datastar-rocket.js"
-	if a := p["autoloader"]; !strings.Contains(a, `"datastar": "`+datastarURL+`"`) || !strings.Contains(a, `<script type="module" src="`+ts.URL+`/c/autoloader.js"></script>`) {
+	if a := p["autoloader"][0]; !strings.Contains(a, `"datastar": "`+datastarURL+`"`) || !strings.Contains(a, `<script type="module" src="`+ts.URL+`/c/autoloader.js"></script>`) {
 		t.Errorf("autoloader panel:\n%s", a)
 	}
 
-	// This component: its minified module, pinned with the frozen integrity
-	// that matches what the URL serves.
-	m := scriptRe.FindAllStringSubmatch(p["this-component"], -1)
-	if len(m) != 1 || m[0][1] != ts.URL+"/c/"+slider.VersionedMinScript() {
-		t.Fatalf("this-component panel:\n%s", p["this-component"])
-	}
-	if got := servedSRI(t, c, m[0][1]); got != m[0][2] {
-		t.Errorf("integrity %s, served %s", m[0][2], got)
+	// This component: its one-file bundle, then its minified module, pinned
+	// with the frozen integrity that matches what the URL serves.
+	for i, want := range []string{slider.VersionedBundle(), slider.VersionedMinScript()} {
+		m := scriptRe.FindAllStringSubmatch(p["this-component"][i], -1)
+		if len(m) != 1 || m[0][1] != ts.URL+"/c/"+want {
+			t.Fatalf("this-component panel:\n%s", p["this-component"][i])
+		}
+		if got := servedSRI(t, c, m[0][1]); got != m[0][2] {
+			t.Errorf("%s: integrity %s, served %s", m[0][1], m[0][2], got)
+		}
 	}
 
 	// Pinned: the snapshot autoloader, and integrity entries that match both
 	// what is served and the snapshot's importmap.json.
-	pinned := p["pinned"]
-	m = scriptRe.FindAllStringSubmatch(pinned, -1)
+	pinned := p["pinned"][0]
+	m := scriptRe.FindAllStringSubmatch(pinned, -1)
 	if len(m) != 1 || m[0][1] != ts.URL+"/c/@"+cat.Hash+"/autoloader.js" || servedSRI(t, c, m[0][1]) != m[0][2] {
 		t.Fatalf("pinned autoloader:\n%s", pinned)
 	}
@@ -117,11 +127,13 @@ func TestInstallSnippets(t *testing.T) {
 	}
 
 	// Self-host: an import map at your own Datastar, your copy of the
-	// module, and links to both forms of every file.
-	if s := p["self-host"]; !strings.Contains(s, `"datastar": "/js/datastar-rocket.js"`) || !strings.Contains(s, `src="/js/slider/slider.min.js"`) {
-		t.Errorf("self-host panel:\n%s", s)
+	// bundle or of the module, and links to every file.
+	for i, file := range []string{"slider.bundle.min.js", "slider.min.js"} {
+		if s := p["self-host"][i]; !strings.Contains(s, `"datastar": "/js/datastar-rocket.js"`) || !strings.Contains(s, `src="/js/slider/`+file+`"`) {
+			t.Errorf("self-host panel:\n%s", s)
+		}
 	}
-	for _, u := range []string{ts.URL + "/c/" + slider.VersionedMinScript(), ts.URL + "/c/" + slider.VersionedScript()} {
+	for _, u := range []string{ts.URL + "/c/" + slider.VersionedBundle(), ts.URL + "/c/" + slider.VersionedMinScript(), ts.URL + "/c/" + slider.VersionedScript()} {
 		if !strings.Contains(page, `href="`+u+`"`) {
 			t.Errorf("self-host panel lacks a link to %s", u)
 		}
@@ -140,20 +152,25 @@ func TestInstallDependencies(t *testing.T) {
 	}
 	_, page := get(t, c, ts.URL+"/components/code-playground")
 	p := installPanels(t, page)
-	m := scriptRe.FindAllStringSubmatch(p["this-component"], -1)
-	if len(m) != 1+len(deps) || m[0][1] != ts.URL+"/c/"+pg.VersionedMinScript() || m[1][1] != ts.URL+"/c/"+editor.VersionedMinScript() {
-		t.Fatalf("this-component panel:\n%s", p["this-component"])
-	}
-	for _, s := range m {
-		if servedSRI(t, c, s[1]) != s[2] {
-			t.Errorf("%s: integrity doesn't match the served file", s[1])
+	for i, scripts := range [][]string{{pg.VersionedBundle(), editor.VersionedBundle()}, {pg.VersionedMinScript(), editor.VersionedMinScript()}} {
+		m := scriptRe.FindAllStringSubmatch(p["this-component"][i], -1)
+		if len(m) != 1+len(deps) || m[0][1] != ts.URL+"/c/"+scripts[0] || m[1][1] != ts.URL+"/c/"+scripts[1] {
+			t.Fatalf("this-component panel:\n%s", p["this-component"][i])
+		}
+		for _, s := range m {
+			if servedSRI(t, c, s[1]) != s[2] {
+				t.Errorf("%s: integrity doesn't match the served file", s[1])
+			}
 		}
 	}
-	if prism := ts.URL + "/c/" + editor.Slug + "@" + editor.Hash + "/vendor/prism.min.js"; !strings.Contains(p["pinned"], `"`+prism+`"`) || !strings.Contains(page, `href="`+prism+`"`) {
-		t.Error("pinned and self-host panels should cover code-editor's vendored Prism")
+	prism := ts.URL + "/c/" + editor.Slug + "@" + editor.Hash + "/vendor/prism.min.js"
+	if !strings.Contains(p["this-component"][0], `"`+prism+`"`) || !strings.Contains(p["pinned"][0], `"`+prism+`"`) || !strings.Contains(page, `href="`+prism+`"`) {
+		t.Error("the pinned snippets and the self-host panel should cover code-editor's vendored Prism")
 	}
-	if !strings.Contains(p["self-host"], `src="/js/code-editor/code-editor.min.js"`) {
-		t.Errorf("self-host panel:\n%s", p["self-host"])
+	for i, file := range []string{"code-editor.bundle.min.js", "code-editor.min.js"} {
+		if !strings.Contains(p["self-host"][i], `src="/js/code-editor/`+file+`"`) {
+			t.Errorf("self-host panel:\n%s", p["self-host"][i])
+		}
 	}
 }
 
@@ -222,10 +239,11 @@ func TestInstallIntegrityCoversImports(t *testing.T) {
 	for slug, imported := range map[string]string{"code-editor": "vendor/prism.min.js", "echarts": "vendor/echarts.esm.min.js"} {
 		_, page := get(t, c, ts.URL+"/components/"+slug)
 		p := installPanels(t, page)
-		for _, tab := range []string{"this-component", "pinned"} {
-			m := integrityRe.FindStringSubmatch(p[tab])
+		for _, snippet := range [][2]string{{"this-component", p["this-component"][0]}, {"this-component modules", p["this-component"][1]}, {"pinned", p["pinned"][0]}} {
+			tab := snippet[0]
+			m := integrityRe.FindStringSubmatch(snippet[1])
 			if m == nil {
-				t.Errorf("%s %s: no integrity map:\n%s", slug, tab, p[tab])
+				t.Errorf("%s %s: no integrity map:\n%s", slug, tab, snippet[1])
 				continue
 			}
 			var entries map[string]string
@@ -245,9 +263,11 @@ func TestInstallIntegrityCoversImports(t *testing.T) {
 				t.Errorf("%s %s: %s is not pinned", slug, tab, imported)
 			}
 		}
-		for tab, snippet := range p {
-			if strings.Contains(snippet, ".min.min.") {
-				t.Errorf("%s %s mentions a file that does not exist (.min.min):\n%s", slug, tab, snippet)
+		for tab, snippets := range p {
+			for _, snippet := range snippets {
+				if strings.Contains(snippet, ".min.min.") {
+					t.Errorf("%s %s mentions a file that does not exist (.min.min):\n%s", slug, tab, snippet)
+				}
 			}
 		}
 		if strings.Contains(page, ".min.min.") {
