@@ -1,6 +1,7 @@
 package catalog_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -139,5 +140,35 @@ func TestImportsValidated(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "lib.js") {
 		t.Errorf("the vendored file is fine: %v", err)
+	}
+}
+
+// Minified code puts an import right after a /*! licence */ comment.
+func TestImportsAfterAComment(t *testing.T) {
+	code := `/*! licence */import{a as b}from"./a.js";/* x */export{c}from"../c.js";import"datastar"`
+	if got := catalog.Imports(code); !slices.Equal(got, []string{"./a.js", "datastar", "../c.js"}) {
+		t.Errorf("Imports = %q", got)
+	}
+}
+
+// A .min file imports .min files only: a readable sibling would load a
+// second copy of that module.
+func TestMinFilesImportMinFiles(t *testing.T) {
+	cat, err := catalog.Load(components.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range cat.Components {
+		mins, err := cat.MinFiles(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for p, b := range mins {
+			for _, spec := range catalog.Imports(string(b)) {
+				if (strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "../")) && !catalog.IsMinPath(spec) {
+					t.Errorf("%s/%s imports %s", c.Slug, p, spec)
+				}
+			}
+		}
 	}
 }

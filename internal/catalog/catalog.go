@@ -172,7 +172,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 // files are frozen the first time they are stored (min.go), so a change to
 // how they are made (esbuild options, shrink.go) must change it: every
 // component then gets a new version, whose .min files are made the new way.
-const minFormat = "min2"
+const minFormat = "min3"
 
 // The Datastar + Rocket build pages load (static/vendor, patches/rocket) is
 // served like a component version, /c/datastar@<hash>/datastar-rocket.js, so
