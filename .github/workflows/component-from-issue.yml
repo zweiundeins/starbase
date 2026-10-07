@@ -137,7 +137,7 @@ jobs:
           preview=""
           if [ -n "$SITE" ] && [ -n "$SHA" ]; then
             preview="${SITE%/}/playground?preview=$SHA/$SLUG"
-            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "🔭 Try this revision (\`${SHA:0:7}\`) in the playground: $preview"
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "🔭 [Try this revision (\`${SHA:0:7}\`) in the playground]($preview)"
           fi
           case "$OP" in
             created) msg="🚀 Your component is on the launch pad: $URL. A maintainer will review it. Edit this issue to update the pull request." ;;

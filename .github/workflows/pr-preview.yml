@@ -36,10 +36,12 @@ jobs:
             --jq '.[] | select(.status != "removed") | .filename')
           slugs=$(sed -n 's#^components/\([a-z0-9-]*\)/.*#\1#p' <<<"$files" | sort -u)
           [ -n "$slugs" ] || exit 0
-          body="🔭 Try this revision (\`${SHA:0:7}\`) in the playground:"
+          # A blank line before short links: GitHub's mobile app showed only the first line of a bare URL list.
+          body="🔭 Try this revision (\`${SHA:0:7}\`) in the playground:
+          "
           for s in $slugs; do
             body="$body
-          - \`sb-$s\`: ${SITE%/}/playground?preview=$SHA/$s"
+          - [\`sb-$s\`](${SITE%/}/playground?preview=$SHA/$s)"
           done
           # The preview runs on the deployed site, without this PR's Go code.
           if grep -E '^(internal|cmd)/.*\.go$' <<<"$files" | grep -qv '_test\.go$'; then
