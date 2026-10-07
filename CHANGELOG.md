@@ -6,13 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-07
+
+Ten new components, seven of them drag-and-drop and editing surfaces from derekr's PD rockets; TypeScript in the playground, with a type check on every run, and components written in TypeScript; and a licence on every component page.
+
 ### Added
 
-- Seven surfaces from derekr's [PD rockets](https://github.com/derekr/pd-rockets), under its Beer-Ware licence: `sb-sortable-list`, `sb-drag-group`, `sb-kanban-board`, `sb-sortable-tree`, `sb-context-menu`, `sb-bento-workspace` (experimental) and `sb-inline-edit`. They work over server-rendered markup and emit what the user did (a move, a rename, a menu action) for the server to apply. `go run ./cmd/vendorpd` vendors a release with the fixes in `patches/pd-rockets` applied, each ready to offer upstream, and their docs' demos are answered by the stateless `GET /demo/arrange/{kind}`.
+- Seven surfaces from derekr's [PD rockets](https://github.com/derekr/pd-rockets), under its Beer-Ware licence: `sb-sortable-list`, `sb-drag-group`, `sb-kanban-board`, `sb-sortable-tree`, `sb-context-menu`, `sb-bento-workspace` (experimental) and `sb-inline-edit`. They work over server-rendered markup and emit what the user did (a move, a rename, a menu action) for the server to apply. `go run ./cmd/vendorpd` vendors a release with the fixes in `patches/pd-rockets` applied, each ready to offer upstream, and their docs' demos are answered by the stateless `GET /demo/arrange/{kind}`. `sb-kanban-board` also moves lanes, by a grip, Alt and the arrows, or step buttons (`sb-kanban-lane-move`, with lane ids, so a server can refuse a stale move).
 - Three components that replace zweiundeins.gmbh's Lit components: `sb-image-compare`, two pictures of the same size with a divider the reader drags, taps or moves with the keys, and an optional full screen view; `sb-toc`, a table of contents that marks the section being read, with reading progress and a compact bar for narrow screens; and `sb-typewriter`, text typed behind a blinking cursor, or a cycle of phrases, without moving anything around it.
 - A component can name its licence with `license:` front matter; its page and its JSON-LD show it.
 - TypeScript in the playground: a switch turns `component.js` into `component.ts`, which runs with its types stripped on the server, its errors reported at the lines written. TypeScript, and JavaScript that starts with `// @ts-check`, is checked by TypeScript on the server on every run, against the types of the patched Datastar build, and its problems are underlined in the editor. TypeScript snippets can't be submitted as components yet. The compiler, TypeScript's native port, is embedded in the binary; release archives and the container image carry its licence and notices.
 - Components can be written in TypeScript: `go tool task ts` type-checks `<slug>.ts` strictly, with helper modules and `.d.ts` declarations from its folder, and writes the committed `.js` that the site, the install snippets and the pinned versions serve. `sb-code-editor`, `sb-data-table`, `sb-date-picker`, `sb-dropdown`, `sb-select`, `sb-tree` and `sb-virtual-scroll` are TypeScript now (their modules are the compiler's output, so they get new versions that behave the same), and the playground opens them as TypeScript.
+- A pull request's preview of a component written in TypeScript opens its `.ts` source with the TypeScript switch on, and the type check reads the modules it imports at that commit.
 - `sb-code-editor`: highlights TypeScript (`language="ts"`), and `diagnostics` underlines problems sent by the page or the server, the line under the code shows the one at the caret, and F8 and Shift+F8 move between them. A problem whose word has changed disappears, so an older list doesn't point at the wrong place. `sb-code-playground` hands its own `diagnostics` to its editors, per file.
 
 ### Fixed
@@ -21,6 +26,7 @@ All notable changes to this project are documented here. The format follows
 - The playground's size line read "undefined" until the first edit when its modules came from the browser's cache.
 - `sb-pixel-board`: a `palette` bound to a signal (`data-attr`) on an element added after load overflowed the stack. It, `sb-code-editor`, `sb-count-up`, `sb-gauge`, `sb-qr-code` and `sb-relative-time` no longer make such a binding depend on their own state.
 - `sb-tree`: selected rows and the open arrows stay visible in forced colours.
+- The gallery's "live demo" hint sits on the preview's top edge instead of covering the first item of a demo, and screen readers skip it.
 
 ## [0.6.0] - 2026-10-01
 
@@ -298,7 +304,8 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/zweiundeins/starbase/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/zweiundeins/starbase/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/zweiundeins/starbase/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zweiundeins/starbase/compare/v0.3.0...v0.4.0
