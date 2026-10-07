@@ -42,7 +42,7 @@ usage: |
   </sb-context-menu>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-context-menu`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`: they keep it working after a morph reaches it while open, focus the first item on open, hide submenus until they open, take labels and disabled actions from the trigger, close it on Tab or a second click on its button, and declare its events.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-context-menu`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`: they keep it working after a morph reaches it while open, focus the first item on open, hide submenus until they open, take labels and disabled actions from the trigger, close it on Tab or a second click on its button, declare its events, and let its markup ask for a sheet on phones.
 
 One menu for many things on a page. Any element marked `data-menu-for="<menu id>"` opens it with a right click, and a button marked the same way opens it with a click, Enter or Space, so keyboards and touch screens reach it too. The menu copies its items from a `<template>` the server renders, remembers which thing it opened for (the nearest `data-context-id`), and emits `sb-menu-action` with the chosen action and that id. What the action does is up to the server.
 
@@ -112,13 +112,8 @@ Each row gives the menu its planet's name (`data-menu-param-name`, for "Remove M
   .demo-menu [data-submenu]::after { content: "›"; }
   .demo-menu [role="separator"] { block-size: 1px; margin: 0.3rem 0.2rem; background: var(--sb-border); }
   /* On a phone the menu is a sheet at the bottom of the screen, and a submenu sits on top of it. */
-  .demo-menu sb-context-menu[data-mobile-sheet] { inset: auto 0 0 !important; inline-size: auto; position-try-fallbacks: none !important; }
-  .demo-menu [role="menu"] [role="menu"][data-mobile-sheet] {
-    position-anchor: --demo-menu !important;
-    inset: auto 0 calc(anchor(top) + 4px) !important;
-    inline-size: auto;
-    position-try-fallbacks: none !important;
-  }
+  .demo-menu sb-context-menu[data-mobile-sheet] { inset: auto 0 0; inline-size: auto; }
+  .demo-menu [role="menu"] [role="menu"][data-mobile-sheet] { position-anchor: --demo-menu; inset: auto 0 calc(anchor(top) + 4px); inline-size: auto; }
   @media (forced-colors: active) {
     .demo-menu [role^="menuitem"]:is(:hover, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
     .demo-menu [role^="menuitem"][aria-disabled="true"] { color: GrayText; }
@@ -147,7 +142,7 @@ Each row gives the menu its planet's name (`data-menu-param-name`, for "Remove M
 			<button type="button" data-menu-for="planet-menus-menu" aria-haspopup="menu" aria-controls="planet-menus-menu" aria-label="Actions for Mars" data-preserve-attr="style aria-expanded">…</button>
 		</li>
 	</ul>
-	<sb-context-menu id="planet-menus-menu" aria-label="Planet actions" data-ignore-morph>
+	<sb-context-menu id="planet-menus-menu" aria-label="Planet actions" data-ignore-morph data-sb-mobile-sheet>
 		<template data-sb-menu>
 			<button type="button" role="menuitem" data-action="top">Move to the top</button>
 			<button type="button" role="menuitem" data-action="bottom">Move to the bottom</button>
@@ -171,6 +166,7 @@ Each row gives the menu its planet's name (`data-menu-param-name`, for "Remove M
 - **Placeholders:** `{contextId}` in an item's text, `aria-label`, `title` or `data-menu-param-*` attribute becomes that id when the menu opens. A `data-menu-param-<word>` on the trigger, or on the element with its context id, fills `{<word>}`: the demo's rows carry `data-menu-param-name` for "Remove {name}". Nothing else is filled in, and no other attribute is touched.
 - **Actions that don't apply:** `data-menu-disabled="<action> …"` on a trigger, or on the element with its context id, gives the copied items with those `data-action`s `aria-disabled="true"`. The keyboard skips them and a click on one does nothing.
 - **Content from the server:** instead of a template, the menu can hold a direct child marked `data-sb-menu-content` (items fetched for one thing), shown as it is. Until that child exists a trigger opens nothing and no event reports the press, so the page fetches the items with a handler of its own on the trigger (`data-on:click="@get(…)"`) and calls `openFor(trigger)` once they are in place.
+- **On a phone:** `data-sb-mobile-sheet` on the menu makes it and its submenus sheets while the viewport is at most 650px wide, or matches the media query in `data-sb-mobile-query`: the menu shows them without a position of its own, and your CSS places them on `[data-mobile-sheet]`. The demo's menu is one, at the bottom of the screen with a submenu on top of it. Without the attribute, the menu keeps its place next to the trigger on a phone too. Both attributes are read when the menu connects.
 - **Morphs:** the menu sets attributes the server doesn't render and adds the copied items, so a morph that reaches it while it is open closes it (the next open works as usual). A menu whose template doesn't change can carry `data-ignore-morph`, like the demo's; its trigger buttons then keep the anchor and `aria-expanded` it gives them with `data-preserve-attr="style aria-expanded"`.
 
 | Event | Detail | When |
@@ -282,9 +278,10 @@ func arrangeContextMenu(state string, move json.RawMessage) (string, error) {
 // renderContextMenu is the demo's markup: the list, a row per body that the
 // menu opens for (a right click on the row, or its button), with its name
 // for the menu's labels and the actions that don't apply to it, the menu's
-// template, and a button that brings removed bodies back. The menu ignores
-// morphs and the buttons keep what it sets on them (their anchor and
-// aria-expanded), so an answer that arrives while it is open leaves it alone.
+// template, and a button that brings removed bodies back. On a phone the menu
+// is a sheet. It ignores morphs and the buttons keep what it sets on them
+// (their anchor and aria-expanded), so an answer that arrives while it is open
+// leaves it alone.
 func renderContextMenu(id, state string) string {
 	shown, removed, focus, _ := menuLists(state)
 	menu := id + "-menu"
@@ -325,7 +322,7 @@ func renderContextMenu(id, state string) string {
 		}
 		fmt.Fprintf(&b, "\t<button type=\"button\" class=\"demo-menu__restore\"\n\t\tdata-on:click=\"@get('/demo/arrange/context-menu', {payload: {id: '%s', state: el.parentElement.dataset.state, move: {action: 'restore', contextId: ''}}})\">Bring back %s</button>\n", id, strings.Join(names, ", "))
 	}
-	fmt.Fprintf(&b, "\t<sb-context-menu id=\"%s\" aria-label=\"Planet actions\" data-ignore-morph>\n\t\t<template data-sb-menu>\n", menu)
+	fmt.Fprintf(&b, "\t<sb-context-menu id=\"%s\" aria-label=\"Planet actions\" data-ignore-morph data-sb-mobile-sheet>\n\t\t<template data-sb-menu>\n", menu)
 	for _, a := range [][2]string{{"top", "Move to the top"}, {"bottom", "Move to the bottom"}} {
 		fmt.Fprintf(&b, "\t\t\t<button type=\"button\" role=\"menuitem\" data-action=\"%s\">%s</button>\n", a[0], a[1])
 	}
@@ -350,7 +347,7 @@ The component adds no styles: the menu, its items and the triggers are your page
 - `popover="auto"` on every submenu when the menu opens, which hides a submenu until it opens.
 - `aria-expanded` on a trigger button, and on a submenu's item while that submenu is open. A row opened by a right click gets none.
 - `aria-disabled="true"` on the copied items whose actions the trigger turns off.
-- `data-mobile-sheet` on the menu and its submenus while the viewport is at most 650px wide. Their position stays in the inline style, so a rule that moves them needs `!important`: that way the example turns the menu into a sheet at the bottom of the screen and puts a submenu on top of it (through an `anchor-name` on the menu), where it covers none of the menu's items. An element with `data-submenu-back` inside a submenu closes it.
+- `data-mobile-sheet` on the menu and its submenus while the viewport is at most 650px wide (or matches `data-sb-mobile-query`). With `data-sb-mobile-sheet`, they then get no inline position, and a rule on the attribute places them: the example makes the menu a sheet at the bottom of the screen and puts a submenu on top of it (through an `anchor-name` on the menu), where it covers none of the menu's items. Without it, the inline position stays, and only a rule with `!important` moves them. An element with `data-submenu-back` inside a submenu closes it.
 
 Because the menu sits in the top layer, its background and shadow are yours to give it; the example draws the shadow from `var(--sb-shadow-overlay)` through a `--_shadow` local, like Starbase's own overlays.
 

@@ -49,7 +49,10 @@ rocket("sb-context-menu", {
     },
     setup({ host, cleanup }) {
         // The menu methods are installed below; Rocket hands setup a plain element.
-        installContextMenu(host, cleanup);
+        installContextMenu(host, cleanup, {
+            mobileSheet: host.hasAttribute("data-sb-mobile-sheet"),
+            mobileQuery: host.getAttribute("data-sb-mobile-query") || undefined,
+        });
     },
 });
 function setupMenu(host, cleanup, options) {

@@ -73,7 +73,7 @@ func TestRenderContextMenu(t *testing.T) {
 		`<li id="m-mars" tabindex="-1" data-context-id="mars" data-menu-for="m-menu" data-menu-param-name="Mars" data-menu-disabled="bottom down">`,
 		`aria-label="Actions for Venus" data-preserve-attr="style aria-expanded"` + "\n\t\t\t\t" + `data-init="!document.getElementById('m-earth') && document.activeElement === document.body && el.focus()">`,
 		`>Bring back Earth</button>`,
-		`<sb-context-menu id="m-menu" aria-label="Planet actions" data-ignore-morph>`,
+		`<sb-context-menu id="m-menu" aria-label="Planet actions" data-ignore-morph data-sb-mobile-sheet>`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("no %s in\n%s", want, html)

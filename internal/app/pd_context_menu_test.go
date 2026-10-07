@@ -12,8 +12,9 @@ func TestContextMenu(t *testing.T) {
 	copyRows(t, body)
 }
 
-// TestContextMenuOnAPhone opens the demo's submenu on a narrow screen,
-// where the example's CSS makes the menu a sheet with the submenu on top.
+// TestContextMenuOnAPhone opens the demo's submenu on a narrow screen, where
+// the menu's data-sb-mobile-sheet (patch 0059) lets the example's CSS make it
+// a sheet with the submenu on top.
 func TestContextMenuOnAPhone(t *testing.T) {
 	_, body := probeAt(t, "", "/components/context-menu", pdPrelude+contextMenuPhoneJS, "--window-size=375,740")
 	copyRows(t, body)

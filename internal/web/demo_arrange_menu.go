@@ -115,9 +115,10 @@ func arrangeContextMenu(state string, move json.RawMessage) (string, error) {
 // renderContextMenu is the demo's markup: the list, a row per body that the
 // menu opens for (a right click on the row, or its button), with its name
 // for the menu's labels and the actions that don't apply to it, the menu's
-// template, and a button that brings removed bodies back. The menu ignores
-// morphs and the buttons keep what it sets on them (their anchor and
-// aria-expanded), so an answer that arrives while it is open leaves it alone.
+// template, and a button that brings removed bodies back. On a phone the menu
+// is a sheet. It ignores morphs and the buttons keep what it sets on them
+// (their anchor and aria-expanded), so an answer that arrives while it is open
+// leaves it alone.
 func renderContextMenu(id, state string) string {
 	shown, removed, focus, _ := menuLists(state)
 	menu := id + "-menu"
@@ -158,7 +159,7 @@ func renderContextMenu(id, state string) string {
 		}
 		fmt.Fprintf(&b, "\t<button type=\"button\" class=\"demo-menu__restore\"\n\t\tdata-on:click=\"@get('/demo/arrange/context-menu', {payload: {id: '%s', state: el.parentElement.dataset.state, move: {action: 'restore', contextId: ''}}})\">Bring back %s</button>\n", id, strings.Join(names, ", "))
 	}
-	fmt.Fprintf(&b, "\t<sb-context-menu id=\"%s\" aria-label=\"Planet actions\" data-ignore-morph>\n\t\t<template data-sb-menu>\n", menu)
+	fmt.Fprintf(&b, "\t<sb-context-menu id=\"%s\" aria-label=\"Planet actions\" data-ignore-morph data-sb-mobile-sheet>\n\t\t<template data-sb-menu>\n", menu)
 	for _, a := range [][2]string{{"top", "Move to the top"}, {"bottom", "Move to the bottom"}} {
 		fmt.Fprintf(&b, "\t\t\t<button type=\"button\" role=\"menuitem\" data-action=\"%s\">%s</button>\n", a[0], a[1])
 	}
