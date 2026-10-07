@@ -38,7 +38,7 @@ try {
 	const tab = () => document.querySelector('sb-tabs.install-tabs')?.getAttribute('selected')
 	const was = tab()
 	await fetch('/cmd/install-tab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tab: was === '1' ? 'autoloader' : 'component' }) })
-	await until(() => tab() !== was)
+	await until(() => tab() !== was, 60000) // the command queues behind the startup seeding, slow under -race
 	check('a page frame keeps the arrangement', [tab() !== was, list.dataset.state, order()], [true, 'mercury earth mars venus', 'mercury earth mars venus'])
 	check('no errors', errors, [])
 } catch (e) {
