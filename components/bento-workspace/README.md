@@ -41,7 +41,7 @@ usage: |
   </sb-bento-workspace>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-bento-workspace`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets`. For this surface they let it nest with the other PD rockets surfaces, drop its slide under reduced motion, declare its events and keep the focus on a tile moved by pointer. Upstream calls it experimental.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-bento-workspace`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets`. For this surface they let it nest with the other PD rockets surfaces, slide a tile to its new cell within its grid too, drop the slide under reduced motion, declare its events and keep the focus on a tile moved by pointer. Upstream calls it experimental.
 
 Tiles on one or more CSS grids, which the server renders and places. Drag a tile to another cell or grid, drag its corner to resize it, or do both from the keyboard. The component shows the layout the change would give: tiles in the way move down to the next free row. Then it emits `sb-bento-move` or `sb-bento-resize` with every position that changed. It places nothing itself: the server applies the positions and sends the tiles back, and the morph puts each one in its place. When a tile changes grid, the tiles slide to their new places; a move within a grid lands at once.
 

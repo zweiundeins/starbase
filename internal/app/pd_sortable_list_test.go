@@ -69,6 +69,7 @@ try {
 		moves.length = 0
 		await drag(item(id), to)
 		await until(() => list().dataset.state !== before, want === before ? 600 : 15000)
+		await settle(250) // the items glide to their places (patch 0005) before the next drag measures them
 		return [moves, list().dataset.state, order()]
 	}
 	const point = (id, y) => {

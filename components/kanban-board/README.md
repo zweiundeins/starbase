@@ -44,7 +44,7 @@ usage: |
   </sb-kanban-board>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-kanban-board`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets` (0002 to 0004 for every surface, 0030 to 0038 for this one). For this board they add lane moves, let a card be dragged by a link or an image, keep Alt and the arrows from leaving the page at the first and last lane, keep a card's row when it changes lanes, add Alt + Home and Alt + End, let the arrows reach empty lanes, send `sb-kanban-select` on a click too, and list the events in the component's manifest.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-kanban-board`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets` (0002 to 0005 for every surface, 0030 to 0038 for this one). For this board they add lane moves, let a card be dragged by a link or an image, keep Alt and the arrows from leaving the page at the first and last lane, keep a card's row when it changes lanes, add Alt + Home and Alt + End, let the arrows reach empty lanes, send `sb-kanban-select` on a click too, and list the events in the component's manifest.
 
 A board of lanes whose cards the server renders and places. Drag a card within its lane or into another one, or focus it and hold Alt while you press the arrow keys. The component shows where the card would land, then emits `sb-kanban-move` with the card, the lane and the card it goes before. It moves nothing itself: the server applies the move and sends the board back, and the morph moves each card to its place with a short animation (none when the reader's system asks for reduced motion).
 

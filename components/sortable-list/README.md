@@ -39,7 +39,7 @@ usage: |
   </sb-sortable-list>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-sortable-list`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`, which for this list take a drop just above or below it, skip the move animation when the reader prefers reduced motion, keep nesting working when surfaces come in separate bundles, and declare its event in the manifest.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-sortable-list`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`, which for this list take a drop just above or below it, play the move animation when the morph reuses the items in place (they need no ids), skip it when the reader prefers reduced motion, keep nesting working when surfaces come in separate bundles, and declare its event in the manifest.
 
 A list whose items the server renders and orders. Drag an item, or focus it and hold Alt while you press the arrow keys. The component marks where the item would land, then emits `sb-sortable-move` with the item and the one it goes before. It moves nothing itself: the server applies the move and sends the list back in its new order, and the morph puts each item in its place with a short animation.
 

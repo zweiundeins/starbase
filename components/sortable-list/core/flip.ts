@@ -30,6 +30,16 @@ function capture(options: FlipOptions): Map<string, Rect> {
   return result;
 }
 
+// Where each item sits in the layout. Transforms don't count: a projection or a running animation moves nothing.
+function places(options: FlipOptions): Map<string, string> {
+  const result = new Map<string, string>();
+  options.host.querySelectorAll<HTMLElement>(options.itemSelector).forEach((item) => {
+    const id = options.itemId(item);
+    if (id) result.set(id, `${item.offsetLeft} ${item.offsetTop}`);
+  });
+  return result;
+}
+
 function play(options: FlipOptions, before: Map<string, Rect>): void {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   options.host.querySelectorAll<HTMLElement>(options.itemSelector).forEach((item) => {
@@ -50,19 +60,31 @@ function play(options: FlipOptions, before: Map<string, Rect>): void {
 /** Watches a host for the DOM change caused by a semantic move, including a later SSE morph. */
 export function installFlip(options: FlipOptions): { prepare: (origin?: FlipOrigin) => void; dispose: () => void } {
   let before: Map<string, Rect> | null = null;
+  let placed: Map<string, string> | null = null;
+  let addedOrRemoved = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let frame: number | null = null;
 
   const clearPending = (): void => {
     before = null;
+    placed = null;
+    addedOrRemoved = false;
     if (timer !== null) clearTimeout(timer);
     if (frame !== null) cancelAnimationFrame(frame);
     timer = null;
     frame = null;
   };
 
+  // A patch may move items through attributes alone (a grid placement, ids on elements reused in place): without items
+  // added or removed, play once one has moved in the layout, so a change that moves none keeps waiting.
+  const moved = (): boolean => {
+    const now = places(options);
+    return now.size !== placed?.size || [...now].some(([id, place]) => placed?.get(id) !== place);
+  };
+
   const finish = (): void => {
-    if (!before) return;
+    frame = null;
+    if (!before || (!addedOrRemoved && !moved())) return;
     const snapshot = before;
     clearPending();
     play(options, snapshot);
@@ -71,21 +93,19 @@ export function installFlip(options: FlipOptions): { prepare: (origin?: FlipOrig
   const containsItem = (node: Node): boolean =>
     node instanceof Element && (node.matches(options.itemSelector) || !!node.querySelector(options.itemSelector));
   const observer = new MutationObserver((records) => {
-    if (
-      !before ||
-      frame !== null ||
-      !records.some((record) => [...record.addedNodes, ...record.removedNodes].some(containsItem))
-    )
-      return;
-    frame = requestAnimationFrame(finish);
+    if (!before) return;
+    if (records.some((record) => [...record.addedNodes, ...record.removedNodes].some(containsItem)))
+      addedOrRemoved = true;
+    if (frame === null) frame = requestAnimationFrame(finish);
   });
-  observer.observe(options.host, { childList: true, subtree: true });
+  observer.observe(options.host, { childList: true, attributes: true, subtree: true });
 
   return {
     prepare: (origin) => {
       clearPending();
       before = capture(options);
       if (origin) before.set(origin.itemId, origin.rect);
+      placed = places(options);
       timer = setTimeout(clearPending, 2000);
     },
     dispose: () => {

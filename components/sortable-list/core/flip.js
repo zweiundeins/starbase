@@ -20,6 +20,16 @@ function capture(options) {
     });
     return result;
 }
+// Where each item sits in the layout. Transforms don't count: a projection or a running animation moves nothing.
+function places(options) {
+    const result = new Map();
+    options.host.querySelectorAll(options.itemSelector).forEach((item) => {
+        const id = options.itemId(item);
+        if (id)
+            result.set(id, `${item.offsetLeft} ${item.offsetTop}`);
+    });
+    return result;
+}
 function play(options, before) {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches)
         return;
@@ -42,10 +52,14 @@ function play(options, before) {
 /** Watches a host for the DOM change caused by a semantic move, including a later SSE morph. */
 export function installFlip(options) {
     let before = null;
+    let placed = null;
+    let addedOrRemoved = false;
     let timer = null;
     let frame = null;
     const clearPending = () => {
         before = null;
+        placed = null;
+        addedOrRemoved = false;
         if (timer !== null)
             clearTimeout(timer);
         if (frame !== null)
@@ -53,8 +67,15 @@ export function installFlip(options) {
         timer = null;
         frame = null;
     };
+    // A patch may move items through attributes alone (a grid placement, ids on elements reused in place): without items
+    // added or removed, play once one has moved in the layout, so a change that moves none keeps waiting.
+    const moved = () => {
+        const now = places(options);
+        return now.size !== placed?.size || [...now].some(([id, place]) => placed?.get(id) !== place);
+    };
     const finish = () => {
-        if (!before)
+        frame = null;
+        if (!before || (!addedOrRemoved && !moved()))
             return;
         const snapshot = before;
         clearPending();
@@ -62,19 +83,21 @@ export function installFlip(options) {
     };
     const containsItem = (node) => node instanceof Element && (node.matches(options.itemSelector) || !!node.querySelector(options.itemSelector));
     const observer = new MutationObserver((records) => {
-        if (!before ||
-            frame !== null ||
-            !records.some((record) => [...record.addedNodes, ...record.removedNodes].some(containsItem)))
+        if (!before)
             return;
-        frame = requestAnimationFrame(finish);
+        if (records.some((record) => [...record.addedNodes, ...record.removedNodes].some(containsItem)))
+            addedOrRemoved = true;
+        if (frame === null)
+            frame = requestAnimationFrame(finish);
     });
-    observer.observe(options.host, { childList: true, subtree: true });
+    observer.observe(options.host, { childList: true, attributes: true, subtree: true });
     return {
         prepare: (origin) => {
             clearPending();
             before = capture(options);
             if (origin)
                 before.set(origin.itemId, origin.rect);
+            placed = places(options);
             timer = setTimeout(clearPending, 2000);
         },
         dispose: () => {
