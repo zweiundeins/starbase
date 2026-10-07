@@ -138,6 +138,11 @@ export function installPointerDrag(options) {
         }
         options.host.setPointerCapture?.(pointer.pointerId);
     };
+    // Links and images are draggable: the browser's own drag would send pointercancel and end this one.
+    const onDragStart = (event) => {
+        if (active)
+            event.preventDefault();
+    };
     const onDown = (event) => {
         const pointer = event;
         if (pointer.button !== 0 || active)
@@ -157,12 +162,14 @@ export function installPointerDrag(options) {
         state.send({ type: "begin", itemId });
     };
     options.host.addEventListener("pointerdown", onDown);
+    options.host.addEventListener("dragstart", onDragStart);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
     return () => {
         finish(null, true);
         options.host.removeEventListener("pointerdown", onDown);
+        options.host.removeEventListener("dragstart", onDragStart);
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onCancel);

@@ -145,6 +145,10 @@ export function installPointerDrag<ItemId, Target>(options: PointerDragOptions<I
     }
     options.host.setPointerCapture?.(pointer.pointerId);
   };
+  // Links and images are draggable: the browser's own drag would send pointercancel and end this one.
+  const onDragStart = (event: Event): void => {
+    if (active) event.preventDefault();
+  };
   const onDown = (event: Event): void => {
     const pointer = event as PointerEvent;
     if (pointer.button !== 0 || active) return;
@@ -164,12 +168,14 @@ export function installPointerDrag<ItemId, Target>(options: PointerDragOptions<I
   };
 
   options.host.addEventListener("pointerdown", onDown);
+  options.host.addEventListener("dragstart", onDragStart);
   window.addEventListener("pointermove", onMove);
   window.addEventListener("pointerup", onUp);
   window.addEventListener("pointercancel", onCancel);
   return () => {
     finish(null, true);
     options.host.removeEventListener("pointerdown", onDown);
+    options.host.removeEventListener("dragstart", onDragStart);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     window.removeEventListener("pointercancel", onCancel);
