@@ -125,6 +125,22 @@ rocket("sb-kanban-board", {
             if (isCard(stop))
                 emitSelect(stop);
         };
+        // Cards the page renders with tabindex="-1" make the board one Tab stop that follows the focus. Tab sets it again
+        // before the browser moves on, since a morph puts back the tabindex the server rendered.
+        const rove = (target) => {
+            if (!(target instanceof HTMLElement) || !owns(target))
+                return;
+            const card = target.closest(kanbanContract.selectors.card);
+            const stop = card && owns(card) ? card : target.matches(kanbanContract.selectors.lane) && emptyStop(target) ? target : null;
+            if (!stop || !cards().some((other) => other.getAttribute("tabindex") === "-1"))
+                return;
+            for (const other of [...cards(), ...lanes()])
+                if (other !== stop && other.getAttribute("tabindex") === "0")
+                    other.setAttribute("tabindex", "-1");
+            if (stop.getAttribute("tabindex") !== "0")
+                stop.setAttribute("tabindex", "0");
+        };
+        const onFocusIn = (event) => rove(event.target);
         const onPointerDown = (event) => {
             const target = event.target;
             if (event.button !== 0 || !(target instanceof HTMLElement) || !owns(target))
@@ -252,6 +268,10 @@ rocket("sb-kanban-board", {
             laneMoves.mark(lane, target);
         };
         const onKeyDown = (event) => {
+            if (event.key === "Tab") {
+                rove(event.target);
+                return;
+            }
             const grip = event.target instanceof HTMLElement && !event.defaultPrevented && !event.isComposing
                 ? event.target.closest(kanbanContract.selectors.laneGrip)
                 : null;
@@ -352,6 +372,7 @@ rocket("sb-kanban-board", {
         };
         host.addEventListener("keydown", onKeyDown);
         host.addEventListener("pointerdown", onPointerDown);
+        host.addEventListener("focusin", onFocusIn);
         cleanup(() => {
             staging.dispose();
             focus.dispose();
@@ -362,6 +383,7 @@ rocket("sb-kanban-board", {
             laneFlip.dispose();
             host.removeEventListener("keydown", onKeyDown);
             host.removeEventListener("pointerdown", onPointerDown);
+            host.removeEventListener("focusin", onFocusIn);
             clearMarks();
             clearDragging();
         });

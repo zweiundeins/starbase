@@ -156,7 +156,7 @@ func renderKanban(id, state string) string {
 
 // renderKanbanCard is the gallery card's board: the same lanes and moves in
 // markup small enough for the card, with names only. Its first card is the
-// card's one Tab stop, and the arrows reach the others.
+// card's one Tab stop, which the arrows take along to the others.
 func renderKanbanCard(id, state string) string {
 	cols, _ := kanbanState(state)
 	esc := html.EscapeString

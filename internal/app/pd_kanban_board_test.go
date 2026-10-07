@@ -130,7 +130,8 @@ await report()
 `
 
 // TestKanbanBoardGalleryCard drags a card in the gallery's live preview: the
-// server answers it, and the card is one Tab stop that nothing overflows.
+// server answers it, nothing overflows, and the card is one Tab stop that
+// follows the focus, after the server's answer too.
 func TestKanbanBoardGalleryCard(t *testing.T) {
 	_, body := probe(t, "/", pdPrelude+kanbanCardJS)
 	copyRows(t, body)
@@ -145,12 +146,28 @@ try {
 	check('one Tab stop', [...preview.querySelectorAll('*')].filter((e) => e.tabIndex >= 0).map((e) => e.dataset.kanbanCard), ['mars'])
 	const over = [board(), ...board().querySelectorAll('[data-kanban-lane], [data-kanban-card]')].filter((e) => e.scrollWidth > e.clientWidth + 1)
 	check('nothing overflows', over.map((e) => e.dataset.kanbanCard ?? e.dataset.col ?? 'board'), [])
+
+	// The arrows take the Tab stop along (patch 0039), so Shift+Tab leaves the
+	// board instead of going back to the first card.
+	const stops = () => [...preview.querySelectorAll('*')].filter((e) => e.tabIndex >= 0).map((e) => e.dataset.kanbanCard ?? 'lane ' + e.dataset.col)
+	const card = (id) => board().querySelector('[data-kanban-card="' + id + '"]')
+	card('mars').focus()
+	press(card('mars'), 'ArrowDown')
+	check('ArrowDown takes the Tab stop along', [document.activeElement?.dataset?.kanbanCard, stops()], ['io', ['io']])
+	press(card('io'), 'ArrowRight')
+	check('so does ArrowRight', [document.activeElement?.dataset?.kanbanCard, stops()], ['moon', ['moon']])
+
 	const moves = []
 	board().addEventListener('sb-kanban-move', (e) => moves.push(e.detail))
-	await drag(board().querySelector('[data-kanban-card="mars"]'), board().querySelector('[data-col="9"]'))
+	await drag(card('mars'), board().querySelector('[data-col="9"]'))
 	check('a drop into the empty lane', moves, [{ cardId: 'mars', col: 9, before: '' }])
 	await until(() => board().dataset.state === '4: io | 7: moon | 9: mars')
 	check('the server moved it', [board().dataset.state, board().querySelector('[data-col="9"] [data-kanban-card]')?.id], ['4: io | 7: moon | 9: mars', 'kanban-board-card-mars'])
+	// Its morph puts back the server's stop, the first card, and Tab moves it
+	// to the focus again before the browser acts.
+	check('the answer brings the server\'s stop', [document.activeElement?.dataset?.kanbanCard, stops()], ['moon', ['io']])
+	press(document.activeElement, 'Tab', { shiftKey: true })
+	check('Shift+Tab leaves from the focused card', stops(), ['moon'])
 	check('no errors', errors, [])
 } catch (e) {
 	rows.push({ step: 'script', error: String(e?.stack || e) })

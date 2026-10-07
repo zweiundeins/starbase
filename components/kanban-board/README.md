@@ -44,7 +44,7 @@ usage: |
   </sb-kanban-board>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-kanban-board`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets` (0002 to 0005 for every surface, 0030 to 0038 for this one). For this board they add lane moves, let a card be dragged by a link or an image, keep Alt and the arrows from leaving the page at the first and last lane, keep a card's row when it changes lanes, add Alt + Home and Alt + End, let the arrows reach empty lanes, send `sb-kanban-select` on a click too, and list the events in the component's manifest.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-kanban-board`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets` (0002 to 0005 for every surface, 0030 to 0039 for this one). For this board they add lane moves, let a card be dragged by a link or an image, keep Alt and the arrows from leaving the page at the first and last lane, keep a card's row when it changes lanes, add Alt + Home and Alt + End, let the arrows reach empty lanes, send `sb-kanban-select` on a click too, let a board that is one Tab stop move it with the focus, and list the events in the component's manifest.
 
 A board of lanes whose cards the server renders and places. Drag a card within its lane or into another one, or focus it and hold Alt while you press the arrow keys. The component shows where the card would land, then emits `sb-kanban-move` with the card, the lane and the card it goes before. It moves nothing itself: the server applies the move and sends the board back, and the morph moves each card to its place with a short animation (none when the reader's system asks for reduced motion).
 
@@ -169,6 +169,8 @@ The events bubble. When boards are nested, check `evt.target` in a handler that 
 Releasing Alt sends the move, and until then each key moves the card or lane on from where the last one put it. At the first or last lane, Alt + Arrow Left or Right does nothing, so the browser doesn't go back or forward in its history either.
 
 A lane with `tabindex="-1"`, as in the example, takes the focus while it has no cards: the arrows stop there, so a keyboard user learns that the lane exists. Without the attribute, the arrows pass over an empty lane. Alt and the arrows move a card into an empty lane either way, and so does a drag.
+
+With `tabindex="0"` on every card, as in the example, each card is a Tab stop. For a board that is one Tab stop, render one card with `tabindex="0"` and the others with `tabindex="-1"`, as the gallery card does. The stop then follows the focus to whichever card or empty lane the arrows reach, so Tab and Shift+Tab leave the board from there. The server can render the same values every time: when a morph puts them back, the board moves the stop to the focus again before Tab acts.
 
 On macOS, Ctrl + n and Ctrl + p also move the focus. Each action takes its keys from a `data-key-<action>` attribute on the board, a space-separated list such as `data-key-focus-next="ArrowDown n"`; an empty value turns the action off. The actions are `focus-next`, `focus-previous`, `focus-left`, `focus-right`, `focus-first`, `focus-last`, `move-up`, `move-down`, `move-left`, `move-right`, `move-first`, `move-last` and `cancel`. The older names `select-next`, `select-previous`, `select-left` and `select-right` still work when the `focus-` attribute is absent.
 
