@@ -13,7 +13,7 @@ Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node,
 
 ## Features
 
-- **41 components** (forms, navigation, feedback, layout, media, data, utilities, and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
+- **51 components** (forms, navigation, feedback, layout, media, data, utilities, drag-and-drop surfaces from derekr's [PD rockets](https://github.com/derekr/pd-rockets), and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**. The seven from PD rockets keep its Beer-Ware licence; everything else is MIT.
 - **Code playground:** edit a component's JS (or TypeScript) and HTML in a sandboxed live preview, type-check it against Datastar's types, save and share immutable links, submit the result as a component.
 - **Submissions without tools:** a GitHub issue form (paste code, link a repo or a playground link); a bot validates it and opens a pull request.
 - **Autoloader:** one `<script>` loads each `<sb-*>` component on first use, on any site.
