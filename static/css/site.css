@@ -797,10 +797,37 @@
 
 		&:hover .card__preview {
 			--_grid: color-mix(in oklch, var(--sb-brand) 30%, transparent);
+		}
 
-			&::after {
-				opacity: 1;
-			}
+		/* Hover hint, so the preview's different job is discoverable. On the card,
+		   since the preview clips: it straddles the preview's top edge, clear of the demo. */
+		&::before {
+			--_h: 1rem;
+			--_n: calc(2px * var(--sb-notch));
+			content: "live demo";
+			position: absolute;
+			z-index: calc(var(--sb-z-raised) + 1);
+			inset-block-start: calc(var(--sb-space-3) - var(--_h) / 2);
+			inset-inline-end: calc(var(--sb-space-3) + var(--sb-space-4));
+			block-size: var(--_h);
+			padding-inline: 6px;
+			border: var(--sb-border-width) solid oklch(from var(--sb-brand) l c h / 0.6);
+			border-radius: calc(var(--sb-radius-sm) * (1 - var(--sb-notch)));
+			clip-path: polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n));
+			background: var(--sb-surface-card);
+			color: var(--sb-text-muted);
+			font-size: var(--sb-font-size-00);
+			line-height: calc(var(--_h) - 2 * var(--sb-border-width));
+			letter-spacing: var(--sb-letter-spacing-caps);
+			text-transform: uppercase;
+			white-space: nowrap;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity var(--sb-duration-base) var(--sb-ease-standard);
+		}
+
+		&:hover::before {
+			opacity: 1;
 		}
 	}
 
@@ -823,25 +850,6 @@
 			var(--sb-surface-inset);
 		background-size: auto, 16px 16px, 16px 16px, auto;
 		overflow: hidden;
-
-		/* Hover hint, so the panel's different job is discoverable. */
-		&::after {
-			content: "live demo";
-			position: absolute;
-			inset-block-start: var(--sb-space-2);
-			inset-inline-end: var(--sb-space-2);
-			padding: 2px 6px;
-			border-radius: var(--sb-radius-sm);
-			/* Readable over busy previews (starfield, code editor). */
-			background: color-mix(in oklch, var(--sb-surface-inset) 85%, transparent);
-			color: var(--sb-text-muted);
-			font-size: var(--sb-font-size-00);
-			letter-spacing: var(--sb-letter-spacing-caps);
-			text-transform: uppercase;
-			opacity: 0;
-			pointer-events: none;
-			transition: opacity var(--sb-duration-base) var(--sb-ease-standard);
-		}
 
 		& > * {
 			max-inline-size: 100%;
