@@ -39,7 +39,7 @@ templ ComponentPage(s Shell, v ComponentView) {
 				<span class="muted">Since { v.Card.Since }</span>
 				<a class="muted" href={ safe(v.Component.LicenseURL()) }>{ v.Component.LicenseID() } licence</a>
 				if v.Component.Sizes.Total.Min > 0 {
-					<a class="muted" href="#size" title="Download size: minified, brotli">{ FmtBytes(v.Component.Sizes.Total.Min) }</a>
+					<a class="muted" href="#size" title={ sizeTitle(v.Component.Sizes) }>{ FmtBytes(v.Component.Sizes.Total.Min) }</a>
 				}
 				@StarButton(s, v.Card, true)
 				<a class="btn btn--outline btn--sm" href={ safe("/playground?component=" + v.Card.Slug) }>
@@ -87,39 +87,85 @@ templ ComponentPage(s Shell, v ComponentView) {
 	</div>
 }
 
-// SizeTable lists what the component downloads: its own files, then each
-// component it renders, and a total when there is more than one line.
+// SizeTable says what a page downloads for the component: its one-file
+// bundle and those of the components it renders, with what they load on
+// first use, and the module files, for a page that bundles them itself.
 templ SizeTable(sz catalog.Sizes) {
-	if len(sz.Files) > 0 {
+	if len(sz.Bundles) > 0 {
 		<h2 id="size">Size</h2>
-		<p>Each file compressed on its own, the way it is served (gzip -9, brotli -11). The autoloader loads the minified files (esbuild), so that last column is what a page downloads; the readable source is always there too. Datastar and Rocket are shared by every component and not counted.</p>
+		<p>{ sizeIntro(sz) }</p>
 		<div class="table-scroll">
 			<table class="api-table size-table">
-				<thead><tr><th>File</th><th>Original</th><th>gzip</th><th>brotli</th><th>minified</th></tr></thead>
+				<thead><tr><th>File</th><th>Original</th><th>gzip</th><th>brotli</th></tr></thead>
 				<tbody>
-					for _, f := range sz.Files {
-						@sizeRow(f.Name, f.Size, false)
+					for i, b := range sz.Bundles {
+						<tr>
+							<td>
+								<code>{ b.Name }</code>
+								if i > 0 {
+									<span class="muted">renders it</span>
+								}
+							</td>
+							<td>{ FmtBytes(b.Raw) }</td>
+							<td>{ FmtBytes(b.Gzip) }</td>
+							<td>{ FmtBytes(b.Brotli) }</td>
+						</tr>
 					}
-					for _, u := range sz.Uses {
-						@sizeRow("<"+u.Name+">", u.Size, true)
+					for _, f := range append(sz.Lazy, sz.UsesLazy...) {
+						<tr>
+							<td>
+								<code>{ f.Name }</code>
+								<span class="muted">on first use</span>
+							</td>
+							<td>{ FmtBytes(f.Raw) }</td>
+							<td>{ FmtBytes(f.Gzip) }</td>
+							<td>{ FmtBytes(f.Brotli) }</td>
+						</tr>
 					}
 				</tbody>
-				if len(sz.Files)+len(sz.Uses) > 1 {
+				if len(sz.Bundles)+len(sz.Lazy)+len(sz.UsesLazy) > 1 {
 					<tfoot>
 						<tr>
 							<th scope="row">Total</th>
 							<td>{ FmtBytes(sz.Total.Raw) }</td>
 							<td>{ FmtBytes(sz.Total.Gzip) }</td>
-							<td>{ FmtBytes(sz.Total.Brotli) }</td>
-							<td><strong>{ FmtBytes(sz.Total.Min) }</strong></td>
+							<td><strong>{ FmtBytes(sz.Total.Brotli) }</strong></td>
 						</tr>
 					</tfoot>
 				}
 			</table>
 		</div>
-		if len(sz.BundleFiles) > 0 && len(sz.BundleFiles) < len(sz.Files) {
-			<p>All its modules in one file (<code>{ sz.BundleFiles[0].Name }</code>, see <a href="#installation">Installation</a>): { FmtBytes(sz.Bundle.Min) } brotli, { requests(len(sz.BundleFiles)) } instead of { strconv.Itoa(len(sz.Files)) }.</p>
+		if lazy := sz.LazyMin(); lazy > 0 {
+			<p>Of the total, { FmtBytes(lazy) } brotli is loaded on first use, as soon as the component needs it.</p>
 		}
+		<details class="howto size-modules" data-preserve-attr="open">
+			<summary>As module files: { requests(sz.ModuleFiles) }, { FmtBytes(sz.ModulesTotal.Min) } minified with brotli</summary>
+			<p>For a page that loads the module files as they are, requesting each one as it finds its import, or bundles them itself. Each file compressed on its own; the minified one is what the page downloads, and the readable source is always there too.</p>
+			<div class="table-scroll">
+				<table class="api-table size-table">
+					<thead><tr><th>File</th><th>Original</th><th>gzip</th><th>brotli</th><th>minified</th></tr></thead>
+					<tbody>
+						for _, f := range sz.Files {
+							@sizeRow(f.Name, f.Size, false, f.Lazy)
+						}
+						for _, u := range sz.Uses {
+							@sizeRow("<"+u.Name+">", u.Size, true, false)
+						}
+					</tbody>
+					if len(sz.Files)+len(sz.Uses) > 1 {
+						<tfoot>
+							<tr>
+								<th scope="row">Total</th>
+								<td>{ FmtBytes(sz.ModulesTotal.Raw) }</td>
+								<td>{ FmtBytes(sz.ModulesTotal.Gzip) }</td>
+								<td>{ FmtBytes(sz.ModulesTotal.Brotli) }</td>
+								<td><strong>{ FmtBytes(sz.ModulesTotal.Min) }</strong></td>
+							</tr>
+						</tfoot>
+					}
+				</table>
+			</div>
+		</details>
 	}
 }
 
@@ -131,12 +177,53 @@ func requests(n int) string {
 	return strconv.Itoa(n) + " requests"
 }
 
-templ sizeRow(name string, s catalog.Size, uses bool) {
+// sizeIntro says what the Size section's table holds.
+func sizeIntro(sz catalog.Sizes) string {
+	t := "A page loads this component as one file, its bundle"
+	if len(sz.Bundles) > 1 {
+		t += ", and the bundle of each component it renders"
+	}
+	switch lazy := sz.LazyMin() > 0; {
+	case lazy && len(sz.Bundles) > 1:
+		t += ", with what they load on first use"
+	case lazy:
+		t += ", with what it loads on first use"
+	}
+	if len(sz.Bundles)+len(sz.Lazy)+len(sz.UsesLazy) > 1 {
+		t += ", each compressed on its own the way it is served"
+	} else {
+		t += ", compressed the way it is served"
+	}
+	return t + " (gzip -9, brotli -11): brotli is what it downloads. Datastar and Rocket are shared by every component and not counted."
+}
+
+// sizeTitle explains a component's download size where it is shown alone.
+func sizeTitle(sz catalog.Sizes) string {
+	t := FmtBytes(sz.Total.Min) + " with brotli"
+	if lazy := sz.LazyMin(); lazy > 0 {
+		t += ", of which " + FmtBytes(lazy) + " loaded on first use"
+	}
+	t += ": its one-file bundle"
+	switch {
+	case len(sz.Bundles) > 1 && sz.LazyMin() > 0:
+		t += " and those of the components it renders, with what they load"
+	case len(sz.Bundles) > 1:
+		t += " and those of the components it renders"
+	case sz.LazyMin() > 0:
+		t += ", with what it loads"
+	}
+	return t
+}
+
+templ sizeRow(name string, s catalog.Size, uses, lazy bool) {
 	<tr>
 		<td>
 			<code>{ name }</code>
 			if uses {
 				<span class="muted">renders it</span>
+			}
+			if lazy {
+				<span class="muted">on first use</span>
 			}
 		</td>
 		<td>{ FmtBytes(s.Raw) }</td>

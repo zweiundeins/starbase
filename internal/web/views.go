@@ -25,11 +25,11 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 		return view{}, err
 	}
 	previews := make(map[string]string, len(res.Cards))
-	sizes := make(map[string]catalog.Size, len(res.Cards))
+	sizes := make(map[string]catalog.Sizes, len(res.Cards))
 	for _, c := range res.Cards {
 		if comp, ok := s.catalog.Get(c.Slug); ok {
 			previews[c.Slug] = comp.Preview
-			sizes[c.Slug] = comp.Sizes.Total
+			sizes[c.Slug] = comp.Sizes
 		}
 	}
 	def := rc.prefs.DefaultSort()
@@ -218,7 +218,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	for _, d := range all {
 		g := ui.SelfHostGroup{Tag: d.Tag}
 		u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
-		for _, f := range d.Sizes.BundleFiles {
+		for _, f := range append([]catalog.NamedSize{d.Sizes.Bundle}, d.Sizes.Lazy...) {
 			g.Bundle = append(g.Bundle, ui.SelfHostFile{Name: f.Name, Min: u + f.Name, Size: f.Size})
 		}
 		for _, f := range d.Sizes.Files {

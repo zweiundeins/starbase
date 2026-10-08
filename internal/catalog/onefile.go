@@ -80,23 +80,12 @@ func (cat *Catalog) bundleOf(c *Component) (*ComponentBundle, error) {
 		return nil, err
 	}
 	out := BundleName(c.Slug)
-	res := api.Build(api.BuildOptions{
-		EntryPoints:       []string{c.Script},
-		Bundle:            true,
-		Format:            api.FormatESModule,
-		Target:            api.ESNext,
-		MinifyWhitespace:  true,
-		MinifyIdentifiers: true,
-		MinifySyntax:      true,
-		Charset:           api.CharsetUTF8,
-		LegalComments:     api.LegalCommentsInline,
-		Banner:            map[string]string{"js": fmt.Sprintf("/*! %s, version %s@%s: its modules in one file */", c.Tag, c.Slug, c.Hash)},
-		Outfile:           out,
-		Metafile:          true,
-		Write:             false,
-		LogLevel:          api.LogLevelSilent,
-		Plugins:           []api.Plugin{cat.folderPlugin(c)},
-	})
+	opts := bundleOptions(c)
+	opts.EntryPoints = []string{c.Script}
+	opts.Outfile = out
+	opts.Metafile = true
+	opts.Plugins = []api.Plugin{cat.folderPlugin(c, false)}
+	res := api.Build(opts)
 	if len(res.Errors) > 0 {
 		return nil, fmt.Errorf("esbuild: %s", res.Errors[0].Text)
 	}
@@ -147,10 +136,36 @@ func (cat *Catalog) bundleOf(c *Component) (*ComponentBundle, error) {
 	return b, nil
 }
 
+// bundleOptions are the esbuild settings of c's bundle: minified like the
+// .min files, with its banner (no banner without c).
+func bundleOptions(c *Component) api.BuildOptions {
+	opts := api.BuildOptions{
+		Bundle:            true,
+		Format:            api.FormatESModule,
+		Target:            api.ESNext,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		Charset:           api.CharsetUTF8,
+		LegalComments:     api.LegalCommentsInline,
+		Write:             false,
+		LogLevel:          api.LogLevelSilent,
+	}
+	if c != nil {
+		opts.Banner = map[string]string{"js": fmt.Sprintf("/*! %s, version %s@%s: its modules in one file */", c.Tag, c.Slug, c.Hash)}
+	}
+	return opts
+}
+
 // folderPlugin resolves a component's modules inside its folder, shrunk like
 // the .min files: 'datastar' is external, and a dynamic import is too, as
-// the .min file next to the bundle (which sits at the folder's top).
-func (cat *Catalog) folderPlugin(c *Component) api.Plugin {
+// the .min file next to the bundle (which sits at the folder's top). For
+// playground code (lenient, the build's stdin, at the folder's top; c may be
+// nil), an import that doesn't resolve stays an import instead of failing.
+func (cat *Catalog) folderPlugin(c *Component, lenient bool) api.Plugin {
+	keep := func(spec string) (api.OnResolveResult, error) {
+		return api.OnResolveResult{Path: spec, External: true}, nil
+	}
 	return api.Plugin{
 		Name: "component-folder",
 		Setup: func(b api.PluginBuild) {
@@ -159,17 +174,30 @@ func (cat *Catalog) folderPlugin(c *Component) api.Plugin {
 				case args.Kind == api.ResolveEntryPoint:
 					return api.OnResolveResult{Path: args.Path, Namespace: "cfs"}, nil
 				case args.Path == "datastar":
-					return api.OnResolveResult{Path: "datastar", External: true}, nil
+					return keep("datastar")
 				case !strings.HasPrefix(args.Path, "./") && !strings.HasPrefix(args.Path, "../"):
+					if lenient {
+						return keep(args.Path)
+					}
 					return api.OnResolveResult{}, fmt.Errorf("%s imports %q: only 'datastar' and files in the component's folder", args.Importer, args.Path)
 				}
-				p := path.Clean(path.Join(path.Dir(args.Importer), args.Path))
+				dir := path.Dir(args.Importer)
+				if args.Namespace != "cfs" { // the playground's code
+					if c == nil {
+						return keep(args.Path)
+					}
+					dir = c.Slug
+				}
+				p := path.Clean(path.Join(dir, args.Path))
 				rest, inside := strings.CutPrefix(p, c.Slug+"/")
+				if _, err := fs.Stat(cat.FS, p); lenient && (!inside || err != nil) {
+					return keep(args.Path)
+				}
 				if !inside {
 					return api.OnResolveResult{}, fmt.Errorf("%s imports %q, outside the component's folder", args.Importer, args.Path)
 				}
 				if args.Kind == api.ResolveJSDynamicImport {
-					return api.OnResolveResult{Path: "./" + MinOf(rest), External: true}, nil
+					return keep("./" + MinOf(rest))
 				}
 				return api.OnResolveResult{Path: p, Namespace: "cfs"}, nil
 			})

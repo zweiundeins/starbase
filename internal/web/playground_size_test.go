@@ -12,8 +12,9 @@ import (
 )
 
 // The playground's size line measures like the catalog: a component's own
-// source gets the numbers of its size table, also when it is written in
-// TypeScript (dropdown): raw is then the TypeScript as written.
+// source, bundled with the files of its folder, gets the numbers of its
+// size table, also when it is written in TypeScript (dropdown): raw is then
+// the TypeScript as written.
 func TestPlaygroundSize(t *testing.T) {
 	ts, c, _, cat := newServerBus(t)
 	measure := func(slug, name, code string) string {
@@ -31,8 +32,8 @@ func TestPlaygroundSize(t *testing.T) {
 		comp, _ := cat.Get(slug)
 		src, _ := fs.ReadFile(cat.FS, comp.SourceFile)
 		got := measure(slug, "component"+path.Ext(comp.SourceFile), string(src))
-		want := []string{`"own":"` + ui.FmtBytes(comp.Sizes.Files[0].Min) + `"`, `"raw":"` + ui.FmtBytes(len(src)) + `"`}
-		if comp.Sizes.Total.Min != comp.Sizes.Files[0].Min {
+		want := []string{`"own":"` + ui.FmtBytes(comp.Sizes.Bundle.Min) + `"`, `"raw":"` + ui.FmtBytes(len(src)) + `"`}
+		if comp.Sizes.Total.Min != comp.Sizes.Bundle.Min {
 			want = append(want, `"total":"`+ui.FmtBytes(comp.Sizes.Total.Min)+`"`)
 		} else {
 			want = append(want, `"total":""`)
@@ -53,7 +54,7 @@ func TestPlaygroundSize(t *testing.T) {
 	// The page renders the first numbers into the playground's bar.
 	button, _ := cat.Get("button")
 	_, page := get(t, c, ts.URL+"/playground?component=button")
-	if !strings.Contains(page, `slot="bar" class="pg-size"`) || !strings.Contains(page, ">"+ui.FmtBytes(button.Sizes.Files[0].Min)+"</strong>") {
+	if !strings.Contains(page, `slot="bar" class="pg-size"`) || !strings.Contains(page, ">"+ui.FmtBytes(button.Sizes.Bundle.Min)+"</strong>") {
 		t.Error("the playground page lacks the size line with the first numbers")
 	}
 }

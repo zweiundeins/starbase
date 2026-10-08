@@ -20,8 +20,8 @@ type GalleryView struct {
 	// sort everyone gets by default, see Browse.QueryFor).
 	DefaultSort model.Sort
 	Result      queries.BrowseResult
-	Previews    map[string]string       // slug → preview snippet
-	Sizes       map[string]catalog.Size // slug → total download size
+	Previews    map[string]string        // slug → preview snippet
+	Sizes       map[string]catalog.Sizes // by slug: Total is the download size
 }
 
 func browseHref(b model.Browse) templ.SafeURL { return browseHrefFor(b, model.SortPopular) }
@@ -556,7 +556,7 @@ func Collection(s Shell, v GalleryView) templ.Component {
 // Card's id lets the morph match cards across a sort or a search, so it moves
 // them, live previews and all, instead of morphing one card into another. It
 // needs the re-entrant morph of patches/rocket 0008 (upstream #1209).
-func Card(s Shell, c queries.Card, preview string, size catalog.Size) templ.Component {
+func Card(s Shell, c queries.Card, preview string, size catalog.Sizes) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -693,15 +693,15 @@ func Card(s Shell, c queries.Card, preview string, size catalog.Size) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if size.Min > 0 {
+		if size.Total.Min > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<span class=\"card__size\" title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(FmtBytes(size.Min) + " minified and brotli, with the components it uses")
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(sizeTitle(size))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/gallery.templ`, Line: 197, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/gallery.templ`, Line: 197, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 			if templ_7745c5c3_Err != nil {
@@ -712,9 +712,9 @@ func Card(s Shell, c queries.Card, preview string, size catalog.Size) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
-			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(size.Min))
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(FmtBytes(size.Total.Min))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/gallery.templ`, Line: 197, Col: 134}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/gallery.templ`, Line: 197, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
