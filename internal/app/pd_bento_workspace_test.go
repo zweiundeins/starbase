@@ -70,7 +70,9 @@ try {
 		tile(id).focus()
 		press(tile(id), key, init)
 		check(name + ': staged', deck.hasAttribute('data-key-staging'), true)
-		await settle(250)
+		// Release once the tiles in the way have reached their new places, as a person would.
+		await settle(50)
+		await until(() => deck.getAnimations({ subtree: true }).length === 0, 5000)
 		release(release_)
 		await answered(name, before, want)
 		check(name + ': the tile keeps the focus', focused(), id)
