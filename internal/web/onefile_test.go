@@ -107,3 +107,48 @@ func TestBundleSizesOnPages(t *testing.T) {
 		t.Error("the This component tab should count code-editor's two module files")
 	}
 }
+
+// The autoloader loads each component's bundle. A snapshot keeps the map it
+// was stored with: one from before, which loads the module files, still
+// serves that map, and the files it names.
+func TestSnapshotsKeepTheirMaps(t *testing.T) {
+	ts, c, bus, cat := newServerBus(t)
+	kanban, _ := cat.Get("kanban-board")
+	_, auto := get(t, c, ts.URL+"/c/autoloader.js")
+	_, snap := get(t, c, ts.URL+"/c/@"+cat.Hash+"/autoloader.js")
+	for _, a := range []string{auto, snap} {
+		if !strings.Contains(a, `"sb-kanban-board":"`) || !strings.Contains(a, kanban.VersionedBundle()+`"`) || strings.Contains(a, "/kanban-board.min.js") {
+			t.Fatalf("the autoloader should load bundles:\n%.300s", a)
+		}
+	}
+	old := strings.ReplaceAll(catalog.AutoloaderJS(cat, "../"), ".bundle.min.js", ".min.js")
+	if err := bus.Exec(context.Background(), oldSnapshot{cat, old}); err != nil {
+		t.Fatal(err)
+	}
+	res, body := get(t, c, ts.URL+"/c/@0123456789ab/autoloader.js")
+	if res.StatusCode != 200 || body != old {
+		t.Fatalf("the old snapshot: %d", res.StatusCode)
+	}
+	if r, _ := get(t, c, ts.URL+"/c/"+kanban.VersionedMinScript()); r.StatusCode != 200 {
+		t.Errorf("a module the old snapshot loads: %d", r.StatusCode)
+	}
+}
+
+// oldSnapshot stores a snapshot of cat's versions under another hash, with
+// the autoloader a build from before the bundles made.
+type oldSnapshot struct {
+	cat  *catalog.Catalog
+	auto string
+}
+
+func (s oldSnapshot) Apply(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshots (hash, autoloader, integrity, created_at) VALUES ('0123456789ab', ?, ?, 1)`, s.auto, catalog.SRI([]byte(s.auto))); err != nil {
+		return err
+	}
+	for _, c := range s.cat.Components {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES ('0123456789ab', ?, ?)`, c.Slug, c.Hash); err != nil {
+			return err
+		}
+	}
+	return nil
+}

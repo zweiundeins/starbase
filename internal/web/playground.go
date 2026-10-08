@@ -300,8 +300,9 @@ rocket('sb-your-name', {
 const starterHTML = `<sb-your-name label="Hello, Starbase"></sb-your-name>
 `
 
-// componentDeps maps every catalog tag to its module URL, so previews can
-// use any component. Tags defined by the edited code are skipped client-side.
+// componentDeps maps every catalog tag to its one-file bundle, so previews
+// can use any component. Tags defined by the edited code are skipped
+// client-side.
 func (s *Server) componentDeps() string {
 	m := map[string]string{}
 	for _, c := range s.catalog.Components {

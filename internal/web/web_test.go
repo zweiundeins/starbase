@@ -512,11 +512,11 @@ func TestVersionedURLs(t *testing.T) {
 		}
 	}
 
-	// The snapshot: its autoloader loads versioned modules, and every file
+	// The snapshot: its autoloader loads versioned bundles, and every file
 	// in its import map serves exactly the bytes its hash says.
 	res, auto := get(t, c, ts.URL+"/c/@"+cat.Hash+"/autoloader.js")
-	if res.StatusCode != 200 || !strings.Contains(auto, `"sb-button":"../`+button.VersionedMinScript()+`"`) {
-		t.Fatalf("snapshot autoloader: %d (it should load the minified modules)", res.StatusCode)
+	if res.StatusCode != 200 || !strings.Contains(auto, `"sb-button":"../`+button.VersionedBundle()+`"`) {
+		t.Fatalf("snapshot autoloader: %d (it should load the bundles)", res.StatusCode)
 	}
 
 	// The minified module: served, immutable, smaller, and its relative

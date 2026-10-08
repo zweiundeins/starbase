@@ -217,10 +217,10 @@ func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
 }
 
-// ComponentScript is the component's versioned (immutable) module URL, the
-// minified one: what the site itself loads.
+// ComponentScript is the component's versioned (immutable) one-file
+// bundle: what the playground's previews load for the components they use.
 func (a *assets) ComponentScript(c *catalog.Component) string {
-	return "/c/" + c.VersionedMinScript()
+	return "/c/" + c.VersionedBundle()
 }
 
 const immutable = "public, max-age=31536000, immutable"

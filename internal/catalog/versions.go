@@ -90,16 +90,17 @@ func SRI(b []byte) string {
 
 var usesTagRe = regexp.MustCompile(`<(sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
 
-// AutoloaderJS generates the autoloader: a map from every tag to its module
-// and the components each one renders (found as <sb-… in its source).
-// Module URLs are versioned (<slug>@<hash>/…, immutable) and relative to the
-// autoloader, behind prefix: "" for /c/autoloader.js, "../" for a pinned
-// snapshot at /c/@<catalog hash>/autoloader.js.
+// AutoloaderJS generates the autoloader: a map from every tag to its
+// one-file bundle (onefile.go: one request per component) and the components
+// each one renders (found as <sb-… in its source), whose bundles it loads
+// too. Bundle URLs are versioned (<slug>@<hash>/…, immutable) and relative
+// to the autoloader, behind prefix: "" for /c/autoloader.js, "../" for a
+// pinned snapshot at /c/@<catalog hash>/autoloader.js.
 func AutoloaderJS(cat *Catalog, prefix string) string {
 	modules := map[string]string{}
 	requires := map[string][]string{}
 	for _, c := range cat.Components {
-		modules[c.Tag] = prefix + c.VersionedMinScript() // the minified module (see min.go)
+		modules[c.Tag] = prefix + c.VersionedBundle()
 	}
 	for _, c := range cat.Components {
 		for _, u := range cat.Uses(c) {

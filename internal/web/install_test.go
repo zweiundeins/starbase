@@ -114,8 +114,8 @@ func TestInstallSnippets(t *testing.T) {
 	if entries[datastarURL] != catalog.SRI(static.Datastar()) {
 		t.Error("pinned import map lacks Datastar's integrity")
 	}
-	if entries[ts.URL+"/c/"+slider.VersionedMinScript()] == "" {
-		t.Error("pinned import map lacks the component's module")
+	if entries[ts.URL+"/c/"+slider.VersionedBundle()] == "" {
+		t.Error("pinned import map lacks the component's bundle, which the snapshot's autoloader loads")
 	}
 	for u, sri := range entries {
 		if full.Integrity[u] != sri || servedSRI(t, c, u) != sri {

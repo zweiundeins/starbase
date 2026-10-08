@@ -130,3 +130,63 @@ rows.push({ step: 'loaded', got: JSON.stringify(loaded.length), want: JSON.strin
 		})
 	}
 }
+
+// TestAutoloaderLoadsBundles opens the gallery with the autoloader
+// (?load=auto): every component on it is defined from its one-file bundle,
+// and nothing under /c/ is requested but the autoloader, bundles, and files
+// a bundle loads on first use.
+func TestAutoloaderLoadsBundles(t *testing.T) {
+	cat, err := catalog.Load(components.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tags []string
+	for _, c := range cat.Components {
+		tags = append(tags, c.Tag)
+	}
+	tj, _ := json.Marshal(tags)
+	_, body := probe(t, "/?load=auto", `let out
+try {
+	const catalog = new Set(`+string(tj)+`)
+	const tags = [...new Set([...document.querySelectorAll('*')].map((e) => e.localName).filter((t) => catalog.has(t)))]
+	await Promise.race([Promise.all(tags.map((t) => customElements.whenDefined(t))), new Promise((_, no) => setTimeout(() => no(new Error('not defined: ' + tags.filter((t) => !customElements.get(t)))), 20000))])
+	const loaded = performance.getEntriesByType('resource').map((e) => new URL(e.name).pathname).filter((p) => p.startsWith('/c/'))
+	out = JSON.stringify({ tags, loaded })
+} catch (e) { out = JSON.stringify({ error: String(e) }) }
+await fetch('/__probe/result', { method: 'POST', body: out })`)
+	var got struct {
+		Tags, Loaded []string
+		Error        string
+	}
+	if err := json.Unmarshal(body, &got); err != nil || got.Error != "" {
+		t.Fatalf("%v: %s", err, body)
+	}
+	// sb-autoloader's gallery card loads its demo's own element.
+	allowed := map[string]bool{"/c/autoloader.js": true, "/c/autoloader/demo-badge.js": true}
+	for _, c := range cat.Components {
+		allowed["/c/"+c.VersionedBundle()] = true
+		for _, f := range c.Sizes.Lazy {
+			allowed["/c/"+c.Slug+"@"+c.Hash+"/"+f.Name] = true
+		}
+	}
+	for _, p := range got.Loaded {
+		if !allowed[p] {
+			t.Errorf("the page loaded %s, which is no bundle", p)
+		}
+	}
+	n := 0
+	for _, tag := range got.Tags {
+		for _, c := range cat.Components {
+			if c.Tag == tag {
+				n++
+				if !slices.Contains(got.Loaded, "/c/"+c.VersionedBundle()) {
+					t.Errorf("<%s> is defined, but its bundle was not loaded", tag)
+				}
+			}
+		}
+	}
+	if n < 20 {
+		t.Errorf("only %d components on the gallery: %v", n, got.Tags)
+	}
+	t.Logf("%d components defined from %d requests under /c/", n, len(got.Loaded))
+}

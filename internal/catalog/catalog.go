@@ -112,7 +112,7 @@ type Catalog struct {
 	FS         fs.FS
 	Components []*Component // sorted by slug
 	bySlug     map[string]*Component
-	Hash       string // hash over all component hashes
+	Hash       string // hash over snapshotFormat and all component hashes
 }
 
 func (c *Catalog) Get(slug string) (*Component, bool) {
@@ -158,6 +158,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	}
 	slices.SortFunc(cat.Components, func(a, b *Component) int { return strings.Compare(a.Slug, b.Slug) })
 	h := sha256.New()
+	h.Write([]byte(snapshotFormat))
 	for _, c := range cat.Components {
 		h.Write([]byte(c.Hash))
 	}
@@ -174,6 +175,12 @@ func Load(fsys fs.FS) (*Catalog, error) {
 // shrink.go, the bundle's banner) must change it: every component then gets a
 // new version, whose files are made the new way.
 const minFormat = "min3"
+
+// snapshotFormat is part of the catalog's hash, which names a snapshot
+// (/c/@<hash>/autoloader.js) whose autoloader is frozen the first time it is
+// stored. A change to what the autoloader loads must change it, so the
+// catalog gets a new snapshot while the old ones keep their maps.
+const snapshotFormat = "bundles"
 
 // The Datastar + Rocket build pages load (static/vendor, patches/rocket) is
 // served like a component version, /c/datastar@<hash>/datastar-rocket.js, so

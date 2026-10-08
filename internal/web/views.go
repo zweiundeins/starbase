@@ -130,7 +130,8 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	// Integrity for everything the page will load: Datastar, and every file
 	// these components ship (the module, plus what it imports itself, like
 	// code-editor's Prism). A script tag's integrity covers only that file, so
-	// the imported ones are pinned through the import map.
+	// the imported ones are pinned through the import map. The module files
+	// first, then (below) the bundles.
 	var entries strings.Builder
 	fmt.Fprintf(&entries, "      %q: %q", dsURL, s.assets.datastarSRI)
 	for _, d := range all {
@@ -156,13 +157,15 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 </script>
 `, dsURL, entries)
 	}
-	pinnedMap := pinMap(entries.String())
+	modulesMap := pinMap(entries.String())
 
 	// This component (and what it renders), pinned to this version: each as
 	// one file (catalog/onefile.go), and what those load lazily pinned
-	// through the import map.
-	var oneEntries, oneScripts strings.Builder
+	// through the import map. The snapshot's autoloader imports the bundles,
+	// so its map (bundleEntries) pins them too.
+	var oneEntries, bundleEntries, oneScripts strings.Builder
 	fmt.Fprintf(&oneEntries, "      %q: %q", dsURL, s.assets.datastarSRI)
+	fmt.Fprintf(&bundleEntries, "      %q: %q", dsURL, s.assets.datastarSRI)
 	for _, d := range all {
 		bundle, err := s.catalog.BundleOf(d)
 		if err != nil {
@@ -175,6 +178,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 			}
 			if sri != "" {
 				fmt.Fprintf(&oneEntries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
+				fmt.Fprintf(&bundleEntries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
 			}
 		}
 		sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, catalog.BundleName(d.Slug))
@@ -184,6 +188,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 		if sri == "" { // not stored yet: the first sync stores exactly these bytes
 			sri = catalog.SRI(bundle.Body)
 		}
+		fmt.Fprintf(&bundleEntries, ",\n      %q: %q", base+"/c/"+d.VersionedBundle(), sri)
 		fmt.Fprintf(&oneScripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, d.VersionedBundle(), sri)
 	}
 	v.Component = snippet(pinMap(oneEntries.String()) + oneScripts.String() + "\n" + usage)
@@ -196,9 +201,9 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 			return v, err
 		}
 		fmt.Fprintf(&scripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, script, sri)
-		v.ModuleFiles += len(d.Sizes.Files)
 	}
-	v.ComponentModules = snippet(pinnedMap + scripts.String() + "\n" + usage)
+	v.ModuleFiles = c.Sizes.ModuleFiles // the Size section's "As module files" count
+	v.ComponentModules = snippet(modulesMap + scripts.String() + "\n" + usage)
 
 	// Today's catalog snapshot: its autoloader, and integrity for Datastar
 	// and every file this component loads (importmap.json has them all).
@@ -208,7 +213,7 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	}
 	v.ImportMap = fmt.Sprintf("%s/c/@%s/importmap.json", base, s.catalog.Hash)
 	if snapshotSRI != "" {
-		v.Pinned = snippet(pinnedMap + fmt.Sprintf(`<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
+		v.Pinned = snippet(pinMap(bundleEntries.String()) + fmt.Sprintf(`<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
 
 %s`, base, s.catalog.Hash, snapshotSRI, usage))
 	}
