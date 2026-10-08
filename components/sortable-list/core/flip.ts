@@ -42,6 +42,8 @@ function places(options: FlipOptions): Map<string, string> {
 
 function play(options: FlipOptions, before: Map<string, Rect>): void {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Every item's place first: starting an animation dirties the layout, so reading after one forces a layout per item.
+  const moves: { item: HTMLElement; dx: number; dy: number }[] = [];
   options.host.querySelectorAll<HTMLElement>(options.itemSelector).forEach((item) => {
     const id = options.itemId(item);
     const first = id ? before.get(id) : undefined;
@@ -49,12 +51,13 @@ function play(options: FlipOptions, before: Map<string, Rect>): void {
     const last = item.getBoundingClientRect();
     const dx = first.left - last.left;
     const dy = first.top - last.top;
-    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    if (Math.abs(dx) >= 1 || Math.abs(dy) >= 1) moves.push({ item, dx, dy });
+  });
+  for (const { item, dx, dy } of moves)
     item.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
       duration: 180,
       easing: "cubic-bezier(.2, 0, 0, 1)",
     });
-  });
 }
 
 /** Watches a host for the DOM change caused by a semantic move, including a later SSE morph. */
