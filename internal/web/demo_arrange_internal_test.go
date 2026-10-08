@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"starbase/components"
 )
@@ -18,7 +19,7 @@ import (
 // indent is what the front matter's YAML adds to a gallery card's lines.
 var indent = regexp.MustCompile(`(?m)^[ \t]+`)
 
-var arrangeHostRe = regexp.MustCompile(`id="([^"]+)"[^>]*data-state="([^"]*)"\s+data-on:[a-z-]+="@get\('/demo/arrange/([a-z-]+)'`)
+var arrangeHostRe = regexp.MustCompile(`id="([^"]+)"[^>]*data-state="([^"]*)"\s+data-on:[a-z-]+="@get\('/demo/arrange/([a-z-]+)[?']`)
 
 // Every arrange demo in a README is markup the server renders for its state,
 // so the first move doesn't change anything but the order.
@@ -104,6 +105,25 @@ func TestAnswerKeepsTheHostAnIsland(t *testing.T) {
 	} {
 		if got := answer(tc.in); got != tc.want {
 			t.Errorf("answer(%q)\n got %q\nwant %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// &delay= holds the answer, up to 1.5 s, like a server far away.
+func TestArrangeDelay(t *testing.T) {
+	arrangers["echo"] = arranger{arrange: func(s string, _ json.RawMessage) (string, error) { return s, nil }, render: func(id, s string) string { return `<div id="` + id + `"></div>` }}
+	defer delete(arrangers, "echo")
+	for _, tc := range []struct {
+		delay       string
+		least, most time.Duration
+	}{{"", 0, 100 * time.Millisecond}, {"120", 120 * time.Millisecond, 400 * time.Millisecond}, {"99999", 1500 * time.Millisecond, 2 * time.Second}} {
+		r := httptest.NewRequest("GET", "/demo/arrange/echo?delay="+tc.delay+"&datastar="+url.QueryEscape(`{"id":"x","state":"s"}`), nil)
+		r.SetPathValue("kind", "echo")
+		w := httptest.NewRecorder()
+		start := time.Now()
+		(&Server{}).demoArrange(w, r)
+		if took := time.Since(start); w.Code != http.StatusOK || took < tc.least || took > tc.most {
+			t.Errorf("delay %q: %d after %v, want %v to %v", tc.delay, w.Code, took, tc.least, tc.most)
 		}
 	}
 }

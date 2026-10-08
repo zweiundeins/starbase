@@ -6,8 +6,10 @@ import (
 	"html"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/starfederation/datastar-go/datastar"
 
@@ -21,6 +23,7 @@ import (
 // event's detail, and the answer is the component rendered in the new
 // arrangement, which the morph applies. Stateless: the arrangement travels
 // with the request, so any page, and the playground's sandbox, can use it.
+// &delay=<ms> (up to 1500) holds the answer, like a server far away.
 func (s *Server) demoArrange(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public, and the playground's sandbox reads refusals too
 	a, ok := arrangers[r.PathValue("kind")]
@@ -36,6 +39,13 @@ func (s *Server) demoArrange(w http.ResponseWriter, r *http.Request) {
 	if err := datastar.ReadSignals(r, &p); err != nil || !elementIDRe.MatchString(p.ID) || len(p.State) > 4096 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
+	}
+	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
+		select {
+		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
+		case <-r.Context().Done():
+			return
+		}
 	}
 	state, err := a.arrange(p.State, p.Move)
 	if err != nil {
@@ -179,4 +189,9 @@ func label(id string) string {
 // arrangeOn is the handler a demo binds to its component's move event.
 func arrangeOn(kind string) string {
 	return "@get('/demo/arrange/" + kind + "', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
+}
+
+// arrangeOnAfter is arrangeOn with the answer held for ms milliseconds.
+func arrangeOnAfter(kind string, ms int) string {
+	return strings.Replace(arrangeOn(kind), kind+"'", kind+"?delay="+strconv.Itoa(ms)+"'", 1)
 }
