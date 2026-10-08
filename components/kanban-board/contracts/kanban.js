@@ -23,6 +23,11 @@ export const kanbanContract = {
         move: "sb-kanban-move",
         select: "sb-kanban-select",
         laneMove: "sb-kanban-lane-move",
+        landingEnd: "sb-kanban-landing-end",
+    },
+    attributes: {
+        landing: "data-kanban-landing",
+        landingTimeout: "data-kanban-landing-timeout",
     },
 };
 export const defaultKanbanKeyboard = {

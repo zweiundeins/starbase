@@ -23,6 +23,13 @@
       "bubbles": true,
       "composed": true,
       "description": "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: col is its data-col as a number, before the data-col of the lane it now precedes, or \"\" for the end."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-kanban-landing-end",
+      "bubbles": true,
+      "composed": true,
+      "description": "With data-kanban-landing, a move's landing marker went away. detail: { cardId, col, reason } (no cardId for a lane): reason is \"arrived\", \"released\" (by the host's releaseLanding({ cardId } or { col })) or \"timeout\" (data-kanban-landing-timeout, 10000 ms by default)."
     }
   ]
 }

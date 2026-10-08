@@ -21,9 +21,11 @@ import { installTargetIndicator } from "./core/visual-outlets.ts";
 import {
   kanbanContract,
   defaultKanbanKeyboard,
+  type KanbanLandingEndDetail,
   type KanbanLaneMoveDetail,
   type KanbanMoveDetail,
 } from "./contracts/kanban.ts";
+import { cardLanding, installLandings, laneLanding } from "./landing.ts";
 import { installLaneMoves, laneBefore } from "./lane-moves.ts";
 
 type Target = { col: number; before: string; lane: HTMLElement };
@@ -56,6 +58,16 @@ rocket("sb-kanban-board", {
         description:
           "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: " +
           'col is its data-col as a number, before the data-col of the lane it now precedes, or "" for the end.',
+      },
+      {
+        name: kanbanContract.events.landingEnd,
+        kind: "custom-event",
+        bubbles: true,
+        composed: true,
+        description:
+          "With data-kanban-landing, a move's landing marker went away. detail: { cardId, col, reason } (no cardId " +
+          'for a lane): reason is "arrived", "released" (by the host\'s releaseLanding({ cardId } or { col })) or ' +
+          '"timeout" (data-kanban-landing-timeout, 10000 ms by default).',
       },
     ],
   },
@@ -98,6 +110,19 @@ rocket("sb-kanban-board", {
       itemId: (card) => (owns(card) ? (card.dataset.kanbanCard ?? null) : null),
     });
     const indicator = installTargetIndicator(host);
+    const landings = installLandings({
+      host,
+      onEnd: (detail) =>
+        host.dispatchEvent(
+          new CustomEvent<KanbanLandingEndDetail>(kanbanContract.events.landingEnd, {
+            bubbles: true,
+            composed: true,
+            detail,
+          }),
+        ),
+    });
+    const landingTimeout = () => Number(host.getAttribute(kanbanContract.attributes.landingTimeout)) || 10000;
+    Object.assign(host, { releaseLanding: (match?: { cardId?: string; col?: number }) => landings.release(match) });
     const clearMarks = () => {
       indicator.clear();
       cards().forEach((card) => card.removeAttribute("data-drop-before"));
@@ -183,6 +208,16 @@ rocket("sb-kanban-board", {
         }),
       );
     };
+    // Opt-in: a move the host hasn't confirmed shows where it lands, while the card stays where the server put it.
+    const land = (itemId: string, target: Target, origin?: { left: number; top: number }): void => {
+      const card = cards().find((candidate) => candidate.dataset.kanbanCard === itemId);
+      if (!card || !host.hasAttribute(kanbanContract.attributes.landing)) return;
+      const geometry = { lanes, cards, cardsIn };
+      const prepare = (id: string, rect: { left: number; top: number }) => flip.prepare({ itemId: id, rect });
+      const spec = cardLanding(geometry, card, target, origin ?? card.getBoundingClientRect(), prepare, flip);
+      if (spec) landings.add(spec, landingTimeout());
+    };
+    let dropOrigin: { left: number; top: number } | undefined;
     const staging = installKeyboardStaging<{ itemId: string; target: Target }>({
       host,
       owns,
@@ -200,6 +235,7 @@ rocket("sb-kanban-board", {
           });
         flip.prepare();
         emitMove(itemId, target);
+        land(itemId, target);
       },
     });
     const pointerDispose = installPointerDrag({
@@ -210,8 +246,15 @@ rocket("sb-kanban-board", {
       targetAt,
       sameTarget: (a, b) => a?.lane === b?.lane && a?.before === b?.before,
       mark: markTarget,
-      beforeCommit: (id, rect) => flip.prepare({ itemId: id, rect }),
-      commit: emitMove,
+      beforeCommit: (id, rect) => {
+        flip.prepare({ itemId: id, rect });
+        dropOrigin = rect;
+      },
+      commit: (itemId, target) => {
+        emitMove(itemId, target);
+        land(itemId, target, dropOrigin);
+        dropOrigin = undefined;
+      },
     });
     const laneFlip = installFlip({
       host,
@@ -230,6 +273,14 @@ rocket("sb-kanban-board", {
           detail: { col: Number(col), before },
         }),
       );
+      if (host.hasAttribute(kanbanContract.attributes.landing)) {
+        const prepare = (id: string, at: { left: number; top: number }) => laneFlip.prepare({ itemId: id, rect: at });
+        const origin = rect ?? lane.getBoundingClientRect();
+        landings.add(
+          laneLanding({ lanes, cards, cardsIn }, lane, target, before, origin, prepare, laneFlip),
+          landingTimeout(),
+        );
+      }
       return true;
     };
     const laneMoves = installLaneMoves({ host, lanes, owns, commit: emitLaneMove });
@@ -382,6 +433,8 @@ rocket("sb-kanban-board", {
       laneStaging.dispose();
       laneMoves.dispose();
       laneFlip.dispose();
+      landings.dispose();
+      Reflect.deleteProperty(host, "releaseLanding");
       host.removeEventListener("keydown", onKeyDown);
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("focusin", onFocusIn);

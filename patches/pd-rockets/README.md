@@ -10,7 +10,8 @@ one for `core/`: [#2](https://github.com/derekr/pd-rockets/issues/2) sortable-li
 
 Numbers: 0001 to 0009 for `core/` and changes across surfaces (0001, the context menu's host type, predates the
 blocks), then ten per surface, so patches made on different branches never collide: 0010 sortable-list,
-0020 drag-group, 0030 kanban, 0040 sortable-tree, 0050 context-menu, 0060 bento, 0070 inline-edit.
+0020 drag-group, 0030 kanban, 0040 sortable-tree, 0050 context-menu, 0060 bento, 0070 inline-edit. A surface whose
+block is full gets a further one 100 higher: 0130 kanban.
 
 To make one: clone the repository at the pinned tag, `git am` the patches before yours, commit the change with a
 neutral author (their AGENTS.md asks for one), and `git format-patch --start-number <n>` it into this folder. Keep a

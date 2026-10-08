@@ -24,6 +24,11 @@ export const kanbanContract = {
     move: "sb-kanban-move",
     select: "sb-kanban-select",
     laneMove: "sb-kanban-lane-move",
+    landingEnd: "sb-kanban-landing-end",
+  },
+  attributes: {
+    landing: "data-kanban-landing",
+    landingTimeout: "data-kanban-landing-timeout",
   },
 } as const;
 
@@ -37,6 +42,9 @@ export type KanbanSelectDetail = { cardId: string };
 
 /** A lane moved: col is its data-col, before the data-col of the lane it now precedes, or "" for the end. */
 export type KanbanLaneMoveDetail = { col: number; before: string };
+
+/** A landing marker went away: the move arrived, the page released it, or it timed out. A lane's has no cardId. */
+export type KanbanLandingEndDetail = { cardId?: string; col: number; reason: "arrived" | "released" | "timeout" };
 
 export type KanbanKeySlot =
   | "selectNext"

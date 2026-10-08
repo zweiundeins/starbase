@@ -19,6 +19,7 @@ import { markRocketHost, ownsRocketElement } from "./core/ownership.js";
 import { installPointerDrag } from "./core/pointer-drag.js";
 import { installTargetIndicator } from "./core/visual-outlets.js";
 import { kanbanContract, defaultKanbanKeyboard, } from "./contracts/kanban.js";
+import { cardLanding, installLandings, laneLanding } from "./landing.js";
 import { installLaneMoves, laneBefore } from "./lane-moves.js";
 rocket("sb-kanban-board", {
     mode: "light",
@@ -46,6 +47,15 @@ rocket("sb-kanban-board", {
                 composed: true,
                 description: "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: " +
                     'col is its data-col as a number, before the data-col of the lane it now precedes, or "" for the end.',
+            },
+            {
+                name: kanbanContract.events.landingEnd,
+                kind: "custom-event",
+                bubbles: true,
+                composed: true,
+                description: "With data-kanban-landing, a move's landing marker went away. detail: { cardId, col, reason } (no cardId " +
+                    'for a lane): reason is "arrived", "released" (by the host\'s releaseLanding({ cardId } or { col })) or ' +
+                    '"timeout" (data-kanban-landing-timeout, 10000 ms by default).',
             },
         ],
     },
@@ -83,6 +93,16 @@ rocket("sb-kanban-board", {
             itemId: (card) => (owns(card) ? (card.dataset.kanbanCard ?? null) : null),
         });
         const indicator = installTargetIndicator(host);
+        const landings = installLandings({
+            host,
+            onEnd: (detail) => host.dispatchEvent(new CustomEvent(kanbanContract.events.landingEnd, {
+                bubbles: true,
+                composed: true,
+                detail,
+            })),
+        });
+        const landingTimeout = () => Number(host.getAttribute(kanbanContract.attributes.landingTimeout)) || 10000;
+        Object.assign(host, { releaseLanding: (match) => landings.release(match) });
         const clearMarks = () => {
             indicator.clear();
             cards().forEach((card) => card.removeAttribute("data-drop-before"));
@@ -172,6 +192,18 @@ rocket("sb-kanban-board", {
                 detail: { cardId: itemId, col: target.col, before: target.before },
             }));
         };
+        // Opt-in: a move the host hasn't confirmed shows where it lands, while the card stays where the server put it.
+        const land = (itemId, target, origin) => {
+            const card = cards().find((candidate) => candidate.dataset.kanbanCard === itemId);
+            if (!card || !host.hasAttribute(kanbanContract.attributes.landing))
+                return;
+            const geometry = { lanes, cards, cardsIn };
+            const prepare = (id, rect) => flip.prepare({ itemId: id, rect });
+            const spec = cardLanding(geometry, card, target, origin ?? card.getBoundingClientRect(), prepare, flip);
+            if (spec)
+                landings.add(spec, landingTimeout());
+        };
+        let dropOrigin;
         const staging = installKeyboardStaging({
             host,
             owns,
@@ -190,6 +222,7 @@ rocket("sb-kanban-board", {
                     });
                 flip.prepare();
                 emitMove(itemId, target);
+                land(itemId, target);
             },
         });
         const pointerDispose = installPointerDrag({
@@ -200,8 +233,15 @@ rocket("sb-kanban-board", {
             targetAt,
             sameTarget: (a, b) => a?.lane === b?.lane && a?.before === b?.before,
             mark: markTarget,
-            beforeCommit: (id, rect) => flip.prepare({ itemId: id, rect }),
-            commit: emitMove,
+            beforeCommit: (id, rect) => {
+                flip.prepare({ itemId: id, rect });
+                dropOrigin = rect;
+            },
+            commit: (itemId, target) => {
+                emitMove(itemId, target);
+                land(itemId, target, dropOrigin);
+                dropOrigin = undefined;
+            },
         });
         const laneFlip = installFlip({
             host,
@@ -219,6 +259,11 @@ rocket("sb-kanban-board", {
                 composed: true,
                 detail: { col: Number(col), before },
             }));
+            if (host.hasAttribute(kanbanContract.attributes.landing)) {
+                const prepare = (id, at) => laneFlip.prepare({ itemId: id, rect: at });
+                const origin = rect ?? lane.getBoundingClientRect();
+                landings.add(laneLanding({ lanes, cards, cardsIn }, lane, target, before, origin, prepare, laneFlip), landingTimeout());
+            }
             return true;
         };
         const laneMoves = installLaneMoves({ host, lanes, owns, commit: emitLaneMove });
@@ -381,6 +426,8 @@ rocket("sb-kanban-board", {
             laneStaging.dispose();
             laneMoves.dispose();
             laneFlip.dispose();
+            landings.dispose();
+            Reflect.deleteProperty(host, "releaseLanding");
             host.removeEventListener("keydown", onKeyDown);
             host.removeEventListener("pointerdown", onPointerDown);
             host.removeEventListener("focusin", onFocusIn);
