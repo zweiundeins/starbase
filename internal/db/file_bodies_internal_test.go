@@ -75,6 +75,9 @@ func TestFileBodiesMigration(t *testing.T) {
 	if n := count(`SELECT count(*) FROM component_files WHERE body IS NULL`); n != len(files) {
 		t.Errorf("%d of %d rows refer to file_bodies", n, len(files))
 	}
+	if n := count(`PRAGMA freelist_count`); n != 0 {
+		t.Errorf("%d free pages: the migration should vacuum", n)
+	}
 	q := queries.New(d.R)
 	check := func(step string, want []storedFile) {
 		t.Helper()

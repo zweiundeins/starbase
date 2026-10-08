@@ -30,3 +30,8 @@ INSERT INTO component_files_new (slug, hash, path, integrity, created_at)
 DROP TABLE component_files;
 ALTER TABLE component_files_new RENAME TO component_files;
 CREATE INDEX component_files_integrity ON component_files (integrity);
+
+-- The old table's pages are free now (on production about 12 MB of 34), and
+-- a file only gives them back with a VACUUM, which can't run in this
+-- transaction: migrate runs it once, after this migration.
+-- then: VACUUM

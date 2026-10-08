@@ -76,7 +76,9 @@ func (d *DB) Close() error {
 	return errors.Join(d.R.Close(), d.W.Close())
 }
 
-// migrate applies migrations/NNN_*.sql whose number exceeds PRAGMA user_version.
+// migrate applies migrations/NNN_*.sql whose number exceeds PRAGMA user_version,
+// each in its own transaction. A migration with the line "-- then: VACUUM"
+// has the database vacuumed once it is committed.
 func migrate(ctx context.Context, w *sql.DB) error { return migrateTo(ctx, w, math.MaxInt) }
 
 // migrateTo is migrate up to migration last.
@@ -90,6 +92,7 @@ func migrateTo(ctx context.Context, w *sql.DB, last int) error {
 		return err
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	vacuum := false
 	for _, e := range entries {
 		n, err := strconv.Atoi(strings.SplitN(e.Name(), "_", 2)[0])
 		if err != nil {
@@ -117,6 +120,15 @@ func migrateTo(ctx context.Context, w *sql.DB, last int) error {
 		if err := tx.Commit(); err != nil {
 			return err
 		}
+		vacuum = vacuum || strings.Contains(string(body), "\n-- then: VACUUM\n")
+	}
+	// Only a database that had rows before has space to give back.
+	if vacuum && version > 0 {
+		if _, err := w.ExecContext(ctx, "VACUUM"); err != nil {
+			return fmt.Errorf("vacuum: %w", err)
+		}
+		_, err := w.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)") // VACUUM wrote the whole database into the WAL
+		return err
 	}
 	return nil
 }

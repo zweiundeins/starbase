@@ -12,7 +12,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
-- The database keeps each distinct body of the published component files once (migration 010), shared by every version that has the same bytes: on the production site 4.9 MB instead of 16.6 MB. Every pinned URL serves the same bytes with the same integrity.
+- The database keeps each distinct body of the published component files once (migration 010, which then vacuums the file), shared by every version that has the same bytes: on the production site 4.9 MB instead of 16.6 MB. Every pinned URL serves the same bytes with the same integrity.
 
 ## [0.7.0] - 2026-10-07
 
