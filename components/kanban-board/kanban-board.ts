@@ -25,7 +25,7 @@ import {
   type KanbanLaneMoveDetail,
   type KanbanMoveDetail,
 } from "./contracts/kanban.ts";
-import { cardLanding, installLandings, laneLanding } from "./landing.ts";
+import { cardLanding, cardPlace, installLandings, laneLanding } from "./landing.ts";
 import { installLaneMoves, laneBefore } from "./lane-moves.ts";
 
 type Target = { col: number; before: string; lane: HTMLElement };
@@ -208,14 +208,24 @@ rocket("sb-kanban-board", {
         }),
       );
     };
+    const geometry = {
+      lanes,
+      cardsIn,
+      card: (id: string) =>
+        [...host.querySelectorAll<HTMLElement>(`[data-kanban-card="${CSS.escape(id)}"]`)].find((card) => owns(card)),
+    };
     // Opt-in: a move the host hasn't confirmed shows where it lands, while the card stays where the server put it.
     const land = (itemId: string, target: Target, origin?: { left: number; top: number }): void => {
-      const card = cards().find((candidate) => candidate.dataset.kanbanCard === itemId);
+      const card = geometry.card(itemId);
       if (!card || !host.hasAttribute(kanbanContract.attributes.landing)) return;
-      const geometry = { lanes, cards, cardsIn };
+      const from = cardPlace(geometry, card);
+      if (from.col === String(target.col) && from.next === target.before) return;
       const prepare = (id: string, rect: { left: number; top: number }) => flip.prepare({ itemId: id, rect });
-      const spec = cardLanding(geometry, card, target, origin ?? card.getBoundingClientRect(), prepare, flip);
-      if (spec) landings.add(spec, landingTimeout());
+      const build = () => {
+        const now = geometry.card(itemId);
+        return now && cardLanding(geometry, now, from, target, origin ?? now.getBoundingClientRect(), prepare, flip);
+      };
+      landings.add(`card:${itemId}`, { cardId: itemId, col: target.col }, () => build() || null, landingTimeout());
     };
     let dropOrigin: { left: number; top: number } | undefined;
     const staging = installKeyboardStaging<{ itemId: string; target: Target }>({
@@ -275,11 +285,9 @@ rocket("sb-kanban-board", {
       );
       if (host.hasAttribute(kanbanContract.attributes.landing)) {
         const prepare = (id: string, at: { left: number; top: number }) => laneFlip.prepare({ itemId: id, rect: at });
-        const origin = rect ?? lane.getBoundingClientRect();
-        landings.add(
-          laneLanding({ lanes, cards, cardsIn }, lane, target, before, origin, prepare, laneFlip),
-          landingTimeout(),
-        );
+        const build = () =>
+          laneLanding(geometry, lane, target, before, rect ?? lane.getBoundingClientRect(), prepare, laneFlip);
+        landings.add(`lane:${col}`, { col: Number(col) }, build, landingTimeout());
       }
       return true;
     };

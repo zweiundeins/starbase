@@ -19,7 +19,7 @@ import { markRocketHost, ownsRocketElement } from "./core/ownership.js";
 import { installPointerDrag } from "./core/pointer-drag.js";
 import { installTargetIndicator } from "./core/visual-outlets.js";
 import { kanbanContract, defaultKanbanKeyboard, } from "./contracts/kanban.js";
-import { cardLanding, installLandings, laneLanding } from "./landing.js";
+import { cardLanding, cardPlace, installLandings, laneLanding } from "./landing.js";
 import { installLaneMoves, laneBefore } from "./lane-moves.js";
 rocket("sb-kanban-board", {
     mode: "light",
@@ -192,16 +192,25 @@ rocket("sb-kanban-board", {
                 detail: { cardId: itemId, col: target.col, before: target.before },
             }));
         };
+        const geometry = {
+            lanes,
+            cardsIn,
+            card: (id) => [...host.querySelectorAll(`[data-kanban-card="${CSS.escape(id)}"]`)].find((card) => owns(card)),
+        };
         // Opt-in: a move the host hasn't confirmed shows where it lands, while the card stays where the server put it.
         const land = (itemId, target, origin) => {
-            const card = cards().find((candidate) => candidate.dataset.kanbanCard === itemId);
+            const card = geometry.card(itemId);
             if (!card || !host.hasAttribute(kanbanContract.attributes.landing))
                 return;
-            const geometry = { lanes, cards, cardsIn };
+            const from = cardPlace(geometry, card);
+            if (from.col === String(target.col) && from.next === target.before)
+                return;
             const prepare = (id, rect) => flip.prepare({ itemId: id, rect });
-            const spec = cardLanding(geometry, card, target, origin ?? card.getBoundingClientRect(), prepare, flip);
-            if (spec)
-                landings.add(spec, landingTimeout());
+            const build = () => {
+                const now = geometry.card(itemId);
+                return now && cardLanding(geometry, now, from, target, origin ?? now.getBoundingClientRect(), prepare, flip);
+            };
+            landings.add(`card:${itemId}`, { cardId: itemId, col: target.col }, () => build() || null, landingTimeout());
         };
         let dropOrigin;
         const staging = installKeyboardStaging({
@@ -261,8 +270,8 @@ rocket("sb-kanban-board", {
             }));
             if (host.hasAttribute(kanbanContract.attributes.landing)) {
                 const prepare = (id, at) => laneFlip.prepare({ itemId: id, rect: at });
-                const origin = rect ?? lane.getBoundingClientRect();
-                landings.add(laneLanding({ lanes, cards, cardsIn }, lane, target, before, origin, prepare, laneFlip), landingTimeout());
+                const build = () => laneLanding(geometry, lane, target, before, rect ?? lane.getBoundingClientRect(), prepare, laneFlip);
+                landings.add(`lane:${col}`, { col: Number(col) }, build, landingTimeout());
             }
             return true;
         };

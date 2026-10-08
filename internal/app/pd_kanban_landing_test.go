@@ -89,6 +89,15 @@ try {
 	check('the card stays where the server put it', laneOf('mars'), '4')
 	check('the lane opens a gap', gaps(card('moon')), 1)
 
+	// Once the gap is open and nothing moves, a pending landing reads no layout.
+	await settle(300)
+	let reads = 0
+	const measure = Element.prototype.getBoundingClientRect
+	Element.prototype.getBoundingClientRect = function () { reads++; return measure.call(this) }
+	await settle(400)
+	Element.prototype.getBoundingClientRect = measure
+	check('an idle landing reads nothing', reads, 0)
+
 	// Another person's card lands at the top of Visited: the lane is morphed in
 	// full, and the marker stays, following its slot. (The demo's board ignores
 	// morphs until its own answer; an app's board doesn't.)
@@ -163,6 +172,21 @@ try {
 	await answer()
 	await until(() => !marker())
 	check('and arrives', [[...board.querySelectorAll('[data-kanban-lane]')].map((l) => l.dataset.col).join(' '), ends.at(-1)], ['9 4 7', { col: 9, reason: 'arrived' }])
+
+	// A slot in a lane that scrolls: the marker follows the scrolling and is clipped by it.
+	await settle(300)
+	const list4 = lane(4).querySelector('[data-kanban-lane-cards]')
+	list4.style.cssText = 'max-block-size: 60px; overflow: auto'
+	const into = list4.querySelectorAll('[data-kanban-card]')[1].getBoundingClientRect()
+	await drag(card('moon'), { x: into.left + into.width / 2, y: into.top + 3 })
+	await settle(250)
+	const top = slot(marker()).top
+	list4.scrollTop = 20
+	await frames(3)
+	check('the marker follows a scrolling lane', [near(slot(marker()).top, top - 20), marker().style.clipPath.startsWith('inset(')], [true, true])
+	await answer('refuse')
+	await until(() => !marker())
+	list4.style.cssText = ''
 
 	// Without data-kanban-landing nothing changes: no marker, no gap.
 	await settle(300)

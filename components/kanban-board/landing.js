@@ -32,26 +32,71 @@ export function landingMarker(from, kind) {
     marker.style.setProperty("outline-offset", "-2px");
     return marker;
 }
-/** The part of `element` its scrolling ancestors leave visible. */
-function visibleArea(element) {
-    let { left, top, right, bottom } = element.getBoundingClientRect();
+/** The ancestors of `element` that clip it when they scroll. */
+function scrollers(element) {
+    const result = [];
     for (let current = element.parentElement; current && current !== document.documentElement;) {
         const style = getComputedStyle(current);
-        if (style.overflowX !== "visible" || style.overflowY !== "visible") {
-            const rect = current.getBoundingClientRect();
-            left = Math.max(left, rect.left);
-            top = Math.max(top, rect.top);
-            right = Math.min(right, rect.right);
-            bottom = Math.min(bottom, rect.bottom);
-        }
+        if (style.overflowX !== "visible" || style.overflowY !== "visible")
+            result.push(current);
         current = current.parentElement;
+    }
+    return result;
+}
+/** The part of `element` its scrolling ancestors leave visible. */
+function visibleArea(element, ancestors) {
+    let { left, top, right, bottom } = element.getBoundingClientRect();
+    for (const ancestor of ancestors) {
+        const rect = ancestor.getBoundingClientRect();
+        left = Math.max(left, rect.left);
+        top = Math.max(top, rect.top);
+        right = Math.min(right, rect.right);
+        bottom = Math.min(bottom, rect.bottom);
     }
     return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 }
-/** Pending landings: each marker lives in <body>, out of reach of the morphs that patch the board. */
+/**
+ * Pending landings: each marker lives in <body>, out of reach of the morphs that patch the board. A landing does its
+ * work only when something can have moved its slot: a change in the board, scrolling, resizing, or an animation there.
+ */
 export function installLandings(options) {
+    const { host } = options;
     const pending = new Map();
     let frame = null;
+    let rearm = null;
+    let dirty = false;
+    let settled = true;
+    let armedAt = 0;
+    const schedule = () => {
+        if (frame === null && pending.size)
+            frame = requestAnimationFrame(tick);
+    };
+    const wake = () => {
+        dirty = true;
+        schedule();
+    };
+    const changes = new MutationObserver(wake);
+    const sizes = new ResizeObserver(wake);
+    let watching = false;
+    const watch = (on) => {
+        if (on === watching)
+            return;
+        watching = on;
+        if (on) {
+            changes.observe(host, { childList: true, subtree: true, attributes: true, characterData: true });
+            sizes.observe(host);
+            addEventListener("scroll", wake, { capture: true, passive: true });
+            addEventListener("resize", wake);
+            return;
+        }
+        changes.disconnect();
+        sizes.disconnect();
+        removeEventListener("scroll", wake, { capture: true });
+        removeEventListener("resize", wake);
+        if (rearm !== null)
+            clearTimeout(rearm);
+        rearm = null;
+    };
     const setGap = (entry, want) => {
         const current = entry.gap;
         if (current && want && current.element === want.element && current.side === want.side && current.size === want.size)
@@ -82,26 +127,25 @@ export function installLandings(options) {
         animation.finished.then(() => animation.cancel()).catch(() => { });
     };
     const end = (entry, reason, notify = true) => {
-        if (pending.get(entry.spec.key) !== entry)
+        if (pending.get(entry.key) !== entry)
             return;
-        pending.delete(entry.spec.key);
+        pending.delete(entry.key);
         clearTimeout(entry.timer);
-        entry.spec.marker.remove();
+        entry.spec?.marker.remove();
         closeGap(entry, reason !== "arrived");
+        if (!pending.size)
+            watch(false);
         if (notify)
-            options.onEnd({ ...entry.spec.detail, reason });
+            options.onEnd({ ...entry.detail, reason });
     };
-    const place = (entry, where) => {
-        const { marker } = entry.spec;
+    const place = (entry, marker, rect, view) => {
         // A morph of the whole page removes it with everything else the server didn't render: put it back.
         if (!marker.isConnected)
             document.body.append(marker);
-        const { rect } = where;
         marker.style.left = `${rect.left}px`;
         marker.style.top = `${rect.top}px`;
         marker.style.width = `${rect.width}px`;
         marker.style.height = `${rect.height}px`;
-        const view = visibleArea(where.clip);
         const clip = {
             top: Math.max(0, view.top - rect.top),
             right: Math.max(0, rect.left + rect.width - (view.left + view.width)),
@@ -113,7 +157,7 @@ export function installLandings(options) {
                 ? `inset(${clip.top}px ${clip.right}px ${clip.bottom}px ${clip.left}px)`
                 : "";
         marker.style.visibility = "";
-        if (entry.placed)
+        if (entry.placed || !entry.spec)
             return;
         entry.placed = true;
         const dx = entry.spec.origin.left - rect.left;
@@ -121,51 +165,114 @@ export function installLandings(options) {
         if (!reducedMotion() && (Math.abs(dx) >= 1 || Math.abs(dy) >= 1))
             marker.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 150, easing });
     };
-    // Each frame: a move that arrived ends its landing, and the others follow their slot through morphs, scrolling and
-    // resizing. Arming the move's animation every frame lets it start from the marker when the server's answer lands.
+    // Reads first, then writes, so a tick forces at most the one layout the frame needs anyway. A move that arrived ends
+    // its landing; the others follow their slot. Arming the move's animation lets it start from the marker when the
+    // server's answer lands: again after each change, once animations settle, and each second for its timer.
     const tick = () => {
         frame = null;
+        if (rearm !== null)
+            clearTimeout(rearm);
+        rearm = null;
+        const changed = dirty;
+        dirty = false;
+        const animating = host.getAnimations({ subtree: true }).some((animation) => animation.playState === "running");
+        const arm = changed || (!animating && !settled) || performance.now() - armedAt > 1000;
+        settled = !animating;
+        const plans = [];
         const armed = new Set();
-        for (const entry of [...pending.values()]) {
-            if (entry.spec.arrived()) {
-                end(entry, "arrived");
+        for (const entry of pending.values()) {
+            if (!entry.ready)
+                continue;
+            const fresh = !entry.spec;
+            if (fresh) {
+                entry.spec = entry.build();
+                if (!entry.spec || entry.spec.arrived()) {
+                    plans.push({ entry, arrived: true });
+                    continue;
+                }
+            }
+            const spec = entry.spec;
+            if (!fresh && changed && spec.arrived()) {
+                plans.push({ entry, arrived: true });
+                armed.add(spec.group);
                 continue;
             }
-            const where = entry.spec.place();
-            setGap(entry, where?.gap ?? null);
-            if (!where) {
-                entry.spec.marker.style.visibility = "hidden";
+            if (!fresh && !changed && !animating && !arm)
                 continue;
+            const where = spec.place();
+            let view;
+            if (where) {
+                if (entry.clip?.element !== where.clip)
+                    entry.clip = { element: where.clip, ancestors: scrollers(where.clip) };
+                view = visibleArea(where.clip, entry.clip.ancestors);
             }
-            place(entry, where);
-            if (armed.has(entry.spec.group))
+            plans.push({ entry, where, view });
+        }
+        for (const { entry, where } of plans) {
+            // A new landing that opens a gap arms the animation once the gap is open; the drop armed it until then.
+            if (!where || !arm || !entry.spec || armed.has(entry.spec.group) || (!entry.placed && where.gap))
                 continue;
             armed.add(entry.spec.group);
             entry.spec.prepare(where.rect);
+            armedAt = performance.now();
         }
-        if (pending.size)
-            frame = requestAnimationFrame(tick);
+        for (const { entry, arrived, where, view } of plans) {
+            if (arrived) {
+                end(entry, "arrived");
+                continue;
+            }
+            const marker = entry.spec.marker;
+            if (where === undefined)
+                continue;
+            if (!where || !view) {
+                if (!marker.isConnected)
+                    document.body.append(marker);
+                marker.style.visibility = "hidden";
+                setGap(entry, null);
+                continue;
+            }
+            const opened = !entry.gap && where.gap;
+            setGap(entry, where.gap);
+            place(entry, marker, where.rect, view);
+            if (opened)
+                settled = false;
+        }
+        if (!pending.size)
+            return;
+        if (animating || !settled)
+            schedule();
+        else
+            rearm = setTimeout(schedule, 1000);
     };
     return {
-        add(spec, timeout) {
-            const previous = pending.get(spec.key);
+        /** A landing for `key`, built a frame after the drop: the drop's own frame stays as light as without one. */
+        add(key, detail, build, timeout) {
+            const previous = pending.get(key);
             if (previous)
                 end(previous, "released");
-            spec.marker.style.visibility = "hidden";
-            document.body.append(spec.marker);
             const entry = {
-                spec,
+                key,
+                detail,
+                build,
+                spec: null,
+                ready: false,
                 placed: false,
                 gap: null,
+                clip: null,
                 timer: setTimeout(() => end(entry, "timeout"), timeout),
             };
-            pending.set(spec.key, entry);
-            if (frame === null)
-                frame = requestAnimationFrame(tick);
+            pending.set(key, entry);
+            requestAnimationFrame(() => {
+                if (pending.get(key) !== entry)
+                    return;
+                entry.ready = true;
+                watch(true);
+                wake();
+            });
         },
         /** Ends landings early: the one of a card ({ cardId }), of a lane ({ col }), or all; true when one was pending. */
         release(match) {
-            const ended = [...pending.values()].filter(({ spec: { detail } }) => match?.cardId !== undefined
+            const ended = [...pending.values()].filter(({ detail }) => match?.cardId !== undefined
                 ? detail.cardId === match.cardId
                 : match?.col !== undefined
                     ? detail.cardId === undefined && detail.col === match.col
@@ -178,23 +285,25 @@ export function installLandings(options) {
                 cancelAnimationFrame(frame);
             frame = null;
             [...pending.values()].forEach((entry) => end(entry, "released", false));
+            watch(false);
         },
     };
 }
 const cardId = (card) => card?.dataset.kanbanCard ?? "";
-/** The landing of a card dropped into lane `col` before card `before` ("" for the end); null for a drop in place. */
-export function cardLanding(geometry, card, target, origin, prepare, group) {
-    const id = cardId(card);
-    const col = String(target.col);
+/** Where a card is: its lane's data-col and the card after it ("" for the last). */
+export function cardPlace(geometry, card) {
     const lane = card.closest(kanbanContract.selectors.lane);
     const siblings = lane ? geometry.cardsIn(lane) : [];
-    const from = { col: lane?.dataset.col, next: cardId(siblings[siblings.indexOf(card) + 1]) };
+    return { col: lane?.dataset.col, next: cardId(siblings[siblings.indexOf(card) + 1]) };
+}
+/** The landing of a card dropped from `from` into lane `col` before card `before` ("" for the end); null in place. */
+export function cardLanding(geometry, card, from, target, origin, prepare, group) {
+    const id = cardId(card);
+    const col = String(target.col);
     if (from.col === col && from.next === target.before)
         return null;
     const height = card.getBoundingClientRect().height;
     return {
-        key: `card:${id}`,
-        detail: { cardId: id, col: target.col },
         marker: landingMarker(card, "card"),
         origin,
         place: () => {
@@ -228,7 +337,7 @@ export function cardLanding(geometry, card, target, origin, prepare, group) {
             return { rect: { ...box, height }, gap: null, clip: list };
         },
         arrived: () => {
-            const now = geometry.cards().find((other) => cardId(other) === id);
+            const now = geometry.card(id);
             const lane = now?.closest(kanbanContract.selectors.lane);
             if (!now || lane?.dataset.col !== col)
                 return false;
@@ -244,8 +353,6 @@ export function laneLanding(geometry, lane, target, before, origin, prepare, gro
     const col = lane.dataset.col ?? "";
     const targetCol = target.dataset.col ?? "";
     return {
-        key: `lane:${col}`,
-        detail: { col: Number(col) },
         marker: landingMarker(null, "lane"),
         origin,
         place: () => {
