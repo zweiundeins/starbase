@@ -97,6 +97,11 @@ func probeFull(t *testing.T, host, path, script string, handlers func(app http.H
 				h(w, r)
 				return
 			}
+			if strings.HasPrefix(r.URL.Path, "/demo/arrange/") { // a demo's delay is for readers; tests hold answers themselves
+				q := r.URL.Query()
+				q.Del("delay")
+				r.URL.RawQuery = q.Encode()
+			}
 			a.Handler.ServeHTTP(w, r)
 		}
 	})}
