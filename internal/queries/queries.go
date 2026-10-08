@@ -283,7 +283,9 @@ func (r *Reader) BoardCells(ctx context.Context, board string, size int) (string
 
 // ComponentFile is one published file of a component version.
 func (r *Reader) ComponentFile(ctx context.Context, slug, hash, path string) (body []byte, integrity string, ok bool, err error) {
-	err = r.tx.QueryRowContext(ctx, `SELECT body, integrity FROM component_files WHERE slug = ? AND hash = ? AND path = ?`,
+	err = r.tx.QueryRowContext(ctx, `
+		SELECT b.body, f.integrity FROM component_files f JOIN file_bodies b ON b.integrity = f.integrity
+		WHERE f.slug = ? AND f.hash = ? AND f.path = ?`,
 		slug, hash, path).Scan(&body, &integrity)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, "", false, nil

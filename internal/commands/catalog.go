@@ -52,7 +52,7 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 		}
 		// Keep this version's public files for good (pinned URLs). The
 		// minified ones too: stored once, their bytes never change even if a
-		// later esbuild would minify differently (INSERT OR IGNORE).
+		// later esbuild would minify differently.
 		files, err := c.Catalog.ModuleFiles(comp)
 		if err != nil {
 			return err
@@ -65,16 +65,13 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 			files[p] = body
 		}
 		for p, body := range files {
-			_, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-				comp.Slug, comp.Hash, p, body, catalog.SRI(body), now)
-			if err != nil {
+			if err := storeFile(ctx, tx, comp.Slug, comp.Hash, p, body, now); err != nil {
 				return err
 			}
 		}
 	}
 	if len(c.Datastar) > 0 {
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			catalog.DatastarSlug, catalog.VersionHash(c.Datastar), catalog.DatastarFile, c.Datastar, catalog.SRI(c.Datastar), now); err != nil {
+		if err := storeFile(ctx, tx, catalog.DatastarSlug, catalog.VersionHash(c.Datastar), catalog.DatastarFile, c.Datastar, now); err != nil {
 			return err
 		}
 	}
@@ -101,6 +98,23 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 	return nil
+}
+
+// storeFile keeps one file of a version for good. The first bytes stored for
+// it stay (INSERT OR IGNORE), and its body is stored once for every version
+// that has the same bytes (file_bodies, migration 010).
+func storeFile(ctx context.Context, tx *sql.Tx, slug, hash, path string, body []byte, now int64) error {
+	sri := catalog.SRI(body)
+	res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, integrity, created_at) VALUES (?, ?, ?, ?, ?)`,
+		slug, hash, path, sri, now)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil || n == 0 {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO file_bodies (integrity, body) VALUES (?, ?)`, sri, body)
+	return err
 }
 
 func boolInt(b bool) int {

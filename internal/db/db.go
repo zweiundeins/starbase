@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -76,7 +77,10 @@ func (d *DB) Close() error {
 }
 
 // migrate applies migrations/NNN_*.sql whose number exceeds PRAGMA user_version.
-func migrate(ctx context.Context, w *sql.DB) error {
+func migrate(ctx context.Context, w *sql.DB) error { return migrateTo(ctx, w, math.MaxInt) }
+
+// migrateTo is migrate up to migration last.
+func migrateTo(ctx context.Context, w *sql.DB, last int) error {
 	var version int
 	if err := w.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return err
@@ -91,7 +95,7 @@ func migrate(ctx context.Context, w *sql.DB) error {
 		if err != nil {
 			return fmt.Errorf("bad migration name %q", e.Name())
 		}
-		if n <= version {
+		if n <= version || n > last {
 			continue
 		}
 		body, err := migrations.ReadFile("migrations/" + e.Name())

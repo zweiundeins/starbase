@@ -15,8 +15,11 @@ import (
 type restamp struct{ slug, hash, path, body string }
 
 func (c restamp) Apply(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `UPDATE component_files SET body = ?, integrity = ? WHERE slug = ? AND hash = ? AND path = ?`,
-		[]byte(c.body), catalog.SRI([]byte(c.body)), c.slug, c.hash, c.path)
+	sri := catalog.SRI([]byte(c.body))
+	if _, err := tx.ExecContext(ctx, `INSERT INTO file_bodies (integrity, body) VALUES (?, ?)`, sri, []byte(c.body)); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `UPDATE component_files SET integrity = ? WHERE slug = ? AND hash = ? AND path = ?`, sri, c.slug, c.hash, c.path)
 	return err
 }
 

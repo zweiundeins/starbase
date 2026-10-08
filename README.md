@@ -83,7 +83,7 @@ Every component page's Installation section has this snippet with the current ca
 
 The components also run on the official Datastar release; the fixes are listed in `patches/rocket/README.md`.
 
-With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`.
+With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`, then the bodies no row refers to any more: `DELETE FROM file_bodies WHERE integrity NOT IN (SELECT integrity FROM component_files)` (each distinct body is stored once, shared by the versions that have it).
 
 ### One file per component
 
