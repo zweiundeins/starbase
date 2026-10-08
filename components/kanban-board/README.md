@@ -44,7 +44,7 @@ usage: |
   </sb-kanban-board>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-kanban-board`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets` (0002 to 0005 for every surface, 0030 to 0039 for this one). For this board they add lane moves, let a card be dragged by a link or an image, keep Alt and the arrows from leaving the page at the first and last lane, keep a card's row when it changes lanes, add Alt + Home and Alt + End, let the arrows reach empty lanes, send `sb-kanban-select` on a click too, let a board that is one Tab stop move it with the focus, and list the events in the component's manifest.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-kanban-board`, with its names in Starbase's `sb-` prefix and the patches in `patches/pd-rockets` (0002 to 0005 for every surface, 0030 to 0039 and 0130 to 0132 for this one). For this board they add lane moves, show where a move lands until the server answers, let a card be dragged by a link or an image, keep Alt and the arrows from leaving the page at the first and last lane, keep a card's row when it changes lanes, add Alt + Home and Alt + End, let the arrows reach empty lanes, send `sb-kanban-select` on a click too, let a board that is one Tab stop move it with the focus, and list the events in the component's manifest.
 
 A board of lanes whose cards the server renders and places. Drag a card within its lane or into another one, or focus it and hold Alt while you press the arrow keys. The component shows where the card would land, then emits `sb-kanban-move` with the card, the lane and the card it goes before. It moves nothing itself: the server applies the move and sends the board back, and the morph moves each card to its place with a short animation (none when the reader's system asks for reduced motion).
 
@@ -52,7 +52,7 @@ A board of lanes whose cards the server renders and places. Drag a card within i
 
 ### Plan a mission
 
-The server renders the board with its arrangement in `data-state`: the lanes in their order, separated by `|`, each its id and its cards. A move sends that arrangement with the event's detail to `/demo/arrange/kanban-board`, which answers with the board as it is after the move. Nothing is stored: try it in two tabs. Lanes move too: drag one by the ↔ grip next to its title, or focus the grip and use Alt and the arrows.
+The server renders the board with its arrangement in `data-state`: the lanes in their order, separated by `|`, each its id and its cards. A move sends that arrangement with the event's detail to `/demo/arrange/kanban-board`, which answers with the board as it is after the move. Nothing is stored: try it in two tabs. Lanes move too: drag one by the ↔ grip next to its title, or focus the grip and use Alt and the arrows. The demo holds each answer for 400 ms, so you see the [landing marker](#landing-markers) the board shows until it arrives.
 
 Since each request carries the arrangement the page had when it left, two moves made faster than the server answers both start from the same board, and Datastar cancels the first request when the second one starts: the board then shows the second move only. A server that keeps the board applies both.
 
@@ -72,7 +72,7 @@ Since each request carries the arrangement the page had when it left, two moves 
   .demo-kanban__grip { padding: 0 4px; border: 0; background: none; color: var(--sb-text-muted); font: inherit; cursor: grab; touch-action: none; }
   .demo-kanban__title { margin: 0; color: var(--sb-text-2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
   .demo-kanban [data-kanban-lane-cards], [data-drag-preview] [data-kanban-lane-cards] { display: grid; align-content: start; gap: 6px; min-block-size: 3rem; }
-  .demo-kanban [data-kanban-card], [data-drag-preview][data-kanban-card], [data-drag-preview] [data-kanban-card] {
+  .demo-kanban [data-kanban-card], [data-drag-preview][data-kanban-card], [data-drag-preview] [data-kanban-card], [data-landing-marker][data-kanban-card] {
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--sb-border);
     background: var(--sb-surface-card);
@@ -94,6 +94,7 @@ Since each request carries the arrangement the page had when it left, two moves 
   }
   .demo-kanban [data-drop-before]::before { position: absolute; inset: -5px 0 auto; }
   [data-drag-preview][data-kanban-card], [data-drag-preview][data-kanban-lane] { box-shadow: var(--sb-shadow-overlay, 0 8px 16px rgb(0 0 0 / 0.35)); cursor: grabbing; }
+  [data-landing-marker] { --sb-landing-outline: 2px dashed var(--sb-brand); }
   @media (forced-colors: active) {
     .demo-kanban [data-kanban-lane][data-drop-active] { outline: 2px solid Highlight; outline-offset: -2px; }
     .demo-kanban[data-key-staging] [data-kanban-card]:focus { border-color: Highlight; }
@@ -102,11 +103,13 @@ Since each request carries the arrangement the page had when it left, two moves 
     .demo-kanban [data-drop-before]::before, .demo-kanban [data-drop-end]::after { forced-color-adjust: none; background: Highlight; }
     .demo-kanban [data-dragging], .demo-kanban [data-lane-dragging] { border: 1px dashed CanvasText; }
     [data-drag-preview][data-kanban-card], [data-drag-preview][data-kanban-lane] { border: 2px solid Highlight; }
+    [data-landing-marker] { --sb-landing-opacity: 1; --sb-landing-outline: 2px dashed Highlight; }
   }
 </style>
-<sb-kanban-board id="mission-board" data-ignore-morph class="demo-kanban" data-state="4: mars jupiter neptune | 7: europa titan | 9: moon"
-	data-on:sb-kanban-move="@get('/demo/arrange/kanban-board', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
-	data-on:sb-kanban-lane-move="@get('/demo/arrange/kanban-board', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})">
+<sb-kanban-board id="mission-board" data-ignore-morph class="demo-kanban" data-kanban-landing data-kanban-landing-timeout="3000" data-state="4: mars jupiter neptune | 7: europa titan | 9: moon"
+	data-on:sb-kanban-move="@get('/demo/arrange/kanban-board?delay=400', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
+	data-on:sb-kanban-lane-move="@get('/demo/arrange/kanban-board?delay=400', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
+	data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()">
 	<section id="mission-board-lane-4" data-kanban-lane data-col="4" tabindex="-1" aria-label="To visit">
 		<div class="demo-kanban__head">
 			<button type="button" class="demo-kanban__grip" data-kanban-lane-grip aria-label="Move the To visit lane">↔</button>
@@ -149,6 +152,7 @@ A lane is an element with `data-kanban-lane` and the lane's id, a number, in `da
 | `sb-kanban-move` | `{ cardId, col, before }` | A card was dropped, or a keyboard move committed. `col` is the lane's `data-col` as a number, and `before` the id of the card it now precedes in that lane, or `""` for the end. |
 | `sb-kanban-select` | `{ cardId }` | The arrow keys moved the focus to another card, or the pointer pressed a card (not a button or link inside it). Focusing an empty lane sends nothing. |
 | `sb-kanban-lane-move` | `{ col, before }` | A lane was dropped by its grip, moved with Alt and the arrows, or stepped (see [Moving lanes](#moving-lanes)). `col` is its `data-col` as a number, and `before` the `data-col` of the lane it now precedes, or `""` for the end. |
+| `sb-kanban-landing-end` | `{ cardId, col, reason }` | A [landing marker](#landing-markers) went away: `reason` is `"arrived"`, `"released"` or `"timeout"`. `col` is the target lane's for a card, and the moved lane's (with no `cardId`) for a lane. |
 
 The events bubble. When boards are nested, check `evt.target` in a handler that several of them reach.
 
@@ -239,12 +243,15 @@ func arrangeKanban(state string, move json.RawMessage) (string, error) {
 // arrangement in data-state, a lane per column and a card per body. Lanes
 // and cards have ids, so the morph moves them (and their focus) instead of
 // rewriting one in another's place, and each lane has a grip to drag it by.
+// The board shows landing markers, and its answers come 400 ms late so they
+// show; a refused move releases its marker.
 func renderKanban(id, state string) string {
 	cols, _ := kanbanState(state)
 	esc := html.EscapeString
 	var b strings.Builder
-	on := arrangeOn("kanban-board")
-	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\"\n\tdata-on:sb-kanban-lane-move=\"%s\">\n", esc(id), esc(state), on, on)
+	on := arrangeOnAfter("kanban-board", 400)
+	refused := "evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()"
+	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-kanban-landing data-kanban-landing-timeout=\"3000\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\"\n\tdata-on:sb-kanban-lane-move=\"%s\"\n\tdata-on:datastar-fetch=\"%s\">\n", esc(id), esc(state), on, on, refused)
 	for _, c := range cols {
 		title := esc(kanbanTitle(c.ID))
 		fmt.Fprintf(&b, "\t<section id=\"%s-lane-%d\" data-kanban-lane data-col=\"%d\" tabindex=\"-1\" aria-label=\"%s\">\n", esc(id), c.ID, c.ID, title)
@@ -301,6 +308,28 @@ func arrangeKanbanLane(cols []kanbanColumn, col int, before string) (string, err
 }
 ```
 
+## Landing markers
+
+On a slow connection, the answer to a drop can take a few hundred milliseconds, and until it arrives the card sits in its old lane. With `data-kanban-landing` on the board, the component shows the drop in the meantime: it opens a gap at the drop position in the target lane and puts a marker the size of the card in it. The card itself stays where the server last put it, so the board shows what the person did and nothing the server hasn't confirmed; if the server marks the card as pending there, the person sees both. A keyboard move gets the same marker, and a lane move an outline over the place the lane takes.
+
+The marker goes away, and the board emits `sb-kanban-landing-end`, in one of three ways:
+
+- `"arrived"`: the card is in the target lane, in a new place. It then animates from the marker into that place, unless the reader's system asks for reduced motion. A lane arrives when it precedes the lane it was moved before.
+- `"released"`: the page called the board's `releaseLanding()`. `releaseLanding({ cardId })` releases one card's marker, `releaseLanding({ col })` one lane's, and `releaseLanding()` all of them. A move event's detail works as the argument.
+- `"timeout"`: `data-kanban-landing-timeout` milliseconds (10000 by default) passed without either.
+
+A refused move never arrives, so release its marker when the refusal comes, or it stays until the timeout. The demo releases the board's markers when one of its requests fails:
+
+```html
+<sb-kanban-board data-kanban-landing
+  data-on:sb-kanban-move="@post('/board/move', {payload: evt.detail, requestCancellation: 'disabled'})"
+  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()">
+```
+
+When the server answers a refusal with a signal instead, say `$moveAck`, an effect releases the card's marker: `data-effect="$moveAck.status === 'refused' && el.releaseLanding({ cardId: $moveAck.cardId })"`.
+
+The marker is a copy of the card, marked `data-landing-marker="card"` (an empty box marked `"lane"` for a lane), and lives in `<body>`, out of reach of the morphs that patch the board's lanes: a lane the server sends again doesn't remove it. It follows its place through scrolling, resizing and other cards' arrivals, is clipped where the lane scrolls, is `aria-hidden` and inert, and takes no pointer events. The gap is an animation of the neighbouring card's margin, which a morph leaves alone, so give cards ids. The marker's position and size are set on it; its look comes from `--sb-landing-opacity` (0.5) and `--sb-landing-outline` (`2px dashed currentColor`), which the page sets on `[data-landing-marker]`; in forced colours their defaults are 1 and `2px dashed Highlight`. Since the copy sits in `<body>`, the page's card styles need a selector that reaches it there, like the example's `[data-landing-marker][data-kanban-card]`.
+
 ## Styling
 
 The component adds no styles: the lanes and cards are your page's markup, styled by your page's CSS. While a card moves, it marks the elements involved:
@@ -311,12 +340,13 @@ The component adds no styles: the lanes and cards are your page's markup, styled
 - `data-lane-dragging` on a lane while it is dragged or its keyboard move waits, and `data-lane-drop-target` on the lane whose place it would take.
 - The card under the pointer is a copy of the card in `<body>`, marked `data-drag-preview`, with the original's size in `--sb-source-width` and `--sb-source-height`. A `<template data-sb-preview>` that is a direct child of a card replaces the copy. A dragged lane's copy is marked the same way, without the ids of the lane and its cards, and a direct child `<template data-sb-preview>` of the lane replaces it.
 - A `<template data-sb-target="before">` (or `"end"`) that is a direct child of the board is copied into the landing place as a drop marker, marked `data-sb-target-indicator`.
+- With `data-kanban-landing`, `data-landing-marker` on the marker of a move the server hasn't answered yet (see [Landing markers](#landing-markers)).
 
 The example above shows one way to draw them.
 
 ## Accessibility
 
-Lanes and cards are elements of your page, so their roles and names are yours: give each lane an `aria-label` and each grip a label that names its lane, as the example does. Keyboard moves need no pointer. The component announces nothing itself: when the server sends the new board, the moved card keeps the focus, after a drag too when the cards have ids. In forced colours, the example draws the drop marker, the target lane, the lane a dragged lane would replace and the focus ring in `Highlight`.
+Lanes and cards are elements of your page, so their roles and names are yours: give each lane an `aria-label` and each grip a label that names its lane, as the example does. Keyboard moves need no pointer. The component announces nothing itself: when the server sends the new board, the moved card keeps the focus, after a drag too when the cards have ids. The landing marker is `aria-hidden`: the card in its old place is what assistive technology reads until the server moves it. In forced colours, the example draws the drop marker, the target lane, the lane a dragged lane would replace, the landing marker and the focus ring in `Highlight`.
 
 ## Licence
 

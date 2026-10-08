@@ -135,12 +135,15 @@ func arrangeKanbanLane(cols []kanbanColumn, col int, before string) (string, err
 // arrangement in data-state, a lane per column and a card per body. Lanes
 // and cards have ids, so the morph moves them (and their focus) instead of
 // rewriting one in another's place, and each lane has a grip to drag it by.
+// The board shows landing markers, and its answers come 400 ms late so they
+// show; a refused move releases its marker.
 func renderKanban(id, state string) string {
 	cols, _ := kanbanState(state)
 	esc := html.EscapeString
 	var b strings.Builder
-	on := arrangeOn("kanban-board")
-	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\"\n\tdata-on:sb-kanban-lane-move=\"%s\">\n", esc(id), esc(state), on, on)
+	on := arrangeOnAfter("kanban-board", 400)
+	refused := "evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()"
+	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-kanban-landing data-kanban-landing-timeout=\"3000\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\"\n\tdata-on:sb-kanban-lane-move=\"%s\"\n\tdata-on:datastar-fetch=\"%s\">\n", esc(id), esc(state), on, on, refused)
 	for _, c := range cols {
 		title := esc(kanbanTitle(c.ID))
 		fmt.Fprintf(&b, "\t<section id=\"%s-lane-%d\" data-kanban-lane data-col=\"%d\" tabindex=\"-1\" aria-label=\"%s\">\n", esc(id), c.ID, c.ID, title)

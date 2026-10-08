@@ -70,14 +70,15 @@ try {
 	await settle(300)
 	check('Escape ends a lane drag', [laneMoves.length, marks(), !!document.querySelector('[data-drag-preview]'), board.dataset.state], [0, [], false, state])
 
-	// A drag by the grip onto the last lane: the lane goes to the end, keeps
-	// its element, and animates into its place.
+	// A drag by the grip onto the last lane: the lane goes to the end and keeps
+	// its element. It lands where its landing marker stood, and the lanes it
+	// passed slide into their places.
 	const first = lane(4)
 	await drag(grip(4), center(lane(9)))
 	check('a lane drag sends the move', laneMoves.at(-1), { col: 4, before: '' })
 	await answered('a lane drag', '7: europa titan | 9: moon | 4: mars jupiter neptune', '7 9 4')
 	await settle(50)
-	check('the lane keeps its element and animates', [lane(4) === first, animated.includes('4')], [true, true])
+	check('the lane keeps its element, and the lanes it passed animate', [lane(4) === first, animated.includes('7'), animated.includes('9')], [true, true, true])
 
 	// Alt and the arrows on a grip: staged, then sent when Alt is released.
 	grip(4).focus()

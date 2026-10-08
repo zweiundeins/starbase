@@ -59,13 +59,15 @@ func TestArrangeKanban(t *testing.T) {
 }
 
 // The board's markup escapes what it writes into attributes, keeps the lanes
-// in the arrangement's order, and gives each lane and card an id made of the
-// board's and its own, and each lane a grip.
+// in the arrangement's order, gives each lane and card an id made of the
+// board's and its own and each lane a grip, and shows landing markers that a
+// refusal releases.
 func TestRenderKanban(t *testing.T) {
 	got := renderKanban("plan", "9: moon | 4: mars | 7:")
 	for _, want := range []string{
-		`<sb-kanban-board id="plan" data-ignore-morph class="demo-kanban" data-state="9: moon | 4: mars | 7:"`,
-		`data-on:sb-kanban-lane-move="@get('/demo/arrange/kanban-board'`,
+		`<sb-kanban-board id="plan" data-ignore-morph class="demo-kanban" data-kanban-landing data-kanban-landing-timeout="3000" data-state="9: moon | 4: mars | 7:"`,
+		`data-on:sb-kanban-lane-move="@get('/demo/arrange/kanban-board?delay=400'`,
+		`data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()">`,
 		`<section id="plan-lane-7" data-kanban-lane data-col="7" tabindex="-1" aria-label="En route">`,
 		`<button type="button" class="demo-kanban__grip" data-kanban-lane-grip aria-label="Move the En route lane">`,
 		`<article id="plan-mars" data-kanban-card="mars" tabindex="0">`,
