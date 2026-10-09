@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows
 - Every component as one file: `/c/<slug>@<hash>/<slug>.bundle.min.js` holds all its modules in one minified module that imports only `datastar` (`sb-kanban-board`: one request instead of twelve in three rounds), frozen and pinned like the other versioned files. The "This component" and "Self-host" install tabs offer it, and `go run ./cmd/dist -out <dir> [slug ...]` writes the same bytes from a checkout.
 
 - `sb-select`: `:state(open)` while its list is open, and the arrow as `::part(arrow)`, so a page can draw its own, such as a stroked chevron that turns over with `:state(open)` (the README's toolbar example). By default the arrow looks as before.
+- `sb-date-picker`: `:state(open)` while its calendar popover is open.
 
 ### Changed
 

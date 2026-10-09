@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 )
 
@@ -503,4 +504,107 @@ await group('forced colours', async () => {
 })
 
 await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
+`
+
+// TestDatePickerOpenState checks sb-date-picker's :state(open) in Chrome: it follows the calendar
+// popover through the button, a pick, the open property and attribute, a close by the browser
+// (hidePopover, as Escape and a click outside do), disabled, inline, a server morph, removal and a
+// re-attach. An inline calendar is never open.
+func TestDatePickerOpenState(t *testing.T) {
+	copyRows(t, probeBundle(t, "/", pdPrelude+morphJS+datePickerOpenJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
+}
+
+const datePickerOpenJS = `
+const box = document.createElement('div')
+document.body.prepend(box)
+await customElements.whenDefined('sb-date-picker')
+let n = 0
+const make = async (attrs = {}) => {
+	const el = document.createElement('sb-date-picker')
+	el.id = 'dp' + ++n
+	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v)
+	box.append(el)
+	await settle()
+	return el
+}
+const $ = (el, s) => el.shadowRoot.querySelector(s)
+const state = (el) => [el.matches(':state(open)'), $(el, '#cal').matches(':popover-open')]
+const click = async (el, s) => ($(el, s).click(), await settle())
+const group = async (name, fn) => {
+	try {
+		await fn()
+	} catch (e) {
+		rows.push({ step: name, error: String(e?.stack || e) })
+	}
+}
+const OPEN = [true, true], SHUT = [false, false]
+
+await group('popover', async () => {
+	const el = await make({ label: 'Launch', value: '2026-09-15' })
+	check('closed at first', state(el), SHUT)
+	await click(el, '[part=button]')
+	check('the button opens', state(el), OPEN)
+	await click(el, '[part=button]')
+	check('the button closes', state(el), SHUT)
+	await click(el, '[part=button]')
+	await click(el, '[part~=day]:not([part~=selected])')
+	check('a pick closes', state(el), SHUT)
+	el.open = true
+	await settle()
+	check('open = true opens', state(el), OPEN)
+	el.open = false
+	await settle()
+	check('open = false closes', state(el), SHUT)
+	el.setAttribute('open', '')
+	await settle()
+	check('the server\'s open opens', state(el), OPEN)
+	el.setAttribute('open', 'false')
+	await settle()
+	check('the server\'s open="false" closes', state(el), SHUT)
+	await click(el, '[part=button]')
+	$(el, '#cal').hidePopover()
+	await settle()
+	check('a close by the browser (Escape, a click outside)', state(el), SHUT)
+	await click(el, '[part=button]')
+	el.setAttribute('disabled', '')
+	await settle()
+	check('disabled closes', state(el), SHUT)
+	el.removeAttribute('disabled')
+	await click(el, '[part=button]')
+	el.setAttribute('inline', '')
+	await settle()
+	check('inline closes', el.matches(':state(open)'), false)
+	el.removeAttribute('inline')
+	await settle()
+	await click(el, '[part=button]')
+	check('a popover again', state(el), OPEN)
+	el.remove()
+	await settle()
+	check('removed while open: no longer open', el.matches(':state(open)'), false)
+	box.append(el)
+	await settle()
+	check('re-attached: closed', state(el), SHUT)
+	await click(el, '[part=button]')
+	check('re-attached: the button opens', state(el), OPEN)
+	el.remove()
+})
+
+await group('morphs', async () => {
+	const el = await make({ label: 'Launch' })
+	await click(el, '[part=button]')
+	await morph('<sb-date-picker id="' + el.id + '" label="Launch" value="2026-09-15"></sb-date-picker>')
+	check('a morph without open leaves it open', [state(el), el.value], [OPEN, '2026-09-15'])
+	await morph('<sb-date-picker id="' + el.id + '" label="Launch" value="2026-09-15" open="false"></sb-date-picker>')
+	check('a morph with open="false" closes it', state(el), SHUT)
+	el.remove()
+})
+
+await group('inline', async () => {
+	const el = await make({ inline: '' })
+	check('inline: never open', el.matches(':state(open)'), false)
+	el.remove()
+})
+
+check('no errors', errors, [])
+await report()
 `

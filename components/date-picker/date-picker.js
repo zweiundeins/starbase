@@ -386,6 +386,9 @@ rocket('sb-date-picker', {
         const { control, button, cal, days } = refs;
         adoptStyles(host, styles);
         const states = internalsOf(host).states;
+        // :state(open) follows the popover: set before it shows, and checked again
+        // after a toggle and a prop change (inline drops the popover without events).
+        const opened = (o = cal.matches(':popover-open')) => states[o ? 'add' : 'delete']('open');
         const range = () => props.mode === 'range';
         // A value's ends are points: days, or with time date-times (see clock()),
         // with a zone instants. A time of day is in seconds.
@@ -789,11 +792,13 @@ rocket('sb-date-picker', {
             if (!format && has('lang', 'label'))
                 draw();
             sync();
+            opened();
         }));
         // The popover (auto: light dismiss and Escape are the browser's). $$.open
         // follows it, and the server's open drives it through the data-effect: a
         // toggle that finds $$.open already there is the server's, and quiet.
         action('before', ({ evt }) => peek(() => {
+            opened(evt.newState === 'open');
             pick1 = null;
             // Closing with the focus inside: it goes back to the button.
             if (evt.newState !== 'open')
@@ -810,6 +815,7 @@ rocket('sb-date-picker', {
         }));
         action('toggled', ({ evt }) => peek(() => {
             const o = evt.newState === 'open';
+            opened();
             if (o === !!$$.open)
                 return;
             $$.open = o;
@@ -860,6 +866,7 @@ rocket('sb-date-picker', {
             root.removeEventListener('formdata', onData);
             root.removeEventListener('reset', onReset);
             watch.disconnect();
+            states.delete('open');
         });
         const choose = (n) => {
             if (!ok(n) || props.disabled)

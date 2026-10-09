@@ -391,6 +391,9 @@ rocket('sb-date-picker', {
 		const { control, button, cal, days } = refs as { control: HTMLElement; button: HTMLElement; cal: HTMLElement; days: HTMLTableSectionElement }
 		adoptStyles(host, styles)
 		const states = internalsOf(host).states
+		// :state(open) follows the popover: set before it shows, and checked again
+		// after a toggle and a prop change (inline drops the popover without events).
+		const opened = (o = cal.matches(':popover-open')) => states[o ? 'add' : 'delete']('open')
 		const range = () => props.mode === 'range'
 		// A value's ends are points: days, or with time date-times (see clock()),
 		// with a zone instants. A time of day is in seconds.
@@ -776,6 +779,7 @@ rocket('sb-date-picker', {
 				// Redrawn only for a prop the time row shows: a redraw drops a half-typed segment.
 				if (!format && has('lang', 'label')) draw()
 				sync()
+				opened()
 			}),
 		)
 
@@ -784,6 +788,7 @@ rocket('sb-date-picker', {
 		// toggle that finds $$.open already there is the server's, and quiet.
 		action('before', ({ evt }) =>
 			peek(() => {
+				opened((evt as ToggleEvent).newState === 'open')
 				pick1 = null
 				// Closing with the focus inside: it goes back to the button.
 				if ((evt as ToggleEvent).newState !== 'open') return cal.contains(host.shadowRoot!.activeElement) && button.focus()
@@ -800,6 +805,7 @@ rocket('sb-date-picker', {
 		action('toggled', ({ evt }) =>
 			peek(() => {
 				const o = (evt as ToggleEvent).newState === 'open'
+				opened()
 				if (o === !!$$.open) return
 				$$.open = o
 				emit('sb-toggle', { name: props.name, open: o })
@@ -851,6 +857,7 @@ rocket('sb-date-picker', {
 			root.removeEventListener('formdata', onData)
 			root.removeEventListener('reset', onReset)
 			watch.disconnect()
+			states.delete('open')
 		})
 
 		const choose = (n: number) => {
