@@ -16,6 +16,10 @@ All notable changes to this project are documented here. The format follows
 - The autoloader loads each component as its one-file bundle, one request where it made one per module file (`sb-kanban-board`: 1 instead of 13); snapshots pinned before keep loading what they did. A component's size is its bundle and those of the components it renders, on the gallery cards, its page and the playground's size line (`sb-kanban-board`: 8.8 kB instead of 14.4 kB), with the module files under "As module files"; a library it loads on first use counts, and is marked as such (ECharts' 298.8 kB).
 - The database keeps each distinct body of the published component files once (migration 010, which then vacuums the file), shared by every version that has the same bytes: on the production site 4.9 MB instead of 16.6 MB. Every pinned URL serves the same bytes with the same integrity.
 
+### Fixed
+
+- `sb-select`: its arrow and its loading spinner follow `--sb-notch`. At 0 the arrow is a plain triangle and the spinner a ring turning smoothly, instead of the stepped pixel ones.
+
 ## [0.7.0] - 2026-10-07
 
 Ten new components, seven of them drag-and-drop and editing surfaces from derekr's PD rockets; TypeScript in the playground, with a type check on every run, and components written in TypeScript; and a licence on every component page.

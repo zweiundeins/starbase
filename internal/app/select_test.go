@@ -266,3 +266,30 @@ await group('remote total', async () => {
 
 await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
 `
+
+// TestSelectFollowsNotch checks that sb-select's pixel details follow --sb-notch: at 1 the stepped
+// arrow and the stepped pixel spinner, at 0 a plain triangle and a ring that turns smoothly.
+func TestSelectFollowsNotch(t *testing.T) {
+	_, body := probe(t, "/components/select", pdPrelude+selectNotchJS)
+	copyRows(t, body)
+}
+
+const selectNotchJS = `
+try {
+	await customElements.whenDefined('sb-select')
+	const root = document.querySelector('sb-select').shadowRoot
+	const look = () => {
+		const cs = (q, p) => getComputedStyle(root.querySelector(q))[p]
+		const arrow = getComputedStyle(root.querySelector('.control'), '::after').clipPath
+		return [cs('.spin', 'opacity'), cs('.spin', 'animationTimingFunction'), cs('.ring', 'opacity'), arrow.includes('6.667px')]
+	}
+	document.documentElement.style.setProperty('--sb-notch', '1')
+	check('notch 1: the pixel spinner, stepped, and the stepped arrow', look(), ['1', 'steps(4)', '0', false])
+	document.documentElement.style.setProperty('--sb-notch', '0')
+	check('notch 0: the ring, and the arrow a triangle', look(), ['0', 'steps(1000)', '1', true])
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`

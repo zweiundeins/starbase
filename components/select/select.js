@@ -28,6 +28,7 @@ const anchors = CSS.supports('anchor-name: --a');
 // (no padding) as a status region, so a new note is announced.
 const styles = /* css */ `
 :host {
+	--_notch: var(--sb-notch, 1);
 	--_shadow: var(--sb-shadow-overlay, 0 16px 40px -16px rgb(0 0 0 / 0.6));
 	--_bg: var(--sb-control-bg, #0B1224);
 	--_border: var(--sb-control-border, #283552);
@@ -78,7 +79,7 @@ const styles = /* css */ `
 	block-size: 6px;
 	translate: 0 -50%;
 	background: var(--_placeholder);
-	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 5px 4px, 5px 6px, 3px 6px, 3px 4px, 2px 4px, 2px 2px, 0 2px);
+	clip-path: polygon(0px 0px, 8px 0px, calc(6.667px + 1.333px * var(--_notch)) 2px, calc(6.667px + -0.667px * var(--_notch)) 2px, calc(5.333px + 0.667px * var(--_notch)) 4px, calc(5.333px + -0.333px * var(--_notch)) 4px, calc(4px + 1px * var(--_notch)) 6px, calc(4px + -1px * var(--_notch)) 6px, calc(2.667px + 0.333px * var(--_notch)) 4px, calc(2.667px + -0.667px * var(--_notch)) 4px, calc(1.333px + 0.667px * var(--_notch)) 2px, calc(1.333px + -1.333px * var(--_notch)) 2px); /* stepped at notch 1, a triangle at 0 */
 }
 .open .control::after { rotate: 180deg; }
 .chip {
@@ -116,7 +117,9 @@ input {
 input::placeholder { color: var(--_placeholder); }
 input[readonly] { cursor: pointer; }
 .clear { position: absolute; inset-inline-end: 2rem; inline-size: 1.25rem; block-size: 1.25rem; }
-.spin { position: absolute; inset-inline-end: 2rem; inline-size: 12px; block-size: 12px; background: var(--_brand-light); animation: spin 0.6s steps(4) infinite; clip-path: polygon(0 0, 4px 0, 4px 4px, 0 4px, 0 0, 8px 8px, 12px 8px, 12px 12px, 8px 12px, 8px 8px); }
+.spin { position: absolute; inset-inline-end: 2rem; inline-size: 12px; block-size: 12px; background: var(--_brand-light); animation: spin 0.6s steps(calc(4 + 996 * (1 - var(--_notch)))) infinite; clip-path: polygon(0 0, calc(4px * var(--_notch)) 0, calc(4px * var(--_notch)) calc(4px * var(--_notch)), 0 calc(4px * var(--_notch)), 0 0, calc(8px * var(--_notch)) calc(8px * var(--_notch)), calc(12px * var(--_notch)) calc(8px * var(--_notch)), calc(12px * var(--_notch)) calc(12px * var(--_notch)), calc(8px * var(--_notch)) calc(12px * var(--_notch)), calc(8px * var(--_notch)) calc(8px * var(--_notch))); opacity: var(--_notch); } /* the pixel spinner, for notch 1 */
+/* The smooth spinner, for notch 0: a ring turning at a steady speed. */
+.ring { position: absolute; inset-inline-end: 2rem; inline-size: 12px; block-size: 12px; box-sizing: border-box; border: 2px solid var(--_brand-light); border-inline-end-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; opacity: calc(1 - var(--_notch)); }
 @keyframes spin { to { rotate: 360deg; } }
 [popover] {
 	margin: 0;
@@ -150,8 +153,8 @@ input[readonly] { cursor: pointer; }
 .desc { color: var(--_muted); font-size: 0.75rem; font-weight: 400; }
 .note { padding: 0.6rem; color: var(--_muted); font-size: 0.8125rem; }
 .note:empty { padding: 0; }
-@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
-@media (forced-colors: active) { .control::after, .spin { forced-color-adjust: none; background: CanvasText; } }
+@media (prefers-reduced-motion: reduce) { .spin, .ring { animation: none; } }
+@media (forced-colors: active) { .control::after, .spin { forced-color-adjust: none; background: CanvasText; } .ring { border-color: CanvasText; border-inline-end-color: transparent; } }
 `;
 rocket('sb-select', {
     props: ({ bool, json, number, string }) => ({
@@ -541,6 +544,7 @@ rocket('sb-select', {
 					data-on:keydown="@key()"
 					data-on:blur="@blur()"/>
 				<span class="spin" aria-hidden="true" data-show="$$loading || $$pending"></span>
+				<span class="ring" aria-hidden="true" data-show="$$loading || $$pending"></span>
 				<button type="button" class="clear" part="clear" data-attr:aria-label="$$clearLabel" tabindex="-1"
 					data-show="$$clearable && $$chips?.length && !$$loading && !$$pending" data-on:click="@clear()">×</button>
 			</div>
