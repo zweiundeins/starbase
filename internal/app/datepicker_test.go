@@ -608,3 +608,41 @@ await group('inline', async () => {
 check('no errors', errors, [])
 await report()
 `
+
+// TestDatePickerFollowsNotch checks that sb-date-picker's pixel details follow --sb-notch: at 1
+// the stepped paging arrows and notched calendar, days and Apply; at 0 triangles and round corners.
+func TestDatePickerFollowsNotch(t *testing.T) {
+	_, body := probe(t, "/components/date-picker", pdPrelude+datePickerNotchJS)
+	copyRows(t, body)
+}
+
+const datePickerNotchJS = `
+try {
+	await customElements.whenDefined('sb-date-picker')
+	const el = document.createElement('sb-date-picker')
+	el.setAttribute('inline', '')
+	el.setAttribute('time', '')
+	el.setAttribute('value', '2026-09-15T10:00')
+	document.body.prepend(el)
+	await settle()
+	const root = el.shadowRoot
+	const look = () => {
+		const cs = (q) => getComputedStyle(root.querySelector(q))
+		return [
+			cs('[part=nav] i').clipPath.includes('1.143px'),
+			cs('.cal').clipPath !== 'none' && cs('.cal').clipPath.includes('2px'),
+			cs('.cal').borderTopLeftRadius,
+			cs('[part~=selected]').clipPath.includes('2px'),
+			cs('[part~=apply]').clipPath.includes('2px'),
+		]
+	}
+	document.documentElement.style.setProperty('--sb-notch', '1')
+	check('notch 1: stepped arrows, notched calendar, day and Apply, no radius', look(), [false, true, '0px', true, true])
+	document.documentElement.style.setProperty('--sb-notch', '0')
+	check('notch 0: triangle arrows, round corners', look(), [true, false, '6px', false, false])
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`

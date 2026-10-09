@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-date-picker`: its paging arrows follow `--sb-notch`. At 0 they are plain triangles instead of stepped pixel ones.
 - `sb-select`: its arrow and its loading spinner follow `--sb-notch`. At 0 the arrow is a plain triangle and the spinner a ring turning smoothly, instead of the stepped pixel ones.
 
 ## [0.7.0] - 2026-10-07
