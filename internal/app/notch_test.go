@@ -15,6 +15,8 @@ func TestPixelDetailsFollowNotch(t *testing.T) {
 		"meter":      meterNotchJS,
 		"busy":       busyNotchJS,
 		"button":     buttonNotchJS,
+		"gauge":      gaugeNotchJS,
+		"sparkline":  sparklineNotchJS,
 		"toast":      toastNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
@@ -151,6 +153,51 @@ const buttonNotchJS = `
 	check('notch 1: square blocks that blink', look(), ['0.72s steps(1) infinite sb-button-blink', 0])
 	await notch('0')
 	check('notch 0: round dots that fade', look(), ['0.72s steps(1000) infinite sb-button-blink', 0.5])
+`
+
+// A canvas: its backing store and image-rendering. At notch 0 it draws at the screen's resolution
+// and repaints when the notch or its size changes.
+const canvasLook = `
+const canvasOf = (el) => el.shadowRoot.querySelector('canvas')
+const store = (el) => { const c = canvasOf(el); return [c.width, c.height, getComputedStyle(c).imageRendering] }
+const painted = (el) => { const c = canvasOf(el); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i]) return true; return false }
+`
+
+const gaugeNotchJS = canvasLook + `
+	const el = await make('<sb-gauge value="62" label="Fuel" style="--sb-gauge-size: 12rem"></sb-gauge>')
+	await notch('1')
+	check('notch 1: the 80×44 raster, pixelated', store(el), [80, 44, 'pixelated'])
+	await notch('0')
+	await until(() => canvasOf(el).width > 80)
+	const w = Math.round(192 * devicePixelRatio)
+	check('notch 0: the screen\'s resolution, smooth', store(el), [w, Math.round((w * 44) / 80), 'auto'])
+	check('notch 0: painted', painted(el), true)
+	el.setAttribute('label', 'Oxidiser')
+	await settle(150)
+	check('a new label re-renders, and the dial stays sharp', store(el), [w, Math.round((w * 44) / 80), 'auto'])
+	check('and painted', painted(el), true)
+	el.style.setProperty('--sb-gauge-size', '16rem')
+	await until(() => canvasOf(el).width > w)
+	check('a new size, a new resolution', canvasOf(el).width, Math.round(256 * devicePixelRatio))
+	await notch('1')
+	await until(() => canvasOf(el).width === 80)
+	check('notch 1 again: the raster', store(el), [80, 44, 'pixelated'])
+	check('and painted', painted(el), true)
+`
+
+const sparklineNotchJS = canvasLook + `
+	const el = await make('<sb-sparkline values="[3,8,5,9,2,6]" style="--sb-sparkline-width: 12rem"></sb-sparkline>')
+	await notch('1')
+	await settle(100)
+	check('notch 1: 24 pixels high, pixelated', store(el), [Math.round((24 * 192) / 36), 24, 'pixelated'])
+	await notch('0')
+	await until(() => canvasOf(el).height > 24)
+	check('notch 0: the screen\'s resolution, smooth', store(el), [Math.round(192 * devicePixelRatio), Math.round(36 * devicePixelRatio), 'auto'])
+	check('notch 0: painted', painted(el), true)
+	await notch('1')
+	await until(() => canvasOf(el).height === 24)
+	check('notch 1 again: 24 pixels high', store(el), [128, 24, 'pixelated'])
+	check('and painted', painted(el), true)
 `
 
 const toastNotchJS = `

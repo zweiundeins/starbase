@@ -2,6 +2,7 @@ import { rocket, startPeeking, stopPeeking } from 'datastar'
 
 // The bitmap is H pixels high and as wide as the box at square pixels, so
 // the height is a token and the line keeps its pixel look at any `length`.
+// At --sb-notch 0 the line is drawn smoothly at the screen's resolution.
 const H = 24
 // Pushed points survive a move in the DOM (setup reruns on every connect).
 const kept = new WeakMap()
@@ -9,6 +10,7 @@ const kept = new WeakMap()
 const styles = /* css */ `
 :host {
 	--_c: var(--sb-brand-light, #B09AFF);
+	--_notch: var(--sb-notch, 1);
 	display: inline-flex;
 	align-items: center;
 	gap: 0.75rem;
@@ -21,9 +23,11 @@ const styles = /* css */ `
 :host([tone=warn]) { --_c: var(--sb-warn, #F5C451); }
 :host([tone=danger]) { --_c: var(--sb-danger, #F2777A); }
 :host([tone=accent]) { --_c: var(--sb-accent, #65BFFF); }
-/* The line paints in the canvas's colour. The transition turns any change of
-   it (theme switch, class, media query, tone) into a transitionend: a repaint. */
-canvas { flex: 1; min-inline-size: 0; block-size: var(--sb-sparkline-height, 2.25rem); image-rendering: pixelated; color: var(--_c); transition: color 1ms; }
+/* The line paints in the canvas's colour, and stroke-width (which draws nothing
+   on a canvas) carries --sb-notch. The transition turns any change of either
+   (theme switch, class, media query, tone, style) into a transitionend: a repaint. */
+canvas { flex: 1; min-inline-size: 0; block-size: var(--sb-sparkline-height, 2.25rem); image-rendering: pixelated; color: var(--_c); stroke-width: var(--_notch); transition: color 1ms, stroke-width 1ms; }
+@container style(--_notch: 0) { canvas { image-rendering: auto; } }
 .value { color: var(--sb-text-1, #F3F4FA); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.875rem; white-space: nowrap; }
 `
 
@@ -50,15 +54,18 @@ rocket('sb-sparkline', {
 		const paint = () => {
 			raf = 0
 			const c = host.shadowRoot.querySelector('canvas'), ctx = c.getContext('2d'), n = data.length
-			const w = (c.width = Math.round((H * c.clientWidth) / c.clientHeight))
-			// Colours are read at paint time.
-			ctx.fillStyle = getComputedStyle(c).color
+			// Colours and the notch are read at paint time.
+			const cs = getComputedStyle(c)
 			let lo = props.min, hi = props.max, px = 0, py
 			if (props.scale == 'auto' && n) {
 				lo = Math.min(...data)
 				hi = Math.max(...data)
 				if (hi - lo < 1e-9) lo--, hi++
 			}
+			if (!parseFloat(cs.strokeWidth)) return paintSmooth(c, ctx, cs.color, lo, hi)
+			c.height = H
+			const w = (c.width = Math.round((H * c.clientWidth) / c.clientHeight))
+			ctx.fillStyle = cs.color
 			data.forEach((v, i) => {
 				// Fewer than `length` points spread across the width; once full,
 				// the line scrolls with the newest point at the right.
@@ -74,6 +81,31 @@ rocket('sb-sparkline', {
 				py = y
 			})
 			if (n) ctx.fillRect(px - 1, py - 1, 3, 3)
+		}
+		// The same line through the middle of those pixels, in their units scaled by s.
+		const paintSmooth = (c, ctx, color, lo, hi) => {
+			const w = (c.width = Math.round(c.clientWidth * devicePixelRatio))
+			const s = (c.height = Math.round(c.clientHeight * devicePixelRatio)) / H
+			const n = data.length, last = n - 1
+			if (!n || !s) return
+			const pts = data.map((v, i) => [1.5 + (i * (w / s - 3)) / Math.max(1, last), H - 2.5 - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo || 1)) * (H - 4)])
+			ctx.setTransform(s, 0, 0, s, 0, 0)
+			ctx.fillStyle = ctx.strokeStyle = color
+			ctx.beginPath()
+			ctx.moveTo(pts[0][0], H)
+			for (const [x, y] of pts) ctx.lineTo(x, y)
+			ctx.lineTo(pts[last][0], H)
+			ctx.globalAlpha = 0.18
+			ctx.fill() // area under the line
+			ctx.globalAlpha = 1
+			ctx.beginPath()
+			for (const [x, y] of pts) ctx.lineTo(x, y)
+			ctx.lineWidth = 1
+			ctx.lineJoin = ctx.lineCap = 'round'
+			ctx.stroke()
+			ctx.beginPath()
+			ctx.arc(...pts[last], 1.5, 0, 2 * Math.PI)
+			ctx.fill()
 		}
 		const draw = () => {
 			// Callers can run inside an effect (data-attr sets a prop, data-effect

@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-gauge` and `sb-sparkline` follow `--sb-notch`: at 0 they draw smoothly at the screen's resolution (the sparkline's line straight from point to point, not stepped) instead of scaling up a pixel raster, and they redraw when it changes.
 - `sb-toast`: its status light follows `--sb-notch`, a dot at 0 like `sb-alert`'s, instead of always notched.
 - `sb-busy` and `sb-button`'s loading spinner follow `--sb-notch` in their motion: at 0 the bar fills, sweeps and shimmers smoothly, and the spinners' blocks are round dots, the lit one fading out to leave a trail instead of blinking.
 - `sb-toggle` and `sb-meter` follow `--sb-notch` in their motion: at 0 the knob slides, the track changes colour and the blocks light up smoothly, instead of in steps.

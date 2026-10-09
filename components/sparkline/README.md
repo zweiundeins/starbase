@@ -91,6 +91,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** `--sb-sparkline-width` (default `12rem`) is the width of the line and the value together, and `--sb-sparkline-height` (default `2.25rem`) the height of the line. Its pixels stay square: the line is 24 of them high and as many wide as fit.
 - **Fonts:** the value uses your page's font.
 - **Colours:** `tone` picks the line's token: `brand` is `--sb-brand-light`, `ok` `--sb-ok`, `warn` `--sb-warn`, `danger` `--sb-danger`, `accent` `--sb-accent`. The line repaints whenever that colour changes: a theme switch, the system's light or dark mode, or your own class that redefines the token. The value is `--sb-text-1`.
+- **8-bit details:** at `--sb-notch: 0` (`data-sb-style="smooth"`) the line runs straight from point to point instead of in steps, drawn smoothly at the screen's resolution, and it redraws when the token changes.
 - **Parts:** `line` (the canvas) and `value`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

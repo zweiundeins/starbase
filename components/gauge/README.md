@@ -82,6 +82,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** `--sb-gauge-size` (default `12rem`) sets the width. The dial keeps its proportions and the value and label scale with it (never below a readable size).
 - **Fonts:** the value and the label use your page's font. A site that sets a display font (`--sb-font-display`, like Starbase's pixel font) gets it for the value; set `--sb-font-display` on the gauge to choose the value's font on its own.
 - **Colours:** the dial paints with theme tokens and repaints whenever one of them changes, whatever changed it: a theme switch, a theme scoped to a container, the system's light or dark mode, or your own override on the gauge. `--sb-ok`, `--sb-warn` and `--sb-danger` colour the zones, `--sb-border` the track, `--sb-text-1` the needle and the value, `--sb-brand` the hub, in any colour syntax, `light-dark()` included. The label is `--sb-text-2`.
+- **8-bit details:** the dial is an 80 × 44 pixel raster, scaled up with crisp pixels. At `--sb-notch: 0` (`data-sb-style="smooth"`) it is drawn smoothly at the screen's resolution instead, and it redraws when the token changes.
 - **Parts:** `value`, `label` and `dial` (the canvas), for anything the tokens don't cover. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

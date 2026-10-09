@@ -27,7 +27,8 @@ const rgbOf = (css) => {
 	return rgbCache.get(css)
 }
 
-// Dial raster size; scaled up with crisp pixels.
+// Dial raster size: at --sb-notch 1 drawn at this size and scaled up with crisp
+// pixels; at 0 drawn smoothly in the same units at the screen's resolution.
 const W = 80, H = 44, CX = 40, CY = 40, R_OUT = 37, R_IN = 30
 
 // The <i> holds the dial's colours, which paint reads: CSS resolves the
@@ -36,10 +37,12 @@ const W = 80, H = 44, CX = 40, CY = 40, R_OUT = 37, R_IN = 30
 // dark mode), runs its transition, whose end repaints the dial (at
 // transitionrun a browser may still compute the old colour). It is not a part,
 // so a page's ::part() rules can't reach it, and never forced, like the canvas.
+// Its stroke-width, which draws nothing here, carries --sb-notch the same way.
 const styles = /* css */ `
 :host {
 	--_text: var(--sb-text-1, #F3F4FA);
 	--_muted: var(--sb-text-2, #AEBBDD);
+	--_notch: var(--sb-notch, 1);
 	display: inline-grid;
 	justify-items: center;
 	gap: 0.25rem;
@@ -51,12 +54,14 @@ const styles = /* css */ `
 }
 :host([hidden]) { display: none; }
 canvas { inline-size: 100%; aspect-ratio: ${W} / ${H}; image-rendering: pixelated; }
+@container style(--_notch: 0) { canvas { image-rendering: auto; } }
 i {
 	position: absolute;
 	forced-color-adjust: none;
 	color: var(--sb-ok, #6EF59A);
 	border-color: var(--sb-warn, #F5C451) var(--sb-danger, #F2777A) var(--sb-border, #283552) var(--_text);
 	outline-color: var(--sb-brand, #8C6BFF);
+	stroke-width: var(--_notch);
 	transition: 1ms;
 }
 .readout { display: grid; justify-items: center; line-height: 1.2; }
@@ -126,6 +131,11 @@ rocket('sb-gauge', {
 				needle: rgbOf(cs.borderLeftColor),
 				hub: rgbOf(cs.outlineColor),
 			}
+			const smooth = !parseFloat(cs.strokeWidth)
+			const w = smooth ? Math.round(canvas.clientWidth * devicePixelRatio) || W : W
+			const h = smooth ? Math.round((w * H) / W) : H
+			if (canvas.width !== w || canvas.height !== h) (canvas.width = w), (canvas.height = h)
+			if (smooth) return paintSmooth(C, w / W)
 			const d = img.data
 			d.fill(0)
 			const set = (x, y, c, a = 255) => {
@@ -154,6 +164,41 @@ rocket('sb-gauge', {
 			for (let i = 4; i <= R_IN - 2; i++) set(Math.round(CX + Math.cos(a) * i - 0.5), Math.round(CY - Math.sin(a) * i - 0.5), C.needle)
 			for (let y = -2; y <= 1; y++) for (let x = -2; x <= 1; x++) set(CX + x, CY + y - 1, C.hub)
 			ctx.putImageData(img, 0, 0)
+		}
+		// The same dial as paths, in raster units scaled by s.
+		const css = (c, a = 1) => `rgb(${c[0]} ${c[1]} ${c[2]} / ${a})`
+		const paintSmooth = (C, s) => {
+			ctx.setTransform(s, 0, 0, s, 0, 0)
+			ctx.clearRect(0, 0, W, H)
+			// One band per stretch of one colour: split at the thresholds and the needle.
+			const cuts = [0, frac(props.warn), frac(props.danger), pos, 1].map((f) => Math.max(0, Math.min(1, f))).sort((a, b) => a - b)
+			for (let k = 1; k < cuts.length; k++) {
+				const a = cuts[k - 1], b = cuts[k], mid = (a + b) / 2
+				if (b <= a) continue
+				const lit = mid <= pos
+				ctx.fillStyle = lit ? css(C[tone(props.min + mid * (props.max - props.min))]) : css(C.track, 150 / 255)
+				ctx.beginPath()
+				ctx.arc(CX, CY, R_OUT, Math.PI * (1 + a), Math.PI * (1 + b))
+				ctx.arc(CX, CY, R_IN, Math.PI * (1 + b), Math.PI * (1 + a), true)
+				ctx.fill()
+			}
+			const ray = (angle, from, to) => {
+				ctx.beginPath()
+				ctx.moveTo(CX + Math.cos(angle) * from, CY - Math.sin(angle) * from)
+				ctx.lineTo(CX + Math.cos(angle) * to, CY - Math.sin(angle) * to)
+				ctx.stroke()
+			}
+			ctx.lineCap = 'round'
+			ctx.lineWidth = 0.8
+			ctx.strokeStyle = css(C.needle, 200 / 255)
+			for (let k = 0; k <= 10; k++) ray(Math.PI * (1 - k / 10), R_OUT - 3, R_OUT)
+			ctx.lineWidth = 1
+			ctx.strokeStyle = css(C.needle)
+			ray(Math.PI * (1 - pos), 4, R_IN - 2)
+			ctx.fillStyle = css(C.hub)
+			ctx.beginPath()
+			ctx.arc(CX, CY - 1, 2, 0, 2 * Math.PI)
+			ctx.fill()
 		}
 		// Slightly under-damped spring: the needle overshoots a hair, like hardware.
 		const tick = (t) => {
@@ -184,10 +229,14 @@ rocket('sb-gauge', {
 			kick()
 		})
 		io.observe(host)
+		// Drawn smoothly, the dial's resolution follows its size.
+		const ro = new ResizeObserver(() => paint())
+		ro.observe(canvas)
 		paint()
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			io.disconnect()
+			ro.disconnect()
 		})
 	},
 })

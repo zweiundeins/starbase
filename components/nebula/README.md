@@ -66,7 +66,7 @@ Clouds of gas and a few twinkling stars, rendered by a fragment shader. The shad
 
 ### Smooth
 
-`levels="0"` turns off the posterizing, and `pixel="1"` renders at full resolution.
+`levels="0"` turns off the posterizing, and `pixel="1"` renders at full resolution. These are the only switches: the pixels are the design, so the smooth style (`--sb-notch: 0`, `data-sb-style="smooth"`) leaves the nebula as it is.
 
 ```html preview
 <sb-nebula levels="0" pixel="2" speed="0.6" style="--sb-nebula-height: 9rem"></sb-nebula>
