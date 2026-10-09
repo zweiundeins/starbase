@@ -1,6 +1,8 @@
 package app_test
 
 import (
+	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -12,6 +14,13 @@ import (
 // open, the keyboard, pending, revert(), server-wins and forms. With
 // STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build (see TestVirtualScrollFocus).
 func TestSelectMultiple(t *testing.T) {
+	copyRows(t, probeBundle(t, "/", selectMultipleJS, nil))
+}
+
+// probeBundle is probeWith with these test handlers, on the Datastar build at
+// STARBASE_DATASTAR_BUNDLE when that is set (see TestVirtualScrollFocus).
+func probeBundle(t *testing.T, path, script string, extra map[string]http.HandlerFunc) []byte {
+	t.Helper()
 	var bundle []byte
 	if p := os.Getenv("STARBASE_DATASTAR_BUNDLE"); p != "" {
 		var err error
@@ -21,21 +30,49 @@ func TestSelectMultiple(t *testing.T) {
 	}
 	var served atomic.Int32
 	handlers := func(app http.Handler) map[string]http.HandlerFunc {
-		if bundle == nil {
-			return nil
+		m := maps.Clone(extra)
+		if m == nil {
+			m = map[string]http.HandlerFunc{}
 		}
-		return map[string]http.HandlerFunc{datastarPath(t, app): func(w http.ResponseWriter, r *http.Request) {
-			served.Add(1)
-			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-			w.Write(bundle)
-		}}
+		if bundle != nil {
+			m[datastarPath(t, app)] = func(w http.ResponseWriter, r *http.Request) {
+				served.Add(1)
+				w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+				w.Write(bundle)
+			}
+		}
+		return m
 	}
-	_, body := probeWith(t, "/", selectMultipleJS, handlers)
+	_, body := probeWith(t, path, script, handlers)
 	if bundle != nil && served.Load() == 0 {
 		t.Error("the page did not load STARBASE_DATASTAR_BUNDLE")
 	}
-	copyRows(t, body)
+	return body
 }
+
+// morphHandler answers a Datastar request with ?html= as an element patch: a server morph.
+func morphHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	fmt.Fprintf(w, "event: datastar-patch-elements\ndata: elements %s\n\n", r.URL.Query().Get("html"))
+}
+
+// morphJS: morph(html) patches html through Datastar, as a server frame would.
+const morphJS = `
+const morpher = document.createElement('button')
+morpher.hidden = true
+morpher.setAttribute('data-on:click', "@get(el.dataset.url)")
+document.body.append(morpher)
+const morph = async (html) => {
+	const done = new Promise((r) => document.addEventListener('datastar-fetch', function f(e) {
+		if (e.detail.el === morpher && e.detail.type === 'finished') document.removeEventListener('datastar-fetch', f), r()
+	}))
+	await settle()
+	morpher.dataset.url = '/__test/morph?html=' + encodeURIComponent(html)
+	morpher.click()
+	await done
+	await settle()
+}
+`
 
 const selectMultipleJS = `
 const settle = () => new Promise((r) => setTimeout(r, 60))
@@ -280,7 +317,7 @@ try {
 	const root = document.querySelector('sb-select').shadowRoot
 	const look = () => {
 		const cs = (q, p) => getComputedStyle(root.querySelector(q))[p]
-		const arrow = getComputedStyle(root.querySelector('.control'), '::after').clipPath
+		const arrow = getComputedStyle(root.querySelector('[part=arrow]')).clipPath
 		return [cs('.spin', 'opacity'), cs('.spin', 'animationTimingFunction'), cs('.ring', 'opacity'), arrow.includes('6.667px')]
 	}
 	document.documentElement.style.setProperty('--sb-notch', '1')
@@ -291,5 +328,147 @@ try {
 } catch (e) {
 	rows.push({ step: 'script', error: String(e?.stack || e) })
 }
+await report()
+`
+
+// TestSelectOpenState checks sb-select's :state(open) in Chrome: it follows the list whichever way
+// it opens (a click, the keys, typing) or closes (Escape, a pick, Tab, blur, disabled, a server
+// morph, removal), survives a morph that keeps it open, and starts closed after a re-attach. And
+// the arrow part: the default flip, a page's ::part(arrow) rules over it, and aria-hidden.
+func TestSelectOpenState(t *testing.T) {
+	copyRows(t, probeBundle(t, "/", pdPrelude+morphJS+selectOpenJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
+}
+
+const selectOpenJS = `
+const box = document.createElement('div')
+box.style.inlineSize = '20rem'
+document.body.prepend(box)
+const outside = document.createElement('button')
+outside.textContent = 'outside'
+document.body.prepend(outside)
+const style = document.createElement('style')
+style.textContent = '.chev::part(arrow) { rotate: 45deg; clip-path: none; background: none; border: solid currentColor; border-width: 0 2px 2px 0; } .chev:state(open)::part(arrow) { rotate: 225deg; } .tint::part(arrow) { color: rgb(255, 0, 0); }'
+document.head.append(style)
+await customElements.whenDefined('sb-select')
+const OPTS = '["Alpha","Beta","Gamma"]'
+let n = 0
+const make = async (attrs = {}) => {
+	const el = document.createElement('sb-select')
+	el.id = 'so' + ++n
+	for (const [k, v] of Object.entries({ options: OPTS, ...attrs })) el.setAttribute(k, v)
+	box.append(el)
+	await settle()
+	return el
+}
+const $ = (el, s) => el.shadowRoot.querySelector(s)
+const input = (el) => $(el, 'input')
+const key = async (el, k) => (press(input(el), k), await settle())
+const state = (el) => [el.matches(':state(open)'), $(el, '[popover]').matches(':popover-open')]
+const group = async (name, fn) => {
+	try {
+		await fn()
+	} catch (e) {
+		rows.push({ step: name, error: String(e?.stack || e) })
+	}
+}
+const OPEN = [true, true], SHUT = [false, false]
+
+await group('single', async () => {
+	const el = await make()
+	check('closed at first', state(el), SHUT)
+	$(el, '.control').click()
+	await settle()
+	check('a click opens', state(el), OPEN)
+	await key(el, 'Escape')
+	check('Escape closes', state(el), SHUT)
+	await key(el, 'ArrowDown')
+	check('ArrowDown opens', state(el), OPEN)
+	await key(el, 'Enter')
+	check('Enter picks and closes', [state(el), el.value], [SHUT, 'Alpha'])
+	await key(el, 'g')
+	check('type-ahead opens', state(el), OPEN)
+	$(el, '[role=option]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }))
+	await settle()
+	check('a click on an option picks and closes', [state(el), el.value], [SHUT, 'Alpha'])
+	input(el).focus()
+	await key(el, 'ArrowDown')
+	input(el).blur()
+	await settle()
+	check('blur closes', state(el), SHUT)
+	input(el).focus()
+	await key(el, 'ArrowDown')
+	outside.focus()
+	await settle()
+	check('the focus moving out closes', state(el), SHUT)
+	await key(el, 'ArrowDown')
+	await key(el, 'Tab')
+	check('Tab closes', state(el), SHUT)
+	await key(el, 'ArrowDown')
+	el.setAttribute('disabled', '')
+	await settle()
+	check('disabled closes', state(el), SHUT)
+	el.remove()
+})
+
+await group('searchable and multiple', async () => {
+	const el = await make({ searchable: '', multiple: '' })
+	input(el).focus()
+	input(el).value = 'be'
+	input(el).dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }))
+	await settle()
+	check('typing opens', state(el), OPEN)
+	await key(el, 'Enter')
+	check('a pick with multiple keeps it open', [state(el), el.value], [OPEN, ['Beta']])
+	await key(el, 'Escape')
+	check('Escape closes', state(el), SHUT)
+	el.remove()
+})
+
+await group('morphs', async () => {
+	const el = await make({ multiple: '' })
+	await key(el, 'ArrowDown')
+	await morph('<sb-select id="' + el.id + '" multiple options=\'["Alpha","Beta","Gamma","Delta"]\'></sb-select>')
+	check('a morph that keeps it enabled leaves it open', [state(el), [...el.shadowRoot.querySelectorAll('[role=option]')].length], [OPEN, 4])
+	await morph('<sb-select id="' + el.id + '" multiple disabled options=\'["Alpha"]\'></sb-select>')
+	check('a morph that disables it closes it', state(el), SHUT)
+	el.remove()
+})
+
+await group('removal and re-attach', async () => {
+	const el = await make()
+	await key(el, 'ArrowDown')
+	el.remove()
+	await settle()
+	check('removed while open: no longer open', el.matches(':state(open)'), false)
+	box.append(el)
+	await settle()
+	check('re-attached: closed', state(el), SHUT)
+	$(el, '.control').click()
+	await settle()
+	check('re-attached: a click opens', state(el), OPEN)
+	await key(el, 'Escape')
+	check('re-attached: Escape closes', state(el), SHUT)
+	el.remove()
+})
+
+await group('the arrow part', async () => {
+	const plain = await make()
+	const chev = await make({ class: 'chev' })
+	const tint = await make({ class: 'tint' })
+	const arrow = (el) => $(el, '[part=arrow]')
+	const look = (el) => ((cs) => ({ rotate: cs.rotate, clip: cs.clipPath === 'none' ? 'none' : 'polygon', border: cs.borderRightWidth, bg: cs.backgroundColor }))(getComputedStyle(arrow(el)))
+	check('aria-hidden', [plain, chev].map((el) => arrow(el).getAttribute('aria-hidden')), ['true', 'true'])
+	check('default, closed: the stepped arrow, no rotation', [look(plain).rotate, look(plain).clip, look(plain).border], ['none', 'polygon', '0px'])
+	check('default: filled with its color', look(plain).bg, getComputedStyle(arrow(plain)).color)
+	for (const el of [plain, chev, tint]) await key(el, 'ArrowDown')
+	check('default, open: turned over', look(plain).rotate, '180deg')
+	check('a page rule replaces the look and the rotation, closed and open', look(chev), { rotate: '225deg', clip: 'none', border: '2px', bg: 'rgba(0, 0, 0, 0)' })
+	check('a page rule without rotate keeps the flip', [look(tint).rotate, look(tint).bg], ['180deg', 'rgb(255, 0, 0)'])
+	for (const el of [plain, chev, tint]) await key(el, 'Escape')
+	check('closed again', [look(plain).rotate, look(chev).rotate, look(tint).rotate], ['none', '45deg', 'none'])
+	for (const el of [plain, chev, tint]) el.remove()
+})
+
+check('no errors', errors, [])
 await report()
 `
