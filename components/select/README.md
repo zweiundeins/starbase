@@ -14,7 +14,9 @@ playground:
   attrs:
     options: '["Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune"]'
   values: {placeholder: "Pick a planet", searchable: true}
-  exclude: [options, value, delay, minChars, loading, name, remote]
+  props:
+    maxChips: {min: -1, max: 6}
+  exclude: [options, value, delay, minChars, loading, name, remote, total, selectAllLabel, matchesLabel, clearLabel]
 ---
 
 A select for one or several values:
@@ -133,6 +135,50 @@ With `multiple`, the value is an array. Keep it in a signal with `sb-change`: `d
 </div>
 ```
 
+### A compact picker for a toolbar
+
+With many options, chips don't fit a toolbar. `summary` shows a text in their place, and `actions` puts "Select all" and "Clear" at the top of the list ("Select the N matches" while a search filters it). Nothing picked shows the placeholder, which here means all. The 84 sources are the first stars of the example dataset's catalog (`GET /demo/data/rows?count=84`):
+
+```html preview
+<style>
+  .sources { inline-size: 15rem; }
+  .sources::part(control) { min-block-size: 2.25rem; padding-block: 0; }
+  .sources::part(input) { block-size: 1.75rem; }
+</style>
+<div data-signals="{_stars: {rows: []}, _sources: []}" data-init="@get('/demo/data/rows?count=84&into=_stars')"
+  style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+  <span>Flows from</span>
+  <sb-select class="sources" multiple searchable clearable actions
+    summary="{count} of {total} sources" placeholder="All sources"
+    data-attr:options="JSON.stringify($_stars.rows.map((s) => ({value: String(s.id), label: s.name, description: s.class + ', ' + s.constellation})))"
+    data-preserve-attr="options"
+    data-on:sb-change="$_sources = evt.detail.value"></sb-select>
+  <span data-text="$_sources.length ? $_sources.length + ' picked' : 'all of them'"></span>
+</div>
+```
+
+`max-chips` shows a few chips first. With a summary too, the summary takes over from the chips beyond that many:
+
+```html preview
+<div style="display: grid; gap: 12px; max-inline-size: 22rem">
+  <sb-select multiple searchable max-chips="2" label="Up to two chips, then +K"
+    options='["Ada","Buzz","Chris","Mae","Sally","Valentina","Yuri"]' value='["Ada","Mae","Sally","Yuri"]'></sb-select>
+  <sb-select multiple searchable max-chips="2" summary="+{more} more" label="Up to two chips, then a summary"
+    options='["Ada","Buzz","Chris","Mae","Sally","Valentina","Yuri"]' value='["Ada","Mae","Sally","Yuri"]'></sb-select>
+</div>
+```
+
+## Compact closed state and list actions
+
+These work with `multiple`.
+
+- **`summary`:** a text in place of the chips. `{count}` is the number picked, `{more}` the picks not shown as chips, and `{total}` the number of options: those in `options`, or, with `remote`, every option the server has offered so far, which only the server can know in full. Set `total` when it does, e.g. `total="84"`. Nothing picked shows the placeholder.
+- **`max-chips="N"`:** at most N chips, then a "+K" chip for the rest (its tooltip names them). `max-chips="0"` shows only that count.
+- **Both:** up to N picks show as chips. Beyond N, the first N chips stay and the summary takes the place of the "+K" chip, so `summary="+{more} more"` reads like it, in your words. With `max-chips="0"`, only the summary shows; with no `max-chips`, a summary alone is the same as `max-chips="0"`.
+- Either keeps the control one line high: chips' labels are cut short to fit. Without them, chips wrap as before.
+- **`actions`:** "Select all" and "Clear" rows at the top of the list. While a search filters it, "Select all" becomes "Select the N matches", which adds every enabled option the search shows (the search stays). Each is one change: one `change` and one `sb-change` with the whole new value, and the list stays open. They follow `confirm`, `revert()`, a new `value` from the server and forms like any other pick. An action that would change nothing is disabled.
+- **Labels:** `select-all-label`, `clear-label` (also the clear button's accessible name) and `matches-label` (`{count}`; the text before a `|` is for one match: `"Select the match|Select the {count} matches"`).
+
 ## With commands
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
@@ -155,7 +201,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Fonts:** the label, the text you type, the chips and the options use your page's font.
 - **Colours:** the control is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder and the arrow are `--sb-control-placeholder`, the label `--sb-text-2`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and chips are `--sb-brand-subtle`. The list is `--sb-surface-raised`; the active option is `--sb-surface-hover` with a `--sb-brand` edge, a selected one `--sb-brand-light`, descriptions `--sb-text-muted`. Corners are `--sb-control-radius`.
 - **Shadow:** `--sb-shadow-overlay` sets the list's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
-- **Parts:** `label`, `control` (the box), `input`, `chip` (each chip, with `multiple`), `clear` and `listbox` (the list). Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `label`, `control` (the box), `input`, `chip` (each chip, with `multiple`), `more` (the "+K" chip), `summary`, `clear` and `listbox` (the list). Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
@@ -175,7 +221,9 @@ It follows the ARIA combobox pattern:
   - Down and Up open the list and move through it; Home and End jump.
   - Enter picks, and Escape closes.
   - Without `searchable` or `remote`, Space opens and picks like Enter, and typing jumps to the next option that starts with the letters (the same letter again cycles).
-  - Backspace in an empty input removes the last chip, with `multiple`.
+  - Backspace in an empty input removes the last chip shown, with `multiple`. A pick behind "+K" or the summary stays: remove it in the list.
+  - The list actions are rows like the options, before them: Home reaches "Select all", and Enter runs it.
+- **Selection:** with `multiple`, the combobox's description (`aria-describedby`) lists every pick, also those behind "+K" or a summary. The "+K" chip and the summary are text, not buttons.
 - **Loading:** the input is `aria-busy` while results are on their way, and "Searching…", "No results" and "Type to search" are announced (a status region).
 - **Disabled:** `disabled` takes it out of the tab order, and neither keys nor the pointer can change it.
 - **Forced colours:** the focus ring, the highlighted option and the arrow use system colours.

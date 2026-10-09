@@ -85,13 +85,24 @@ const styles = /* css */ `
 	display: inline-flex;
 	align-items: center;
 	gap: 0.25rem;
+	min-inline-size: 0;
 	padding-block: 0.15rem;
 	padding-inline: 0.5rem 0.2rem;
+	border: 1px solid transparent;
 	border-radius: calc(var(--_radius) - 2px);
 	background: var(--_brand-subtle);
 	color: var(--_text);
 	font-size: 0.8125rem;
 }
+.chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip button { flex: none; }
+.more { flex: none; padding-inline: 0.5rem; }
+.sum { flex: 0 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 0.35rem; color: var(--_text); font-size: 0.875rem; }
+.sum:empty { display: none; }
+/* max-chips or summary: one line, labels cut short */
+.compact { flex-wrap: nowrap; overflow: hidden; }
+.compact .chip:not(.more) { flex: 0 1 auto; max-inline-size: 10rem; }
+.compact input { min-inline-size: 2ch; }
 .chip button, .clear { all: unset; display: grid; place-items: center; inline-size: 1.1rem; block-size: 1.1rem; border-radius: 3px; color: var(--_muted); cursor: pointer; }
 .chip button:hover, .clear:hover { color: var(--_text); background: var(--_hover); }
 input {
@@ -134,6 +145,8 @@ input[readonly] { cursor: pointer; }
 [role=option].active { background: var(--_hover); box-shadow: inset 2px 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
 [role=option].active:dir(rtl) { box-shadow: inset -2px 0 0 var(--_brand); }
 [role=option][aria-selected=true] { color: var(--_brand-light); font-weight: 600; }
+.acts { display: grid; margin-block-end: 4px; padding-block-end: 4px; border-block-end: 1px solid var(--_border); }
+.act { color: var(--_label); font-size: 0.8125rem; }
 .desc { color: var(--_muted); font-size: 0.75rem; font-weight: 400; }
 .note { padding: 0.6rem; color: var(--_muted); font-size: 0.8125rem; }
 .note:empty { padding: 0; }
@@ -156,6 +169,13 @@ rocket('sb-select', {
         clearable: bool.docs({ description: 'Show a button that clears the value.' }),
         disabled: bool.docs({ description: 'Disable the control.' }),
         name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with its form.' }),
+        summary: string.docs({ description: 'Multiple: a text shown instead of chips, e.g. "{count} of {total} sources". {count} is the number picked, {more} those not shown as chips, {total} the options (or the total prop). With max-chips, it shows only beyond that many picks, after the chips.' }),
+        maxChips: number.clamp(-1, 1000).default(-1).docs({ description: 'Multiple: show at most this many chips on one line, then a "+K" chip (or the summary). 0 shows only the count; -1 (the default) shows every chip and wraps.' }),
+        total: number.clamp(-1, 1e9).default(-1).docs({ description: 'Summary: what {total} stands for, e.g. the number of results a remote search can reach. -1 (the default): the options it knows (remote: every option it has been offered).' }),
+        actions: bool.docs({ description: 'Multiple: "Select all" (while a search filters: "Select the N matches") and "Clear" rows at the top of the list.' }),
+        selectAllLabel: string.default('Select all').docs({ description: 'Actions: the text of "Select all".' }),
+        matchesLabel: string.default('Select the match|Select the {count} matches').docs({ description: 'Actions: the text of "Select the N matches" while a search filters the list. Text before a | is for one match.' }),
+        clearLabel: string.default('Clear').docs({ description: 'Actions: the text of "Clear", also the clear button\'s accessible name.' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
     }),
     manifest: {
@@ -194,7 +214,7 @@ rocket('sb-select', {
             options = normalize(props.remote ? props.results : props.options);
             for (const o of options)
                 labels.set(o.value, o.label);
-            for (const k of ['label', 'placeholder', 'multiple', 'loading', 'clearable', 'disabled'])
+            for (const k of ['label', 'placeholder', 'multiple', 'loading', 'clearable', 'disabled', 'clearLabel'])
                 $$[k] = props[k];
             $$.typing = props.searchable || props.remote;
         };
@@ -202,8 +222,10 @@ rocket('sb-select', {
         $$.selected = parseValue(props.value);
         $$.query = '';
         $$.open = false;
-        $$.active = -1; // index into $$.view
+        $$.active = -1; // index into the rows: $$.acts, then $$.view
         $$.view = [];
+        $$.acts = []; // the list actions, rendered before the options
+        $$.base = 0; // $$.acts.length: the row index of the first option
         $$.note = '';
         $$.pending = false; // remote: typed, waiting for the debounce
         // What the input shows: the query while typing, else (single) the label.
@@ -211,17 +233,47 @@ rocket('sb-select', {
         // of an empty list). And signals are gone while the element is detached.
         // (Computed lazily: $$.chips comes from the refresh() below.)
         $$.text = () => ($$.typing && ($$.open || $$.multiple) ? $$.query : $$.multiple || !$$.chips?.length ? '' : $$.chips[0].label);
-        const at = () => $$.view?.find((_, i) => i === $$.active); // the highlighted option
+        // The highlighted row: an action or an option.
+        const at = () => {
+            const k = $$.active - $$.base;
+            return k < 0 ? $$.acts?.find((_, i) => i === $$.active) : $$.view?.find((_, i) => i === k);
+        };
+        $$.current = () => ($$.open ? at()?.id : '') || '';
         const refresh = () => {
             const q = fold($$.query.trim());
             // Remote: the results belong to the query, and a short one has none.
             const short = props.remote && $$.query.trim().length < props.minChars;
             const view = short ? [] : props.searchable && !props.remote && q ? options.filter((o) => fold(o.label).includes(q) || fold(o.description).includes(q)) : options;
             $$.view = view.map((o, i) => ({ ...o, id: 'o' + i, selected: $$.selected.includes(o.value) }));
-            if ($$.active >= view.length)
-                $$.active = view.length ? 0 : -1;
+            const acts = [];
+            if (props.multiple && props.actions) {
+                const open = view.filter((o) => !o.disabled);
+                const filtered = props.remote ? !!$$.query.trim() : props.searchable && !!q;
+                const [one, many] = props.matchesLabel.includes('|') ? props.matchesLabel.split('|') : [props.matchesLabel, props.matchesLabel];
+                const all = filtered ? (open.length === 1 ? one : many).replaceAll('{count}', String(open.length)) : props.selectAllLabel;
+                if (view.length)
+                    acts.push({ act: 'all', id: 'a-all', label: all, disabled: open.every((o) => $$.selected.includes(o.value)) });
+                acts.push({ act: 'clear', id: 'a-clear', label: props.clearLabel, disabled: !$$.selected.length });
+            }
+            $$.acts = acts;
+            $$.base = acts.length;
+            if ($$.active >= acts.length + view.length)
+                $$.active = view.length ? acts.length : -1;
             $$.note = short ? 'Type to search' : view.length ? '' : props.loading || $$.pending ? 'Searching…' : 'No results';
-            $$.chips = $$.selected.map((v) => ({ value: v, label: labels.get(v) ?? v }));
+            // The closed control: chips up to max-chips (none with only a summary),
+            // then the summary or a "+K" chip.
+            const chips = $$.selected.map((v) => ({ value: v, label: labels.get(v) ?? v }));
+            const max = !props.multiple ? Infinity : props.maxChips >= 0 ? props.maxChips : props.summary ? 0 : Infinity;
+            const more = Math.max(0, chips.length - max);
+            const total = props.total >= 0 ? props.total : props.remote ? labels.size : options.length;
+            $$.chips = chips;
+            $$.shown = chips.slice(0, max);
+            $$.compact = max !== Infinity;
+            $$.more = more && !props.summary ? '+' + more : '';
+            $$.hidden = chips.slice(max).map((c) => c.label).join(', ');
+            $$.sum = more && props.summary ? props.summary.replace(/\{(count|more|total)\}/g, (_, k) => String({ count: chips.length, more, total }[k])) : '';
+            // Read with the combobox (aria-describedby): the whole selection.
+            $$.picked = props.multiple ? chips.map((c) => c.label).join(', ') : '';
         };
         refresh();
         // peek: attribute changes arrive inside the effect of whoever set them.
@@ -303,7 +355,7 @@ rocket('sb-select', {
             if (!open && !props.multiple)
                 $$.query = '';
             if (open)
-                ($$.active = Math.max(0, $$.view.findIndex((o) => o.selected))), search(), show();
+                ($$.active = $$.view.length ? $$.base + Math.max(0, $$.view.findIndex((o) => o.selected)) : -1), search(), show();
             refresh();
         };
         const change = () => {
@@ -327,6 +379,23 @@ rocket('sb-select', {
                 setOpen(false);
             }
         };
+        // A list action: one change with the whole new value; the list stays open.
+        const act = (kind) => {
+            if (kind === 'all') {
+                const add = $$.view.filter((o) => !o.disabled && !o.selected).map((o) => o.value);
+                if (!add.length)
+                    return;
+                $$.selected = [...$$.selected, ...add];
+            }
+            else if (kind === 'clear') {
+                if (!$$.selected.length)
+                    return;
+                $$.selected = [];
+            }
+            else
+                return;
+            change();
+        };
         let timer = 0;
         const search = () => {
             if (!props.remote)
@@ -346,8 +415,8 @@ rocket('sb-select', {
             $$.query = el.value;
             setOpen(true);
             search(); // before refresh: the note says "Searching…" during the pause
-            $$.active = 0; // the first match, after setOpen's selected one
             refresh();
+            $$.active = $$.view.length ? $$.base : -1; // the first match, after setOpen's selected one
         });
         // Clicks on the chips' and the clear button never get here: they stop there.
         action('toggle', () => {
@@ -358,6 +427,11 @@ rocket('sb-select', {
             const e = evt;
             e.preventDefault(); // keep focus in the input
             e.button || pick(v); // the main button only
+        });
+        action('act', ({ evt }, kind) => {
+            const e = evt;
+            e.preventDefault();
+            e.button || act(kind);
         });
         action('remove', ({ evt }, v) => {
             evt.stopPropagation();
@@ -377,7 +451,7 @@ rocket('sb-select', {
         let typer = 0;
         action('key', ({ evt: e }) => {
             const evt = e;
-            const n = $$.view.length;
+            const n = $$.base + $$.view.length;
             // Space opens and picks like Enter, unless it is typed text.
             switch (evt.key === ' ' && !$$.typing && !buf ? 'Enter' : evt.key) {
                 case 'ArrowDown':
@@ -396,20 +470,26 @@ rocket('sb-select', {
                 case 'Enter':
                     if (!$$.open)
                         setOpen(true);
-                    else
-                        pick(at()?.value); // nothing highlighted: picks nothing
+                    else {
+                        const r = at(); // nothing highlighted: picks nothing
+                        r?.act ? act(r.act) : pick(r?.value);
+                    }
                     break;
                 case 'Escape':
                     if (!$$.open)
                         return;
                     setOpen(false);
                     break;
-                case 'Backspace':
-                    if (!props.multiple || $$.query || !$$.selected.length)
+                case 'Backspace': {
+                    // The last chip shown: never a pick hidden behind "+K" or the summary.
+                    const n = $$.shown?.length;
+                    if (!props.multiple || $$.query || !n)
                         return;
-                    $$.selected = $$.selected.slice(0, -1);
+                    const last = $$.shown[n - 1].value;
+                    $$.selected = $$.selected.filter((x) => x !== last);
                     change();
                     break;
+                }
                 case 'Tab':
                     setOpen(false);
                     return;
@@ -422,10 +502,10 @@ rocket('sb-select', {
                     typer = setTimeout(() => (buf = ''), 500);
                     const q = (buf += fold(evt.key)).replace(/^(.)\1+$/, '$1');
                     setOpen(true);
-                    const a = $$.active - Number(q.length > 1); // search after it, or from it
+                    const a = $$.active - $$.base - Number(q.length > 1); // search after it, or from it
                     const j = [...$$.view, ...$$.view].findIndex((o, i) => i > a && fold(o.label).startsWith(q));
                     if (j >= 0)
-                        $$.active = j % n;
+                        $$.active = $$.base + (j % $$.view.length);
                 }
             }
             evt.preventDefault();
@@ -435,19 +515,23 @@ rocket('sb-select', {
     render: ({ html }) => html `
 		<div class="field" data-class:open="$$open">
 			<label class="label" part="label" for="input" data-show="$$label" data-text="$$label"></label>
-			<div class="control" part="control" data-on:click="@toggle()">
-				<template data-for="c in $$chips">
+			<div class="control" part="control" data-class:compact="$$compact" data-on:click="@toggle()">
+				<template data-for="c in $$shown">
 					<span class="chip" part="chip" data-show="$$multiple">
 						<span data-text="c?.label"></span>
 						<button type="button" tabindex="-1" data-attr:aria-label="'Remove ' + c?.label" data-on:mousedown="evt.preventDefault()" data-on:click="@remove(c?.value)">×</button>
 					</span>
 				</template>
+				<span class="chip more" part="more" data-show="$$more" data-text="$$more" data-attr:title="$$hidden"></span>
+				<span class="sum" part="summary" data-text="$$sum"></span>
+				<span id="picked" hidden data-text="$$picked"></span>
 				<input id="input" part="input" role="combobox" autocomplete="off" spellcheck="false"
 					aria-controls="list"
 					data-attr:aria-autocomplete="$$typing && 'list'"
 					data-attr:aria-label="$$label ? null : ($$placeholder || 'Select')"
 					data-attr:aria-expanded="String($$open)"
-					data-attr:aria-activedescendant="$$open && $$view?.find((_, i) => i === $$active)?.id"
+					data-attr:aria-describedby="$$picked ? 'picked' : null"
+					data-attr:aria-activedescendant="$$current || null"
 					data-attr:aria-busy="$$loading ? 'true' : null"
 					data-attr:readonly="!$$typing"
 					data-attr:disabled="$$disabled"
@@ -457,20 +541,29 @@ rocket('sb-select', {
 					data-on:keydown="@key()"
 					data-on:blur="@blur()"/>
 				<span class="spin" aria-hidden="true" data-show="$$loading || $$pending"></span>
-				<button type="button" class="clear" part="clear" aria-label="Clear" tabindex="-1"
+				<button type="button" class="clear" part="clear" data-attr:aria-label="$$clearLabel" tabindex="-1"
 					data-show="$$clearable && $$chips?.length && !$$loading && !$$pending" data-on:click="@clear()">×</button>
 			</div>
 			<div id="list" part="listbox" popover="manual" role="listbox"
 				data-attr:aria-multiselectable="$$multiple ? 'true' : null"
 				data-attr:aria-label="$$label || $$placeholder || 'Options'">
+				<div class="acts" role="group" data-show="$$acts?.length"><template data-for="a, k in $$acts">
+					<div role="option" class="act"
+						data-attr:id="a?.id"
+						data-attr:aria-disabled="a?.disabled ? 'true' : null"
+						data-class:active="k === $$active"
+						data-on:mousedown="@act(a?.act)"
+						data-on:mousemove="$$active = k"
+						data-text="a?.label"></div>
+				</template></div>
 				<template data-for="o, i in $$view">
 					<div role="option"
 						data-attr:id="o?.id"
 						data-attr:aria-selected="String(!!o?.selected)"
 						data-attr:aria-disabled="o?.disabled ? 'true' : null"
-						data-class:active="i === $$active"
+						data-class:active="i + $$base === $$active"
 						data-on:mousedown="@pick(o?.value)"
-						data-on:mousemove="$$active = i">
+						data-on:mousemove="$$active = i + $$base">
 						<span data-text="o?.label"></span>
 						<span class="desc" data-show="o?.description" data-text="o?.description"></span>
 					</div>
