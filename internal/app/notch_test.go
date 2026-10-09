@@ -13,6 +13,8 @@ func TestPixelDetailsFollowNotch(t *testing.T) {
 		"popover":    popoverNotchJS,
 		"toggle":     toggleNotchJS,
 		"meter":      meterNotchJS,
+		"busy":       busyNotchJS,
+		"button":     buttonNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -113,4 +115,39 @@ const meterNotchJS = `
 	check('notch 1: blocks light in two steps', cs(el, '.bar > *').transition, '0.12s steps(2) 0.09s')
 	await notch('0')
 	check('notch 0: smoothly', cs(el, '.bar > *').transition, '0.12s steps(1000) 0.09s')
+`
+
+// The spinner's dots also get a trail at notch 0: the keyframe at 12.5% fades to 0.6, not 0.22.
+const busyNotchJS = `
+	const spinner = await make('<sb-busy busy></sb-busy>')
+	const bar = await make('<sb-busy busy variant="bar" value="40"></sb-busy>')
+	const sweep = await make('<sb-busy busy variant="bar"></sb-busy>')
+	const skel = await make('<sb-busy busy variant="skeleton"></sb-busy>')
+	const dot = spinner.shadowRoot.querySelector('.spinner span')
+	// The first dot's opacity just after its lit eighth of the turn.
+	const trail = () => {
+		const a = dot.getAnimations()[0]
+		a.pause()
+		a.currentTime = 91
+		const at = +getComputedStyle(dot).opacity
+		a.play()
+		return Math.round(at * 100) / 100
+	}
+	const look = () => [cs(spinner, '.spinner span').animation, cs(bar, '.bar .fill').transition, cs(sweep, '.bar.sweeping .fill').animation, cs(skel, '.skel span').animation, cs(spinner, '.spinner span').borderRadius]
+	await notch('1')
+	check('notch 1: stepped, square blocks', look(), ['0.72s steps(1) infinite sb-busy-blink', 'inline-size 0.16s steps(6)', '1.1s steps(9) infinite sb-busy-sweep', '1.4s steps(12) infinite sb-busy-shimmer', '0px'])
+	check('notch 1: a lit dot goes dark at once', trail(), 0.22)
+	await notch('0')
+	check('notch 0: smooth, round dots', look(), ['0.72s steps(1000) infinite sb-busy-blink', 'inline-size 0.16s steps(1000)', '1.1s steps(1000) infinite sb-busy-sweep', '1.4s steps(1000) infinite sb-busy-shimmer', '2.5px'])
+	check('notch 0: a lit dot fades, leaving a trail', trail(), 0.6)
+`
+
+const buttonNotchJS = `
+	const el = await make('<sb-button variant="pixel" loading>Launch</sb-button>')
+	// The radius as a share of the block's size: 0, or half of it (a dot).
+	const look = () => [cs(el, '.spin i').animation, Math.round((parseFloat(cs(el, '.spin i').borderRadius) / parseFloat(cs(el, '.spin i').blockSize)) * 10) / 10]
+	await notch('1')
+	check('notch 1: square blocks that blink', look(), ['0.72s steps(1) infinite sb-button-blink', 0])
+	await notch('0')
+	check('notch 0: round dots that fade', look(), ['0.72s steps(1000) infinite sb-button-blink', 0.5])
 `

@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-busy` and `sb-button`'s loading spinner follow `--sb-notch` in their motion: at 0 the bar fills, sweeps and shimmers smoothly, and the spinners' blocks are round dots, the lit one fading out to leave a trail instead of blinking.
 - `sb-toggle` and `sb-meter` follow `--sb-notch` in their motion: at 0 the knob slides, the track changes colour and the blocks light up smoothly, instead of in steps.
 - `sb-popover`: its arrow follows `--sb-notch`. At 0 it is a plain triangle instead of a stepped pixel one.
 - `sb-details`: its marker follows `--sb-notch`. At 0 it is a plain triangle that turns smoothly, instead of a stepped one turning in three steps.

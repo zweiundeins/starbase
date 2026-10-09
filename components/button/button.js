@@ -17,13 +17,15 @@ const styles = /* css */ `
 	--_frame: var(--sb-frame-color, #B09AFF);
 	--_step: var(--sb-frame-step, 3px);
 	--_focus: var(--sb-focus-ring, 0 0 0 2px #080D1D, 0 0 0 4px #B09AFF);
+	--_notch: var(--sb-notch, 1);
 	display: inline-block;
 	vertical-align: middle;
 }
 :host([hidden]) { display: none; }
 /* The same pixel spinner as sb-busy, sized to the button's own text so it
    follows the label at every size. It only exists while loading, so an idle
-   button is exactly as wide as it would be without it. */
+   button is exactly as wide as it would be without it. At notch 0 the blocks
+   are dots, and the lit one fades out over the turn, so a trail follows it round. */
 .spin { position: relative; flex: none; inline-size: 1em; block-size: 1em; }
 .spin i {
 	position: absolute;
@@ -31,13 +33,14 @@ const styles = /* css */ `
 	margin: auto;
 	inline-size: 0.22em;
 	block-size: 0.22em;
+	border-radius: calc(0.11em * (1 - var(--_notch)));
 	background: currentColor;
 	opacity: 0.22;
 	transform: rotate(calc(var(--i) * 45deg)) translateY(-0.39em);
-	animation: sb-button-blink 720ms steps(1, end) infinite;
+	animation: sb-button-blink 720ms steps(calc(1 + 999 * (1 - var(--_notch))), end) infinite;
 	animation-delay: calc(var(--i) * 90ms);
 }
-@keyframes sb-button-blink { 0% { opacity: 1; } 12.5%, 100% { opacity: 0.22; } }
+@keyframes sb-button-blink { 0% { opacity: 1; } 12.5% { opacity: calc(0.22 + 0.38 * (1 - var(--_notch))); } 100% { opacity: 0.22; } }
 @media (prefers-reduced-motion: reduce) {
 	.spin i { animation: none; opacity: 0.3; }
 	.spin i:first-child { opacity: 1; }
