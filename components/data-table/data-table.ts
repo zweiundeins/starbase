@@ -211,7 +211,8 @@ const styles = /* css */ `
 [data-align="end"] { text-align: end; }
 [data-align="center"] button { justify-content: center; }
 [data-align="end"] button { justify-content: flex-end; }
-/* The sort arrow, down for descending: faint until the column is the sort. */
+/* The sort arrow, down for descending: faint until the column is the sort.
+   Stepped at notch 1, a triangle at 0. */
 .th button::after {
 	content: "";
 	flex: none;
@@ -219,7 +220,7 @@ const styles = /* css */ `
 	block-size: 6px;
 	background: currentColor;
 	opacity: 0.35;
-	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 5px 4px, 5px 6px, 3px 6px, 3px 4px, 2px 4px, 2px 2px, 0 2px);
+	clip-path: polygon(0px 0px, 8px 0px, calc(6.667px + 1.333px * var(--_notch)) 2px, calc(6.667px + -0.667px * var(--_notch)) 2px, calc(5.333px + 0.667px * var(--_notch)) 4px, calc(5.333px + -0.333px * var(--_notch)) 4px, calc(4px + 1px * var(--_notch)) 6px, calc(4px + -1px * var(--_notch)) 6px, calc(2.667px + 0.333px * var(--_notch)) 4px, calc(2.667px + -0.667px * var(--_notch)) 4px, calc(1.333px + 0.667px * var(--_notch)) 2px, calc(1.333px + -1.333px * var(--_notch)) 2px);
 }
 [aria-sort] button::after { opacity: 1; color: var(--_focus); }
 [aria-sort="ascending"] button::after { rotate: 180deg; }
