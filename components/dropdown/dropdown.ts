@@ -92,7 +92,7 @@ const styles = /* css */ `
 :host([hidden]) { display: none; }
 :host(:dir(rtl)) { --_dir: -1; }
 
-/* Trigger: a notched plate with a pixel caret. */
+/* Trigger: a notched plate with a caret. */
 .trigger {
 	all: unset;
 	display: inline-flex;
@@ -118,8 +118,9 @@ const styles = /* css */ `
 	flex: none;
 	background: currentColor;
 	opacity: 0.7;
-	clip-path: polygon(0 0, 8px 0, 8px 2px, 6px 2px, 6px 4px, 5px 4px, 5px 6px, 3px 6px, 3px 4px, 2px 4px, 2px 2px, 0 2px);
-	transition: rotate 120ms steps(2, end);
+	/* Stepped and turning in two steps at notch 1, a triangle turning smoothly at 0. */
+	clip-path: polygon(0px 0px, 8px 0px, calc(6.667px + 1.333px * var(--_notch)) 2px, calc(6.667px + -0.667px * var(--_notch)) 2px, calc(5.333px + 0.667px * var(--_notch)) 4px, calc(5.333px + -0.333px * var(--_notch)) 4px, calc(4px + 1px * var(--_notch)) 6px, calc(4px + -1px * var(--_notch)) 6px, calc(2.667px + 0.333px * var(--_notch)) 4px, calc(2.667px + -0.667px * var(--_notch)) 4px, calc(1.333px + 0.667px * var(--_notch)) 2px, calc(1.333px + -1.333px * var(--_notch)) 2px);
+	transition: rotate 120ms steps(calc(2 + 998 * (1 - var(--_notch))), end);
 }
 .trigger[aria-expanded="true"] .caret { rotate: 180deg; }
 
@@ -207,14 +208,14 @@ ${LEVELS.slice(1)
 .label { font-weight: 600; }
 .desc { color: var(--_muted); font-size: 0.75rem; font-weight: 400; }
 .label, .desc { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* A pixel arrow marks a row that opens a submenu. */
+/* An arrow marks a row that opens a submenu: stepped at notch 1, a triangle at 0. */
 .more {
 	flex: none;
 	inline-size: 6px;
 	block-size: 8px;
 	background: currentColor;
 	opacity: 0.6;
-	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
+	clip-path: polygon(0px 0px, calc(0px + 2px * var(--_notch)) 0px, calc(1.5px + 0.5px * var(--_notch)) 1px, calc(1.5px + 2.5px * var(--_notch)) 1px, calc(4.5px + -0.5px * var(--_notch)) 3px, 6px calc(4px + -1px * var(--_notch)), 6px calc(4px + 1px * var(--_notch)), calc(4.5px + -0.5px * var(--_notch)) 5px, calc(1.5px + 2.5px * var(--_notch)) 7px, calc(1.5px + 0.5px * var(--_notch)) 7px, calc(0px + 2px * var(--_notch)) 8px, 0px 8px);
 	scale: var(--_dir) 1;
 }
 

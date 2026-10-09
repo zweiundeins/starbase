@@ -22,6 +22,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-dropdown`: its caret and its submenu arrows follow `--sb-notch`. At 0 they are plain triangles, and the caret turns smoothly instead of in two steps.
 - `sb-date-picker`: its paging arrows follow `--sb-notch`. At 0 they are plain triangles instead of stepped pixel ones.
 - `sb-select`: its arrow and its loading spinner follow `--sb-notch`. At 0 the arrow is a plain triangle and the spinner a ring turning smoothly, instead of the stepped pixel ones.
 

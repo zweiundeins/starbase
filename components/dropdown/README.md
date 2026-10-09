@@ -237,7 +237,7 @@ el.hide()        // close, and leave the focus where it is
 
 ## Styling
 
-Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`. Parts: `trigger`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
+Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`, and turns the stepped caret and submenu arrows into plain triangles, the caret turning smoothly. Parts: `trigger`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 
 Set the tokens on the element (or any ancestor), not on a part: the component reads them once, on its host.
 
