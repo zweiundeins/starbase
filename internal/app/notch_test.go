@@ -8,6 +8,7 @@ import "testing"
 func TestPixelDetailsFollowNotch(t *testing.T) {
 	for slug, script := range map[string]string{
 		"data-table": dataTableNotchJS,
+		"tree":       treeNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -52,4 +53,13 @@ const dataTableNotchJS = `
 	check('notch 1: the stepped sort arrow', cs(el, '.th button', '::after').clipPath, DOWN)
 	await notch('0')
 	check('notch 0: a triangle', cs(el, '.th button', '::after').clipPath, DOWN0)
+`
+
+const treeNotchJS = `
+	const el = await make('<sb-tree items=\'[{"id":"a","label":"A","children":[{"id":"b","label":"B"}]}]\'></sb-tree>')
+	const look = () => [cs(el, '.caret', '::before').clipPath, cs(el, '.caret', '::before').transition]
+	await notch('1')
+	check('notch 1: the stepped caret, turning in two steps', look(), [RIGHT, 'rotate 0.12s steps(2)'])
+	await notch('0')
+	check('notch 0: a triangle, turning smoothly', look(), [RIGHT0, 'rotate 0.12s steps(1000)'])
 `

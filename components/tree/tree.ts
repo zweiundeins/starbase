@@ -29,6 +29,7 @@ const styles = /* css */ `
 	--_brand: var(--sb-brand, #8C6BFF);
 	--_focus: var(--sb-brand-light, #B09AFF);
 	--_indent: 1.25rem;
+	--_notch: var(--sb-notch, 1);
 	display: block;
 	color: var(--_text);
 	font-size: 0.875rem;
@@ -49,14 +50,15 @@ const styles = /* css */ `
 [role="treeitem"][aria-selected="true"] { background: var(--_sel); box-shadow: inset 2px 0 0 var(--_brand); }
 [role="treeitem"]:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
 .caret { display: grid; place-items: center; inline-size: 1rem; block-size: 1rem; flex: none; color: var(--_muted); }
-/* A pixel triangle that turns when open. */
+/* A triangle that turns when open: stepped and turning in two steps at notch 1,
+   plain and turning smoothly at 0. */
 .caret::before {
 	content: "";
 	inline-size: 6px;
 	block-size: 8px;
 	background: currentColor;
-	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
-	transition: rotate 120ms steps(2);
+	clip-path: polygon(0px 0px, calc(0px + 2px * var(--_notch)) 0px, calc(1.5px + 0.5px * var(--_notch)) 1px, calc(1.5px + 2.5px * var(--_notch)) 1px, calc(4.5px + -0.5px * var(--_notch)) 3px, 6px calc(4px + -1px * var(--_notch)), 6px calc(4px + 1px * var(--_notch)), calc(4.5px + -0.5px * var(--_notch)) 5px, calc(1.5px + 2.5px * var(--_notch)) 7px, calc(1.5px + 0.5px * var(--_notch)) 7px, calc(0px + 2px * var(--_notch)) 8px, 0px 8px);
+	transition: rotate 120ms steps(calc(2 + 998 * (1 - var(--_notch))));
 }
 [aria-expanded="true"] > .caret::before { rotate: 90deg; }
 :not([aria-expanded]) > .caret::before { display: none; }

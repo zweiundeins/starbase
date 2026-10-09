@@ -124,7 +124,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** set `font-size` on the element (default `0.875rem`) to scale the text; rows are at least `2rem` tall (`min-block-size` on `::part(item)`).
 - **Fonts:** the rows use your page's font.
-- **Colours:** text is `--sb-text-1`, the carets and "loading" `--sb-text-muted`. Rows turn `--sb-surface-hover` on hover; the selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-radius-sm`.
+- **Colours:** text is `--sb-text-1`, the carets and "loading" `--sb-text-muted`. Rows turn `--sb-surface-hover` on hover; the selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-radius-sm`. `--sb-notch: 0` turns the stepped pixel carets into plain triangles that turn smoothly.
 - **Parts:** `tree` and `item` (every row). Selected rows are also `selected`, so `::part(item selected)` styles only those; it moves with the selection. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
