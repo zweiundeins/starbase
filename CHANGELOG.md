@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-details`: its marker follows `--sb-notch`. At 0 it is a plain triangle that turns smoothly, instead of a stepped one turning in three steps.
 - `sb-tree`: its carets follow `--sb-notch`. At 0 they are plain triangles that turn smoothly, instead of stepped ones turning in two steps.
 - `sb-data-table`: its sort arrow follows `--sb-notch`. At 0 it is a plain triangle instead of a stepped pixel one.
 - `sb-dropdown`: its caret and its submenu arrows follow `--sb-notch`. At 0 they are plain triangles, and the caret turns smoothly instead of in two steps.

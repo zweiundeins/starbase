@@ -9,6 +9,7 @@ func TestPixelDetailsFollowNotch(t *testing.T) {
 	for slug, script := range map[string]string{
 		"data-table": dataTableNotchJS,
 		"tree":       treeNotchJS,
+		"details":    detailsNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -62,4 +63,13 @@ const treeNotchJS = `
 	check('notch 1: the stepped caret, turning in two steps', look(), [RIGHT, 'rotate 0.12s steps(2)'])
 	await notch('0')
 	check('notch 0: a triangle, turning smoothly', look(), [RIGHT0, 'rotate 0.12s steps(1000)'])
+`
+
+const detailsNotchJS = `
+	const el = await make('<sb-details summary="Hull">Intact.</sb-details>')
+	const look = () => [cs(el, '.marker', '::before').clipPath, cs(el, '.marker', '::before').transition]
+	await notch('1')
+	check('notch 1: the stepped marker, turning in three steps', look(), [RIGHT, 'rotate 0.22s steps(3)'])
+	await notch('0')
+	check('notch 0: a triangle, turning smoothly', look(), [RIGHT0, 'rotate 0.22s steps(1000)'])
 `

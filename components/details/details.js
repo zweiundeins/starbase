@@ -80,7 +80,8 @@ details.disabled summary { cursor: not-allowed; }
 details.disabled summary:hover { background: none; }
 .icon { flex: none; }
 .label { flex: 1; min-inline-size: 0; }
-/* A pixel triangle that turns a quarter when the panel opens. */
+/* A triangle that turns a quarter when the panel opens: stepped and turning in
+   three steps at notch 1, plain and turning smoothly at 0. */
 .marker {
 	flex: none;
 	display: grid;
@@ -94,8 +95,8 @@ details.disabled summary:hover { background: none; }
 	inline-size: 6px;
 	block-size: 8px;
 	background: currentColor;
-	clip-path: polygon(0 0, 2px 0, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0 8px);
-	transition: rotate var(--_dur) steps(3, end);
+	clip-path: polygon(0px 0px, calc(0px + 2px * var(--_notch)) 0px, calc(1.5px + 0.5px * var(--_notch)) 1px, calc(1.5px + 2.5px * var(--_notch)) 1px, calc(4.5px + -0.5px * var(--_notch)) 3px, 6px calc(4px + -1px * var(--_notch)), 6px calc(4px + 1px * var(--_notch)), calc(4.5px + -0.5px * var(--_notch)) 5px, calc(1.5px + 2.5px * var(--_notch)) 7px, calc(1.5px + 0.5px * var(--_notch)) 7px, calc(0px + 2px * var(--_notch)) 8px, 0px 8px);
+	transition: rotate var(--_dur) steps(calc(3 + 997 * (1 - var(--_notch))), end);
 }
 summary:hover .marker { color: var(--_text); }
 details[open] .marker::before { rotate: 90deg; }
