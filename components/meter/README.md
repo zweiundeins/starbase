@@ -85,6 +85,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** `--sb-meter-width` (default `22rem`) is the widest it gets, `--sb-meter-height` (default `12px`) the height of the blocks; `segments` sets how many there are.
 - **Fonts:** the label and the value use your page's font.
 - **Colours:** lit blocks are `--sb-ok`, `--sb-warn` past the `warn` threshold and `--sb-danger` past `danger`. The track is `--sb-surface-inset` with a `--sb-border` edge, and unlit blocks are a tint of that border. The label is `--sb-text-2`, the value `--sb-text-1`.
+- **Motion:** a block lights up in two steps; `--sb-notch: 0` fades it in smoothly instead.
 - **Parts:** `label`, `value` and `bar`, and `segment` for every block; the lit ones are also `lit`: `::part(segment lit)`. Your page's `::part()` rules win over the component's own, without `!important`.
 - **States:** the host has `:state(ok)`, `:state(warn)` or `:state(danger)`, so the tone can restyle any part: `sb-meter:state(danger)::part(label)`.
 

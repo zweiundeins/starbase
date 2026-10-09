@@ -11,6 +11,8 @@ func TestPixelDetailsFollowNotch(t *testing.T) {
 		"tree":       treeNotchJS,
 		"details":    detailsNotchJS,
 		"popover":    popoverNotchJS,
+		"toggle":     toggleNotchJS,
+		"meter":      meterNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -94,4 +96,21 @@ const popoverNotchJS = `
 	check('notch 1: the stepped arrow on every side', look(), shapes([[4, 2], [8, 2], [8, 4], [10, 4], [10, 6], [12, 6], [12, 8], [0, 8], [0, 6], [2, 6], [2, 4], [4, 4]]))
 	await notch('0')
 	check('notch 0: a triangle on every side', look(), shapes([[6, 2], [6, 2], [8, 4], [8, 4], [10, 6], [10, 6], [12, 8], [0, 8], [2, 6], [2, 6], [4, 4], [4, 4]]))
+`
+
+const toggleNotchJS = `
+	const el = await make('<sb-toggle label="Shields"></sb-toggle>')
+	const look = () => [cs(el, 'button').transition, cs(el, '.knob').transition]
+	await notch('1')
+	check('notch 1: stepped', look(), ['background 0.18s steps(3)', 'inset-inline-start 0.18s steps(5)'])
+	await notch('0')
+	check('notch 0: smooth', look(), ['background 0.18s steps(1000)', 'inset-inline-start 0.18s steps(1000)'])
+`
+
+const meterNotchJS = `
+	const el = await make('<sb-meter value="50"></sb-meter>')
+	await notch('1')
+	check('notch 1: blocks light in two steps', cs(el, '.bar > *').transition, '0.12s steps(2) 0.09s')
+	await notch('0')
+	check('notch 0: smoothly', cs(el, '.bar > *').transition, '0.12s steps(1000) 0.09s')
 `

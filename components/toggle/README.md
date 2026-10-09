@@ -61,7 +61,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** `size` (`sm`, `md`, `lg`) sets the switch.
 - **Fonts:** the label uses your page's font, size and colour.
-- **Colours:** the track is `--sb-border-strong` when off and `--sb-brand` when on; the knob is `--sb-toggle-knob` (default `--sb-text-1`, and `--sb-text-on-brand` on the brand track), the focus ring `--sb-brand-light`. `--sb-notch: 0` rounds the switch instead of notching it.
+- **Colours:** the track is `--sb-border-strong` when off and `--sb-brand` when on; the knob is `--sb-toggle-knob` (default `--sb-text-1`, and `--sb-text-on-brand` on the brand track), the focus ring `--sb-brand-light`. `--sb-notch: 0` rounds the switch instead of notching it, and its knob and colour move smoothly instead of in steps.
 - **Parts:** `switch` (the track) and `label`. The knob has no part: colour it with `--sb-toggle-knob`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
