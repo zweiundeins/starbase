@@ -4,20 +4,23 @@ import "testing"
 
 // TestPixelDetailsFollowNotch checks, per component, that its stepped shapes, stepped motion and
 // pixelated canvases follow --sb-notch: at 1 the computed values are exactly those from before they
-// did, at 0 plain shapes, smooth motion and canvases at the screen's resolution.
+// did, at 0 plain shapes, smooth motion and canvases at the screen's resolution. Display text in
+// capitals is written as is under data-sb-style="smooth" (--sb-display-case).
 func TestPixelDetailsFollowNotch(t *testing.T) {
 	for slug, script := range map[string]string{
-		"data-table": dataTableNotchJS,
-		"tree":       treeNotchJS,
-		"details":    detailsNotchJS,
-		"popover":    popoverNotchJS,
-		"toggle":     toggleNotchJS,
-		"meter":      meterNotchJS,
-		"busy":       busyNotchJS,
-		"button":     buttonNotchJS,
-		"gauge":      gaugeNotchJS,
-		"sparkline":  sparklineNotchJS,
-		"toast":      toastNotchJS,
+		"data-table":    dataTableNotchJS,
+		"tree":          treeNotchJS,
+		"details":       detailsNotchJS,
+		"popover":       popoverNotchJS,
+		"toggle":        toggleNotchJS,
+		"meter":         meterNotchJS,
+		"busy":          busyNotchJS,
+		"button":        buttonNotchJS,
+		"gauge":         gaugeNotchJS,
+		"sparkline":     sparklineNotchJS,
+		"image-compare": imageCompareNotchJS,
+		"toc":           tocNotchJS,
+		"toast":         toastNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -54,6 +57,18 @@ const DOWN = 'polygon(0px 0px, 8px 0px, 8px 2px, 6px 2px, 6px 4px, 5px 4px, 5px 
 const RIGHT = 'polygon(0px 0px, 2px 0px, 2px 1px, 4px 1px, 4px 3px, 6px 3px, 6px 5px, 4px 5px, 4px 7px, 2px 7px, 2px 8px, 0px 8px)'
 const DOWN0 = 'polygon(0px 0px, 8px 0px, 6.667px 2px, 6.667px 2px, 5.333px 4px, 5.333px 4px, 4px 6px, 4px 6px, 2.667px 4px, 2.667px 4px, 1.333px 2px, 1.333px 2px)'
 const RIGHT0 = 'polygon(0px 0px, 0px 0px, 1.5px 1px, 1.5px 1px, 4.5px 3px, 6px 4px, 6px 4px, 4.5px 5px, 1.5px 7px, 1.5px 7px, 0px 8px, 0px 8px)'
+// Display text: in capitals, or as written under data-sb-style="smooth".
+const caps = async (el, sel) => {
+	const box = el.parentElement
+	const got = []
+	for (const style of [null, 'smooth']) {
+		style ? box.setAttribute('data-sb-style', style) : box.removeAttribute('data-sb-style')
+		await settle()
+		got.push(cs(el, sel).textTransform)
+	}
+	box.removeAttribute('data-sb-style')
+	return got
+}
 `
 
 const dataTableNotchJS = `
@@ -153,6 +168,7 @@ const buttonNotchJS = `
 	check('notch 1: square blocks that blink', look(), ['0.72s steps(1) infinite sb-button-blink', 0])
 	await notch('0')
 	check('notch 0: round dots that fade', look(), ['0.72s steps(1000) infinite sb-button-blink', 0.5])
+	check('the pixel label: capitals, as written when smooth', await caps(el, '.pixel'), ['uppercase', 'none'])
 `
 
 // A canvas: its backing store and image-rendering. At notch 0 it draws at the screen's resolution
@@ -183,6 +199,7 @@ const gaugeNotchJS = canvasLook + `
 	await until(() => canvasOf(el).width === 80)
 	check('notch 1 again: the raster', store(el), [80, 44, 'pixelated'])
 	check('and painted', painted(el), true)
+	check('the label: capitals, as written when smooth', await caps(el, '.label'), ['uppercase', 'none'])
 `
 
 const sparklineNotchJS = canvasLook + `
@@ -200,6 +217,11 @@ const sparklineNotchJS = canvasLook + `
 	check('and painted', painted(el), true)
 `
 
+const imageCompareNotchJS = `
+	const el = await make('<sb-image-compare before-label="Raw" after-label="Processed" style="inline-size: 240px"><img slot="before" src="/art/hero.svg" alt=""><img slot="after" src="/art/hero.svg" alt=""></sb-image-compare>')
+	check('the tags: capitals, as written when smooth', await caps(el, '.tag'), ['uppercase', 'none'])
+`
+
 const toastNotchJS = `
 	const el = await make('<sb-toast placement="inline" duration="0" toasts=\'[{"id":"a","variant":"ok","title":"Docked"}]\'></sb-toast>')
 	await until(() => el.shadowRoot.querySelector('.light'))
@@ -208,4 +230,9 @@ const toastNotchJS = `
 	check('notch 1: the notched status light', look(), ['polygon(3px 0px, calc(100% - 3px) 0px, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0px calc(100% - 3px), 0px 3px, 3px 3px)', '0px'])
 	await notch('0')
 	check('notch 0: a dot', look(), ['polygon(0px 0px, 100% 0px, 100% 0px, 100% 0px, 100% 100%, 100% 100%, 100% 100%, 0px 100%, 0px 100%, 0px 100%, 0px 0px, 0px 0px)', '6px'])
+`
+
+const tocNotchJS = `
+	const el = await make('<sb-toc label="Log"><ol><li><a href="#launch">Launch</a></li></ol></sb-toc>')
+	check('the label: capitals, as written when smooth', await caps(el, '.label'), ['uppercase', 'none'])
 `

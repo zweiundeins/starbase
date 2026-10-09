@@ -66,11 +66,12 @@
 		--sb-text-on-danger: #1B0A0C;
 	}
 
-	/* Opt out of the 8-bit details: smooth corners, hairline frames and the
-	 * UI font for display text. Combine with any theme. */
+	/* Opt out of the 8-bit details: smooth corners, hairline frames, and the
+	 * UI font for display text, as written. Combine with any theme. */
 	[data-sb-style="smooth"] {
 		--sb-notch: 0;
 		--sb-frame-step: 1px;
 		--sb-font-display: var(--sb-font-ui);
+		--sb-display-case: none;
 	}
 }

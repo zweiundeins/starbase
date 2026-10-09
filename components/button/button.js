@@ -92,7 +92,7 @@ const styles = /* css */ `
 	font-family: var(--sb-font-display, inherit); /* the page's font unless a theme sets a display font */
 	font-weight: 700;
 	letter-spacing: 0.1em;
-	text-transform: uppercase;
+	text-transform: var(--sb-display-case, uppercase);
 	--_shadow: calc(var(--_step) * 2);
 	box-shadow:
 		0 calc(-1 * var(--_step)) 0 0 var(--_frame),

@@ -165,7 +165,7 @@ func ThemesPage(v ThemesView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" data-on:change=\"@post('/cmd/theme-style/' + (el.checked ? 'pixel' : 'smooth'))\"></sb-toggle> <span class=\"muted\">Pixel corners, notched frames and the pixel display font. Turn them off with <code>data-sb-style=\"smooth\"</code>, or set only <code>--sb-notch: 0</code> to keep everything but the corners.</span></div><section class=\"theme-stage\" data-sb-theme=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" data-on:change=\"@post('/cmd/theme-style/' + (el.checked ? 'pixel' : 'smooth'))\"></sb-toggle> <span class=\"muted\">Pixel corners, notched frames, stepped motion and the pixel display font in capitals. Turn them off with <code>data-sb-style=\"smooth\"</code>, or set only <code>--sb-notch: 0</code> to keep everything but the corners.</span></div><section class=\"theme-stage\" data-sb-theme=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -222,7 +222,7 @@ func ThemesPage(v ThemesView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</section><section class=\"prose\"><h2>Use it</h2><p>Scope a theme to any element with <code>data-sb-theme</code>, or copy the overrides into your own stylesheet. Components only ever read <code>--sb-*</code> semantic tokens.</p><p>The 8-bit details are tokens too: <code>data-sb-style=\"smooth\"</code> on any element sets <code>--sb-notch: 0</code> (plain corners with a normal radius), <code>--sb-frame-step: 1px</code> (hairline frames) and the UI font for display text. It combines with every theme.</p><div class=\"code-block\"><sb-copy-button class=\"code-copy\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</section><section class=\"prose\"><h2>Use it</h2><p>Scope a theme to any element with <code>data-sb-theme</code>, or copy the overrides into your own stylesheet. Components only ever read <code>--sb-*</code> semantic tokens.</p><p>The 8-bit details are tokens too: <code>data-sb-style=\"smooth\"</code> on any element sets <code>--sb-notch: 0</code> (plain corners with a normal radius), <code>--sb-frame-step: 1px</code> (hairline frames), the UI font for display text and <code>--sb-display-case: none</code> (display text as written, not in capitals). At <code>--sb-notch: 0</code> stepped arrows become triangles, stepped motion runs smoothly, and pixel charts draw at the screen's resolution. It combines with every theme.</p><div class=\"code-block\"><sb-copy-button class=\"code-copy\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

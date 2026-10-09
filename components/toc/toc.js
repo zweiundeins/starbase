@@ -51,7 +51,7 @@ nav { display: flex; flex-direction: column; gap: 0.75rem; min-block-size: 0; }
 	font-size: 0.75rem;
 	font-weight: 700;
 	letter-spacing: 0.1em;
-	text-transform: uppercase;
+	text-transform: var(--sb-display-case, uppercase);
 	color: var(--_muted);
 }
 .count { font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }

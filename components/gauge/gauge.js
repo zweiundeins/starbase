@@ -69,7 +69,7 @@ i {
    smaller than stays readable. The value's font is the page's unless a theme
    sets a display font. */
 .value { color: var(--_text); font-family: var(--sb-font-display, inherit); font-size: max(0.875rem, 12.5cqi); font-weight: 700; font-variant-numeric: tabular-nums; }
-.label { color: var(--_muted); font-size: max(0.625rem, 6.25cqi); letter-spacing: 0.08em; text-transform: uppercase; }
+.label { color: var(--_muted); font-size: max(0.625rem, 6.25cqi); letter-spacing: 0.08em; text-transform: var(--sb-display-case, uppercase); }
 `
 
 rocket('sb-gauge', {

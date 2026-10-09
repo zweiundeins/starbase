@@ -159,7 +159,7 @@ const styles = /* css */ `
 	font-weight: 700;
 	letter-spacing: 0.1em;
 	line-height: 1;
-	text-transform: uppercase;
+	text-transform: var(--sb-display-case, uppercase);
 	color: var(--_text);
 	background: color-mix(in oklch, var(--_bg) 82%, transparent);
 	clip-path: ${notch};
