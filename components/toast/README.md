@@ -113,7 +113,7 @@ Every part is styleable from the page: `::part(region)`, `::part(toast)`, `::par
 - `--sb-shadow-overlay`: the toasts' drop shadow, one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - `--sb-toast-inset`: distance from the edges (default `1rem`).
 
-Corners notch with `--sb-notch`, so the 8-bit look can be turned off per theme. For `prefers-reduced-motion: reduce` the entrance and exit animations are dropped, and the bar jumps down in fifths rather than slides.
+Corners and the status light notch with `--sb-notch`, so the 8-bit look can be turned off per theme (the light is a dot at `0`). For `prefers-reduced-motion: reduce` the entrance and exit animations are dropped, and the bar jumps down in fifths rather than slides.
 
 ## Accessibility
 

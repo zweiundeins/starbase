@@ -15,6 +15,7 @@ func TestPixelDetailsFollowNotch(t *testing.T) {
 		"meter":      meterNotchJS,
 		"busy":       busyNotchJS,
 		"button":     buttonNotchJS,
+		"toast":      toastNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -150,4 +151,14 @@ const buttonNotchJS = `
 	check('notch 1: square blocks that blink', look(), ['0.72s steps(1) infinite sb-button-blink', 0])
 	await notch('0')
 	check('notch 0: round dots that fade', look(), ['0.72s steps(1000) infinite sb-button-blink', 0.5])
+`
+
+const toastNotchJS = `
+	const el = await make('<sb-toast placement="inline" duration="0" toasts=\'[{"id":"a","variant":"ok","title":"Docked"}]\'></sb-toast>')
+	await until(() => el.shadowRoot.querySelector('.light'))
+	const look = () => [cs(el, '.light').clipPath, cs(el, '.light').borderRadius]
+	await notch('1')
+	check('notch 1: the notched status light', look(), ['polygon(3px 0px, calc(100% - 3px) 0px, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0px calc(100% - 3px), 0px 3px, 3px 3px)', '0px'])
+	await notch('0')
+	check('notch 0: a dot', look(), ['polygon(0px 0px, 100% 0px, 100% 0px, 100% 0px, 100% 100%, 100% 100%, 100% 100%, 0px 100%, 0px 100%, 0px 100%, 0px 0px, 0px 0px)', '6px'])
 `

@@ -12,7 +12,7 @@ const peek = (fn) => {
 }
 
 // Pixel corners: notches every corner by p (a toast: 2px times --sb-notch, and
-// at 0 the border-radius takes over; the status light: 3px).
+// at 0 the border-radius takes over; the status light: 3px, a dot at 0).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
 
 const LEAVE = 160 // ms the fade-out runs before the toast is taken out
@@ -103,13 +103,14 @@ const styles = /* css */ `
 .alt { animation-name: sb-toast-in2; }
 .alt .bar { animation-name: sb-toast-bar2; }
 .leaving { animation: sb-toast-out ${LEAVE}ms ease-in both; }
-/* A pixel "status light", like sb-alert's. */
+/* A pixel "status light", like sb-alert's: notched by --sb-notch, a dot at 0. */
 .light {
 	inline-size: 12px;
 	block-size: 12px;
 	margin-block-start: 0.3em;
 	background: var(--_tone);
-	clip-path: ${notch('3px')};
+	clip-path: ${notch('calc(3px * var(--_notch))')};
+	border-radius: calc(6px * (1 - var(--_notch)));
 	box-shadow: 0 0 12px var(--_tone);
 }
 .title { display: block; color: var(--_tone); font-weight: 700; }
