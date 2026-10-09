@@ -112,12 +112,13 @@ const styles = /* css */ `
 .trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--_brand-light); outline: 2px solid transparent; outline-offset: -2px; }
 .trigger[aria-expanded="true"] { box-shadow: inset 0 0 0 1px var(--_brand-light); background: var(--_hover); }
 .trigger:disabled { opacity: 0.5; cursor: default; }
+/* The caret (part="caret"): a page's ::part(caret) rules win over these, the open turn included. */
 .caret {
 	inline-size: 8px;
 	block-size: 6px;
 	flex: none;
+	color: color-mix(in srgb, currentColor 70%, transparent);
 	background: currentColor;
-	opacity: 0.7;
 	/* Stepped and turning in two steps at notch 1, a triangle turning smoothly at 0. */
 	clip-path: polygon(0px 0px, 8px 0px, calc(6.667px + 1.333px * var(--_notch)) 2px, calc(6.667px + -0.667px * var(--_notch)) 2px, calc(5.333px + 0.667px * var(--_notch)) 4px, calc(5.333px + -0.333px * var(--_notch)) 4px, calc(4px + 1px * var(--_notch)) 6px, calc(4px + -1px * var(--_notch)) 6px, calc(2.667px + 0.333px * var(--_notch)) 4px, calc(2.667px + -0.667px * var(--_notch)) 4px, calc(1.333px + 0.667px * var(--_notch)) 2px, calc(1.333px + -1.333px * var(--_notch)) 2px);
 	transition: rotate 120ms steps(calc(2 + 998 * (1 - var(--_notch))), end);
@@ -230,7 +231,8 @@ slot[name="item"] { display: none; }
 /* Forced colours drop shadows and backgrounds: glyphs and edges come back in
    system colours, focus in the transparent outlines above. */
 @media (forced-colors: active) {
-	.caret, .check.on, .check.path, .more, [role="separator"] { forced-color-adjust: none; background: CanvasText; }
+	.check.on, .check.path, .more, [role="separator"] { forced-color-adjust: none; background: CanvasText; }
+	.caret { forced-color-adjust: none; background: color-mix(in srgb, CanvasText 70%, transparent); }
 	.trigger { outline: 1px solid ButtonBorder; outline-offset: -1px; }
 	.menu { outline: 1px solid CanvasText; outline-offset: -1px; }
 }
@@ -625,6 +627,8 @@ rocket('sb-dropdown', {
 		// not change (open="false" on an element that never had the attribute).
 		const states = internalsOf(host).states
 		const sync = () => peek(() => (props.confirm && $$.value !== servedV ? states.add('pending') : states.delete('pending')))
+		// :state(open) follows the menu, whichever way it opens or closes.
+		effect(() => states[$$.open ? 'add' : 'delete']('open'))
 		let said = host.hasAttribute('value') ? props.value : null
 		const serverValue = () => {
 			if (!host.hasAttribute('value')) return void (said = null)
@@ -687,6 +691,7 @@ rocket('sb-dropdown', {
 			// A refocus() still pending must not focus a row of the menu that the
 			// next setup renders (a re-attach starts with the focus outside).
 			inside = false
+			states.delete('open')
 			for (const k of LEVELS) {
 				try {
 					menuEl(k)?.hidePopover()
@@ -861,7 +866,7 @@ rocket('sb-dropdown', {
 			data-attr:aria-label="$$trigger || null"
 			data-attr:disabled="$$disabled"
 			data-on:click="@toggle()"
-			data-on:keydown="@triggerKey()"><slot name="trigger"><span data-text="$$trigger"></span></slot><span class="caret" aria-hidden="true"></span></button>
+			data-on:keydown="@triggerKey()"><slot name="trigger"><span data-text="$$trigger"></span></slot><span class="caret" part="caret" aria-hidden="true"></span></button>
 		${LEVELS.map(
 			(k) => html`
 		<div class="lvl${k}" popover="manual" data-attr:data-place="$$side${k}" data-class:anim="$$anim">

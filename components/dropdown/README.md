@@ -157,6 +157,46 @@ The `trigger` slot fills the trigger with your own content: text, an icon, an `s
 </sb-dropdown>
 ```
 
+### A caret to match a toolbar button
+
+Beside an `sb-button` with a `caret`, the dropdown can take the button's look: its box and text through `::part(trigger)`, and the caret through `::part(caret)`. Here the caret is a chevron stroked in the text's colour, as thick as the button's, and it turns over while the menu is open (`:state(open)`):
+
+```html preview
+<style>
+  .tb-menu::part(trigger) {
+    min-block-size: 2rem;
+    padding-inline: 0.75rem;
+    font-size: 0.8125rem;
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--sb-brand-light);
+    clip-path: none;
+    border-radius: var(--sb-control-radius);
+  }
+  .tb-menu::part(trigger):hover, .tb-menu:state(open)::part(trigger) { background: var(--sb-brand-subtle); }
+  .tb-menu::part(trigger):focus-visible { box-shadow: inset 0 0 0 2px var(--sb-brand-light); }
+  .tb-menu::part(caret) {
+    box-sizing: border-box;
+    inline-size: 7px;
+    block-size: 7px;
+    color: inherit;
+    background: none;
+    clip-path: none;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    translate: 0 -25%;
+    rotate: 45deg;
+    transition: rotate 120ms, translate 120ms;
+  }
+  .tb-menu:state(open)::part(caret) { translate: 0 25%; rotate: 225deg; }
+</style>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+  <sb-button variant="outline" size="sm" caret>Export</sb-button>
+  <sb-dropdown class="tb-menu" label="Share" items='["Copy link", "Email", "-", "Embed"]'></sb-dropdown>
+</div>
+```
+
+The page's `::part()` rules win over the component's own whatever their specificity, so a `rotate` set on `::part(caret)` replaces the default turn in both states: give the open one too, with `:state(open)`. Rules that leave `rotate` alone keep the turn, and `color` alone recolours the default caret. The same goes for `::part(trigger)`: a `box-shadow` there replaces the edge, the hover and the focus ring, so give `:hover` and `:focus-visible` their own.
+
 ### Items as markup
 
 Instead of `items`, write the menu as light DOM. The items are read **as data** (label, `value`, `disabled`, `data-icon`, `data-description`, `data-danger`, and `<hr>` for a divider) and rendered inside the menu, so the component never writes roles or `tabindex` into your markup, where the next morph would strip them. `items` wins whenever it is not empty.
@@ -237,7 +277,11 @@ el.hide()        // close, and leave the focus where it is
 
 ## Styling
 
-Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`, and turns the stepped caret and submenu arrows into plain triangles, the caret turning smoothly. Parts: `trigger`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
+Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`, and turns the stepped caret and submenu arrows into plain triangles, the caret turning smoothly. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
+
+- **Parts:** `trigger` (the button), `caret`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Caret:** a block filled with its `color` (the trigger's text at 70%) and cut by a `clip-path`: a pixel staircase, or a plain triangle at `--sb-notch: 0`. It turns 180° while the menu is open. Recolour it with `color`, or replace the look with `background`, `clip-path`, `mask` or `border` on `::part(caret)`, as in [A caret to match a toolbar button](#a-caret-to-match-a-toolbar-button).
+- **States:** `:state(open)` while the menu is open, and `:state(pending)` with `confirm` (see [A current choice](#a-current-choice)). Both work from the page: `sb-dropdown:state(open)::part(trigger)`.
 
 Set the tokens on the element (or any ancestor), not on a part: the component reads them once, on its host.
 

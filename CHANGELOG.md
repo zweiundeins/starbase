@@ -13,6 +13,7 @@ All notable changes to this project are documented here. The format follows
 
 - `sb-select`: `:state(open)` while its list is open, and the arrow as `::part(arrow)`, so a page can draw its own, such as a stroked chevron that turns over with `:state(open)` (the README's toolbar example). By default the arrow looks as before.
 - `sb-date-picker`: `:state(open)` while its calendar popover is open.
+- `sb-dropdown`: `:state(open)` while its menu is open, and the caret as `::part(caret)`, so a page can recolour it with `color` or draw its own, such as a stroked chevron that turns over with `:state(open)` (the README's toolbar example). By default the caret looks as before.
 - Component pages: a "smooth style" switch in the Playground previews the component with `data-sb-style="smooth"` on its stage only (no pixel corners, hairline frames, the UI font). `sb-select`'s Playground can tick `loading`.
 
 ### Changed
