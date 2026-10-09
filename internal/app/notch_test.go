@@ -10,6 +10,7 @@ func TestPixelDetailsFollowNotch(t *testing.T) {
 		"data-table": dataTableNotchJS,
 		"tree":       treeNotchJS,
 		"details":    detailsNotchJS,
+		"popover":    popoverNotchJS,
 	} {
 		t.Run(slug, func(t *testing.T) {
 			t.Parallel()
@@ -72,4 +73,25 @@ const detailsNotchJS = `
 	check('notch 1: the stepped marker, turning in three steps', look(), [RIGHT, 'rotate 0.22s steps(3)'])
 	await notch('0')
 	check('notch 0: a triangle, turning smoothly', look(), [RIGHT0, 'rotate 0.22s steps(1000)'])
+`
+
+// The arrow per side, and flipped to the other side (--_c2), from the stepped tip of before.
+const popoverNotchJS = `
+	const el = await make('<sb-popover arrow>Fuel: 82%</sb-popover>')
+	const pop = el.shadowRoot.querySelector('.pop'), arrow = el.shadowRoot.querySelector('.arrow')
+	const tip = (pts) => 'polygon(' + pts.map(([x, y]) => x + 'px ' + y + 'px').join(', ') + ')'
+	const turn = { top: (x, y) => [x, 8 - y], bottom: (x, y) => [x, y], start: (x, y) => [8 - y, x], end: (x, y) => [y, x] }
+	const flip = { top: 'bottom', bottom: 'top', start: 'end', end: 'start' }
+	const shapes = (pts) => Object.keys(turn).flatMap((side) => [tip(pts.map(([x, y]) => turn[side](x, y))), tip(pts.map(([x, y]) => turn[flip[side]](x, y)))])
+	const look = () => Object.keys(turn).flatMap((side) => {
+		pop.setAttribute('data-side', side)
+		arrow.style.removeProperty('--_c')
+		const own = getComputedStyle(arrow).clipPath
+		arrow.style.setProperty('--_c', 'var(--_c2)')
+		return [own, getComputedStyle(arrow).clipPath]
+	})
+	await notch('1')
+	check('notch 1: the stepped arrow on every side', look(), shapes([[4, 2], [8, 2], [8, 4], [10, 4], [10, 6], [12, 6], [12, 8], [0, 8], [0, 6], [2, 6], [2, 4], [4, 4]]))
+	await notch('0')
+	check('notch 0: a triangle on every side', look(), shapes([[6, 2], [6, 2], [8, 4], [8, 4], [10, 6], [10, 6], [12, 8], [0, 8], [2, 6], [2, 6], [4, 4], [4, 4]]))
 `
