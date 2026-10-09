@@ -320,8 +320,16 @@ func initialString(c catalog.Control) string {
 // frames leave the whole section alone (data-ignore-morph).
 templ Playground(pg *catalog.Playground) {
 	<div class="playground" data-ignore-morph data-signals:_pg={ pg.Signals() }>
-		<div class="playground__stage demo-stage">
+		<div class="playground__stage demo-stage" data-attr:data-sb-style={ "$_pg." + catalog.SmoothSignal + " ? 'smooth' : null" }>
 			@templ.Raw(pg.Element())
+		</div>
+		<div class="playground__style">
+			<sb-toggle
+				label="smooth style"
+				title={ `Preview the component in the smooth style: data-sb-style="smooth" on the stage (no pixel corners, hairline frames, the UI font).` }
+				size="sm"
+				data-bind:_pg.smooth-style__prop.checked__event.change
+			></sb-toggle>
 		</div>
 		<div class="playground__controls">
 			for _, c := range pg.Controls {

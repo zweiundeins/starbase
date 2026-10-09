@@ -1254,6 +1254,14 @@
 		min-block-size: 12rem;
 	}
 
+	.playground__style {
+		display: flex;
+		justify-content: flex-end;
+		padding: var(--sb-space-2) var(--sb-space-6);
+		border-block-start: var(--sb-border-width) solid var(--sb-border);
+		font-size: var(--sb-font-size-1);
+	}
+
 	.playground__controls {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));

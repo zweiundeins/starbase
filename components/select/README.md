@@ -16,7 +16,7 @@ playground:
   values: {placeholder: "Pick a planet", searchable: true}
   props:
     maxChips: {min: -1, max: 6}
-  exclude: [options, value, delay, minChars, loading, name, remote, total, selectAllLabel, matchesLabel, clearLabel]
+  exclude: [options, value, delay, minChars, name, remote, total, selectAllLabel, matchesLabel, clearLabel]
 ---
 
 A select for one or several values:
