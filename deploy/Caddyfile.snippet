@@ -5,6 +5,7 @@
 starbase.zweiundeins.gmbh {
 	log {
 		output file /var/log/caddy/starbase-access.log {
+			mode 0640
 			roll_size 100mb
 			roll_keep 5
 			roll_keep_for 720h
