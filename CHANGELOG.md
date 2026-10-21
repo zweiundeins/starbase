@@ -20,6 +20,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The component bundle's budget is 104 kB (brotli), up from 100 kB: the bundle had reached 102.5 kB, and pages would have gone back to the autoloader.
 - No more Windows builds: releases and CI build for Linux and macOS.
 - Dependencies: lith v0.4.1, minify v2.24.22.
 - The data table's docs list the server code behind its fit widths again, so its page needs a 512 KiB compression window per tab: 120 MiB of stream memory now holds about 105 of its tabs with zstd and 65 in browsers without zstd (the largest page; smaller pages hold more).

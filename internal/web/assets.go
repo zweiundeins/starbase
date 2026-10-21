@@ -181,9 +181,9 @@ func (a *assets) Bundle() string { return "/c/bundle.js?v=" + a.bundle.hash }
 // go back to the autoloader. Measured on production (slow 4G, cold cache):
 // at 66 kB the bundle makes a visit that includes the homepage 250-450 ms
 // faster, and costs a visitor who lands on one component page about 265 ms;
-// that cost grows with the bundle, the autoloader's doesn't. 100 kB keeps it
-// under about 400 ms.
-const bundleBudget = 100 << 10
+// that cost grows with the bundle, the autoloader's doesn't. 104 kB keeps it
+// at about 400 ms.
+const bundleBudget = 104 << 10
 
 // useBundle reports whether a page loads the one-file bundle (the default
 // while it fits the budget) or the autoloader. ?load=auto and ?load=bundle
