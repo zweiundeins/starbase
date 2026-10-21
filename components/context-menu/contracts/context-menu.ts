@@ -11,7 +11,7 @@
 
 export const contextMenuContract = {
   tag: "sb-context-menu",
-  selectors: { trigger: "[data-menu-for]", item: '[role="menuitem"], [role="menuitemradio"]' },
+  selectors: { trigger: "[data-menu-for]", item: '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]' },
   events: { action: "sb-menu-action", scope: "sb-menu-scope" },
 } as const;
 

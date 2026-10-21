@@ -1,0 +1,96 @@
+From a101827995696a863f2068784dd895ee37fec4da Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 20:49:54 +0000
+Subject: [PATCH] Let a trigger check and hide menu items with
+ data-menu-checked and data-menu-hidden
+
+One menu serves many triggers, and some of its items show a state that differs per trigger, such
+as the current status of a row, or don't belong to every trigger at all. Like data-menu-disabled,
+a trigger, or the element that carries its context id, can now list actions in
+data-menu-checked: the copied items with those actions get aria-checked="true", the other
+checkable ones aria-checked="false". An item's data-menu-check="radio" or "checkbox", or its
+menuitemradio or menuitemcheckbox role, makes it checkable and picks its role; a checked item
+with neither becomes a menuitemcheckbox. Actions listed in data-menu-hidden are removed from
+the copy, with any separator that leaves at either end of its menu or next to another one.
+Keyboard navigation and clicks take menuitemcheckbox items like the other kinds.
+---
+ contracts/context-menu.ts     |  2 +-
+ rocket/context-menu/client.ts | 43 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+), 1 deletion(-)
+
+diff --git a/contracts/context-menu.ts b/contracts/context-menu.ts
+index acd5f55..51288bc 100644
+--- a/contracts/context-menu.ts
++++ b/contracts/context-menu.ts
+@@ -1,6 +1,6 @@
+ export const contextMenuContract = {
+   tag: "pd-context-menu",
+-  selectors: { trigger: "[data-menu-for]", item: '[role="menuitem"], [role="menuitemradio"]' },
++  selectors: { trigger: "[data-menu-for]", item: '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]' },
+   events: { action: "pd-menu-action", scope: "pd-menu-scope" },
+ } as const;
+ 
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 546f726..026ac59 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -173,6 +173,7 @@ function setupMenu(
+       content.setAttribute("data-menu-content", "");
+       content.append(bindTemplate(template, { ...triggerParams(source), ...context, contextId }));
+       disableItems(content, source);
++      markItems(content, source);
+       host.append(content);
+     } else content = live ?? host;
+     // Submenus stay hidden until they open.
+@@ -359,6 +360,48 @@ function disableItems(content: HTMLElement, trigger: HTMLElement): void {
+     if (actions.includes(item.dataset.action!)) item.setAttribute("aria-disabled", "true");
+ }
+ 
++/** The actions a trigger, or the element that carries its context id, lists in data-menu-<key>. */
++function listedActions(trigger: HTMLElement, key: "menuChecked" | "menuHidden"): string[] {
++  return [trigger.closest<HTMLElement>("[data-context-id]"), trigger].flatMap(
++    (element) => element?.dataset[key]?.split(" ").filter(Boolean) ?? [],
++  );
++}
++
++/**
++ * Remove the copied items whose data-action the trigger lists in data-menu-hidden, and check those it lists in
++ * data-menu-checked. An item's data-menu-check ("radio" or "checkbox") or its role picks its kind; a checked item
++ * with neither is a checkbox.
++ */
++function markItems(content: HTMLElement, trigger: HTMLElement): void {
++  const checked = listedActions(trigger, "menuChecked");
++  const hidden = listedActions(trigger, "menuHidden");
++  for (const item of content.querySelectorAll<HTMLElement>("[data-action]")) {
++    const action = item.dataset.action!;
++    if (hidden.includes(action)) {
++      item.remove();
++      continue;
++    }
++    const kind =
++      item.dataset.menuCheck ??
++      /^menuitem(radio|checkbox)$/.exec(item.getAttribute("role") ?? "")?.[1] ??
++      (checked.includes(action) ? "checkbox" : "");
++    if (kind !== "radio" && kind !== "checkbox") continue;
++    item.setAttribute("role", `menuitem${kind}`);
++    item.setAttribute("aria-checked", String(checked.includes(action)));
++  }
++  if (!hidden.length) return;
++  // A separator that the removed items left at either end of its menu, or next to another one, goes too.
++  const shown = (element: Element | null, step: "previousElementSibling" | "nextElementSibling") => {
++    while (element?.matches('[role="menu"]')) element = element[step];
++    return element;
++  };
++  for (const line of [...content.querySelectorAll('[role="separator"]')].reverse()) {
++    const before = shown(line.previousElementSibling, "previousElementSibling");
++    if (!before || before.matches('[role="separator"]') || !shown(line.nextElementSibling, "nextElementSibling"))
++      line.remove();
++  }
++}
++
+ function showSheet(menu: HTMLElement): () => void {
+   menu.showPopover();
+   return () => {};
+-- 
+2.55.0
+

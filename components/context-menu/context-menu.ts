@@ -183,6 +183,7 @@ function setupMenu(
       content.setAttribute("data-menu-content", "");
       content.append(bindTemplate(template, { ...triggerParams(source), ...context, contextId }));
       disableItems(content, source);
+      markItems(content, source);
       host.append(content);
     } else content = live ?? host;
     // Submenus stay hidden until they open.
@@ -367,6 +368,48 @@ function disableItems(content: HTMLElement, trigger: HTMLElement): void {
   );
   for (const item of content.querySelectorAll<HTMLElement>("[data-action]"))
     if (actions.includes(item.dataset.action!)) item.setAttribute("aria-disabled", "true");
+}
+
+/** The actions a trigger, or the element that carries its context id, lists in data-menu-<key>. */
+function listedActions(trigger: HTMLElement, key: "menuChecked" | "menuHidden"): string[] {
+  return [trigger.closest<HTMLElement>("[data-context-id]"), trigger].flatMap(
+    (element) => element?.dataset[key]?.split(" ").filter(Boolean) ?? [],
+  );
+}
+
+/**
+ * Remove the copied items whose data-action the trigger lists in data-menu-hidden, and check those it lists in
+ * data-menu-checked. An item's data-menu-check ("radio" or "checkbox") or its role picks its kind; a checked item
+ * with neither is a checkbox.
+ */
+function markItems(content: HTMLElement, trigger: HTMLElement): void {
+  const checked = listedActions(trigger, "menuChecked");
+  const hidden = listedActions(trigger, "menuHidden");
+  for (const item of content.querySelectorAll<HTMLElement>("[data-action]")) {
+    const action = item.dataset.action!;
+    if (hidden.includes(action)) {
+      item.remove();
+      continue;
+    }
+    const kind =
+      item.dataset.menuCheck ??
+      /^menuitem(radio|checkbox)$/.exec(item.getAttribute("role") ?? "")?.[1] ??
+      (checked.includes(action) ? "checkbox" : "");
+    if (kind !== "radio" && kind !== "checkbox") continue;
+    item.setAttribute("role", `menuitem${kind}`);
+    item.setAttribute("aria-checked", String(checked.includes(action)));
+  }
+  if (!hidden.length) return;
+  // A separator that the removed items left at either end of its menu, or next to another one, goes too.
+  const shown = (element: Element | null, step: "previousElementSibling" | "nextElementSibling") => {
+    while (element?.matches('[role="menu"]')) element = element[step];
+    return element;
+  };
+  for (const line of [...content.querySelectorAll('[role="separator"]')].reverse()) {
+    const before = shown(line.previousElementSibling, "previousElementSibling");
+    if (!before || before.matches('[role="separator"]') || !shown(line.nextElementSibling, "nextElementSibling"))
+      line.remove();
+  }
 }
 
 function showSheet(menu: HTMLElement): () => void {

@@ -42,7 +42,7 @@ usage: |
   </sb-context-menu>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-context-menu`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`: they keep it working after a morph reaches it while open, focus the first item on open, hide submenus until they open, take labels and disabled actions from the trigger, close it on Tab or a second click on its button, declare its events, and let its markup ask for a sheet on phones.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-context-menu`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`: they keep it working after a morph reaches it while open, focus the first item on open, hide submenus until they open, take labels and disabled, checked and hidden actions from the trigger, close it on Tab or a second click on its button, declare its events, and let its markup ask for a sheet on phones.
 
 One menu for many things on a page. Any element marked `data-menu-for="<menu id>"` opens it with a right click, and a button marked the same way opens it with a click, Enter or Space, so keyboards and touch screens reach it too. The menu copies its items from a `<template>` the server renders, remembers which thing it opened for (the nearest `data-context-id`), and emits `sb-menu-action` with the chosen action and that id. What the action does is up to the server.
 
@@ -158,13 +158,65 @@ Each row gives the menu its planet's name (`data-menu-param-name`, for "Remove M
 </div>
 ```
 
+### A current state per trigger
+
+One menu serves every ticket, and each ticket says which of its items are checked (`data-menu-checked`) and which don't apply at all (`data-menu-hidden`). `data-menu-check="radio"` on the template's items makes the status a radio group; *Pinned* is a checkbox. A done ticket has nothing left to close, so its menu leaves *Close* out, and with it the separator that would be left over. The demo only shows the action it would post: the server answers with new attributes on the row, never the menu itself.
+
+```html preview
+<style>
+  .demo-tickets { display: grid; gap: 10px; justify-items: start; }
+  .demo-tickets ul { display: grid; gap: 6px; inline-size: min(100%, 18rem); margin: 0; padding: 0; list-style: none; }
+  .demo-tickets li { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0.3rem 0.3rem 0.75rem; border: 1px solid var(--sb-border); background: var(--sb-surface-card); color: var(--sb-text-1); }
+  .demo-tickets li > button { padding: 0.2rem 0.6rem; border: 1px solid var(--sb-border); background: var(--sb-surface-raised); color: var(--sb-text-1); font: inherit; cursor: pointer; }
+  .demo-tickets [role="menu"] { --_shadow: var(--sb-shadow-overlay, 0 12px 24px rgb(0 0 0 / 0.55)); min-inline-size: 11rem; margin: 0; padding: 0.3rem; border: 1px solid var(--sb-border); background: var(--sb-surface-raised); color: var(--sb-text-1); box-shadow: var(--_shadow); outline: none; }
+  .demo-tickets [role^="menuitem"] { display: flex; gap: 0.5rem; inline-size: 100%; padding: 0.4rem 0.6rem; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; outline: none; }
+  .demo-tickets [role^="menuitem"]:is(:hover, :focus) { background: var(--sb-surface-hover); }
+  .demo-tickets [role^="menuitem"]:focus-visible { box-shadow: inset 2px 0 var(--sb-brand); }
+  /* The mark column: every checkable item keeps it, so the labels line up. */
+  .demo-tickets [aria-checked]::before { content: ""; inline-size: 1ch; }
+  .demo-tickets [aria-checked="true"]::before { content: "✓"; }
+  .demo-tickets [role="separator"] { block-size: 1px; margin: 0.3rem 0.2rem; background: var(--sb-border); }
+  @media (forced-colors: active) {
+    .demo-tickets [role^="menuitem"]:is(:hover, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
+    .demo-tickets [role="separator"] { background: CanvasText; }
+  }
+</style>
+<div class="demo-tickets" data-signals:_ticketDid="''"
+  data-on:sb-menu-action="$_ticketDid = evt.detail.contextId + ': ' + evt.detail.action">
+  <ul aria-label="Tickets">
+    <li data-context-id="T-12" data-menu-checked="open pin">T-12 Fuel leak
+      <button type="button" data-menu-for="ticket-menu" aria-haspopup="menu" aria-label="Actions for T-12">…</button></li>
+    <li data-context-id="T-13" data-menu-checked="review">T-13 Antenna
+      <button type="button" data-menu-for="ticket-menu" aria-haspopup="menu" aria-label="Actions for T-13">…</button></li>
+    <li data-context-id="T-14" data-menu-checked="done" data-menu-hidden="close">T-14 Coffee
+      <button type="button" data-menu-for="ticket-menu" aria-haspopup="menu" aria-label="Actions for T-14">…</button></li>
+  </ul>
+  <sb-context-menu id="ticket-menu" aria-label="Ticket actions" data-ignore-morph>
+    <template data-sb-menu>
+      <button type="button" role="menuitem" data-action="open" data-menu-check="radio">Open</button>
+      <button type="button" role="menuitem" data-action="review" data-menu-check="radio">In review</button>
+      <button type="button" role="menuitem" data-action="done" data-menu-check="radio">Done</button>
+      <div role="separator"></div>
+      <button type="button" role="menuitem" data-action="pin" data-menu-check="checkbox">Pinned</button>
+      <div role="separator"></div>
+      <button type="button" role="menuitem" data-action="close">Close {contextId}</button>
+    </template>
+  </sb-context-menu>
+  <code data-text="$_ticketDid || 'Nothing chosen yet'"></code>
+</div>
+```
+
+The menu only renders what the trigger says: it never toggles a check itself. A click reports the action, as for any item, and the next open shows whatever the server rendered on the row by then.
+
 ## Markup and events
 
-- **The menu** is `<sb-context-menu id="…">` with a `<template data-sb-menu>` as its direct child, holding the items: elements with `role="menuitem"` (or `menuitemradio`) and the `data-action` they report. Buttons make good items: they take the focus and the clicks. A `role="separator"` element divides groups.
+- **The menu** is `<sb-context-menu id="…">` with a `<template data-sb-menu>` as its direct child, holding the items: elements with `role="menuitem"` (or `menuitemradio`, `menuitemcheckbox`) and the `data-action` they report. Buttons make good items: they take the focus and the clicks. A `role="separator"` element divides groups.
 - **A submenu** is an element with an id and `role="menu"` inside the template, opened by an item with `data-submenu="<its id>"`. It stays hidden until then.
 - **Triggers** are elements with `data-menu-for="<menu id>"`. A right click on one opens the menu at the pointer; a click on one that is a `<button>` or `<a>` opens it below, and a second click closes it. The menu reports the `data-context-id` of the nearest element that has one.
 - **Placeholders:** `{contextId}` in an item's text, `aria-label`, `title` or `data-menu-param-*` attribute becomes that id when the menu opens. A `data-menu-param-<word>` on the trigger, or on the element with its context id, fills `{<word>}`: the demo's rows carry `data-menu-param-name` for "Remove {name}". Nothing else is filled in, and no other attribute is touched.
 - **Actions that don't apply:** `data-menu-disabled="<action> …"` on a trigger, or on the element with its context id, gives the copied items with those `data-action`s `aria-disabled="true"`. The keyboard skips them and a click on one does nothing.
+- **Checked actions:** `data-menu-checked="<action> …"`, in the same places, checks the copied items with those actions (`aria-checked="true"`) and unchecks every other checkable one (`aria-checked="false"`). An item is checkable when it has `data-menu-check="radio"` or `"checkbox"`, which sets its role to `menuitemradio` or `menuitemcheckbox`, or one of those roles itself; a checked item with neither becomes a `menuitemcheckbox`. A click still only reports the action: the check is the server's to change.
+- **Hidden actions:** `data-menu-hidden="<action> …"`, in the same places, leaves the items with those actions out of the copy, and with them any separator that ends up at either end of its menu or next to another one.
 - **Content from the server:** instead of a template, the menu can hold a direct child marked `data-sb-menu-content` (items fetched for one thing), shown as it is. Until that child exists a trigger opens nothing and no event reports the press, so the page fetches the items with a handler of its own on the trigger (`data-on:click="@get(…)"`) and calls `openFor(trigger)` once they are in place.
 - **On a phone:** `data-sb-mobile-sheet` on the menu makes it and its submenus sheets while the viewport is at most 650px wide, or matches the media query in `data-sb-mobile-query`: the menu shows them without a position of its own, and your CSS places them on `[data-mobile-sheet]`. The demo's menu is one, at the bottom of the screen with a submenu on top of it. Without the attribute, the menu keeps its place next to the trigger on a phone too. Both attributes are read when the menu connects.
 - **Morphs:** the menu sets attributes the server doesn't render and adds the copied items, so a morph that reaches it while it is open closes it (the next open works as usual). A menu whose template doesn't change can carry `data-ignore-morph`, like the demo's; its trigger buttons then keep the anchor and `aria-expanded` it gives them with `data-preserve-attr="style aria-expanded"`.
@@ -346,14 +398,14 @@ The component adds no styles: the menu, its items and the triggers are your page
 - The copied items, in a `<div data-menu-content>` inside it, removed again when it closes.
 - `popover="auto"` on every submenu when the menu opens, which hides a submenu until it opens.
 - `aria-expanded` on a trigger button, and on a submenu's item while that submenu is open. A row opened by a right click gets none.
-- `aria-disabled="true"` on the copied items whose actions the trigger turns off.
+- `aria-disabled="true"` on the copied items whose actions the trigger turns off, `aria-checked` and the `menuitemradio` or `menuitemcheckbox` role on the checkable ones. Style the checks on `[aria-checked="true"]`.
 - `data-mobile-sheet` on the menu and its submenus while the viewport is at most 650px wide (or matches `data-sb-mobile-query`). With `data-sb-mobile-sheet`, they then get no inline position, and a rule on the attribute places them: the example makes the menu a sheet at the bottom of the screen and puts a submenu on top of it (through an `anchor-name` on the menu), where it covers none of the menu's items. Without it, the inline position stays, and only a rule with `!important` moves them. An element with `data-submenu-back` inside a submenu closes it.
 
 Because the menu sits in the top layer, its background and shadow are yours to give it; the example draws the shadow from `var(--sb-shadow-overlay)` through a `--_shadow` local, like Starbase's own overlays.
 
 ## Accessibility
 
-The menu is a `role="menu"` of `menuitem`s. Opening it moves the focus to its first item that isn't disabled. Choosing an item, Escape and Tab give the focus back to the trigger, so a row that opens the menu on a right click needs `tabindex="-1"` to take it, as in the demo. When the server's answer removes the trigger (the demo's Remove), the focus falls back to the page, and the answer decides where it goes. Give the menu a name with `aria-label`. Give trigger buttons `aria-haspopup="menu"` and a label that says what they act on ("Actions for Earth"); the component keeps their `aria-expanded` up to date. A right click opens the menu for mouse users; keyboard users press the button, or Shift+F10 on a focused trigger. iOS Safari sends no `contextmenu` event on a long press, so give every row a button.
+The menu is a `role="menu"` of `menuitem`s, and of `menuitemradio`s and `menuitemcheckbox`es with `aria-checked` where a trigger checks items. Opening it moves the focus to its first item that isn't disabled. Choosing an item, Escape and Tab give the focus back to the trigger, so a row that opens the menu on a right click needs `tabindex="-1"` to take it, as in the demo. When the server's answer removes the trigger (the demo's Remove), the focus falls back to the page, and the answer decides where it goes. Give the menu a name with `aria-label`. Give trigger buttons `aria-haspopup="menu"` and a label that says what they act on ("Actions for Earth"); the component keeps their `aria-expanded` up to date. A right click opens the menu for mouse users; keyboard users press the button, or Shift+F10 on a focused trigger. iOS Safari sends no `contextmenu` event on a long press, so give every row a button.
 
 ## Licence
 

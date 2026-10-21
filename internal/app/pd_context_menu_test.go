@@ -182,3 +182,62 @@ try {
 }
 await report()
 `
+
+// TestContextMenuCheckedAndHidden checks patch 0150: a trigger's data-menu-checked checks the
+// items with those actions (their role from data-menu-check, or a checkbox), its data-menu-hidden
+// leaves those items and the separators they strand out of the copy, both per trigger and from the
+// element with the context id, and the keyboard and clicks take checkbox items.
+func TestContextMenuCheckedAndHidden(t *testing.T) {
+	_, body := probe(t, "/components/context-menu", pdPrelude+contextMenuMarksJS)
+	copyRows(t, body)
+}
+
+const contextMenuMarksJS = `
+try {
+	await customElements.whenDefined('sb-context-menu')
+	const box = document.createElement('div')
+	box.innerHTML = '<button type="button" id="mk-a" data-context-id="a" data-menu-for="mk-menu" data-menu-checked="done pin" data-menu-hidden="archive">A</button>' +
+		'<div data-context-id="b" data-menu-checked="open flag" data-menu-hidden="delete archive"><button type="button" id="mk-b" data-menu-for="mk-menu">B</button></div>' +
+		'<button type="button" id="mk-c" data-menu-for="mk-menu">C</button>' +
+		'<sb-context-menu id="mk-menu" aria-label="Ticket"><template data-sb-menu>' +
+		'<button type="button" role="menuitem" data-action="open" data-menu-check="radio">Open</button>' +
+		'<button type="button" role="menuitem" data-action="done" data-menu-check="radio">Done</button>' +
+		'<button type="button" role="menuitem" data-action="pin" data-menu-check="checkbox">Pinned</button>' +
+		'<button type="button" role="menuitem" data-action="flag">Flag</button>' +
+		'<div role="separator"></div>' +
+		'<button type="button" role="menuitem" data-action="delete">Delete</button>' +
+		'<div role="separator"></div>' +
+		'<button type="button" role="menuitem" data-action="archive">Archive</button>' +
+		'</template></sb-context-menu>'
+	document.body.prepend(box)
+	await settle()
+	const menu = document.getElementById('mk-menu')
+	const actions = []
+	menu.addEventListener('sb-menu-action', (e) => actions.push(e.detail))
+	const shown = () => [...menu.querySelectorAll('[data-menu-content] > *')].map((el) => el.dataset.action ? el.dataset.action + ':' + el.getAttribute('role').replace('menuitem', '') + (el.hasAttribute('aria-checked') ? '=' + el.getAttribute('aria-checked') : '') : el.getAttribute('role'))
+	const focused = () => document.activeElement?.dataset.action
+
+	document.getElementById('mk-a').click()
+	check('A: radios and a checkbox checked from the trigger, archive and its separator gone', shown(), ['open:radio=false', 'done:radio=true', 'pin:checkbox=true', 'flag:', 'separator', 'delete:'])
+	press(document.activeElement, 'ArrowDown')
+	press(document.activeElement, 'ArrowDown')
+	check('the keyboard reaches a checkbox item', focused(), 'pin')
+	document.activeElement.click()
+	check('choosing it reports the action and closes', [actions, menu.matches(':popover-open')], [[{ action: 'pin', contextId: 'a' }], false])
+
+	document.getElementById('mk-b').click()
+	check('B, from its context element: a checked item without data-menu-check is a checkbox, both separators go', shown(), ['open:radio=true', 'done:radio=false', 'pin:checkbox=false', 'flag:checkbox=true'])
+	press(document.activeElement, 'End')
+	check('End reaches the last item', focused(), 'flag')
+	press(document.activeElement, 'Escape')
+
+	document.getElementById('mk-c').click()
+	check('C: nothing checked, nothing hidden', shown(), ['open:radio=false', 'done:radio=false', 'pin:checkbox=false', 'flag:', 'separator', 'delete:', 'separator', 'archive:'])
+	press(document.activeElement, 'Escape')
+	check('the template is untouched', menu.querySelector('template').content.querySelectorAll('[role="menuitem"]').length, 6)
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`
