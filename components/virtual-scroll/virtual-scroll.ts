@@ -19,7 +19,7 @@ const internalsOf = (host: HTMLElement) => internals.get(host) ?? internals.set(
 // Items with something to focus take Tab themselves; otherwise the scroller does.
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]'
 // An item's key: what stays with it when items move ('': none).
-const keyOf = (el: Element) => el.id || el.getAttribute('data-key') || ''
+const keyOf = (el: Element) => el.getAttribute('data-key') || el.id
 
 // sb-window's detail: the window of items to send, from the item at offset.
 type WindowRequest = { offset: number; count: number }
@@ -275,6 +275,9 @@ rocket('sb-virtual-scroll', {
 			ask()
 			remember()
 			frame ||= requestAnimationFrame(refocus)
+			// A keyed item patched in place shows another entry: the focus goes back to its item now, before a key acts on it.
+			const a = (host.getRootNode() as Document | ShadowRoot).activeElement
+			if (focusKey && kids().some((el) => el.contains(a) && keyOf(el) !== focusKey)) refocus()
 		}
 		const watch = new MutationObserver(morphed)
 		watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true })

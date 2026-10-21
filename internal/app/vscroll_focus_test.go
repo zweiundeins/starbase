@@ -48,6 +48,7 @@ func TestVirtualScrollFocus(t *testing.T) {
 		{"insert above, no keys", "/", vscrollFocusJS + vscrollInsertJS, links, false},
 		{"insert above, data-key", "/", vscrollFocusJS + vscrollInsertJS, vscrollItems{links: 2, key: "data-key"}, false},
 		{"insert above, id", "/", vscrollFocusJS + vscrollInsertJS, vscrollItems{links: 2, key: "id"}, false},
+		{"insert above, data-key and id", "/", vscrollFocusJS + vscrollInsertJS, vscrollItems{links: 2, key: "both"}, false},
 		{"aria-busy", "/", vscrollFocusJS + vscrollBusyJS, links, false},
 	}
 	for _, c := range cases {
@@ -100,7 +101,7 @@ type vscrollItems struct {
 	b         string // b as a link (""), a disabled button ("disabled") or an sb-checkbox ("checkbox")
 	focusable bool   // the item takes the focus itself (tabindex="-1"), like a grid's rows
 	dead      string // the index of an item that holds only disabled buttons ("": none)
-	key       string // the items' key: "id", "data-key" or none ("")
+	key       string // the items' key: "id", "data-key", "both" (an id by position) or none ("")
 	added     int    // items inserted before the first: the item at index i is item i - added
 }
 
@@ -126,6 +127,8 @@ func vscrollHost(offset, count, total int, items vscrollItems) string {
 			key = fmt.Sprintf(` id="k%d"`, i-items.added)
 		case "data-key":
 			key = fmt.Sprintf(` data-key="%d"`, i-items.added)
+		case "both":
+			key = fmt.Sprintf(` id="p%d" data-key="%d"`, i, i-items.added)
 		}
 		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d"%s%s>`, i+2, row, key)
 		i := i - items.added
@@ -648,6 +651,8 @@ const kind = KEY_KIND
 const c = '10: items inserted above (' + (kind || 'no keys') + ')'
 const insert = (n, fixed) => get('/__probe/window?offset=' + vs.getAttribute('offset') + '&count=' + vs.querySelectorAll(':scope > [role=row]').length + '&insert=' + n + (fixed ? '&fixed' : ''))
 const first = () => vs.querySelector(':scope > [role=row] a')?.getAttribute('href')
+// The focus as the list's observers are done with the morph, before any frame: where a key would act.
+const landed = () => new Promise((resolve) => new MutationObserver((_, o) => (o.disconnect(), resolve(describe(deep())))).observe(vs, { childList: true, attributes: true, subtree: true }))
 try {
 	vs.scrollToIndex(5000)
 	await settle(vs)
@@ -656,8 +661,10 @@ try {
 	link(5003).focus()
 	await settle(vs)
 	const top = scroller.scrollTop, y = link(5000).getBoundingClientRect().top
+	const now = landed()
 	await insert(3)
 	if (kind) {
+		check(c, 'the focus as the window lands', await now, 'a #r5003a')
 		check(c, 'item 5000 moved by', Math.round(link(5000).getBoundingClientRect().top - y), 0)
 		check(c, 'scrollTop', scroller.scrollTop, top + 90)
 		check(c, 'the focus', describe(deep()), 'a #r5003a')
@@ -667,7 +674,9 @@ try {
 		link(5010).focus()
 		await settle(vs)
 		const top2 = scroller.scrollTop, y2 = link(5000).getBoundingClientRect().top
+		const now2 = landed()
 		await insert(2, true)
+		check(c + ', the total kept', 'the focus as the window lands', await now2, 'a #r5010a')
 		check(c + ', the total kept', 'item 5000 moved by', Math.round(link(5000).getBoundingClientRect().top - y2), 0)
 		check(c + ', the total kept', 'scrollTop', scroller.scrollTop, top2 + 60)
 		check(c + ', the total kept', 'the focus', describe(deep()), 'a #r5010a')

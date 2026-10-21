@@ -18,7 +18,7 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 // Items with something to focus take Tab themselves; otherwise the scroller does.
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]';
 // An item's key: what stays with it when items move ('': none).
-const keyOf = (el) => el.id || el.getAttribute('data-key') || '';
+const keyOf = (el) => el.getAttribute('data-key') || el.id;
 // Notes on the styles, kept here where the minifier drops them:
 // - The scroller is contained (strict): a new window never lays out the page.
 // - The window is not: rows wider than the list overflow it, and the scroller
@@ -283,6 +283,10 @@ rocket('sb-virtual-scroll', {
             ask();
             remember();
             frame ||= requestAnimationFrame(refocus);
+            // A keyed item patched in place shows another entry: the focus goes back to its item now, before a key acts on it.
+            const a = host.getRootNode().activeElement;
+            if (focusKey && kids().some((el) => el.contains(a) && keyOf(el) !== focusKey))
+                refocus();
         };
         const watch = new MutationObserver(morphed);
         watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true });
