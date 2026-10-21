@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The tree: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened."
+        "description": "The tree as JSON, for an element without a list inside: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened."
       }
     },
     {
@@ -18,7 +18,7 @@
       "default": {},
       "required": false,
       "docs": {
-        "description": "Loaded children by parent id: {\"<id>\": [items]}. Bind it to a signal the server patches (see the docs)."
+        "description": "With items: loaded children by parent id, {\"<id>\": [items]}. Bind it to a signal the server patches (see the docs)."
       }
     },
     {
@@ -33,7 +33,7 @@
         "none"
       ],
       "docs": {
-        "description": "How many items can be selected."
+        "description": "How many items can be selected. Links are followed, not selected."
       }
     },
     {
@@ -94,7 +94,7 @@
       "name": "sb-load",
       "bubbles": true,
       "composed": true,
-      "description": "A lazy item was opened and has no children yet. detail: { id }. Answer by adding its children to the loaded prop."
+      "description": "A lazy item was opened and has no children yet. detail: { id }. Answer with a list in its <li>, or by adding its children to the loaded prop."
     },
     {
       "kind": "event",

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -88,12 +89,16 @@ func (c *cdp) read(r io.Reader) {
 // /__probe/cdp: a JSON list of {method, params} run in order on the page's
 // session (real input, emulated media, the accessibility tree), answered
 // with their results. {method: "shot", params: {name, clip}} saves a PNG
-// to $STARBASE_SHOTS/<name>.png when that is set.
-func probeCDP(t *testing.T, path, script string) []byte {
+// to $STARBASE_SHOTS/<name>.png when that is set. more adds test handlers by path.
+func probeCDP(t *testing.T, path, script string, more ...map[string]http.HandlerFunc) []byte {
 	t.Helper()
 	var c *cdp
 	var ready = make(chan struct{})
-	extra := map[string]http.HandlerFunc{"/__probe/cdp": func(w http.ResponseWriter, r *http.Request) {
+	extra := map[string]http.HandlerFunc{}
+	for _, m := range more {
+		maps.Copy(extra, m)
+	}
+	extra["/__probe/cdp"] = func(w http.ResponseWriter, r *http.Request) {
 		<-ready
 		var cmds []struct {
 			Method string          `json:"method"`
@@ -122,7 +127,7 @@ func probeCDP(t *testing.T, path, script string) []byte {
 			out = append(out, res)
 		}
 		json.NewEncoder(w).Encode(out)
-	}}
+	}
 	chrome := findChrome(t)
 	start := func(url string, results <-chan []byte) []byte {
 		args := []string{"--headless=new", "--disable-gpu", "--window-size=1440,1000", "--remote-debugging-pipe", "about:blank"}

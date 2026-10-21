@@ -215,12 +215,8 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 // demoAnswer writes the list as JSON, or patches it into the requested signal.
 func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
-		select {
-		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
-		case <-r.Context().Done():
-			return
-		}
+	if !demoWait(r) {
+		return
 	}
 	// Datastar's own requests accept JSON too: they always get the patch.
 	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {

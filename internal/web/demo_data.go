@@ -34,7 +34,8 @@ import (
 // as a list, children as {"<parent>": [...]} (patches merge, so a lazy tree's
 // branches accumulate), rows as {rows, offset, total, sort: {key, dir}}.
 // Other clients sending Accept: application/json get the list (or the
-// window) as JSON.
+// window) as JSON. Children with &tree=<sb-tree id> come as markup instead,
+// a list patched into the parent's <li> (see demoTreeMarkup).
 // &delay=<ms> (up to 1500) makes loading states visible in demos.
 //
 // Items: {id, value, label, description, icon, kind, lazy}: value is the id
@@ -69,6 +70,7 @@ func demoItems(bodies []queries.DemoBody) []demoItem {
 }
 
 // demoChildren answers with the children of ?parent= (the top level without one).
+// With &tree=<id>, as markup for the sb-tree with that id (demoTreeMarkup).
 func (s *Server) demoChildren(w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get("parent")
 	bodies, err := s.q.ViewValue(r.Context(), func(rd *queries.Reader) ([]queries.DemoBody, error) {
@@ -76,6 +78,10 @@ func (s *Server) demoChildren(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		s.fail(w, r, err)
+		return
+	}
+	if tree := r.URL.Query().Get("tree"); tree != "" {
+		s.demoTreeMarkup(w, r, tree, parent, bodies)
 		return
 	}
 	items := demoItems(bodies)
@@ -385,12 +391,8 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 // demoAnswer writes the list as JSON, or patches it into the requested signal.
 func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
-		select {
-		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
-		case <-r.Context().Done():
-			return
-		}
+	if !demoWait(r) {
+		return
 	}
 	// Datastar's own requests accept JSON too: they always get the patch.
 	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -416,6 +418,74 @@ func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSigna
 	if stream, err := sse.Open(w, r, sse.Options{}); err == nil {
 		stream.CloseWith(sse.PatchSignals(js, false))
 	}
+}
+
+// demoWait holds the answer for &delay= milliseconds (at most 1500); false
+// when the request went away meanwhile.
+func demoWait(r *http.Request) bool {
+	ms, _ := strconv.Atoi(r.URL.Query().Get("delay"))
+	if ms <= 0 {
+		return true
+	}
+	select {
+	case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
+		return true
+	case <-r.Context().Done():
+		return false
+	}
+}
+
+var demoParentRe = regexp.MustCompile(`^[A-Za-z0-9_-]{0,64}$`)
+
+// demoTreeMarkup answers sb-tree's sb-load with the children as a list,
+// appended to the parent's <li> (for the top level, the tree's whole list).
+// Bodies with children of their own are lazy, and show how many they have.
+func (s *Server) demoTreeMarkup(w http.ResponseWriter, r *http.Request, tree, parent string, bodies []queries.DemoBody) {
+	if !elementIDRe.MatchString(tree) || !demoParentRe.MatchString(parent) {
+		http.Error(w, "tree must be an element id, parent an item id", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	if !demoWait(r) {
+		return
+	}
+	var b strings.Builder
+	b.WriteString("<ul>")
+	for _, body := range bodies {
+		fmt.Fprintf(&b, `<li data-id="%s"`, html.EscapeString(body.ID))
+		if body.Children > 0 {
+			b.WriteString(" data-lazy")
+		}
+		fmt.Fprintf(&b, `>%s %s`, demoIcon(body.Kind), html.EscapeString(body.Name))
+		if body.Children > 0 {
+			fmt.Fprintf(&b, ` <span data-meta>%d</span>`, body.Children)
+		}
+		b.WriteString("</li>")
+	}
+	b.WriteString("</ul>")
+	p := sse.Patch{Selector: "#" + tree, Mode: sse.Inner}
+	if parent != "" {
+		p = sse.Patch{Selector: fmt.Sprintf(`#%s li[data-id="%s"]`, tree, parent), Mode: sse.Append}
+	}
+	if stream, err := sse.Open(w, r, sse.Options{}); err == nil {
+		stream.CloseWith(sse.PatchElements([]byte(b.String()), p))
+	}
+}
+
+// demoIcons are pixel icons per kind of body, 16 by 16, in the text colour.
+var demoIcons = map[string]string{
+	"galaxy":        "M7 7h2v2H7zM3 4h5v1h1v1H3zM8 10h5v1h-1v1H8zM2 6h1v3H2zM13 7h1v3h-1z",
+	"group":         "M1 3h5v1h1v1h8v8H1z",
+	"constellation": "M2 11h2v2H2zM7 6h2v2H7zM12 2h2v2h-2zM4 10h1v1H4zM5 9h1v1H5zM6 8h1v1H6zM9 5h1v1H9zM10 4h2v1h-2z",
+	"system":        "M6 5h4v1h1v4h-1v1H6v-1H5V6h1zM7 1h2v2H7zM7 13h2v2H7zM1 7h2v2H1zM13 7h2v2h-2z",
+	"star":          "M7 2h2v4h1v1h4v2h-4v1H9v4H7v-4H6V9H2V7h4V6h1z",
+	"planet":        "M6 4h4v1h1v1h1v1h3v2h-3v1h-1v1h-1v1H6v-1H5v-1H4V9H1V7h3V6h1V5h1z",
+	"dwarf":         "M6 6h4v1h1v2h-1v1H6V9H5V7h1z",
+	"moon":          "M6 2h4v1H8v1H7v2H6v4h1v2h1v1h2v1H6v-1H5v-1H4v-1H3V6h1V5h1V4h1z",
+}
+
+func demoIcon(kind string) string {
+	return `<svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="` + demoIcons[kind] + `"/></svg>`
 }
 
 var elementIDRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}$`)

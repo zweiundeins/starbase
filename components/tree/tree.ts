@@ -16,9 +16,93 @@ const peek = <T>(fn: () => T): T => {
 const internals = new WeakMap<HTMLElement, ElementInternals>()
 const internalsOf = (host: HTMLElement) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)!
 
-// An item from the server, and a visible row of the walk through the open ones.
+// An item of the JSON form.
 type Item = { id: string | number; label?: string; icon?: string; children?: Item[]; lazy?: boolean }
-type Row = { id: string; label: string; icon: string; depth: number; parent: string; branch: boolean; open: boolean; loading: boolean; pos: number; size: number }
+// An item of either form. kids is undefined while a lazy item's children
+// are unknown; open is the markup's data-open (null in the JSON form).
+type TreeNode = {
+	id: string
+	label: string
+	icon: string
+	art: Element | null
+	meta: string
+	href: string
+	target: string
+	rel: string
+	title: string
+	current: string
+	lazy: boolean
+	open: boolean | null
+	kids?: TreeNode[]
+}
+// A visible row of the walk through the open items. Every key is always set:
+// data-for merges a row into the one rendered at its place before.
+type Row = Omit<TreeNode, 'art' | 'lazy' | 'open' | 'kids'> & {
+	art: boolean
+	depth: number
+	parent: string
+	branch: boolean
+	open: boolean
+	loading: boolean
+	pos: number
+	size: number
+}
+
+const fromItems = (items: Item[], loaded: Record<string, Item[]>): TreeNode[] =>
+	(Array.isArray(items) ? items : []).map((it) => {
+		const id = String(it.id)
+		const kids = it.children ?? loaded?.[id]
+		return { id, label: String(it.label ?? id), icon: it.icon ?? '', art: null, meta: '', href: '', target: '', rel: '', title: '', current: '', lazy: !!it.lazy, open: null, kids: kids && fromItems(kids, loaded) }
+	})
+
+// The tree in the element's own markup: nested lists, an item per <li>.
+// null without a list, and then the JSON form applies.
+const fromMarkup = (host: HTMLElement): TreeNode[] | null => {
+	const top = host.querySelector(':scope > ul, :scope > ol')
+	if (!top) return null
+	const seen = new Set<string>()
+	const skip = '[data-icon], [data-meta], ul, ol, script, style, template'
+	const text = (nodes: ChildNode[]): string =>
+		nodes.map((n) => (n.nodeType === Node.TEXT_NODE ? n.textContent : n instanceof Element && !n.matches(skip) ? text([...n.childNodes]) : '')).join('')
+	const squash = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim()
+	const read = (list: Element, path: string): TreeNode[] =>
+		[...list.children]
+			.filter((li) => li.localName === 'li')
+			.map((li) => {
+				const kids = li.querySelector(':scope > ul, :scope > ol')
+				const head = [...li.childNodes].filter((n) => !(n instanceof Element && n.matches('ul, ol')))
+				const find = (sel: string) => {
+					for (const n of head) {
+						const m = n instanceof Element && (n.matches(sel) ? n : n.querySelector(sel))
+						if (m) return m
+					}
+					return null
+				}
+				const a = find('a[href]')
+				const label = squash(text(head))
+				const base = (li as HTMLElement).dataset.id || a?.getAttribute('href') || `${path}/${label}`
+				let id = base
+				for (let n = 2; seen.has(id); n++) id = `${base}~${n}`
+				seen.add(id)
+				const current = find('[aria-current]')?.getAttribute('aria-current') ?? li.getAttribute('aria-current')
+				return {
+					id,
+					label,
+					icon: '',
+					art: find('[data-icon]'),
+					meta: squash(find('[data-meta]')?.textContent),
+					href: a?.getAttribute('href') ?? '',
+					target: a?.getAttribute('target') ?? '',
+					rel: a?.getAttribute('rel') ?? '',
+					title: a?.getAttribute('title') ?? '',
+					current: current && current !== 'false' ? current : '',
+					lazy: li.hasAttribute('data-lazy'),
+					open: li.hasAttribute('data-open'),
+					kids: kids ? read(kids, `${path}/${label}`) : undefined,
+				}
+			})
+	return read(top, '')
+}
 
 const styles = /* css */ `
 :host {
@@ -36,19 +120,22 @@ const styles = /* css */ `
 }
 :host([hidden]) { display: none; }
 [role="tree"] { display: grid; gap: 1px; outline: none; }
-[role="treeitem"] {
+.row {
 	display: flex;
 	align-items: center;
 	gap: 0.4rem;
 	min-block-size: 2rem;
 	padding-inline: calc(var(--depth) * var(--_indent) + 0.25rem) 0.5rem;
 	border-radius: var(--sb-radius-sm, 6px);
+	color: inherit;
+	text-decoration: none;
 	cursor: pointer;
 	user-select: none;
 }
-[role="treeitem"]:hover { background: var(--_hover); }
-[role="treeitem"][aria-selected="true"] { background: var(--_sel); box-shadow: inset 2px 0 0 var(--_brand); }
-[role="treeitem"]:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
+.row:hover { background: var(--_hover); }
+.row:is([aria-selected="true"], [aria-current]) { background: var(--_sel); box-shadow: inset 2px 0 0 var(--_brand); }
+.row[aria-current] { font-weight: 600; }
+.row:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
 .caret { display: grid; place-items: center; inline-size: 1rem; block-size: 1rem; flex: none; color: var(--_muted); }
 /* A triangle that turns when open: stepped and turning in two steps at notch 1,
    plain and turning smoothly at 0. */
@@ -63,24 +150,38 @@ const styles = /* css */ `
 [aria-expanded="true"] > .caret::before { rotate: 90deg; }
 :not([aria-expanded]) > .caret::before { display: none; }
 .icon { flex: none; inline-size: 1.1rem; text-align: center; }
-.label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A copy of the markup's icon, at the size of the text icons. */
+.art { display: grid; place-items: center; block-size: 1.1rem; }
+.art > *, .art svg, .art img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
+.label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta {
+	flex: none;
+	margin-inline-start: auto;
+	padding-inline-start: 0.5rem;
+	color: var(--_muted);
+	font-size: 0.75rem;
+	font-weight: 400;
+	font-variant-numeric: tabular-nums;
+}
 .busy { color: var(--_muted); font-size: 0.75rem; }
 .busy::after { content: "…"; animation: dots 1s steps(3) infinite; display: inline-block; inline-size: 1.2em; overflow: hidden; vertical-align: bottom; }
 @keyframes dots { from { inline-size: 0 } }
 @media (prefers-reduced-motion: reduce) { .caret::before, .busy::after { transition: none; animation: none; } }
 @media (forced-colors: active) {
 	.caret::before { forced-color-adjust: none; background: CanvasText; }
-	[role="treeitem"][aria-selected="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-	[role="treeitem"][aria-selected="true"] .caret::before { background: HighlightText; }
-	[role="treeitem"]:not([aria-selected="true"], :focus-visible):hover { outline: 1px solid Highlight; outline-offset: -1px; }
+	.row:is([aria-selected="true"], [aria-current]) { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+	.row:is([aria-selected="true"], [aria-current]) .caret::before { background: HighlightText; }
+	.row:is([aria-selected="true"], [aria-current]) .meta { color: HighlightText; }
+	.row:not([aria-selected="true"], [aria-current], :focus-visible):hover { outline: 1px solid Highlight; outline-offset: -1px; }
+	.row:focus-visible { outline-color: Highlight; }
 }
 `
 
 rocket('sb-tree', {
 	props: ({ bool, json, oneOf, string }) => ({
-		items: json.default(() => []).docs({ description: 'The tree: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened.' }),
-		loaded: json.default(() => ({})).docs({ description: 'Loaded children by parent id: {"<id>": [items]}. Bind it to a signal the server patches (see the docs).' }),
-		selection: oneOf('single', 'multiple', 'none').default('single').docs({ description: 'How many items can be selected.' }),
+		items: json.default(() => []).docs({ description: 'The tree as JSON, for an element without a list inside: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened.' }),
+		loaded: json.default(() => ({})).docs({ description: 'With items: loaded children by parent id, {"<id>": [items]}. Bind it to a signal the server patches (see the docs).' }),
+		selection: oneOf('single', 'multiple', 'none').default('single').docs({ description: 'How many items can be selected. Links are followed, not selected.' }),
 		value: string.docs({ description: 'Selection: an id, or ids separated by spaces (multiple). A new value from the server replaces it; the live value is the value property.' }),
 		expanded: string.docs({ description: 'Open items: ids separated by spaces. A new list from the server replaces it; lazy items in it load their children.' }),
 		label: string.trim.default('Tree').docs({ description: 'Accessible name.' }),
@@ -89,7 +190,7 @@ rocket('sb-tree', {
 	}),
 	manifest: {
 		events: [
-			{ name: 'sb-load', kind: 'custom-event', bubbles: true, composed: true, description: 'A lazy item was opened and has no children yet. detail: { id }. Answer by adding its children to the loaded prop.' },
+			{ name: 'sb-load', kind: 'custom-event', bubbles: true, composed: true, description: 'A lazy item was opened and has no children yet. detail: { id }. Answer with a list in its <li>, or by adding its children to the loaded prop.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'The selection changed.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'The selection changed. detail: { name, value } (an id, or an array of ids for multiple): ready for a command.' },
 			{ name: 'sb-toggle', kind: 'custom-event', bubbles: true, composed: true, description: 'An item opened or closed. detail: { id, open }.' },
@@ -126,38 +227,83 @@ rocket('sb-tree', {
 				if (el && host.shadowRoot!.activeElement !== el) el.focus()
 			})
 
+		// The tree: the element's own list wins over items. read() takes it in
+		// and applies the markup's data-open and aria-current; rebuild() walks it.
+		let tree: TreeNode[] = []
+		const art = new Map<string, Element>() // the markup's icons by id
+		const marked = new Map<string, boolean>() // data-open as last read, by id
+		let current = ''
+		const read = () => {
+			tree = fromMarkup(host) ?? fromItems(props.items, props.loaded)
+			art.clear()
+			let path: string[] = []
+			const visit = (nodes: TreeNode[], up: string[]) =>
+				nodes.forEach((n) => {
+					if (n.art) art.set(n.id, n.art)
+					// A changed data-open wins, like a changed attribute; the same one
+					// again keeps the user's choice.
+					if (n.open !== null) {
+						const was = marked.get(n.id)
+						marked.set(n.id, n.open)
+						if (was === undefined ? n.open : was !== n.open) n.open ? open.add(n.id) : open.delete(n.id)
+					}
+					if (n.current) path = [...up, n.id]
+					if (n.kids) visit(n.kids, [...up, n.id])
+				})
+			visit(tree, [])
+			// A new current item opens the branches above it.
+			const now = path.at(-1) ?? ''
+			if (now !== current) path.slice(0, -1).forEach((id) => open.add(id))
+			current = now
+		}
+
+		// Rows are reused by position, so each one's copy of the markup's icon
+		// is checked against the item it shows now.
+		const painted = new WeakMap<Element, string>()
+		const paint = () =>
+			host.shadowRoot?.querySelectorAll<HTMLElement>('.row').forEach((el) => {
+				const box = el.querySelector('.art')!
+				const src = art.get(el.dataset.id ?? '')
+				const key = src?.outerHTML ?? ''
+				if (painted.get(box) === key) return
+				painted.set(box, key)
+				box.replaceChildren(...(src ? [src.cloneNode(true)] : []))
+			})
+
 		// The visible rows: a depth-first walk through the open items.
 		const rebuild = () => {
 			const rows: Row[] = []
-			const walk = (items: Item[], depth: number, parent: string) => {
-				items.forEach((it, i) => {
-					const id = String(it.id)
-					const kids = it.children ?? props.loaded[id]
-					const branch = !!(kids?.length || (it.lazy && !kids))
-					const isOpen = open.has(id) && branch
-					// Children arrived (in items or loaded): done loading. An open
-					// lazy item without children asks for them (also when the server
-					// opened it through expanded).
-					if (kids) loading.delete(id)
-					else if (isOpen && it.lazy && !loading.has(id)) {
-						loading.add(id)
+			const walk = (nodes: TreeNode[], depth: number, parent: string) => {
+				nodes.forEach((n, i) => {
+					const branch = !!(n.kids?.length || (n.lazy && !n.kids))
+					const isOpen = open.has(n.id) && branch
+					// Children arrived: done loading. An open lazy item without
+					// children asks for them (also when the server opened it).
+					if (n.kids) loading.delete(n.id)
+					else if (isOpen && n.lazy && !loading.has(n.id)) {
+						loading.add(n.id)
 						// The request goes out in a later task: during setup the page's
 						// data-on:sb-load isn't attached yet, and inside another effect
 						// (a morph) the @get it starts would be tracked by that effect.
-						setTimeout(() => emit('sb-load', { id }))
+						setTimeout(() => emit('sb-load', { id: n.id }))
 					}
-					rows.push({ id, label: String(it.label ?? id), icon: it.icon ?? '', depth, parent, branch, open: isOpen, loading: loading.has(id), pos: i + 1, size: items.length })
-					if (isOpen && kids?.length) walk(kids, depth + 1, id)
+					const { id, label, icon, meta, href, target, rel, title, current } = n
+					rows.push({ id, label, icon, art: !!n.art, meta, href, target, rel, title, current, depth, parent, branch, open: isOpen, loading: loading.has(id), pos: i + 1, size: nodes.length })
+					if (isOpen && n.kids?.length) walk(n.kids, depth + 1, id)
 				})
 			}
-			walk(props.items || [], 0, '')
+			walk(tree, 0, '')
 			// A row the server dropped hands the focus to its neighbour, so the
 			// keyboard stays in the tree instead of falling out to the document.
 			const was = $$.rows.findIndex((r: Row) => r.id === $$.focus)
 			$$.rows = rows
 			if (!rows.some((r) => r.id === $$.focus)) $$.focus = rows[Math.min(Math.max(was, 0), rows.length - 1)]?.id ?? ''
+			// Inside another effect the rows render later: paint again then.
+			paint()
+			requestAnimationFrame(paint)
 			refocus()
 		}
+		read()
 		rebuild()
 		// peek: attribute changes arrive inside the effect of whoever set them
 		// (e.g. data-attr:loaded); reading signals here must not subscribe it.
@@ -165,9 +311,17 @@ rocket('sb-tree', {
 			peek(() => {
 				$$.label = props.label
 				$$.mode = props.selection
+				read()
 				rebuild()
 			}),
 		)
+		// Any change to the markup inside (a morph, a list of children patched
+		// into an item) reads it again.
+		const source = new MutationObserver((records) => {
+			if (records.some((r) => r.target !== host || r.type !== 'attributes')) peek(() => (read(), rebuild()))
+		})
+		source.observe(host, { childList: true, subtree: true, characterData: true, attributes: true })
+		cleanup(() => source.disconnect())
 		// The server's value and expanded win whenever it sends new ones, also
 		// ones the props already decode to (value="" on an element that never
 		// had one: observeProps stays silent). The same attribute again keeps
@@ -203,10 +357,12 @@ rocket('sb-tree', {
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.selected = ids(props.value)), sync())) })
 		const row = (id: string): Row | undefined => $$.rows.find((r: Row) => r.id === id)
-		// Tabbing in lands on the selected row (the first visible one). (rows?.:
-		// effects run once more with the signals gone when the element is removed.)
+		// Tabbing in lands on the selected row, else the current page (the first
+		// visible one). (rows?.: effects run once more with the signals gone
+		// when the element is removed.)
 		effect(() => {
-			const r = !$$.hasFocus && $$.rows?.find((r: Row) => $$.selected.includes(r.id))
+			if ($$.hasFocus) return
+			const r = $$.rows?.find((r: Row) => !r.href && $$.selected.includes(r.id)) ?? $$.rows?.find((r: Row) => r.current)
 			if (r) $$.focus = r.id
 		})
 
@@ -247,19 +403,29 @@ rocket('sb-tree', {
 			const t = evt!.target as Element
 			requestAnimationFrame(() => t.isConnected && !host.shadowRoot!.activeElement && ($$.hasFocus = false))
 		})
+		// A link row is the browser's: a click or Enter follows it (with a
+		// modifier, in a new tab). Only its caret opens and closes it.
 		action('click', ({ evt }, id: string) => {
 			$$.focus = id
-			if (row(id)?.branch && (evt!.target as Element).closest('.caret')) return setOpen(id, !row(id)!.open)
+			const r = row(id)
+			if (r?.branch && (evt!.target as Element).closest('.caret')) {
+				evt!.preventDefault()
+				return setOpen(id, !r.open)
+			}
+			if (r?.href) return
 			select(id)
 			// A click also opens or closes a branch, except in multiple mode (setOpen skips leaves).
-			if (props.selection !== 'multiple') setOpen(id, !row(id)?.open)
+			if (props.selection !== 'multiple') setOpen(id, !r?.open)
 		})
 		action('key', ({ evt }) => {
+			const e = evt as KeyboardEvent
+			// Alt+Left is the browser's Back, Ctrl+Enter a link in a new tab.
+			if (e.altKey || e.ctrlKey || e.metaKey) return
 			const rows: Row[] = $$.rows
 			const i = rows.findIndex((r) => r.id === $$.focus)
 			const r = rows[i]
 			if (!r) return
-			switch ((evt as KeyboardEvent).key) {
+			switch (e.key) {
 				case 'ArrowDown': focus(rows[i + 1]?.id); break
 				case 'ArrowUp': focus(rows[i - 1]?.id); break
 				case 'Home': focus(rows[0].id); break
@@ -273,13 +439,17 @@ rocket('sb-tree', {
 					else focus(r.parent)
 					break
 				case 'Enter':
-				case ' ':
+					if (r.href) return
 					select(r.id)
+					break
+				case ' ':
+					if (r.href) (e.target as HTMLElement).click()
+					else select(r.id)
 					break
 				default:
 					return
 			}
-			evt!.preventDefault()
+			e.preventDefault()
 		})
 	},
 	render: ({ html }) => html`
@@ -287,25 +457,33 @@ rocket('sb-tree', {
 			data-attr:aria-label="$$label"
 			data-attr:aria-multiselectable="$$mode === 'multiple' && 'true'"
 			data-on:keydown="@key()" data-on:focusin="@focusin()" data-on:focusout="@focusout()">
-			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
+			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined.
+			     Every row is an <a>: a link with an href, a plain item without. -->
 			<template data-for="r in $$rows">
-				<div role="treeitem"
-					data-attr:part="$$mode !== 'none' && $$selected.includes(r?.id) ? 'item selected' : 'item'"
+				<a role="treeitem" class="row"
+					data-attr:part="['item', $$mode !== 'none' && !r?.href && $$selected.includes(r?.id) && 'selected', r?.current && 'current'].filter(Boolean).join(' ')"
+					data-attr:href="r?.href || null"
+					data-attr:target="(r?.href && r?.target) || null"
+					data-attr:rel="(r?.href && r?.rel) || null"
+					data-attr:title="r?.title || null"
+					data-attr:aria-current="r?.current || null"
 					data-attr:data-id="r?.id"
 					data-attr:aria-level="r?.depth + 1"
 					data-attr:aria-posinset="r?.pos"
 					data-attr:aria-setsize="r?.size"
 					data-attr:aria-expanded="r?.branch && String(r?.open)"
-					data-attr:aria-selected="$$mode !== 'none' && String($$selected.includes(r?.id))"
+					data-attr:aria-selected="$$mode !== 'none' && !r?.href && String($$selected.includes(r?.id))"
 					data-attr:aria-busy="r?.loading && 'true'"
 					data-attr:tabindex="r?.id === $$focus ? 0 : -1"
 					data-style:--depth="r?.depth"
 					data-on:click="@click(r?.id)">
-					<span class="caret" aria-hidden="true"></span>
-					<span class="icon" aria-hidden="true" data-show="r?.icon" data-text="r?.icon"></span>
-					<span class="label" data-text="r?.label"></span>
+					<span class="caret" part="caret" aria-hidden="true"></span>
+					<span class="icon" part="icon" aria-hidden="true" data-show="r?.icon" data-text="r?.icon"></span>
+					<span class="icon art" part="icon" aria-hidden="true" data-show="r?.art"></span>
+					<span class="label" part="label" data-text="r?.label"></span>
 					<span class="busy" data-show="r?.loading">Loading</span>
-				</div>
+					<span class="meta" part="meta" data-show="r?.meta" data-text="r?.meta"></span>
+				</a>
 			</template>
 		</div>
 	`,

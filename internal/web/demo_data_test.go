@@ -22,6 +22,26 @@ func TestDemoDataEndpoints(t *testing.T) {
 	if !strings.Contains(body, `"_tree":[{"id":"milkyway"`) || !strings.Contains(body, `"lazy":true`) {
 		t.Errorf("top level:\n%.300s", body)
 	}
+	// Markup for an sb-tree: the children as a list appended to the parent's
+	// <li>, and the top level as the tree's whole list. Every kind has an icon.
+	_, body = get(t, c, ts.URL+"/demo/data/children?parent=solarsystem&tree=sky")
+	for _, want := range []string{`data: selector #sky li[data-id="solarsystem"]`, "data: mode append", `<li data-id="jupiter" data-lazy><svg data-icon`, `Jupiter <span data-meta>`, "</ul>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("tree markup lacks %q:\n%.600s", want, body)
+		}
+	}
+	_, top := get(t, c, ts.URL+"/demo/data/children?tree=sky")
+	if !strings.Contains(top, "data: selector #sky") || !strings.Contains(top, "data: mode inner") || !strings.Contains(top, `<li data-id="milkyway" data-lazy>`) {
+		t.Errorf("tree markup, top level:\n%.300s", top)
+	}
+	if strings.Contains(body+top, `d=""`) {
+		t.Error("a kind without an icon")
+	}
+	for _, bad := range []string{"tree=a%20b", "tree=sky&parent=a%22%5D"} {
+		if res, _ := get(t, c, ts.URL+"/demo/data/children?"+bad); res.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s: status %d", bad, res.StatusCode)
+		}
+	}
 	// JSON on request.
 	req, _ := http.NewRequest("GET", ts.URL+"/demo/data/search?q=orion", nil)
 	req.Header.Set("Accept", "application/json")
