@@ -20,7 +20,6 @@ jobs:
           - { goos: linux, goarch: arm64 }
           - { goos: darwin, goarch: amd64 }
           - { goos: darwin, goarch: arm64 }
-          - { goos: windows, goarch: amd64 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,15 +37,14 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: |
           name="starbase_${VERSION#v}_${GOOS}_${GOARCH}"
-          ext=""; [ "$GOOS" = windows ] && ext=".exe"
           mkdir -p "dist/$name"
-          go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o "dist/$name/starbase$ext" ./cmd/starbase
+          go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o "dist/$name/starbase" ./cmd/starbase
           cp README.md LICENSE CHANGELOG.md .env.example "dist/$name/"
           # The embedded TypeScript compiler's licence and notices (Apache-2.0).
           mkdir "dist/$name/typescript"
           tar xzf internal/tscheck/dist/*.tgz -C "dist/$name/typescript" --strip-components=1 package/LICENSE package/NOTICE.txt
           cd dist
-          if [ "$GOOS" = windows ]; then zip -qr "$name.zip" "$name"; else tar czf "$name.tar.gz" "$name"; fi
+          tar czf "$name.tar.gz" "$name"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist-${{ matrix.goos }}-${{ matrix.goarch }}

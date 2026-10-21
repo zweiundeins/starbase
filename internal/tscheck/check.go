@@ -306,11 +306,8 @@ func (c *Checker) run(ctx context.Context, work string, args ...string) (string,
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, filepath.Join(c.dir, "tsc"), append([]string{"-p", "tsconfig.json"}, args...)...)
-	if runtime.GOOS == "windows" {
-		cmd.Path += ".exe"
-	}
 	cmd.Dir = work
-	cmd.Env = []string{"GOMEMLIMIT=128MiB", "GOMAXPROCS=2", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
+	cmd.Env = []string{"GOMEMLIMIT=128MiB", "GOMAXPROCS=2"}
 	out := &capped{max: maxOutput}
 	cmd.Stdout, cmd.Stderr = out, out
 	cmd.WaitDelay = time.Second

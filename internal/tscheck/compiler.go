@@ -34,16 +34,12 @@ var integrity = map[string]string{
 	"linux-arm64":  "sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==",
 	"darwin-x64":   "sha512-SZ9xZInqApNlNGc9s0W1VSsktYSOe9cFqNOIqmN1Gs8SmkjKZYFt017G4VwPxASInODuAdbTW7sXiFUf893RgA==",
 	"darwin-arm64": "sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==",
-	"win32-x64":    "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==",
 }
 
 // Platform is the npm platform of a Go target ("linux-x64"), or "" when
 // TypeScript publishes no compiler for it.
 func Platform(goos, goarch string) string {
 	p := goos + "-" + map[string]string{"amd64": "x64", "arm64": "arm64"}[goarch]
-	if goos == "windows" {
-		p = "win32" + strings.TrimPrefix(p, goos)
-	}
 	if _, ok := integrity[p]; !ok {
 		return ""
 	}

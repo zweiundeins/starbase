@@ -23,7 +23,7 @@ Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node,
 
 ## Run a release
 
-Binaries for Linux, macOS and Windows are on the [releases page](https://github.com/zweiundeins/starbase/releases), and a multi-arch image on GHCR:
+Binaries for Linux and macOS are on the [releases page](https://github.com/zweiundeins/starbase/releases), and a multi-arch image on GHCR:
 
 ```sh
 docker run -p 7331:7331 -v starbase-data:/data ghcr.io/zweiundeins/starbase:latest

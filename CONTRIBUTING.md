@@ -26,4 +26,4 @@ go tool task vulncheck   # govulncheck
 
 Please read [CLAUDE.md](CLAUDE.md) for the architecture rules (CQRS: commands, the single writer, render streams) and the known Datastar/Rocket pitfalls.
 
-Pull requests run CI: tests, generated-code and manifest checks, govulncheck, and builds for Linux, macOS and Windows.
+Pull requests run CI: tests, generated-code and manifest checks, govulncheck, and builds for Linux and macOS.
