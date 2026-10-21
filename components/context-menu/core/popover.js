@@ -36,7 +36,15 @@ export function showPositionedPopover(popover, anchor, side) {
         const point = anchor instanceof HTMLElement ? null : document.createElement("span");
         const target = point ?? anchor;
         const previousAnchor = target.style.getPropertyValue("anchor-name");
-        const properties = ["position", "inset", "left", "top", "position-anchor", "position-try-fallbacks"];
+        const properties = [
+            "position",
+            "inset",
+            "left",
+            "top",
+            "position-anchor",
+            "position-area",
+            "position-try-fallbacks",
+        ];
         const previous = properties.map((property) => popover.style.getPropertyValue(property));
         if (point && !(anchor instanceof HTMLElement)) {
             point.setAttribute("aria-hidden", "true");
@@ -47,6 +55,8 @@ export function showPositionedPopover(popover, anchor, side) {
         popover.style.position = "fixed";
         popover.style.inset = "auto";
         popover.style.setProperty("position-anchor", name);
+        // A page's position-area would shift the insets below into one of its cells.
+        popover.style.setProperty("position-area", "none");
         popover.style.left = side === "beside" ? "calc(anchor(right) + 6px)" : "anchor(left)";
         popover.style.top =
             side === "beside" ? "anchor(top)" : side === "point" ? "anchor(bottom)" : "calc(anchor(bottom) + 6px)";

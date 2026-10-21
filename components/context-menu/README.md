@@ -42,7 +42,7 @@ usage: |
   </sb-context-menu>
 ---
 
-From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-context-menu`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`: they keep it working after a morph reaches it while open, focus the first item on open, hide submenus until they open, take labels and disabled, checked and hidden actions from the trigger, close it on Tab or a second click on its button, declare its events, and let its markup ask for a sheet on phones.
+From [PD rockets](https://github.com/derekr/pd-rockets) by derekr, where it is `pd-context-menu`, with its names in Starbase's `sb-` prefix. It carries the patches in `patches/pd-rockets`: they keep it working after a morph reaches it while open, focus the first item on open, hide submenus until they open, take labels and disabled, checked and hidden actions from the trigger, close it on Tab or a second click on its button, declare its events, let its markup ask for a sheet on phones, and keep a page's `position-area` from moving it.
 
 One menu for many things on a page. Any element marked `data-menu-for="<menu id>"` opens it with a right click, and a button marked the same way opens it with a click, Enter or Space, so keyboards and touch screens reach it too. The menu copies its items from a `<template>` the server renders, remembers which thing it opened for (the nearest `data-context-id`), and emits `sb-menu-action` with the chosen action and that id. What the action does is up to the server.
 
@@ -394,12 +394,18 @@ func renderContextMenu(id, state string) string {
 The component adds no styles: the menu, its items and the triggers are your page's markup. While it works, it sets:
 
 - `popover="auto"`, `role="menu"` and `tabindex="-1"` on the element. The browser shows it in the top layer, above everything else.
-- Its position, in its inline style: with CSS anchor positioning, an anchor named `--sb-menu-anchor-<n>` on the trigger (or on a point at the pointer); without, fixed coordinates.
+- Its position, in its inline style: with CSS anchor positioning, an anchor named `--sb-menu-anchor-<n>` on the trigger (or on a point at the pointer), and `position-area: none`, so a rule of your page that gives popovers or menus a `position-area` doesn't move this one off its trigger; without anchor positioning, fixed coordinates. It takes them away again when it closes.
 - The copied items, in a `<div data-menu-content>` inside it, removed again when it closes.
 - `popover="auto"` on every submenu when the menu opens, which hides a submenu until it opens.
 - `aria-expanded` on a trigger button, and on a submenu's item while that submenu is open. A row opened by a right click gets none.
 - `aria-disabled="true"` on the copied items whose actions the trigger turns off, `aria-checked` and the `menuitemradio` or `menuitemcheckbox` role on the checkable ones. Style the checks on `[aria-checked="true"]`.
 - `data-mobile-sheet` on the menu and its submenus while the viewport is at most 650px wide (or matches `data-sb-mobile-query`). With `data-sb-mobile-sheet`, they then get no inline position, and a rule on the attribute places them: the example makes the menu a sheet at the bottom of the screen and puts a submenu on top of it (through an `anchor-name` on the menu), where it covers none of the menu's items. Without it, the inline position stays, and only a rule with `!important` moves them. An element with `data-submenu-back` inside a submenu closes it.
+
+Until its module runs, the element is not a popover yet, and the browser shows it where it stands in the page, empty, since a template renders nothing. A rule that styles `sb-context-menu` itself as the menu's box (a border, padding, a background) draws an empty box there. Style the box on `[role="menu"]`, as the examples do, which the element only gets once the menu works, or hide it while it is closed:
+
+```css
+sb-context-menu:not(:popover-open) { display: none; }
+```
 
 Because the menu sits in the top layer, its background and shadow are yours to give it; the example draws the shadow from `var(--sb-shadow-overlay)` through a `--_shadow` local, like Starbase's own overlays.
 

@@ -133,6 +133,17 @@ try {
 	check('and opens again', [open(), focused()], [true, 'Move to the bottom'])
 	press(document.activeElement, 'Escape')
 
+	// A page's own position-area doesn't move the menu off its button (patch 0007).
+	const area = document.createElement('style')
+	area.textContent = '#planet-menus-menu { position-area: top span-right }'
+	document.head.append(area)
+	button('earth').click()
+	const b = button('earth').getBoundingClientRect(), m = menu.getBoundingClientRect()
+	check('a page\'s position-area leaves it below its button', [Math.round(m.top - b.bottom), Math.round(m.left - b.left)], [6, 0])
+	press(document.activeElement, 'Escape')
+	check('and its own position-area goes when it closes', menu.style.getPropertyValue('position-area'), '')
+	area.remove()
+
 	// In a non-modal drawer, Escape closes the menu first, then the drawer.
 	await customElements.whenDefined('sb-drawer')
 	const box = document.createElement('div')
