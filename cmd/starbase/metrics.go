@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -93,7 +92,7 @@ func inheritedListener(name string) (net.Listener, error) {
 		return nil, nil
 	}
 	for i := range n {
-		syscall.CloseOnExec(listenFDsStart + i)
+		closeOnExec(listenFDsStart + i)
 	}
 	for i, fdName := range strings.Split(names, ":") {
 		if i >= n || fdName != name {
