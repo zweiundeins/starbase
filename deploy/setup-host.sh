@@ -5,9 +5,10 @@
 #
 #   sudo bash setup-host.sh [starbase-deploy-key.pub]
 #
-# The drop-ins in observability/ go into the folders the host's Prometheus and
-# Alloy load, each only where that service is installed. With the public half
-# of the CI deploy key (a .pub file), it also installs /usr/local/bin/starbase-deploy
+# The drop-ins in observability/ (the scrape target, the probe and the Alloy
+# file) go into the folders the host's Prometheus and Alloy load, each only
+# where that service is installed. With the public half of the CI deploy key
+# (a .pub file), it also installs /usr/local/bin/starbase-deploy
 # and creates the `starbase-deploy` user. That user's only key is forced to
 # `sudo -n /usr/local/bin/starbase-deploy -` (no shell, no forwarding), and sudo
 # allows exactly that command. Rerunning replaces the drop-ins and the key.
@@ -41,11 +42,15 @@ deploy_user() {
 	echo ">> ready: CI can deploy as starbase-deploy@$(hostname)"
 }
 
-# Prometheus watches the folder (file_sd), so it needs no reload.
+# Prometheus watches both folders (file_sd), so it needs no reload.
 prometheus_dropins() {
 	if ! installed prometheus; then
-		echo ">> no Prometheus here: no probes"
+		echo ">> no Prometheus here: no scrape target, no probes"
 		return
+	fi
+	if [[ -f "$OBS/$NAME.metrics.yml" ]]; then
+		install -D -m 0644 "$OBS/$NAME.metrics.yml" "/etc/prometheus/apps/$NAME.yml"
+		echo ">> Prometheus scrapes $NAME: /etc/prometheus/apps/$NAME.yml"
 	fi
 	if [[ -f "$OBS/$NAME.targets.yml" ]]; then
 		install -D -m 0644 "$OBS/$NAME.targets.yml" "/etc/prometheus/targets/$NAME.yml"

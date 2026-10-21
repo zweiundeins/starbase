@@ -161,6 +161,7 @@ Every open tab keeps one long-lived SSE connection (its render stream). Over HTT
 | `ADDR` | `:7331` | listen address, or `unix:/path/to.sock` for a Unix socket |
 | `BASE_URL` | `http://localhost:7331` | public origin (OAuth callback, CSRF origin, `__Host-` cookies on https) |
 | `DB_PATH` | `data/starbase.db` | SQLite file |
+| `METRICS_ADDR` | | the metrics for Prometheus (`starbase_writer_*`, `starbase_live_*`, `starbase_sse_budget_*`, `go_*`, `process_*`) on a loopback `host:port` of their own, never the public listener; empty serves none. A socket systemd passes as `metrics` takes its place ([deploy/](deploy/README.md#monitoring)) |
 | `REPO_URL` | `https://github.com/zweiundeins/starbase` | "Edit on GitHub" links |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | | GitHub OAuth app; callback `$BASE_URL/auth/github/callback` |
 | `GITHUB_TOKEN` | | optional read-only token for pull request preview checks (API rate limit) |

@@ -61,8 +61,10 @@ func HubOptions(read *sql.DB, log *slog.Logger, heartbeat time.Duration) live.Op
 type App struct {
 	Handler http.Handler
 	Catalog *catalog.Catalog
-	w       *writer.Writer
-	close   func()
+	// Writer and Hub are for the metrics; the hub's Budget is HubOptions'.
+	Writer *writer.Writer
+	Hub    *live.Hub
+	close  func()
 }
 
 // Close ends the render streams, applies the commands still queued, stops
@@ -72,7 +74,7 @@ func (a *App) Close() { a.close() }
 
 // Settle returns once the commands sent before it, such as the startup
 // seeding, are applied.
-func (a *App) Settle(ctx context.Context) error { return a.w.Flush(ctx) }
+func (a *App) Settle(ctx context.Context) error { return a.Writer.Flush(ctx) }
 
 // New builds the app. ctx bounds the lifetime of render streams: cancel it
 // to end them (e.g. before http.Server.Shutdown).
@@ -135,5 +137,5 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		Content:  content.FS,
 		Checker:  checker,
 	})
-	return &App{Handler: srv.Handler(), Catalog: cat, w: w, close: closeAll}, nil
+	return &App{Handler: srv.Handler(), Catalog: cat, Writer: w, Hub: hub, close: closeAll}, nil
 }

@@ -51,11 +51,31 @@ func run() error {
 	log.Info("starting", "version", version)
 	cfg.Version = version
 	catalog.SourceURL = strings.TrimSuffix(cfg.RepoURL, "/") + "/blob/main/"
-	a, err := app.New(ctx, cfg, log)
+	mln, err := metricsListener(cfg.MetricsAddr)
 	if err != nil {
 		return err
 	}
+	a, err := app.New(ctx, cfg, log)
+	if err != nil {
+		if mln != nil {
+			mln.Close()
+		}
+		return err
+	}
 	defer a.Close()
+
+	// The metrics never go on the public listener.
+	maddr := ""
+	if mln != nil {
+		maddr = mln.Addr().String()
+		msrv := &http.Server{Handler: metrics(a.Writer, a.Hub, log), ReadHeaderTimeout: 5 * time.Second}
+		defer msrv.Close()
+		go func() {
+			if err := msrv.Serve(mln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("metrics", "err", err)
+			}
+		}()
+	}
 
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
@@ -71,7 +91,7 @@ func run() error {
 	}
 	errc := make(chan error, 1)
 	go func() {
-		log.Info("listening", "addr", cfg.Addr, "url", cfg.BaseURL, "dev", cfg.Dev)
+		log.Info("listening", "addr", cfg.Addr, "metrics", maddr, "url", cfg.BaseURL, "dev", cfg.Dev)
 		errc <- httpSrv.Serve(ln)
 	}()
 
