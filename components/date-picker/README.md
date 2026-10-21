@@ -189,7 +189,7 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value
   data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-date-picker>
 ```
 
-A new `value` from the server always wins, and `value=""` clears it. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).
+A new `value` from the server always wins. A removed `value` attribute changes nothing, by design: morphs also strip attributes that were only reflected, so the picker can't take a missing one for "cleared". To clear, the server sends `value=""`. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).
 
 With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), with `time-zone` an instant with the zone's offset (`2026-10-14T09:30+02:00`), and with `mode="range"` both as `{ start, end }`. It is sent once per Apply, Enter in the time row or typed value, never for a day picked in the calendar or a change in the time row. The server may send a zone picker any RFC 3339 instant (`2026-10-14T07:30:00Z`) and gets back the offset form, which parses to the same instant. A new `time` attribute from the server, or with `time` a new `step` or `time-zone`, reads its `value` again in the new format, and that value replaces the local one.
 

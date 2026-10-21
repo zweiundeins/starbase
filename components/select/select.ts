@@ -55,7 +55,7 @@ const styles = /* css */ `
 }
 :host([hidden]) { display: none; }
 .field:has(:disabled) { opacity: 0.5; pointer-events: none; }
-.field { display: grid; gap: 0.4rem; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; } /* a long chip shrinks to the host */
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 .control {
 	display: flex;
@@ -74,6 +74,8 @@ const styles = /* css */ `
 	anchor-name: --sb-select;
 	transition: border-color 120ms, box-shadow 120ms;
 }
+/* The clear button or the spinner sits at the end: the text stops before it. */
+.control.room { padding-inline-end: 3.5rem; }
 .control:hover { border-color: var(--_border-hover); }
 .control:focus-within { border-color: var(--_brand-light); box-shadow: 0 0 0 3px var(--_brand-subtle); outline: 2px solid transparent; }
 /* The arrow (part="arrow"): a page's ::part(arrow) rules win over these, :state(open) included. */
@@ -116,6 +118,7 @@ const styles = /* css */ `
 input {
 	all: unset;
 	flex: 1;
+	inline-size: 0; /* no intrinsic width: a narrow host stays narrow */
 	min-inline-size: 5ch;
 	block-size: 2rem;
 	padding-inline: 0.35rem;
@@ -413,9 +416,22 @@ rocket('sb-select', {
 		}
 		cleanup(() => clearTimeout(timer))
 
+		// Closed, a single select shows its label: an edit to it starts a new query
+		// with only the text it inserts, however the input was focused.
+		let edit: number[] | null = null
+		action('edit', ({ el }) => {
+			const i = el as HTMLInputElement
+			edit = !$$.open && !props.multiple && i.value ? [i.selectionStart ?? 0, i.selectionEnd ?? 0, i.value.length] : null
+		})
 		action('type', ({ el, evt }) => {
 			evt!.stopPropagation() // a query is not a value: no input event on the host
-			$$.query = (el as HTMLInputElement).value
+			const i = el as HTMLInputElement
+			if (edit) {
+				const [a, b, n] = edit
+				i.value = i.value.slice(a, a + Math.max(0, i.value.length - n + b - a))
+				edit = null
+			}
+			$$.query = i.value
 			setOpen(true)
 			search() // before refresh: the note says "Searching…" during the pause
 			refresh()
@@ -510,7 +526,7 @@ rocket('sb-select', {
 	render: ({ html }) => html`
 		<div class="field" data-class:open="$$open">
 			<label class="label" part="label" for="input" data-show="$$label" data-text="$$label"></label>
-			<div class="control" part="control" data-class:compact="$$compact" data-on:click="@toggle()">
+			<div class="control" part="control" data-class:compact="$$compact" data-class:room="($$clearable && $$chips?.length) || $$loading || $$pending" data-on:click="@toggle()">
 				<template data-for="c in $$shown">
 					<span class="chip" part="chip" data-show="$$multiple">
 						<span data-text="c?.label"></span>
@@ -532,6 +548,7 @@ rocket('sb-select', {
 					data-attr:disabled="$$disabled"
 					data-attr:placeholder="$$multiple && $$chips?.length ? null : $$placeholder"
 					data-effect="el.value !== $$text && (el.value = $$text)"
+					data-on:beforeinput="@edit()"
 					data-on:input="@type()"
 					data-on:keydown="@key()"
 					data-on:blur="@blur()"/>

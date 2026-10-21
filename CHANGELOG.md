@@ -24,6 +24,10 @@ All notable changes to this project are documented here. The format follows
 - `sb-data-table`'s header lines up with its rows when column widths are in `ch` or `em`: the header row was bold, and those units resolve in each row's own font (1 to 10 px of drift over seven `ch` columns in Pixelify Sans). Header text takes its font through `::part(column)`, never `::part(header)`; the README's styling example now does.
 - Go 1.27.3, which distrusts compromised intermediate certificates in `crypto/x509` (GO-2026-6809).
 - The docs' demo data (`/demo/data/rows`, `/children` and `/search`) goes out compressed: a data table's window is 8.1 KB instead of 44.9 KB. These answers bypassed lith's stream compression.
+- `sb-select` and `sb-date-picker` fit a column narrower than their input's natural width (about 20 characters) instead of overflowing it, and a long chip in `sb-select` shrinks to the host.
+- `sb-select`'s clear button no longer covers the end of a long label: while it (or the spinner) shows, the text stops before it.
+- Typing into a single searchable `sb-select` that shows its value's label searches only what was typed. After Escape, a pick or a focus that left the label unselected, the typed text was appended to it ("Yuki Tanakamat"), so the search found nothing.
+- The `sb-select` and `sb-date-picker` READMEs say that a removed `value` attribute is ignored and the server clears with `value=""`.
 
 ## [0.8.0] - 2026-10-14
 

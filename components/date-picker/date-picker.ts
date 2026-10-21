@@ -141,7 +141,7 @@ label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
 input {
 	all: unset;
 	flex: 1;
-	min-inline-size: 0;
+	inline-size: 0; /* no intrinsic width: a narrow host stays narrow */
 	block-size: 2.75rem;
 	padding-inline: 0.875rem;
 	color: var(--_text);

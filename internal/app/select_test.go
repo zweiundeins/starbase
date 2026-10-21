@@ -478,3 +478,158 @@ await group('the arrow part', async () => {
 check('no errors', errors, [])
 await report()
 `
+
+// TestSelectFits checks sb-select's and sb-date-picker's layout with real input in Chrome: in a
+// column narrower than the input's intrinsic width they stay inside it (single, chips, max-chips)
+// while a wide host still fills; a clearable select keeps a long label clear of the clear button;
+// and a select reached with Tab searches only what is typed, Escape and blur bringing the label
+// back. STARBASE_SHOTS=<dir> saves screenshots there.
+func TestSelectFits(t *testing.T) {
+	copyRows(t, probeCDP(t, "/", selectFitsJS))
+}
+
+const selectFitsJS = `
+await customElements.whenDefined('sb-select')
+await customElements.whenDefined('sb-date-picker')
+const rows = []
+const check = (step, got, want) => rows.push({ step, got: JSON.stringify(got), want: JSON.stringify(want) })
+const settle = (ms = 80) => new Promise((r) => setTimeout(r, ms))
+const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+addEventListener('error', (e) => rows.push({ step: 'page', error: String(e.error?.stack || e.message) }))
+const cdp = async (...cmds) => {
+	const r = await fetch('/__probe/cdp', { method: 'POST', body: JSON.stringify(cmds) })
+	if (!r.ok) throw new Error('cdp: ' + (await r.text()))
+	return r.json()
+}
+const group = async (name, fn) => {
+	try {
+		await fn()
+	} catch (e) {
+		rows.push({ step: name, error: String(e?.stack || e) })
+	}
+}
+const rect = (e) => e.getBoundingClientRect()
+const shot = (name, el, pad = 8) => { const r = rect(el); return cdp({ method: 'shot', params: { name, clip: { x: r.left + scrollX - pad, y: r.top + scrollY - pad, width: r.width + 2 * pad, height: r.height + 2 * pad } } }) }
+const box = (width) => {
+	const b = document.createElement('div')
+	b.style.cssText = 'display: grid; grid-template-columns: ' + width + ' 1fr; gap: 1rem; padding: 1rem; inline-size: 50rem'
+	document.body.prepend(b)
+	return b
+}
+const make = async (into, tag, attrs) => {
+	const el = document.createElement(tag)
+	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v)
+	el.style.gridColumn = '1'
+	into.append(el)
+	await settle()
+	await frame()
+	return el
+}
+const $ = (el, s) => el.shadowRoot.querySelector(s)
+const keyCodes = { Tab: 9, Escape: 27, Enter: 13 }
+const press = async (key) => {
+	const p = { key, code: key, windowsVirtualKeyCode: keyCodes[key] }
+	await cdp({ method: 'Input.dispatchKeyEvent', params: { type: 'rawKeyDown', ...p } }, { method: 'Input.dispatchKeyEvent', params: { type: 'keyUp', ...p } })
+	await settle()
+}
+const type = async (s) => {
+	for (const ch of s) await cdp({ method: 'Input.dispatchKeyEvent', params: { type: 'keyDown', key: ch, text: ch } }, { method: 'Input.dispatchKeyEvent', params: { type: 'keyUp', key: ch } })
+	await settle()
+}
+const PEOPLE = '["Yuki Tanaka","Matt Smith","Amara Okafor","Bartholomew Featherstonehaugh-Montgomery"]'
+
+await group('narrow', async () => {
+	const b = box('9rem')
+	const cases = [
+		['sb-select', { options: PEOPLE, placeholder: 'Pick someone', value: 'Yuki Tanaka' }],
+		['sb-select', { options: PEOPLE, searchable: '', clearable: '', value: 'Amara Okafor' }],
+		['sb-select', { options: PEOPLE, multiple: '', value: '["Yuki Tanaka","Matt Smith"]' }],
+		['sb-select', { options: PEOPLE, multiple: '', 'max-chips': '1', value: '["Yuki Tanaka","Matt Smith","Amara Okafor"]' }],
+		['sb-date-picker', { value: '2026-09-29' }],
+		['sb-date-picker', { time: '', value: '2026-09-29T14:30' }],
+	]
+	for (const [tag, attrs] of cases) {
+		const el = await make(b, tag, attrs)
+		const name = tag + ' ' + JSON.stringify(attrs)
+		check(name + ': the control stays in the 9rem column', Math.round(rect($(el, '.control')).width) <= 144, true)
+		check(name + ': the host stays in the 9rem column', Math.round(rect(el).width) <= 144, true)
+	}
+	const compact = b.querySelectorAll('sb-select')[3]
+	check('max-chips: one chip and the "+K" chip, on one line', [[...compact.shadowRoot.querySelectorAll('.chip:not(.more)')].filter((c) => c.getClientRects().length).length, $(compact, '.more').textContent, Math.round(rect($(compact, '.control')).height)], [1, '+2', 44])
+	const chips = b.querySelectorAll('sb-select')[2]
+	const cr = rect($(chips, '.control'))
+	check('chips: every chip inside the control', [...chips.shadowRoot.querySelectorAll('.chip:not(.more)')].every((c) => rect(c).right <= cr.right + 0.5), true)
+	await shot('select-narrow', b)
+	b.remove()
+})
+
+await group('wide', async () => {
+	const b = box('40rem')
+	for (const [tag, attrs] of [['sb-select', { options: PEOPLE }], ['sb-select', { options: PEOPLE, multiple: '', value: '["Matt Smith"]' }], ['sb-date-picker', {}]]) {
+		const el = await make(b, tag, attrs)
+		const max = tag === 'sb-select' ? 26 * 16 : 20 * 16
+		check(tag + ' ' + JSON.stringify(attrs) + ': a wide host fills to its max-inline-size', Math.round(rect(el).width), max)
+		const c = rect($(el, '.control')), i = rect($(el, 'input'))
+		check(tag + ' ' + JSON.stringify(attrs) + ': the input takes the rest of the line', c.right - i.right < 3.5 * 16, true)
+	}
+	b.remove()
+})
+
+await group('clearable', async () => {
+	const b = box('16rem')
+	for (const attrs of [{}, { searchable: '' }, { dir: 'rtl' }]) {
+		const el = await make(b, 'sb-select', { options: PEOPLE, clearable: '', value: 'Bartholomew Featherstonehaugh-Montgomery', ...attrs })
+		const i = rect($(el, 'input')), x = rect($(el, '.clear'))
+		const pad = parseFloat(getComputedStyle($(el, 'input')).paddingInlineEnd)
+		const clear = attrs.dir ? i.left + pad >= x.right : i.right - pad <= x.left
+		check(JSON.stringify(attrs) + ': the long label ends before the clear button', clear, true)
+		if (!attrs.dir) await shot('select-clearable' + (attrs.searchable === '' ? '-searchable' : ''), el)
+	}
+	const el = await make(b, 'sb-select', { options: PEOPLE, clearable: '' })
+	check('no value, no clear button: the usual end padding', getComputedStyle($(el, '.control')).paddingInlineEnd, '36px')
+	b.remove()
+})
+
+await group('tab then type', async () => {
+	const b = box('20rem')
+	const before = document.createElement('button')
+	before.textContent = 'before'
+	b.append(before)
+	const el = await make(b, 'sb-select', { options: PEOPLE, searchable: '', value: 'Yuki Tanaka' })
+	const input = $(el, 'input')
+	const options = () => [...el.shadowRoot.querySelectorAll('[role=option]')].map((o) => o.textContent.trim())
+	before.focus()
+	await press('Tab')
+	check('Tab focuses the input, which shows the label', [el.shadowRoot.activeElement === input, input.value], [true, 'Yuki Tanaka'])
+	await type('mat')
+	check('typing searches only the typed text', [input.value, options()], ['mat', ['Matt Smith']])
+	await press('Escape')
+	check('Escape brings the label back, the value unchanged', [input.value, el.value], ['Yuki Tanaka', 'Yuki Tanaka'])
+	await type('ama')
+	check('typing again after Escape replaces the label', [input.value, options()], ['ama', ['Amara Okafor']])
+	before.focus()
+	await settle()
+	check('blur brings the label back', [input.value, el.value], ['Yuki Tanaka', 'Yuki Tanaka'])
+	el.shadowRoot.querySelector('.control').click()
+	await settle()
+	await type('sm')
+	check('the click path still searches only the typed text', [input.value, options()], ['sm', ['Matt Smith']])
+	await press('Enter')
+	check('Enter picks the match and shows its label', [input.value, el.value], ['Matt Smith', 'Matt Smith'])
+	await type('yu')
+	check('typing after a pick replaces the label', [input.value, options()], ['yu', ['Yuki Tanaka']])
+	await press('Escape')
+	await cdp({ method: 'Input.insertText', params: { text: 'oka' } })
+	await settle()
+	check('pasted text replaces the label too', [input.value, options()], ['oka', ['Amara Okafor']])
+	before.focus()
+	await press('Tab')
+	await type('x')
+	await press('Escape')
+	before.focus()
+	await settle()
+	b.remove()
+})
+
+await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
+`

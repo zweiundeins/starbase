@@ -224,7 +224,7 @@ These work with `multiple`.
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
 
-A new `value` from the server always wins, and `value=""` clears it. Markup re-sent with the same `value` leaves the user's pick alone. Typing a search fires no `input` event on the element: `change` and `sb-change` come when the value changes.
+A new `value` from the server always wins. A removed `value` attribute changes nothing, by design: morphs also strip attributes that were only reflected, so the select can't take a missing one for "cleared". To clear, the server sends `value=""`. Markup re-sent with the same `value` leaves the user's pick alone. Typing a search fires no `input` event on the element: `change` and `sb-change` come when the value changes.
 
 ## Options
 
