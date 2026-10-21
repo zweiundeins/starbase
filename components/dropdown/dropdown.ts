@@ -33,10 +33,10 @@ const MAX_DEPTH = 5
 const LEVELS = [...Array(MAX_DEPTH + 1).keys()]
 
 // Items are strings, "-" for a divider, or {value, label?, description?, icon?,
-// disabled?, danger?, divider?, children?, type?}. An item with children is a
+// href?, disabled?, danger?, divider?, children?, type?}. An item with children is a
 // submenu: the children win, its own value is dropped and it never reports one.
 // type: "radio" on such an item makes its children the menu's radio group.
-type Entry = { divider: false; key: string; value: string; label: string; description: string; icon: string; disabled: boolean; danger: boolean; radio: boolean; children: Item[] }
+type Entry = { divider: false; key: string; value: string; label: string; description: string; icon: string; href: string; disabled: boolean; danger: boolean; radio: boolean; children: Item[] }
 type Divider = { divider: true } & { [K in Exclude<keyof Entry, 'divider'>]?: undefined }
 type Item = Entry | Divider
 const normalize = (list: unknown, depth = 0): Item[] =>
@@ -57,6 +57,7 @@ const normalize = (list: unknown, depth = 0): Item[] =>
 				label: String(it.label ?? it.value ?? ''),
 				description: it.description ? String(it.description) : '',
 				icon: it.icon ? String(it.icon) : '',
+				href: it.href && !children.length ? String(it.href) : '',
 				disabled: !!it.disabled,
 				danger: !!it.danger,
 				radio: it.type === 'radio',
@@ -67,7 +68,7 @@ const normalize = (list: unknown, depth = 0): Item[] =>
 
 // What a row needs to render: never the children, which would put a whole tree
 // into a signal.
-const light = (r: Item) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, onpath: false, pending: false })
+const light = (r: Item) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', href: (!r.disabled && r.href) || '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, onpath: false, pending: false })
 
 const styles = /* css */ `
 :host {
@@ -182,6 +183,7 @@ ${LEVELS.slice(1)
 	border-radius: calc((var(--_radius) - 2px) * (1 - var(--_notch)));
 	cursor: pointer;
 }
+a { color: inherit; text-decoration: none; }
 [role^="menuitem"]:hover { background: var(--_hover); }
 /* The focused row, and the row whose submenu is open. */
 [role^="menuitem"]:focus, [role^="menuitem"][aria-expanded="true"] { background: var(--_hover); box-shadow: inset calc(2px * var(--_dir)) 0 0 var(--_brand); outline: 2px solid transparent; outline-offset: -2px; }
@@ -240,7 +242,7 @@ slot[name="item"] { display: none; }
 
 rocket('sb-dropdown', {
 	props: ({ bool, json, oneOf, string }) => ({
-		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, disabled?, danger?}, {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. Server data: a new array replaces the whole tree, open or not.' }),
+		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?}, {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not.' }),
 		label: string.trim.default('Actions').docs({ description: 'Text of the default trigger, and the accessible name of trigger and menu.' }),
 		placement: oneOf('bottom-start', 'bottom', 'bottom-end', 'top-start', 'top', 'top-end').default('bottom-start').docs({ description: 'Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start.' }),
 		type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:"radio" on that item instead. The group reaches into its submenus, and a dropdown holds one group.' }),
@@ -253,10 +255,10 @@ rocket('sb-dropdown', {
 	manifest: {
 		slots: [
 			{ name: 'trigger', description: 'Content of the trigger button (text, an icon). The component provides the button itself, with all the ARIA on it.' },
-			{ name: 'item', description: 'Menu items as markup instead of items: <button slot="item" value="x" disabled data-icon="🛰" data-description="…" data-danger>Label</button>, or <hr slot="item"> for a divider. A submenu is data-children=\'[…]\' (the same JSON as items). They are read as data; items wins when it is not empty.' },
+			{ name: 'item', description: 'Menu items as markup instead of items: <button slot="item" value="x" disabled data-icon="🛰" data-description="…" data-danger>Label</button>, <a slot="item" href="/x">Label</a> for a link, or <hr slot="item"> for a divider. A submenu is data-children=\'[…]\' (the same JSON as items). They are read as data; items wins when it is not empty.' },
 		],
 		events: [
-			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: 'A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, and an item of a radio group reports sb-change instead.' },
+			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: 'A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, an item of a radio group reports sb-change instead, and a link reports nothing: the browser follows it.' },
 			{ name: 'change', kind: 'event', bubbles: true, composed: true, description: 'Radio group: the value changed.' },
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Radio group: an item of the group was chosen. detail: { name, value }, the value being the dotted path for a choice inside a submenu: ready for a command.' },
 			{ name: 'sb-open', kind: 'custom-event', bubbles: true, composed: true, description: 'The menu opened (the root; submenus are view state and stay quiet).' },
@@ -348,6 +350,7 @@ rocket('sb-dropdown', {
 			return -1
 		}
 		const edge = (k: number, dir: number) => step(k, dir > 0 ? -1 : 0, dir)
+		const isLink = (k: number, i: number) => focusable(k, i) && !!node(k, i).href && !onGroup(k)
 
 		// Markup items are read as data (label, value, flags, data-children) and
 		// rendered inside the menu: we never write roles or tabindex into the
@@ -364,6 +367,7 @@ rocket('sb-dropdown', {
 					label: el.textContent!.trim(),
 					description: el.getAttribute('data-description'),
 					icon: el.getAttribute('data-icon'),
+					href: el.localName === 'a' ? el.getAttribute('href') : null,
 					disabled: el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true',
 					danger: el.hasAttribute('data-danger'),
 					children,
@@ -380,6 +384,8 @@ rocket('sb-dropdown', {
 				const rows = k <= path.length ? nodes(k).map(light) : []
 				const here = onGroup(k) // this level belongs to the radio group
 				rows.forEach((r, i) => {
+					// A choice of the group changes a value, so it is never a link.
+					if (here) r.href = ''
 					if (!here || r.divider) return
 					const pv = pathValue(k, i)
 					if (r.parent) {
@@ -601,6 +607,8 @@ rocket('sb-dropdown', {
 			if (opens(k, i)) return touch && path[k] === i ? closeTo(k, true) : openSub(k, i, true)
 			// Not a parent, so a row the focus can take is a leaf.
 			if (!focusable(k, i)) return
+			// A link: the browser follows it (also into a new tab), the menu only closes.
+			if (isLink(k, i)) return close('item')
 			const value = node(k, i).value
 			// An item of the radio group changes a value; every other item is an
 			// intent the page turns into a command. Never both for one item.
@@ -653,7 +661,7 @@ rocket('sb-dropdown', {
 				rebuild()
 			}),
 		)
-		watch.observe(host, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'value', 'type', 'disabled', 'aria-disabled', 'slot', 'data-icon', 'data-description', 'data-danger', 'data-divider', 'data-children'] })
+		watch.observe(host, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'value', 'type', 'disabled', 'aria-disabled', 'slot', 'href', 'data-icon', 'data-description', 'data-danger', 'data-divider', 'data-children'] })
 
 		rebuild()
 		observeProps((p, changes) =>
@@ -823,8 +831,14 @@ rocket('sb-dropdown', {
 						if (k > 0) closeTo(k - 1, true)
 						break
 					case 'Enter':
-					case ' ':
+						// A link's own activation clicks it, with the modifiers that pick
+						// a new tab or window, and that click closes the menu.
+						if (isLink(k, i)) return
 						choose(k, i)
+						break
+					case ' ':
+						if (isLink(k, i)) rowEl(k, i)?.click()
+						else choose(k, i)
 						break
 					case 'Escape':
 						// A submenu closes on its own; the root closes the menu.
@@ -879,8 +893,9 @@ rocket('sb-dropdown', {
 				data-on:pointermove="@move()">
 				<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined. -->
 				<template data-for="r, i in $$rows${k}">
-					<div
+					<a
 						data-show="!!r"
+						data-attr:href="r?.href || null"
 						data-attr:part="'item' + (r?.checked ? ' checked' : '') + (r?.onpath ? ' onpath' : '') + (r?.pending ? ' pending' : '')"
 						data-attr:role="!r ? null : r.divider ? 'separator' : r.check ? 'menuitemradio' : 'menuitem'"
 						data-attr:data-idx="r?.divider ? null : i"
@@ -901,7 +916,7 @@ rocket('sb-dropdown', {
 							<span class="desc" data-show="r?.description" data-text="r?.description"></span>
 						</span>
 						<span class="more" aria-hidden="true" data-show="r?.parent"></span>
-					</div>
+					</a>
 				</template>
 				<div class="empty" aria-disabled="true" data-attr:role="${k} < $$depth && !$$rows${k}.length ? 'menuitem' : null" data-show="${k} < $$depth && !$$rows${k}.length">Nothing here</div>
 			</div>

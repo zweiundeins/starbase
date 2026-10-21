@@ -198,3 +198,174 @@ await group('the caret part', async () => {
 check('no errors', errors, [])
 await report()
 `
+
+// TestDropdownLinks checks sb-dropdown's link items in Chrome with real input: an item with an
+// href renders as a link the browser follows on a click, Enter or Space (a Ctrl+click is left to
+// the browser too), with no sb-select, and the menu closes; keyboard moves, type-ahead and submenus
+// reach links like any item; a disabled link has no href, a radio group's items never get one, and
+// <a slot="item" href> works like the JSON.
+func TestDropdownLinks(t *testing.T) {
+	copyRows(t, probeCDP(t, "/", dropdownLinksJS))
+}
+
+const dropdownLinksJS = `
+const rows = []
+const check = (step, got, want) => rows.push({ step, got: JSON.stringify(got), want: JSON.stringify(want) })
+const settle = (ms = 80) => new Promise((r) => setTimeout(r, ms))
+const errors = []
+addEventListener('error', (e) => errors.push(String(e.message)))
+const cdp = async (...cmds) => {
+	const r = await fetch('/__probe/cdp', { method: 'POST', body: JSON.stringify(cmds) })
+	if (!r.ok) throw new Error('cdp: ' + (await r.text()))
+	return r.json()
+}
+const keyCodes = { ArrowDown: 40, ArrowRight: 39, Enter: 13, Escape: 27, ' ': 32, m: 77 }
+const press = async (key) => {
+	const p = { key, code: key === ' ' ? 'Space' : key, windowsVirtualKeyCode: keyCodes[key] }
+	await cdp({ method: 'Input.dispatchKeyEvent', params: { type: 'rawKeyDown', ...p } }, { method: 'Input.dispatchKeyEvent', params: { type: 'keyUp', ...p } })
+	await settle()
+}
+const click = async (el, modifiers = 0) => {
+	const r = el.getBoundingClientRect()
+	const p = { x: r.left + r.width / 2, y: r.top + r.height / 2, button: 'left', clickCount: 1, modifiers }
+	await cdp({ method: 'Input.dispatchMouseEvent', params: { type: 'mousePressed', ...p } }, { method: 'Input.dispatchMouseEvent', params: { type: 'mouseReleased', ...p } })
+	await settle()
+}
+const group = async (name, fn) => {
+	try {
+		await fn()
+	} catch (e) {
+		rows.push({ step: name, error: String(e?.stack || e) })
+	}
+}
+const selects = []
+document.addEventListener('sb-select', (e) => selects.push(e.detail.value))
+const pages = async () => (await cdp({ method: 'Target.getTargets', params: {} }))[0].targetInfos.filter((t) => t.type === 'page').length
+await customElements.whenDefined('sb-dropdown')
+const ITEMS = JSON.stringify([
+	{ value: 'alpha', label: 'Alpha', href: '#alpha' },
+	{ value: 'act', label: 'Act' },
+	{ value: 'off', label: 'Off', href: '#off', disabled: true },
+	{ value: 'mars', label: 'Mars', href: '#mars' },
+	{ label: 'More', href: '#parent', children: [{ value: 'deep', label: 'Deep', href: '#deep' }] },
+	{ label: 'Sort', type: 'radio', children: [{ value: 'name', label: 'Name', href: '#name' }] },
+])
+const el = document.createElement('sb-dropdown')
+el.setAttribute('items', ITEMS)
+document.body.prepend(el)
+await settle()
+const $ = (s) => el.shadowRoot.querySelector(s)
+const row = (i, k = 0) => $('.lvl' + k + ' [data-idx="' + i + '"]')
+const open = () => el.matches(':state(open)')
+const reset = () => {
+	history.replaceState(null, '', location.pathname)
+	selects.length = 0
+}
+
+await group('markup', async () => {
+	el.show()
+	await settle()
+	check('a link is an a with role menuitem and its href', [row(0).localName, row(0).getAttribute('role'), row(0).getAttribute('href')], ['a', 'menuitem', '#alpha'])
+	check('an action has no href', row(1).hasAttribute('href'), false)
+	check('a disabled link has no href', [row(2).hasAttribute('href'), row(2).getAttribute('aria-disabled')], [false, 'true'])
+	check('a submenu parent drops its href', [row(4).hasAttribute('href'), row(4).getAttribute('aria-haspopup')], [false, 'menu'])
+	el.hide()
+	await settle()
+})
+
+await group('a click follows the link', async () => {
+	reset()
+	el.show()
+	await settle()
+	await click(row(0))
+	check('followed, menu closed, no sb-select', [location.hash, open(), selects], ['#alpha', false, []])
+})
+
+await group('Ctrl+click is left to the browser', async () => {
+	reset()
+	el.show()
+	await settle()
+	const before = await pages()
+	await click(row(3), 2)
+	await settle(300)
+	check('a new tab, no navigation here, closed, no sb-select', [(await pages()) - before, location.hash, open(), selects], [1, '', false, []])
+})
+
+await group('Enter follows the link', async () => {
+	reset()
+	$('.trigger').focus()
+	await press('ArrowDown')
+	check('the first row has the focus', el.shadowRoot.activeElement === row(0), true)
+	await press('Enter')
+	check('followed, closed, focus back on the trigger, no sb-select', [location.hash, open(), el.shadowRoot.activeElement === $('.trigger'), selects], ['#alpha', false, true, []])
+})
+
+await group('Space follows the link', async () => {
+	reset()
+	$('.trigger').focus()
+	await press('ArrowDown')
+	await press('ArrowDown')
+	await press('ArrowDown')
+	check('ArrowDown skips the disabled link', el.shadowRoot.activeElement === row(3), true)
+	await press(' ')
+	check('followed and closed', [location.hash, open(), selects], ['#mars', false, []])
+})
+
+await group('type-ahead and an action', async () => {
+	reset()
+	$('.trigger').focus()
+	await press('ArrowDown')
+	await press('m')
+	check('type-ahead reaches a link', el.shadowRoot.activeElement === row(3), true)
+	await press('ArrowDown')
+	await press('ArrowDown')
+	await press('ArrowDown')
+	await press('ArrowDown')
+	check('back round to the action', el.shadowRoot.activeElement === row(1), true)
+	await press('Enter')
+	check('an action still reports sb-select and navigates nowhere', [selects, location.hash], [['act'], ''])
+})
+
+await group('a link in a submenu', async () => {
+	reset()
+	el.show()
+	await settle()
+	row(4).focus()
+	await press('ArrowRight')
+	check('the submenu has the link focused', [el.shadowRoot.activeElement === row(0, 1), row(0, 1).getAttribute('href')], [true, '#deep'])
+	await press('Enter')
+	check('followed, every level closed', [location.hash, open(), $('.lvl1').matches(':popover-open')], ['#deep', false, false])
+})
+
+await group('a radio group has no links', async () => {
+	reset()
+	el.show()
+	await settle()
+	row(5).focus()
+	await press('ArrowRight')
+	check('menuitemradio without href', [row(0, 1).getAttribute('role'), row(0, 1).hasAttribute('href')], ['menuitemradio', false])
+	await press('Escape')
+	await press('Escape')
+})
+
+await group('slotted links', async () => {
+	const dd = document.createElement('sb-dropdown')
+	dd.innerHTML = '<a slot="item" href="#slot-a">Slot A</a><button slot="item" value="b">B</button><a slot="item" href="#slot-c" aria-disabled="true">C</a>'
+	document.body.prepend(dd)
+	await settle()
+	dd.show()
+	await settle()
+	const r = (i) => dd.shadowRoot.querySelector('.lvl0 [data-idx="' + i + '"]')
+	check('read as link, action and disabled link', [r(0).getAttribute('href'), r(1).hasAttribute('href'), r(2).hasAttribute('href')], ['#slot-a', false, false])
+	dd.querySelector('a').setAttribute('href', '#slot-z')
+	await settle()
+	check('a new href in the page reaches the menu', r(0).getAttribute('href'), '#slot-z')
+	reset()
+	await click(r(0))
+	check('followed and closed', [location.hash, dd.matches(':state(open)'), selects], ['#slot-z', false, []])
+	dd.remove()
+})
+
+check('no errors', errors, [])
+await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
+`

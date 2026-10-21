@@ -32,7 +32,7 @@ The menu is a native `popover` in the top layer, positioned with CSS anchor posi
 
 ### Actions
 
-`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`. The string `"-"` is a divider too.
+`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`; one with an `href` is a [link](#links). The string `"-"` is a divider too.
 
 ```html preview
 <div data-signals:_actionPick="''" style="display: grid; gap: 12px; justify-items: start">
@@ -220,6 +220,33 @@ A slotted item opens a submenu with `data-children='[…]'`, the same JSON as `i
 <button slot="item" data-children='[{"value":"csv","label":"CSV"},{"value":"json","label":"JSON"}]'>Export</button>
 ```
 
+### Links
+
+An item with an `href` is a link: the menu renders it as `<a role="menuitem" href>`, and the browser follows it. A click, Enter or Space opens it here; a Ctrl, Cmd or middle click, Shift+Enter or the browser's context menu open it in a new tab or window, as with any link, and hovering one shows its URL in the status bar. The menu closes on a click, Enter or Space (a middle click leaves it open), and a link emits no `sb-select`: there is no command to post, the navigation is the result.
+
+In `items`, give the item an `href`; as markup, write `<a slot="item" href>`. Links mix freely with actions, dividers and submenus, and the keys, the type-ahead and `disabled` treat a link like any other item. A disabled link has no `href`, so it goes nowhere.
+
+```html preview
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+  <sb-dropdown label="Go to"
+    items='[{"value":"gallery","label":"Gallery","icon":"🌌","href":"/"},
+            {"value":"playground","label":"Playground","icon":"🧪","href":"/playground"},
+            {"label":"Components","icon":"📦","children":[
+              {"value":"select","label":"Select","href":"/components/select"},
+              {"value":"tree","label":"Tree","href":"/components/tree"}]},
+            {"divider":true},
+            {"value":"copy","label":"Copy this page’s link","icon":"🔗"}]'></sb-dropdown>
+  <sb-dropdown label="Docs">
+    <a slot="item" href="/contribute" data-description="How components are built">Contribute</a>
+    <a slot="item" href="/themes">Themes</a>
+    <hr slot="item">
+    <a slot="item" href="/submit" aria-disabled="true">Submit (closed)</a>
+  </sb-dropdown>
+</div>
+```
+
+Markup links stay real links in your page, so crawlers and a page without JavaScript still find them. A parent with `children` drops its `href`, since it opens its submenu, and so does every item of a radio group: a [current choice](#a-current-choice) changes a value and reports `sb-change`.
+
 ### Server data
 
 The menu is server data: a new `items` array replaces the whole tree whenever the server likes, and an open menu stays open. The open state is local and lives in a signal, so nothing about it is reset by a morph.
@@ -294,7 +321,7 @@ sb-dropdown::part(trigger) { font-weight: 700; }
 
 It follows the WAI-ARIA menu button pattern:
 
-- **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s, dividers are `separator`s and disabled items are `aria-disabled`.
+- **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s (links are `<a role="menuitem" href>`), dividers are `separator`s and disabled items are `aria-disabled`.
 - **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in: the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves. A parent that only leads to the choice stays a `menuitem` with `aria-haspopup`: its faint mark is decoration (`aria-hidden`), never a checked state. The trigger names what the menu is *and* what is chosen ("Sort by: Newest first"), so the visible text and the accessible name stay the same string.
 - **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item, and the same letter again cycles through the items it starts (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
 - **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item, also when hovering opened it already; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.
