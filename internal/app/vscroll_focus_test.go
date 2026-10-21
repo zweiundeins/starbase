@@ -45,10 +45,15 @@ func TestVirtualScrollFocus(t *testing.T) {
 		{"shrink", "/", vscrollFocusJS + vscrollShrinkJS, links, false},
 		{"focusable items", "/", vscrollFocusJS + vscrollFocusableJS, vscrollItems{links: 2, focusable: true}, false},
 		{"component in an item", "/", vscrollFocusJS + vscrollComponentJS, vscrollItems{links: 2, b: "checkbox"}, false},
+		{"insert above, no keys", "/", vscrollFocusJS + vscrollInsertJS, links, false},
+		{"insert above, data-key", "/", vscrollFocusJS + vscrollInsertJS, vscrollItems{links: 2, key: "data-key"}, false},
+		{"insert above, id", "/", vscrollFocusJS + vscrollInsertJS, vscrollItems{links: 2, key: "id"}, false},
+		{"aria-busy", "/", vscrollFocusJS + vscrollBusyJS, links, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			script := strings.Replace(c.script, "HOST_HTML", jsonString(t, vscrollHost(0, 160, vscrollTotal, c.items)), 1)
+			script = strings.ReplaceAll(script, "KEY_KIND", jsonString(t, c.items.key))
 			var served atomic.Int32
 			handlers := func(app http.Handler) map[string]http.HandlerFunc {
 				if c.stars {
@@ -95,10 +100,13 @@ type vscrollItems struct {
 	b         string // b as a link (""), a disabled button ("disabled") or an sb-checkbox ("checkbox")
 	focusable bool   // the item takes the focus itself (tabindex="-1"), like a grid's rows
 	dead      string // the index of an item that holds only disabled buttons ("": none)
+	key       string // the items' key: "id", "data-key" or none ("")
+	added     int    // items inserted before the first: the item at index i is item i - added
 }
 
 // vscrollHost is the test list of total items holding offset to offset+count: a header of 8
-// buttons, and items without ids, like /demo/data/list.
+// buttons, and items without ids (unless items.key), like /demo/data/list. Links and labels name
+// the item, not its index.
 func vscrollHost(offset, count, total int, items vscrollItems) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, `<sb-virtual-scroll id="vsf" offset="%d" total="%d" data-preserve-attr="role aria-label item-size buffer data-on:sb-window">`, offset, total)
@@ -112,7 +120,15 @@ func vscrollHost(offset, count, total int, items vscrollItems) string {
 		row = ` tabindex="-1"`
 	}
 	for i := offset; i < offset+count; i++ {
-		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d"%s>`, i+2, row)
+		key := ""
+		switch items.key {
+		case "id":
+			key = fmt.Sprintf(` id="k%d"`, i-items.added)
+		case "data-key":
+			key = fmt.Sprintf(` data-key="%d"`, i-items.added)
+		}
+		fmt.Fprintf(&b, `<div role="row" aria-rowindex="%d"%s%s>`, i+2, row, key)
+		i := i - items.added
 		if strconv.Itoa(i) == items.dead {
 			fmt.Fprintf(&b, `<button type="button" disabled>%d a</button> <button type="button" disabled>%d b</button></div>`, i, i)
 			continue
@@ -140,7 +156,8 @@ func vscrollHost(offset, count, total int, items vscrollItems) string {
 }
 
 // vscrollServer answers the test list's sb-window like /demo/data/list: the host with ?count=
-// items from ?offset=. A request with ?total= (and ?links=, ?b=) is a new list, as a filter sends.
+// items from ?offset=. A request with ?total= (and ?links=, ?b=) is a new list, as a filter sends;
+// one with ?insert=n adds n items before the first (&fixed: and drops n from the end).
 func vscrollServer(items vscrollItems) http.HandlerFunc {
 	var mu sync.Mutex
 	total := vscrollTotal
@@ -152,6 +169,12 @@ func vscrollServer(items vscrollItems) http.HandlerFunc {
 			items.links, _ = strconv.Atoi(q.Get("links"))
 			items.b = q.Get("b")
 			items.dead = q.Get("dead")
+		}
+		if k, _ := strconv.Atoi(q.Get("insert")); k > 0 {
+			items.added += k
+			if !q.Has("fixed") {
+				total += k
+			}
 		}
 		n, it := total, items
 		mu.Unlock()
@@ -278,6 +301,14 @@ vs.setAttribute('aria-label', 'Rows')
 vs.setAttribute('item-size', '30')
 vs.setAttribute('buffer', '600')
 vs.setAttribute('data-on:sb-window', "@get('/__probe/window?offset=' + evt.detail.offset + '&count=' + evt.detail.count)")
+// The list's ElementInternals, for its aria-busy.
+let vsInternals
+const attach = HTMLElement.prototype.attachInternals
+HTMLElement.prototype.attachInternals = function () {
+	const i = attach.call(this)
+	if (this === vs) vsInternals = i
+	return i
+}
 document.body.append(outside, vs)
 await frames(3)
 await settle(vs)
@@ -302,6 +333,27 @@ const walk = async (c, k, n, back) => {
 	}
 	rows.push({ case: c, step: n + ' steps', got: 'ok', want: 'ok' })
 	return k
+}
+// A request to the test server from the page, as a click on a button with @get sends it.
+const get = async (url) => {
+	const btn = document.createElement('button')
+	btn.hidden = true
+	btn.setAttribute('data-on:click', "@get('" + url + "')")
+	document.body.append(btn)
+	await frames(2)
+	const done = new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error('no answer to ' + url)), 10000)
+		document.addEventListener('datastar-fetch', function seen(e) {
+			if (e.detail.el !== btn || e.detail.type !== 'finished') return
+			document.removeEventListener('datastar-fetch', seen)
+			clearTimeout(timer)
+			resolve()
+		})
+	})
+	btn.click()
+	await done
+	btn.remove()
+	await settle(vs)
 }
 `
 
@@ -466,26 +518,8 @@ await report()
 const vscrollShrinkJS = `
 // The new list from offset 0: total items of links links each (b as the server's ?b= says),
 // count of them in the window.
-const list = async (total, links, count, b = '', offset = 0, dead = '') => {
-	const btn = document.createElement('button')
-	btn.hidden = true
-	btn.setAttribute('data-on:click', "@get('/__probe/window?offset=" + offset + '&count=' + count + '&total=' + total + '&links=' + links + '&b=' + b + '&dead=' + dead + "')")
-	document.body.append(btn)
-	await frames(2)
-	const done = new Promise((resolve, reject) => {
-		const timer = setTimeout(() => reject(new Error('no answer for a list of ' + total)), 10000)
-		document.addEventListener('datastar-fetch', function seen(e) {
-			if (e.detail.el !== btn || e.detail.type !== 'finished') return
-			document.removeEventListener('datastar-fetch', seen)
-			clearTimeout(timer)
-			resolve()
-		})
-	})
-	btn.click()
-	await done
-	btn.remove()
-	await settle(vs)
-}
+const list = (total, links, count, b = '', offset = 0, dead = '') =>
+	get('/__probe/window?offset=' + offset + '&count=' + count + '&total=' + total + '&links=' + links + '&b=' + b + '&dead=' + dead)
 try {
 	let c = '7: a disabled button in place of the focused link'
 	link(150, 'b').focus()
@@ -603,6 +637,79 @@ try {
 	check(c, 'scrollToIndex(140): the focus', describe(deep()), 'div::part(base) of #r150b')
 } catch (e) {
 	rows.push({ case: '9', error: String(e?.stack || e) })
+}
+await report()
+`
+
+// vscrollInsertJS: the server adds items before the first while the list is scrolled down, then
+// at its top. Keyed items keep their place and the focus; without keys the list holds scrollTop.
+const vscrollInsertJS = `
+const kind = KEY_KIND
+const c = '10: items inserted above (' + (kind || 'no keys') + ')'
+const insert = (n, fixed) => get('/__probe/window?offset=' + vs.getAttribute('offset') + '&count=' + vs.querySelectorAll(':scope > [role=row]').length + '&insert=' + n + (fixed ? '&fixed' : ''))
+const first = () => vs.querySelector(':scope > [role=row] a')?.getAttribute('href')
+try {
+	vs.scrollToIndex(5000)
+	await settle(vs)
+	scroller.scrollTop += 10
+	await settle(vs)
+	link(5003).focus()
+	await settle(vs)
+	const top = scroller.scrollTop, y = link(5000).getBoundingClientRect().top
+	await insert(3)
+	if (kind) {
+		check(c, 'item 5000 moved by', Math.round(link(5000).getBoundingClientRect().top - y), 0)
+		check(c, 'scrollTop', scroller.scrollTop, top + 90)
+		check(c, 'the focus', describe(deep()), 'a #r5003a')
+		await walk(c + ', then Tab', 10006, 20)
+
+		// The same window, total and offset: only the items change.
+		link(5010).focus()
+		await settle(vs)
+		const top2 = scroller.scrollTop, y2 = link(5000).getBoundingClientRect().top
+		await insert(2, true)
+		check(c + ', the total kept', 'item 5000 moved by', Math.round(link(5000).getBoundingClientRect().top - y2), 0)
+		check(c + ', the total kept', 'scrollTop', scroller.scrollTop, top2 + 60)
+		check(c + ', the total kept', 'the focus', describe(deep()), 'a #r5010a')
+	} else {
+		check(c, 'scrollTop', scroller.scrollTop, top)
+		check(c, 'the focus, on the item now at its index', describe(deep()), 'a #r5000a')
+	}
+
+	vs.scrollToIndex(0)
+	await settle(vs)
+	outside.focus()
+	await settle(vs)
+	await insert(2)
+	check(c, 'at the top and idle: scrollTop', scroller.scrollTop, 0)
+	check(c, 'at the top and idle: the first item', first(), kind ? '#r-7a' : '#r-5a')
+
+	const f = kind ? -7 : -5
+	link(f).focus()
+	await settle(vs)
+	await insert(1)
+	check(c, 'at the top with the focus: scrollTop', scroller.scrollTop, kind ? 30 : 0)
+	check(c, 'at the top with the focus: the focus', describe(deep()), kind ? 'a #r' + f + 'a' : 'a #r' + (f - 1) + 'a')
+} catch (e) {
+	rows.push({ case: c, error: String(e?.stack || e) })
+}
+await report()
+`
+
+// vscrollBusyJS: aria-busy (on the list's ElementInternals) and :state(loading) while a window loads.
+const vscrollBusyJS = `
+const c = '11: aria-busy'
+try {
+	const busy = () => vsInternals?.ariaBusy + ', ' + vs.matches(':state(loading)')
+	check(c, 'before', busy(), 'null, false')
+	const seen = []
+	vs.addEventListener('sb-window', () => seen.push(busy()))
+	vs.scrollToIndex(5000)
+	await settle(vs)
+	check(c, 'while the window loads', seen[0], 'true, true')
+	check(c, 'once it landed', busy(), 'null, false')
+} catch (e) {
+	rows.push({ case: c, error: String(e?.stack || e) })
 }
 await report()
 `

@@ -12,11 +12,13 @@ const peek = (fn) => {
 };
 // One ElementInternals per element: attachInternals() works once, and
 // onFirstRender runs again when the element is re-attached. Its custom state
-// (:state(loading)) survives morphs.
+// (:state(loading)) and ARIA (aria-busy) survive morphs.
 const internals = new WeakMap();
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host);
 // Items with something to focus take Tab themselves; otherwise the scroller does.
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]';
+// An item's key: what stays with it when items move ('': none).
+const keyOf = (el) => el.id || el.getAttribute('data-key') || '';
 // Notes on the styles, kept here where the minifier drops them:
 // - The scroller is contained (strict): a new window never lays out the page.
 // - The window is not: rows wider than the list overflow it, and the scroller
@@ -104,7 +106,8 @@ rocket('sb-virtual-scroll', {
     onFirstRender: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, props, refs }) => {
         const { scroller, header, items } = refs;
         adoptStyles(host, styles);
-        const states = internalsOf(host).states;
+        const internals = internalsOf(host), states = internals.states;
+        const loading = (on) => (on ? states.add('loading') : states.delete('loading'), (internals.ariaBusy = on ? 'true' : null));
         // view: the height the rows get (the scroller minus the header). have: the
         // items in the window. last: the last request (on its way while wait), sent
         // at `sent`. cap: the most items the server sends at once, once it sent
@@ -117,11 +120,30 @@ rocket('sb-virtual-scroll', {
             const b = Math.ceil(props.buffer / props.itemSize);
             return cap ? Math.min(b, Math.max(0, Math.floor((rows(cap) - v) / 2))) : b;
         };
-        // at: the index of the item with the focus (-1: none), place: the focused element among its
-        // focusables. parked: the scroller holds the focus while no item can take it.
-        let at = -1, place = 0, parked = false, frame = 0;
+        // at: the index of the item with the focus (-1: none), focusKey: its key, place: the focused element
+        // among its focusables. parked: the scroller holds the focus while no item can take it.
+        let at = -1, focusKey = '', place = 0, parked = false, frame = 0;
         // A <template data-for> that renders the items is no item.
         const kids = () => items.assignedElements().filter((el) => el.localName != 'template');
+        const find = (key) => (key ? kids().findIndex((el) => keyOf(el) === key) : -1);
+        // The keyed item in the top row of the view: its index, and how far the view is scrolled into it.
+        let anchor = null;
+        const remember = () => {
+            const size = props.itemSize, top = scroller.scrollTop, r = Math.floor(top / size), i = r * props.columns;
+            const el = kids()[i - props.offset], key = el ? keyOf(el) : '';
+            anchor = key ? { key, index: i, delta: top - r * size } : null;
+        };
+        // Items that arrived before it move the anchor down: scroll with it, unless the list is at the top and idle.
+        const keep = () => {
+            if (!anchor || !(scroller.scrollTop > 0 || holds() || host.matches(':hover')))
+                return;
+            const j = find(anchor.key), cols = props.columns;
+            if (j < 0)
+                return;
+            const r = Math.floor((props.offset + j) / cols);
+            if (r !== Math.floor(anchor.index / cols))
+                scroller.scrollTop = r * props.itemSize + anchor.delta;
+        };
         // In order, also those in components' open shadow roots (sb-checkbox's box).
         const focusables = (el, out = []) => {
             if (el.matches(FOCUSABLE))
@@ -182,7 +204,7 @@ rocket('sb-virtual-scroll', {
             lastCount = n;
             wait = true;
             sent = performance.now();
-            states.add('loading');
+            loading(true);
             emit('sb-window', { offset, count: n });
         };
         const park = () => parked || ((parked = true), ($$.tab = tab()), scroller.focus({ preventScroll: true }));
@@ -194,6 +216,10 @@ rocket('sb-virtual-scroll', {
             const a = document.activeElement;
             if (at < 0 || !(holds() || !a || a === document.body))
                 return;
+            // A keyed item wherever the window has it now; the index only once it is gone.
+            const j = find(focusKey);
+            if (j >= 0)
+                at = props.offset + j;
             // A list that ends before the item: its neighbour, the new last item; an empty list: the scroller.
             if (host.hasAttribute('total'))
                 at = Math.min(at, props.total - 1);
@@ -212,7 +238,8 @@ rocket('sb-virtual-scroll', {
                 (at = -1), item.contains(host.getRootNode().activeElement) || park();
         };
         sync();
-        action('scroll', ask);
+        remember();
+        action('scroll', () => (remember(), ask()));
         // Named apart from what a page may bind on the host: an action there
         // finds the host's own actions first.
         action('trackFocus', ({ evt }) => {
@@ -223,6 +250,7 @@ rocket('sb-virtual-scroll', {
             at = i < 0 ? -1 : props.offset + i;
             if (i < 0)
                 return;
+            focusKey = keyOf(item);
             // The innermost one on the path: the link, not a row around it with a tabindex.
             const all = focusables(item);
             place = all.indexOf(path.find((el) => all.includes(el)));
@@ -241,9 +269,9 @@ rocket('sb-virtual-scroll', {
             queueMicrotask(() => (t === scroller && unpark(), t.isConnected ? holds() || (at = -1) : host.isConnected && (frame ||= requestAnimationFrame(refocus))));
         });
         // A morph (the server's answer) changes the children and the attributes.
-        const watch = new MutationObserver(() => {
+        const morphed = () => {
             wait = false;
-            states.delete('loading');
+            loading(false);
             sync();
             // Short of the request before the end of the list: the server's cap.
             // Without a total the host holds a new list, asked for afresh.
@@ -251,10 +279,16 @@ rocket('sb-virtual-scroll', {
                 cap = have;
             if (!host.hasAttribute('total'))
                 last = '';
+            keep();
             ask();
+            remember();
             frame ||= requestAnimationFrame(refocus);
-        });
+        };
+        const watch = new MutationObserver(morphed);
         watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true });
+        // A morph that patches keyed items by position may change nothing but their keys.
+        const keys = new MutationObserver((records) => records.some((r) => r.target.parentElement === host) && morphed());
+        keys.observe(host, { attributeFilter: ['id', 'data-key'], subtree: true });
         // The first size asks right away, later ones once the resizing stops.
         const resize = new ResizeObserver(() => {
             clearTimeout(timer);
@@ -268,6 +302,7 @@ rocket('sb-virtual-scroll', {
         resize.observe(header);
         cleanup(() => {
             watch.disconnect();
+            keys.disconnect();
             resize.disconnect();
             clearTimeout(timer);
             cancelAnimationFrame(frame);
@@ -276,6 +311,7 @@ rocket('sb-virtual-scroll', {
             value: (i, { block = 'start' } = {}) => peek(() => {
                 const size = props.itemSize, y = Math.floor(i / props.columns) * size, top = scroller.scrollTop, end = y + size - view;
                 scroller.scrollTo({ top: block === 'end' ? end : block !== 'nearest' || y < top ? y : Math.max(top, end) });
+                remember();
                 ask();
             }),
         });
