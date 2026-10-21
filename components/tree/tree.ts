@@ -104,6 +104,9 @@ const fromMarkup = (host: HTMLElement): TreeNode[] | null => {
 	return read(top, '')
 }
 
+// A kept child: the current page is only ever the one the server marks now.
+const stale = (n: TreeNode): TreeNode => ({ ...n, current: '', kids: n.kids?.map(stale) })
+
 const styles = /* css */ `
 :host {
 	--_text: var(--sb-text-1, #F3F4FA);
@@ -119,7 +122,8 @@ const styles = /* css */ `
 	font-size: 0.875rem;
 }
 :host([hidden]) { display: none; }
-[role="tree"] { display: grid; gap: 1px; outline: none; }
+/* minmax(0, …): a long label is cut, not widening the column past the element. */
+[role="tree"] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; outline: none; }
 .row {
 	display: flex;
 	align-items: center;
@@ -231,21 +235,27 @@ rocket('sb-tree', {
 		// and applies the markup's data-open and aria-current; rebuild() walks it.
 		let tree: TreeNode[] = []
 		const art = new Map<string, Element>() // the markup's icons by id
+		// The children a lazy item received, by id: shown while the server sends
+		// the item again without them, until it sends a list or drops the item.
+		let kept = new Map<string, TreeNode[] | undefined>()
 		const marked = new Map<string, boolean>() // data-open as last read, by id
 		let current = ''
 		const read = () => {
 			tree = fromMarkup(host) ?? fromItems(props.items, props.loaded)
 			art.clear()
 			let path: string[] = []
+			const was = kept
+			kept = new Map()
 			const visit = (nodes: TreeNode[], up: string[]) =>
 				nodes.forEach((n) => {
+					if (n.lazy) kept.set(n.id, (n.kids ??= was.get(n.id)?.map(stale)))
 					if (n.art) art.set(n.id, n.art)
 					// A changed data-open wins, like a changed attribute; the same one
 					// again keeps the user's choice.
 					if (n.open !== null) {
-						const was = marked.get(n.id)
+						const prev = marked.get(n.id)
 						marked.set(n.id, n.open)
-						if (was === undefined ? n.open : was !== n.open) n.open ? open.add(n.id) : open.delete(n.id)
+						if (prev === undefined ? n.open : prev !== n.open) n.open ? open.add(n.id) : open.delete(n.id)
 					}
 					if (n.current) path = [...up, n.id]
 					if (n.kids) visit(n.kids, [...up, n.id])

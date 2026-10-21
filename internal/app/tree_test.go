@@ -12,7 +12,9 @@ import (
 // Enter and Space are the browser's; aria-current, icons and meta; the keys;
 // morphs of the list keep the user's open branches and focus (a dropped row
 // hands it to its neighbour), while a changed data-open or a new current page
-// win; lazy branches load through sb-load and a patched-in list; value and
+// win; lazy branches load through sb-load and a patched-in list, and keep
+// their children when a morph sends them again without one; long labels are
+// cut in a narrow tree; value and
 // expanded are server-wins; the JSON form still works, and a list wins over it.
 func TestTreeMarkup(t *testing.T) {
 	copyRows(t, probeCDP(t, "/", pdPrelude+morphJS+treeMarkupJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
@@ -215,6 +217,56 @@ await group('lazy branches', async () => {
 	check('the patched-in list becomes its children', [!!sky.querySelector('li[data-id="solarsystem"] > ul'), rowOf(sky, 'Solar System').hasAttribute('aria-busy'), j?.getAttribute('aria-level'), j?.getAttribute('aria-expanded'), Number(j?.querySelector('.meta').textContent) > 0, !!j?.querySelector('.art svg')],
 		[true, false, '2', 'false', true, true])
 	check('one request', loads, ['solarsystem'])
+})
+
+await group('lazy branches in a shared view', async () => {
+	const src = (list = '') => '<sb-tree id="shared" label="Shared"><ul><li data-id="docs" data-lazy>Docs' + list + '</li><li data-id="faq">FAQ</li></ul></sb-tree>'
+	const kids = {
+		docs: '<ul><li data-id="intro"><a href="/__nav/intro" aria-current="page">Intro</a></li><li data-id="more" data-lazy>More</li></ul>',
+		more: '<ul><li data-id="deep">Deep</li></ul>',
+	}
+	const t = await make(src())
+	const loads = []
+	t.addEventListener('sb-load', (e) => {
+		loads.push(e.detail.id)
+		setTimeout(() => t.querySelector('li[data-id="' + e.detail.id + '"]').insertAdjacentHTML('beforeend', kids[e.detail.id]))
+	})
+	rowOf(t, 'Docs').querySelector('.label').click()
+	await until(() => labels(t).includes('More'))
+	rowOf(t, 'More').querySelector('.label').click()
+	await until(() => labels(t).includes('Deep'))
+	check('two branches loaded', [labels(t), loads], [['Docs', 'Intro', 'More', 'Deep', 'FAQ'], ['docs', 'more']])
+	await morph(src())
+	check('the same items again without their lists: the children stay, open, with no new request',
+		[!!t.querySelector('li > ul'), labels(t), rowOf(t, 'Docs').getAttribute('aria-expanded'), rowOf(t, 'More').getAttribute('aria-expanded'), loads],
+		[false, ['Docs', 'Intro', 'More', 'Deep', 'FAQ'], 'true', 'true', ['docs', 'more']])
+	check('a kept item is no longer the current page', rowOf(t, 'Intro').hasAttribute('aria-current'), false)
+	await morph(src('<ul><li data-id="new">New</li></ul>'))
+	check('a list from the server wins', labels(t), ['Docs', 'New', 'FAQ'])
+	await morph(src())
+	check('and is kept in turn', labels(t), ['Docs', 'New', 'FAQ'])
+	await morph(src('<ul></ul>'))
+	await morph(src())
+	check('an empty list: no children, also when kept', [labels(t), rowOf(t, 'Docs').hasAttribute('aria-expanded'), loads], [['Docs', 'FAQ'], false, ['docs', 'more']])
+	await morph('<sb-tree id="shared" label="Shared"><ul><li data-id="faq">FAQ</li></ul></sb-tree>')
+	await morph(src())
+	await until(() => labels(t).includes('Deep'))
+	check('an item the server dropped loads again, into the branches the user opened', [labels(t), loads], [['Docs', 'Intro', 'More', 'Deep', 'FAQ'], ['docs', 'more', 'docs', 'more']])
+})
+
+await group('a narrow tree cuts long labels', async () => {
+	const long = 'A label far too long for the sidebar it sits in'
+	for (const [form, html] of [
+		['markup', '<sb-tree label="Narrow"><ul><li data-id="x">' + SVG + ' ' + long + ' <span data-meta>42</span></li></ul></sb-tree>'],
+		['JSON', '<sb-tree label="Narrow" items=\'[{"id":"x","label":"' + long + '","icon":"★"}]\'></sb-tree>'],
+	]) {
+		const side = await make('<div style="display: grid; grid-template-columns: 9rem 1fr">' + html + '</div>')
+		const t = side.firstElementChild
+		const row = rowsOf(t)[0], label = row.querySelector('.label'), meta = row.querySelector('.meta')
+		const host = t.getBoundingClientRect(), r = row.getBoundingClientRect()
+		check(form + ': the row fits the element, the label ends in an ellipsis', [Math.round(host.width), r.right <= host.right + 0.5, label.scrollWidth > label.clientWidth, getComputedStyle(label).textOverflow], [144, true, true, 'ellipsis'])
+		if (form === 'markup') check('the meta stays in view', meta.getBoundingClientRect().width > 0 && meta.getBoundingClientRect().right <= host.right + 0.5, true)
+	}
 })
 
 await group('server-wins: value and expanded', async () => {

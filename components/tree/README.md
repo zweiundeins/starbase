@@ -182,7 +182,7 @@ Put a `<ul>` (or `<ol>`) directly inside the element, with a `<li>` per item and
 
 - **`<a href>`** makes the item a link. Its row is an `<a>` with the same `href`, `target`, `rel` and `title`, so a click, Enter, a middle click and Ctrl or Cmd with a click do what they do on any link. Without a link, the item is plain text (bare, or in a `<span>`), and it can be selected.
 - **`data-id`** on the `<li>` is the item's id, used by `value`, `expanded`, `sb-load`, `sb-toggle` and `sb-change`. Without it, the id is the link's `href`, else the labels on the way to the item. Use `data-id`, not `id`: ids are unique in the whole page.
-- **`data-icon`** marks the item's icon: an inline `<svg>` (in `currentColor`, it takes the row's colour), an `<img>`, or a `<span>` with a glyph. The tree shows a copy of it at the size of the text; give an SVG `width` and `height` for the page without JavaScript.
+- **`data-icon`** marks the item's icon: an inline `<svg>` (in `currentColor`, it takes the row's colour), an `<img>`, or a `<span>` with a glyph. The tree shows a copy of it at the size of the text; give an SVG `width` and `height` for the page without JavaScript. The copy sits inside the component's shadow root, where your page's class rules don't reach: colour it with presentation attributes (`fill`, `stroke`), `currentColor` or an inline `style`, and size or colour its box from the page with `::part(icon)` (a `color` there reaches a `currentColor` icon).
 - **`data-meta`** marks a short text shown muted after the label: a count, "draft", "new". It is not part of the label.
 - **`aria-current`** on the link (usually `"page"`) marks the page you are on. Its row is highlighted, it is the row Tab lands on, and the branches above it open when it first shows or moves.
 - **`data-open`** on the `<li>` opens the branch.
@@ -191,6 +191,16 @@ Put a `<ul>` (or `<ol>`) directly inside the element, with a `<li>` per item and
 The tree keeps reading the list, so a morph or a patch can change any of it. Which branches are open is the tree's own state, not an attribute on the list, so the user's open and closed branches and the keyboard focus survive a morph of the list. The server's word wins when it changes: a new `data-open` opens the branch, and a new `expanded` replaces the open branches; the same markup again leaves the user's choices alone. A focused row that the server drops hands the focus to the row that takes its place.
 
 When the element holds a list and also has `items`, the list wins.
+
+### Loaded branches in a shared view
+
+A page that renders one tree for every visitor or tab can't send each one's loaded branches back. So a lazy item keeps the children it received: when a morph brings its `<li>` back with `data-lazy` and no list, the tree goes on showing them, open if they were, without a new `sb-load`. The server's word still wins when it sends one:
+
+- A `<li>` with a list of its own replaces the kept children, and that list is kept from then on. An empty `<ul>` says the item has no children.
+- An item the server leaves out, or sends without `data-lazy`, drops its kept children. When it returns as a lazy item and is open, it asks for them again.
+- Kept items are never the current page: `aria-current` counts only in the markup the server sends now.
+
+The same holds for `lazy` items of the JSON form whose children leave `items` and `loaded`. A new page load starts empty.
 
 ## Items as JSON
 
@@ -264,7 +274,7 @@ Links are followed, not selected: a tree of links marks the page with `aria-curr
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** set `font-size` on the element (default `0.875rem`) to scale the text and the icons; rows are at least `2rem` tall (`min-block-size` on `::part(item)`).
+- **Size:** set `font-size` on the element (default `0.875rem`) to scale the text and the icons; rows are at least `2rem` tall (`min-block-size` on `::part(item)`). The rows take the element's width: in a narrow sidebar a long label ends in an ellipsis, and the meta stays in view.
 - **Fonts:** the rows use your page's font.
 - **Colours:** text is `--sb-text-1`; the carets, the meta and "loading" are `--sb-text-muted`. Rows turn `--sb-surface-hover` on hover; the selected row and the current page are `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring is `--sb-brand-light`, corners `--sb-radius-sm`. `--sb-notch: 0` turns the stepped pixel carets into plain triangles that turn smoothly.
 - **Parts:** `tree`, `item` (every row), and in a row `caret`, `icon`, `label` and `meta`. Selected rows are also `selected` and the current page `current`, so `::part(item selected)` styles only those; they move with the selection. Your page's `::part()` rules win over the component's own, without `!important`.
