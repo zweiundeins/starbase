@@ -346,7 +346,7 @@ check(async () => {
 	row('hidden by data-show: no toolbar', bar(), false)
 	wrap.remove()
 
-	await customElements.whenDefined('sb-drawer')
+	await Promise.race([customElements.whenDefined('sb-drawer'), new Promise((_, no) => setTimeout(() => no(new Error('sb-drawer is not defined: is the page on the autoloader (the bundle over web.bundleBudget)?')), 5000))])
 	const drawer = document.createElement('sb-drawer')
 	drawer.setAttribute('modal', 'false')
 	drawer.innerHTML = '<button id="dt-other">x</button>'

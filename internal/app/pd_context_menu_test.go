@@ -145,7 +145,7 @@ try {
 	area.remove()
 
 	// In a non-modal drawer, Escape closes the menu first, then the drawer.
-	await customElements.whenDefined('sb-drawer')
+	await Promise.race([customElements.whenDefined('sb-drawer'), new Promise((_, no) => setTimeout(() => no(new Error('sb-drawer is not defined: is the page on the autoloader (the bundle over web.bundleBudget)?')), 5000))])
 	const box = document.createElement('div')
 	box.innerHTML = '<sb-drawer id="pd-drawer" modal="false" heading="Drawer"><button type="button" id="pd-trigger" data-menu-for="pd-menu">⋯</button>' +
 		'<sb-context-menu id="pd-menu" aria-label="Actions"><template data-sb-menu><button type="button" role="menuitem" data-action="x">X</button></template></sb-context-menu></sb-drawer>'
