@@ -5,16 +5,16 @@ go 1.27.3
 require (
 	github.com/a-h/templ v0.3.1070
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/andybalholm/brotli v1.2.6
+	github.com/andybalholm/brotli v1.2.7
 	github.com/benbjohnson/hashfs v0.2.2
 	github.com/evanw/esbuild v0.28.2
 	github.com/klauspost/compress v1.20.3
 	github.com/prometheus/client_golang v1.25.0
 	github.com/starfederation/datastar-go v1.2.2
-	github.com/tdewolff/minify/v2 v2.24.22
+	github.com/tdewolff/minify/v2 v2.24.23
 	github.com/yuin/goldmark v1.8.6
-	github.com/zweiundeins/lith v0.4.1
-	github.com/zweiundeins/lith/prom v0.4.1
+	github.com/zweiundeins/lith v0.5.1
+	github.com/zweiundeins/lith/prom v0.5.1
 	go.abhg.dev/goldmark/frontmatter v0.3.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.49.0
@@ -138,7 +138,7 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.9.0 // indirect
 	github.com/stretchr/objx v0.8.0 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
-	github.com/tdewolff/parse/v2 v2.8.19 // indirect
+	github.com/tdewolff/parse/v2 v2.8.20 // indirect
 	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
