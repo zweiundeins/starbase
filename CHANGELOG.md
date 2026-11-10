@@ -27,6 +27,7 @@ All notable changes to this project are documented here. The format follows
 - The server has a `ReadTimeout` of 15 s, so a client that trickles a body no longer holds a connection; the playground's large bodies (512 KiB) and the dev route's (4 MiB) are read through lith's `edge.UploadBody`, which gives a slow but steady upload the time it needs. A body over its cap on those routes gets 413 instead of 400.
 - Refusals no person reads (rate limits, a busy writer, a full snippet store, the telemetry stream while the server stops, the downloads' cap) answer with their status and no body, as lith's streams do.
 - A download of selected stars runs its `IN` list with `sqlite.Uncached`, so the lists' many texts take no place in the statement cache.
+- The playground's transpiler keeps its answers in a `live.Cache` of 4 MiB, which keeps the ones asked for again, instead of a map of 256 that it emptied when full.
 - The component bundle's budget is 104 kB (brotli), up from 100 kB: the bundle had reached 102.5 kB, and pages would have gone back to the autoloader.
 - No more Windows builds: releases and CI build for Linux and macOS.
 - Dependencies: lith v0.4.1, minify v2.24.22.

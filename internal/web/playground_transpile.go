@@ -31,25 +31,16 @@ func (s *Server) playgroundTranspile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
-	key := sha256.Sum256(src)
-	s.transpileMu.Lock()
-	out, ok := s.transpiled[key]
-	s.transpileMu.Unlock()
-	if !ok {
+	out := s.transpiled.Get(sha256.Sum256(src), func() []byte {
 		t, err := catalog.Transpile(string(src))
 		var te *catalog.TranspileError
 		if errors.As(err, &te) {
-			out, _ = json.Marshal(te)
-		} else {
-			out, _ = json.Marshal(t)
+			out, _ := json.Marshal(te)
+			return out
 		}
-		s.transpileMu.Lock()
-		if len(s.transpiled) >= 256 {
-			clear(s.transpiled)
-		}
-		s.transpiled[key] = out
-		s.transpileMu.Unlock()
-	}
+		out, _ := json.Marshal(t)
+		return out
+	})
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write(out)

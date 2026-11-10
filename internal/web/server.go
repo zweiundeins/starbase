@@ -54,9 +54,8 @@ type Server struct {
 	checkMu      sync.Mutex
 	checks       map[[32]byte][]tscheck.Diagnostic // playground code → its diagnostics (playground_check.go)
 
-	transpileLimit *edge.Limiter // the runner's TypeScript, per client (it has no session)
-	transpileMu    sync.Mutex
-	transpiled     map[[32]byte][]byte // component.ts → the JSON answer (playground_transpile.go)
+	transpileLimit *edge.Limiter         // the runner's TypeScript, per client (it has no session)
+	transpiled     *live.Cache[[32]byte] // component.ts → the JSON answer (playground_transpile.go)
 
 	exportLimit   *edge.Limiter // the star catalog's downloads, per session
 	exportLimitIP *edge.Limiter
@@ -113,7 +112,7 @@ func New(ctx context.Context, d Deps) *Server {
 		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
 
 		transpileLimit: edge.NewLimiter(5, 40), // once per run
-		transpiled:     map[[32]byte][]byte{},
+		transpiled:     live.NewCache[[32]byte](4 << 20),
 
 		exportLimit:   edge.NewLimiter(0.2, 3), // a download every five seconds, three in a row
 		exportLimitIP: edge.NewLimiter(1, 10),
