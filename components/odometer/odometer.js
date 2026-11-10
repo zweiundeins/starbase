@@ -65,7 +65,7 @@ const styles = /* css */ `
 .strip > span { display: block; block-size: 1em; line-height: 1em; text-align: center; }
 .static { display: inline-block; }
 
-/* Drum (.d, from the decoded prop: drum="false" is no drum): the window shows
+/* Drum (.d, from the decoded prop): the window shows
    the digit face-on and the neighbours curving away above and below it, fading
    into the page. A face is 1em tall, so ten of them close into a cylinder of
    radius 0.5em / tan(18°). */

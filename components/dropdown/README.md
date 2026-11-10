@@ -279,9 +279,9 @@ Opening and closing is local state. Clicks, the keyboard, an outside click and E
 The server still gets a say through the `open` attribute, with the usual rule:
 
 - The first `open` sets the initial state: `<sb-dropdown open items='…'>` is open on the first paint, without the opening animation.
-- A **changed** attribute wins over the local state: `open="false"` closes the menu, `open` re-opens it.
+- A **changed** attribute wins over the local state: removing `open` closes the menu, adding it re-opens it.
 - Re-sent identical markup changes nothing, because the morph never touches an attribute it already agrees with. That is what makes the attribute safe to render on every frame.
-- A **removed** attribute is ignored, like every other reflected attribute (morphs strip those). To close from the server, send `open="false"`: it closes a menu the user opened even when the element was rendered without `open`.
+- `open="false"` still reads as closed, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out. A server that rendered no `open` can't close a menu the user opened by sending no `open` again: that is the same markup.
 
 From the client, use the property and the methods instead. They never touch the attribute:
 

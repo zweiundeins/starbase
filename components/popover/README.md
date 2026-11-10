@@ -84,16 +84,16 @@ With your own trigger, the description is made of the elements in the panel, so 
 
 ### When the server owns the open state
 
-The two buttons stand in for the server: they change the `open` attribute, as a re-render would. The first one opens the panel, the one inside it sends `open="false"` and closes it. A changed attribute wins over whatever the user did. Close the panel by hand and press "Server sends open" again: nothing happens, because the attribute already says open and the same markup sent again is not a change. `data-preserve-attr` keeps the signal-driven attribute through a morph.
+The two buttons stand in for the server: they add or remove the `open` attribute, as a re-render would. The first one opens the panel, the one inside it removes the attribute and closes it. A changed attribute wins over whatever the user did. Close the panel by hand and press "Server sends open" again: nothing happens, because the attribute already says open and the same markup sent again is not a change. `data-attr` removes the attribute for `false`, and `data-preserve-attr` keeps the signal-driven attribute through a morph.
 
 ```html preview
-<div data-signals="{_briefOpen: 'false', _briefLog: 'no event yet'}" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center">
-  <sb-button size="sm" data-on:click="$_briefOpen = 'true'">Server sends open</sb-button>
+<div data-signals="{_briefOpen: false, _briefLog: 'no event yet'}" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center">
+  <sb-button size="sm" data-on:click="$_briefOpen = true">Server sends open</sb-button>
   <sb-popover name="brief" label="Mission brief" arrow data-attr:open="$_briefOpen" data-preserve-attr="open"
     data-on:sb-open="$_briefLog = 'open (' + evt.detail.reason + ')'"
     data-on:sb-close="$_briefLog = 'closed (' + evt.detail.reason + ')'">
     <p style="margin: 0 0 8px">Burn 4.2 s at T+38.</p>
-    <sb-button size="sm" variant="outline" data-on:click="$_briefOpen = 'false'">Server sends open="false"</sb-button>
+    <sb-button size="sm" variant="outline" data-on:click="$_briefOpen = false">Server removes open</sb-button>
   </sb-popover>
   <code data-text="$_briefLog"></code>
 </div>
@@ -104,7 +104,7 @@ The two buttons stand in for the server: they change the `open` attribute, as a 
 A page that keeps the panel open across renders posts both events and renders `open` from its state. A change the server made itself (reason `server`) needs no command:
 
 ```html
-<sb-popover name="brief" label="Mission brief" open="{{ .BriefOpen }}"
+<sb-popover name="brief" label="Mission brief" {{ if .BriefOpen }}open{{ end }}
   data-on:sb-open="evt.detail.reason !== 'server' && @post('/cmd/panel', {payload: {tabid: $tabid, name: evt.detail.name, open: true}})"
   data-on:sb-close="evt.detail.reason !== 'server' && @post('/cmd/panel', {payload: {tabid: $tabid, name: evt.detail.name, open: false}})">
   …
@@ -118,9 +118,9 @@ The command writes the panel into `tab_state`, and the next render brings the at
 Opening and closing is local. Clicks, the pointer, the keyboard, an outside click and Escape only change a `$$` signal, so a morph never re-opens a panel the user just closed. The server gets its say through the `open` attribute:
 
 - The first `open` sets the initial state: `<sb-popover open>` is open on the first paint, without the fade-in.
-- A **changed** attribute wins over the local state: `open="false"` closes the panel, `open` opens it again.
+- A **changed** attribute wins over the local state: adding `open` opens the panel, removing it closes it.
 - Re-sent identical markup changes nothing.
-- A **removed** attribute is ignored, because morphs also strip attributes that were only reflected. To close from the server, send `open="false"`.
+- `open="false"` still reads as closed, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out.
 
 From the client, use the property and the methods, which never touch the attribute:
 

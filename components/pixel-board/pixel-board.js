@@ -34,7 +34,7 @@ const hex = (c) => {
 const boards = new WeakMap()
 
 // A readonly board renders no palette, so its frame is an only child: styled from what is rendered,
-// not from the attribute (el.readonly = false writes readonly="false").
+// not from the attribute.
 const styles = /* css */ `
 :host {
 	--_border: var(--sb-border, #283552);

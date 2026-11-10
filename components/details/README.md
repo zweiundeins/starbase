@@ -12,9 +12,8 @@ usage: |
   <sb-details summary="Flight plan">Burn 4.2 s at T+38, then coast to the transfer orbit.</sb-details>
 playground:
   content: Burn 4.2 s at T+38, then coast to the transfer orbit.
-  values: {summary: Flight plan, icon: "🛰️"}
-  attrs: {open: "true"}
-  exclude: [name, group, open]
+  values: {summary: Flight plan, icon: "🛰️", open: true}
+  exclude: [name, group]
 ---
 
 A summary row that opens to reveal its content, with a height animation that always lands on the content's own height. On its own it is a disclosure; give a few of them the same `group` and they become an accordion where only one panel is open.
@@ -63,13 +62,13 @@ Panels that share a `group` close each other. Every panel that closes emits its 
 
 ### When the server owns the open state
 
-The buttons below stand in for the server: they change the `open` **attribute**, exactly like a re-render would. A changed attribute wins over whatever the user did; `open="false"` closes the panel. `data-preserve-attr` keeps a signal-driven attribute through a morph.
+The buttons below stand in for the server: they add or remove the `open` **attribute**, exactly like a re-render would. A changed attribute wins over whatever the user did: adding it opens the panel, removing it closes it. `data-attr` removes the attribute for `false`, and `data-preserve-attr` keeps a signal-driven attribute through a morph.
 
 ```html preview
-<div data-signals="{_open: 'false'}" style="display: grid; gap: 10px; inline-size: min(100%, 26rem)">
+<div data-signals="{_open: false}" style="display: grid; gap: 10px; inline-size: min(100%, 26rem)">
   <div style="display: flex; gap: 8px; flex-wrap: wrap">
-    <sb-button size="sm" data-on:click="$_open = 'true'">Server sends open</sb-button>
-    <sb-button size="sm" variant="outline" data-on:click="$_open = 'false'">Server sends open="false"</sb-button>
+    <sb-button size="sm" data-on:click="$_open = true">Server sends open</sb-button>
+    <sb-button size="sm" variant="outline" data-on:click="$_open = false">Server removes open</sb-button>
   </div>
   <sb-details name="brief" summary="Mission brief" data-attr:open="$_open" data-preserve-attr="open">
     Toggle the panel by hand, then press a button: the attribute wins. Press the same button
@@ -81,7 +80,7 @@ The buttons below stand in for the server: they change the `open` **attribute**,
 On a Starbase page the same thing is one `sb-toggle` handler and one command:
 
 ```html
-<sb-details name="brief" summary="Mission brief" open="{{ .Brief }}"
+<sb-details name="brief" summary="Mission brief" {{ if .Brief }}open{{ end }}
   data-on:sb-toggle="@post('/cmd/panel', {payload: {tabid: $tabid, ...evt.detail}})">
   …
 </sb-details>
@@ -102,14 +101,12 @@ A value is what the user *decides*; view state is what they *look at*. `sb-detai
 | `open` on the first render | Open on the first paint, with no opening animation |
 | a **changed** `open` attribute | It wins, whatever the user had done. No `sb-toggle` is emitted: the server already knows |
 | the **same** markup again | Nothing. A morph can never re-open a panel the user just closed |
-| **no** `open` attribute any more | Nothing. Morphs also strip attributes that were only reflected, so a removal is not an instruction |
-| `open="false"` | Closed. This is how the server closes a panel |
+| **no** `open` attribute any more | Closed, whatever the user had done. This is how the server closes a panel |
+| `open="false"` | Closed, like no attribute, with a console warning: this spelling is deprecated and goes in a later release |
 
 Local toggling never writes the attribute back, which is what makes the table above consistent. A panel that app code moves (a sortable list, a portal, `moveBefore`) keeps its open state, like a native `<details>`, and an `open` attribute changed while it was detached still wins when it comes back.
 
-That last row is also why the playground above has no `open` switch: its boolean switches *remove* the attribute for `false`, and removal is exactly the case `sb-details` ignores. Click the summary, or use the example below.
-
-One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host), not the decoded prop. Rocket's `observeProps` only fires when the decoded value changes, so a server adding `open="false"` to an element that never carried the attribute (a real change of mind) would otherwise go unnoticed.
+One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host) and reads it by presence itself, not through the decoded prop: while `open="false"` still reads as closed, Starbase's patched Datastar and the official release decode it differently.
 
 ## A native `<details>` in the shadow root
 

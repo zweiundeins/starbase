@@ -38,7 +38,7 @@ A checkbox with a pixel box and a label, for a yes or no that belongs in a form.
 
 ### Two-way binding
 
-The live state is the `checked` property, so `data-bind` works with the `__prop` and `__event` modifiers. Declare the signal first.
+The live state is the `checked` property, so `data-bind` works with the `__prop` and `__event` modifiers. Declare the signal first. If it can be true when the page loads and the checkbox sits in a region the server morphs, add `data-preserve-attr="checked"` (see sb-toggle's [Two-way binding](/components/toggle#two-way-binding)).
 
 ```html preview
 <div data-signals:_beacon="false">
@@ -63,7 +63,7 @@ Style the wait from the page:
 sb-checkbox:state(pending) { opacity: 0.7; }
 ```
 
-The server's `checked` wins when it sends a new one, even onto a checkbox rendered without it; the same markup again leaves the user's click alone. A removed attribute changes nothing, so send `checked="false"` to clear it. `indeterminate` is the server's too: a new one wins, a removed one clears the dash, and `revert()` brings back both. Write booleans as `checked`, `checked="true"` or `checked="false"`. The live state before the echo and the pending state live in local signals and are never reflected to attributes. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it checks the box and removing it clears it, also after the user's click, while the same markup again leaves that click alone. In templ that is `checked?={ on }`. `checked="false"` still reads as not checked, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out. `indeterminate` is the server's too: a new one wins, a removed one clears the dash, and `revert()` brings back both. The live state before the echo and the pending state live in local signals and are never reflected to attributes. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 ## Forms
 
@@ -71,7 +71,7 @@ Inside a `<form>`, `sb-checkbox` submits like a native checkbox: `name=value` wh
 
 ## Styling
 
-Parts: `base` (the clickable row), `box` and `label`. A checked box is `--sb-brand` in a `--sb-brand-light` frame with a `--sb-text-on-brand` mark; an empty one is `--sb-control-bg` in `--sb-control-border` (`--sb-control-border-hover` under the pointer, on a `--sb-surface-hover` row). The label is `--sb-control-text` at 0.875rem in the page's font. The corners come from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled checkbox has `:state(disabled)`, from the decoded prop, so `disabled="false"` is not disabled.
+Parts: `base` (the clickable row), `box` and `label`. A checked box is `--sb-brand` in a `--sb-brand-light` frame with a `--sb-text-on-brand` mark; an empty one is `--sb-control-bg` in `--sb-control-border` (`--sb-control-border-hover` under the pointer, on a `--sb-surface-hover` row). The label is `--sb-control-text` at 0.875rem in the page's font. The corners come from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled checkbox has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
 
 ```html preview
 <sb-checkbox label="Gold plating" checked style="--sb-brand: #F5C451; --sb-brand-light: #FFE08A; --sb-text-on-brand: #1B1300"></sb-checkbox>

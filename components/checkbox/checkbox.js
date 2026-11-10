@@ -36,8 +36,8 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // The check mark in 2px pixels, cut out of the box's 12px inside.
 const check = 'path("M10 1h2v2h-2zM8 3h4v2H8zM0 5h2v2H0zM6 5h4v2H6zM0 7h8v2H0zM2 9h4v2H2z")'
 
-// :state(disabled) comes from the decoded prop, so disabled="false" is not
-// disabled. Forced colours paint every background Canvas: the box and its
+// :state(disabled) comes from the decoded prop, not :host([disabled]).
+// Forced colours paint every background Canvas: the box and its
 // mark take the system's Highlight colours there.
 const styles = /* css */ `
 :host {

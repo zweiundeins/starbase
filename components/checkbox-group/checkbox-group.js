@@ -45,8 +45,8 @@ const same = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].s
 // A choice that can be checked (and take the focus).
 const live = (o) => !!o && !o.disabled
 
-// :state(disabled) comes from the decoded prop, so disabled="false" is not
-// disabled. Forced colours paint every background Canvas: checked boxes and
+// :state(disabled) comes from the decoded prop, not :host([disabled]).
+// Forced colours paint every background Canvas: checked boxes and
 // their marks take the system's Highlight colours there.
 const styles = /* css */ `
 :host {

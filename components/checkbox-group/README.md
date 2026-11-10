@@ -118,7 +118,7 @@ Inside a `<form>`, `sb-checkbox-group` submits like native checkboxes that share
 
 ## Styling
 
-Parts: `base`, `label`, `items`, `item` (every row, the select-all one included), `all` (the select-all row), `box` and `description`. A checked box is `--sb-brand` in a `--sb-brand-light` frame with a `--sb-text-on-brand` mark; an empty one is `--sb-control-bg` in `--sb-control-border` (`--sb-control-border-hover` under the pointer, on a `--sb-surface-hover` row). The group label is `--sb-text-2`, descriptions are `--sb-text-muted`. The corners come from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled group has `:state(disabled)`, from the decoded prop, so `disabled="false"` is not disabled.
+Parts: `base`, `label`, `items`, `item` (every row, the select-all one included), `all` (the select-all row), `box` and `description`. A checked box is `--sb-brand` in a `--sb-brand-light` frame with a `--sb-text-on-brand` mark; an empty one is `--sb-control-bg` in `--sb-control-border` (`--sb-control-border-hover` under the pointer, on a `--sb-surface-hover` row). The group label is `--sb-text-2`, descriptions are `--sb-text-muted`. The corners come from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
 
 ```html preview
 <style>

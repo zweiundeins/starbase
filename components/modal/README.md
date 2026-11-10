@@ -52,13 +52,13 @@ The `inline` attribute renders the panel in place, which is handy for docs and p
 
 ### Opened by the server
 
-In a CQRS app the server owns "is the dialog open?". The button below stands in for the server: it sets the `open` **attribute**, exactly like a re-render would, and three seconds later sends `open="false"`. Close the dialog yourself before that and `sb-close` tells the "server", which then sends `open="false"` right away.
+In a CQRS app the server owns "is the dialog open?". The button below stands in for the server: it sets the `open` **attribute**, exactly like a re-render would, and three seconds later removes it. Close the dialog yourself before that and `sb-close` tells the "server", which then removes it right away.
 
 ```html preview
-<div data-signals="{_srv: 'false'}">
-  <sb-button data-on:click="$_srv = 'true'; setTimeout(() => $_srv = 'false', 3000)">Server opens it for 3 s</sb-button>
+<div data-signals="{_srv: false}">
+  <sb-button data-on:click="$_srv = true; setTimeout(() => $_srv = false, 3000)">Server opens it for 3 s</sb-button>
   <sb-modal heading="Incoming transmission" data-attr:open="$_srv" data-preserve-attr="open"
-    data-on:sb-close="$_srv = 'false'">
+    data-on:sb-close="$_srv = false">
     The server opened this dialog and will close it. Press Escape to close it now.
   </sb-modal>
 </div>
@@ -67,22 +67,23 @@ In a CQRS app the server owns "is the dialog open?". The button below stands in 
 On a Starbase page the same thing is one `sb-close` handler and one command:
 
 ```html
-<sb-modal heading="Edit profile" open="{{ .Editing }}"
+<sb-modal heading="Edit profile" {{ if .Editing }}open{{ end }}
   data-on:sb-close="@post('/cmd/edit-profile/close', {payload: {tabid: $tabid, ...evt.detail}})">
   …
 </sb-modal>
 ```
 
-The command clears the flag, and the next render sends `open="false"`. Without it the server's `open` stays as it was, and to open the dialog again it first has to change its word.
+The command clears the flag, and the next render leaves `open` out. Without it the server's `open` stays as it was, and to open the dialog again it first has to change its word.
 
 | The server sends | What happens |
 | --- | --- |
 | `open` on the first render | Open, as a modal, on the first paint |
-| a **changed** `open` value | It wins: `open` opens the dialog, `open="false"` closes it, also one opened with `show()`. No `sb-open` or `sb-close`: the server already knows |
+| `open` added | It wins: the dialog opens, also over one the user closed. No `sb-open`: the server already knows |
+| `open` removed | It wins: the dialog closes, also one opened with `show()`, and the focus goes back where it was. No `sb-close` |
 | the **same** markup again | Nothing. A morph never reopens a dialog the user dismissed |
-| **no** `open` attribute any more | Nothing. Morphs also strip attributes that were only reflected, so a removal is not an instruction: send `open="false"` |
+| `open="false"` | Closed, like no attribute, with a console warning: this spelling is deprecated and goes in a later release |
 
-`show()` and `close()` never write the attribute, so the element's `open` property is the server's word (false after `show()`); `isOpen` tells whether the dialog is showing.
+`show()` and `close()` never write the attribute, so the element's `open` property is the server's word (false after `show()`); `isOpen` tells whether the dialog is showing. A server that rendered no `open` can't close a dialog opened with `show()` by sending no `open` again: that is the same markup, so it changes its word first or the page calls `close()`.
 
 ### Buttons that close it
 

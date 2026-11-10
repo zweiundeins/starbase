@@ -106,13 +106,13 @@ A `<form>` in the body can't close the drawer with `method="dialog"`: the `<dial
 
 ## With commands
 
-In a CQRS app the server owns "is the drawer open?", exactly like `sb-modal`'s `open`. The button below stands in for the server: it sets the `open` **attribute**, like a re-render would, and three seconds later sends `open="false"`. Close the drawer yourself before that and `sb-close` tells the "server", which then sends `open="false"` right away.
+In a CQRS app the server owns "is the drawer open?", exactly like `sb-modal`'s `open`. The button below stands in for the server: it sets the `open` **attribute**, like a re-render would, and three seconds later removes it. Close the drawer yourself before that and `sb-close` tells the "server", which then removes it right away.
 
 ```html preview
-<div data-signals="{_srv: 'false'}">
-  <sb-button data-on:click="$_srv = 'true'; setTimeout(() => $_srv = 'false', 3000)">Server opens it for 3 s</sb-button>
+<div data-signals="{_srv: false}">
+  <sb-button data-on:click="$_srv = true; setTimeout(() => $_srv = false, 3000)">Server opens it for 3 s</sb-button>
   <sb-drawer heading="Incoming transmission" data-attr:open="$_srv" data-preserve-attr="open"
-    data-on:sb-close="$_srv = 'false'">
+    data-on:sb-close="$_srv = false">
     The server opened this drawer and will close it. Press Escape to close it now.
   </sb-drawer>
 </div>
@@ -121,18 +121,18 @@ In a CQRS app the server owns "is the drawer open?", exactly like `sb-modal`'s `
 On a Starbase page it is one `sb-close` handler and one command:
 
 ```html
-<sb-drawer heading="Edit profile" open="{{ .Editing }}"
+<sb-drawer heading="Edit profile" {{ if .Editing }}open{{ end }}
   data-on:sb-close="@post('/cmd/edit-profile/close', {payload: {tabid: $tabid, ...evt.detail}})">
   …
 </sb-drawer>
 ```
 
-The command clears the flag, and the next render sends `open="false"`.
+The command clears the flag, and the next render leaves `open` out.
 
 - `open` on the first render opens the drawer on the first paint.
-- A **changed** `open` wins: `open` opens the drawer, `open="false"` closes it, also one opened with `show()`. Neither sends `sb-open` or `sb-close`: the server already knows.
+- A **changed** `open` wins: adding it opens the drawer, removing it closes it, also one opened with `show()`. Neither sends `sb-open` or `sb-close`: the server already knows.
 - The **same** markup again changes nothing. A morph never reopens a drawer the user closed.
-- A **removed** `open` attribute changes nothing either. Morphs also strip attributes that were only reflected, so to close it the server sends `open="false"`.
+- `open="false"` still reads as closed, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out.
 
 `show()` and `hide()` (or `close()`, its name on `sb-modal`) never write the attribute, so the element's `open` property stays the server's word; `isOpen` tells whether the drawer is showing.
 

@@ -36,7 +36,7 @@ An on/off switch with chunky pixel corners and stepped motion. It exposes a `che
 
 ### Two-way binding
 
-Bind the `checked` property with `data-bind` and the `__prop` and `__event` modifiers.
+Bind the `checked` property with `data-bind` and the `__prop` and `__event` modifiers. If the signal can be true when the page loads and the toggle sits in a region the server morphs, add `data-preserve-attr="checked"`: a write made before the component is defined shows up as a `checked` attribute, and the next morph would remove it, which switches the toggle off.
 
 ```html preview
 <div data-signals:_thrusters="false">
@@ -49,7 +49,7 @@ Bind the `checked` property with `data-bind` and the `__prop` and `__event` modi
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
-The server's `checked` wins when it sends a new one, even onto a toggle rendered without it; the same markup again leaves the user's switch alone. A removed attribute changes nothing, so send `checked="false"` to switch it off. Write it as `checked`, `checked="true"` or `checked="false"`: `checked="checked"` (like `disabled="disabled"`) reads as false.
+The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it switches the toggle on and removing it switches it off, also after the user flipped it, while the same markup again leaves the user's switch alone. In templ that is `checked?={ on }`. `checked="false"` still reads as off, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out.
 
 ## Forms
 

@@ -25,7 +25,7 @@ const SPRITES = {
 const path = (rows, ch) => rows.map((row, y) => [...row].map((c, x) => (ch.includes(c) ? `M${x} ${y}h1v1h-1z` : '')).join('')).join('')
 
 // - Disabled is styled from the rendered row (aria-disabled), not
-//   :host([disabled]), which disabled="false" matches too.
+//   :host([disabled]): the decoded prop is the one reading of the attribute.
 // - touch-action pan-y: a vertical swipe still scrolls the page, a sideways
 //   drag rates.
 // - The filled layer is cut to the unit's share of the value (--fill, 0…1)

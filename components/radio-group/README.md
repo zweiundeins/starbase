@@ -102,7 +102,7 @@ Inside a `<form>`, `sb-radio-group` submits the checked choice under its `name` 
 
 ## Styling
 
-Parts: `base`, `label`, `items`, `item`, `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled group has `:state(disabled)`, from the decoded prop, so `disabled="false"` is not disabled.
+Parts: `base`, `label`, `items`, `item`, `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
 
 ```html preview
 <sb-radio-group label="Hull paint" value="rust" style="--sb-brand: #F5C451; --sb-brand-light: #FFE08A; --sb-brand-subtle: rgb(245 196 81 / 0.16)">

@@ -20,6 +20,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Flags that are on by default are enumerated `true`/`false` attributes (`oneOf(true, false)`), turned off with `x="false"` as before: `sb-alert` `open`, `sb-code-editor` `line-numbers`, `sb-code-playground` `auto-run`, `sb-count-up` and `sb-odometer` `grouping`, `sb-drawer` `modal` and `closable`, `sb-meter`, `sb-range` and `sb-slider` `show-value`, `sb-modal` `closable`, `sb-nebula` `stars` and `parallax`, `sb-relative-time` `sync`. Markup stays as it is, and every component is now defined on the official Datastar v1.0.5, which refuses a boolean prop's default (a browser test loads them all on it). Their manifests list them as `oneOf` with the values `[true, false]`, which the Playground shows as a switch. A submitted component with `bool.default(…)` is refused.
+- The server's word on `checked` (`sb-toggle`, `sb-checkbox`), `open` (`sb-details`, `sb-popover`, `sb-dropdown`, `sb-date-picker`, `sb-modal`, `sb-drawer`) and `busy` (`sb-busy`) is the attribute's presence, as in HTML and on the official Datastar v1.0.5: adding it says true and removing it says false, and either wins over a local edit, while identical markup still keeps one. A removed attribute used to be ignored; now a frame without `open` closes an open `sb-modal` or `sb-drawer`, and the focus goes back to where it was. Render the state as it is (templ `checked?={ on }`, `data-attr:open` with a boolean). A `checked` bound with `data-bind` to a signal that can be true when the page loads, in a region the server morphs, needs `data-preserve-attr="checked"`. The Showcase and the Themes page render `checked` this way.
 - Starbase's pages send commands as ops, lith's pattern: `sbCommand` (`static/js/commands.js`) gives each an op id in the `Op-Id` header under a key, the command records the newest op of its key in the tab's row, applied or refused (`TabState.Ops`), and every frame renders the acks in `#ops`. A control still pending when its op is acked goes back with `revert()`, so a refusal or a value normalized back to the stored one needs no `rev`; so does one whose request failed, or whose stream connected again without the ack, with `sb-op-failed` for the page's words. Commands answer 204 once committed (`writer.Do`), so the next frame acks them. The Showcase drops `rev` from its call sign.
 - A command that meets 409 (its tab's stream is not open, right after the page loads or while a deploy's reconnect is under way) stays pending and goes out again once the stream connects, the newest per key and at most once per connect (`static/js/commands.js`): the gallery's search, category and sort, the Showcase's flight controls and the playground's Save & share.
 - `sb-pixel-board` keeps a painted pixel pending until `cells` answers it, with its colour or another painter's, instead of dropping it after 3 seconds. `revert()` drops the pixels in flight: the Showcase calls it when a paint fails (the rate limit's 429, or no answer), so a refused stroke goes at once.
@@ -39,6 +41,10 @@ All notable changes to this project are documented here. The format follows
 - No more Windows builds: releases and CI build for Linux and macOS.
 - Dependencies: lith v0.4.1, minify v2.24.22.
 - The data table's docs list the server code behind its fit widths again, so its page needs a 512 KiB compression window per tab: 120 MiB of stream memory now holds about 105 of its tabs with zstd and 65 in browsers without zstd (the largest page; smaller pages hold more).
+
+### Deprecated
+
+- `checked="false"`, `open="false"` and `busy="false"` on those nine components. They still read as absent, with one console warning per element, and a later release reads them by presence (as true), as the official Datastar does, and drops `patches/rocket/0001`. Leave the attribute out instead.
 
 ### Fixed
 

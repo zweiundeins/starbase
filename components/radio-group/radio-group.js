@@ -33,8 +33,8 @@ const normalize = (list) =>
 // A choice that can be picked (and take the focus).
 const live = (o) => !!o && !o.disabled
 
-// :state(disabled) comes from the decoded prop, so disabled="false" is not
-// disabled. Forced colours paint every background Canvas: the checked dot is
+// :state(disabled) comes from the decoded prop, not :host([disabled]).
+// Forced colours paint every background Canvas: the checked dot is
 // filled with Highlight there.
 const styles = /* css */ `
 :host {
