@@ -304,7 +304,7 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	if !s.exportLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.exportLimit.Allow(edge.SessionID(r.Context()), 1, now) {
-		http.Error(w, "exporting too often", http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	// A download holds a read connection until it ends: slow ones must not
@@ -314,7 +314,7 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-s.exports }()
 	default:
 		w.Header().Set("Retry-After", "5")
-		http.Error(w, "too many downloads at once", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	rc := http.NewResponseController(w)

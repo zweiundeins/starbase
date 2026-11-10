@@ -419,7 +419,7 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	if !s.saveLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.saveLimit.Allow(edge.SessionID(r.Context()), 1, now) {
-		http.Error(w, "saving too often, try again in a minute", http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	var uid int64
@@ -433,7 +433,7 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 	})
 	if stored+commands.MaxSnippetBytes > commands.MaxSnippetStore {
 		s.log.Warn("snippet storage is full", "bytes", stored)
-		http.Error(w, commands.ErrSnippetStoreFull.Error(), http.StatusInsufficientStorage)
+		w.WriteHeader(http.StatusInsufficientStorage)
 		return
 	}
 	if _, ok := s.catalog.Get(p.Component); !ok {

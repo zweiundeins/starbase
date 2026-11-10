@@ -26,7 +26,7 @@ func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd writer.Command
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	default:
 		s.log.Warn("command rejected", "err", err)
-		http.Error(w, "busy, try again", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 }
 

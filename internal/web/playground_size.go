@@ -34,7 +34,7 @@ func (s *Server) playgroundSize(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	if !s.sizeLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.sizeLimit.Allow(edge.SessionID(r.Context()), 1, now) {
-		http.Error(w, "measuring too often", http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{"_size": s.measure(p.Component, p.Name, p.Code)})

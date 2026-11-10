@@ -28,7 +28,7 @@ func (s *Server) playgroundTranspile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.transpileLimit.Allow(edge.ClientKey(r), 1, time.Now()) {
-		http.Error(w, "transpiling too often", http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	key := sha256.Sum256(src)
