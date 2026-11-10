@@ -8,4 +8,6 @@ export declare function hypertext(render: (string: string) => ParentNode, postpr
 export declare const signalNameAttributes: Set<string>;
 export declare const rocketDispatchActionName = "dispatchRocket";
 export declare const rocketRefAttr = "data-rocket-ref";
+export declare const hasRocketScopedExpression: (value: string) => boolean;
+export declare const encodeSignalKey: (path: string) => string;
 export declare const rewriteDataAttributes: (root: ParentNode, scope?: TaggedLiteralScope) => void;

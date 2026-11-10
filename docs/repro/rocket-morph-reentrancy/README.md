@@ -130,12 +130,16 @@ morphs would then never run inside an outer one.
 
 ## In Starbase
 
-Starbase's pages run a patched build with this fix (`patches/rocket/0008`), where a
-nested morph also gives the outer one its id maps back, so the gallery cards have ids
-again. On the official v1.0.4, don't put `id`s on repeated or reordered elements that
-contain Rocket components: without ids nothing is parked, and the morph goes positional.
+Until v1.0.5, Starbase's pages ran a patched build with this fix (`patches/rocket/0008`),
+where a nested morph also gives the outer one its id maps back, so the gallery cards have
+ids. v1.0.5 fixes it upstream: every `morph()` call gets its own context (id maps and
+pantry) and a nested call restores the outer one, and Starbase dropped 0008. On the
+official v1.0.4, don't put `id`s on repeated or reordered elements that contain Rocket
+components: without ids nothing is parked, and the morph goes positional.
 
-With the fix, a fuzz test of 30 random patches (reorders, adds and drops of 2 to 9 keyed
+With 0008, a fuzz test of 30 random patches (reorders, adds and drops of 2 to 9 keyed
 items with Rocket elements, wrapped and as the keyed elements themselves) gives no
 exceptions and no wrong result; v1.0.4 gives 10,296 and 200 exceptions and 2 wrong
-results in each mode.
+results in each mode. A second fuzz of the same shape, 30 patches in each mode, gives no
+exception, no wrong order and no recreated node on the official v1.0.5, the same as
+Starbase's v1.0.4 build, while v1.0.4 throws 6,306 times and gets 6 of 30 orders wrong.

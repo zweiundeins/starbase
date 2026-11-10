@@ -78,9 +78,9 @@ Every component page's Installation section has this snippet with the current ca
 | `/c/<slug>@<hash>/<file>.js` | one version of a component's file (its module and vendored files) |
 | `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions |
 | `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load, Datastar's included |
-| `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.4 release with Starbase's fixes (`patches/rocket`), until they are released upstream |
+| `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.5 release with Starbase's patches (`patches/rocket`) |
 
-The components also run on the official Datastar release; the fixes are listed in `patches/rocket/README.md`.
+The components run on the official v1.0.4 release, but not on the official v1.0.5: it reads every boolean attribute that is present as true, `checked="false"` too, and refuses a boolean prop's default. The patches and the reasons for them are in `patches/rocket/README.md`.
 
 With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`.
 

@@ -30,6 +30,7 @@ type SetupEmitCancellable = {
 type PropObserver<Props extends Record<string, any>> = (() => void) | ((props: Props, changes: Partial<Props>) => void);
 type SetupContext<Props extends Record<string, any>> = {
     props: Props;
+    readonly internals: ElementInternals;
     $: Record<string, any>;
     $$: SetupSignal;
     effect(fn: () => void): () => void;
@@ -43,11 +44,6 @@ type SetupContext<Props extends Record<string, any>> = {
     observeProps(fn: PropObserver<Props>, ...propNames: Array<keyof Props & string>): () => void;
     overrideProp<Name extends keyof Props & string>(name: Name, getter?: PropOverrideGetter<Props, Name>, setter?: PropOverrideSetter<Props, Name>): void;
     defineHostProp(name: string, descriptor: HostPropDescriptor): void;
-    internals: ElementInternals;
-    onFormReset(fn: () => void): void;
-    onFormDisabled(fn: (disabled: boolean) => void): void;
-    onFormAssociated(fn: (form: HTMLFormElement | null) => void): void;
-    onFormStateRestore(fn: (state: unknown, mode: 'restore' | 'autocomplete') => void): void;
     render: SetupRender<Props>;
     host: RocketHostWithProps<Props>;
 };
@@ -81,8 +77,14 @@ type RocketDefinition<Defs extends PropDefs = PropDefs, Refs extends RefCtors = 
     onFirstRender?: (context: FirstUpdateContext<InferProps<Defs>, Refs>) => void;
     render?: RocketRender<InferProps<Defs>>;
     mode?: 'open' | 'closed' | 'light';
+    ignoredByMorph?: boolean | 'children';
     formAssociated?: boolean;
     delegatesFocus?: boolean;
+    formValue?: false | ((context: SetupContext<InferProps<Defs>>) => string | File | FormData | null);
+    onFormAssociated?: (context: SetupContext<InferProps<Defs>>, form: HTMLFormElement | null) => void;
+    onFormReset?: (context: SetupContext<InferProps<Defs>>) => void;
+    onFormDisabled?: (context: SetupContext<InferProps<Defs>>, disabled: boolean) => void;
+    onFormStateRestore?: (context: SetupContext<InferProps<Defs>>, state: string | File | FormData | null, mode: 'restore' | 'autocomplete') => void;
     renderOnPropChange?: boolean | ((context: {
         host: RocketHostWithProps<InferProps<Defs>>;
         props: InferProps<Defs>;

@@ -22,7 +22,7 @@ import (
 // windows. Tab is focus() on the next focusable element in flat-tree order, as the browser does it.
 //
 // STARBASE_DATASTAR_BUNDLE=<file> makes the pages load that bundle in place of the vendored build,
-// such as the official release: https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar-rocket.js
+// such as the official release: https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.5/bundles/datastar-rocket.js
 func TestVirtualScrollFocus(t *testing.T) {
 	var bundle []byte
 	if p := os.Getenv("STARBASE_DATASTAR_BUNDLE"); p != "" {

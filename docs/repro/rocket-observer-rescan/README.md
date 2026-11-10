@@ -16,6 +16,7 @@ Rows of 8 cells, reordered with `replaceChildren(...[...rows.rows].reverse())`, 
 |---|---|---|---|
 | v1.0.4 | 205 to 209 ms | 735 to 770 ms | 2862 to 2880 ms |
 | Starbase's build with `patches/rocket/0012` | 24 to 27 ms | 43 to 44 ms | 22 to 85 ms |
+| v1.0.5, which has the fix (one run) | 25 ms | 45 ms | 24 ms |
 
 Filling the body with new rows (one record) takes 6 to 45 ms on both.
 

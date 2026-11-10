@@ -9,6 +9,7 @@ type ResponseOverrides = {
     mode?: string;
     namespace?: string;
     useViewTransition?: boolean;
+    viewTransitionSelector?: string;
 } | {
     onlyIfMissing?: boolean;
 };

@@ -14,6 +14,7 @@ python3 -m http.server 8805
 |---|---|---|
 | v1.0.4 | `not bound` | `not bound`, the click does nothing |
 | Starbase's build with `patches/rocket/0011` | `bound` | `clicked 1` |
+| v1.0.5, which has the fix | `bound` | `clicked 1` |
 
 Also checked with the patch: a nested child binds, a child's `data-init` runs once, and a child whose expression uses `$$` binds in the component's scope. A component defined after Datastar's first pass (a lazily imported module) applies its children only once, as before: their `data-init` still runs once.
 

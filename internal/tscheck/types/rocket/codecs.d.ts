@@ -98,6 +98,10 @@ export type InferProps<T extends PropDefs> = {
 };
 export declare const getCodecDefault: <T>(codec: RuntimeCodec<T>) => any;
 export declare const decodeCodec: <T>(codec: RuntimeCodec<T>, value: unknown) => T;
+export declare const normalizeProperty: <T>(codec: RuntimeCodec<T>, input: T) => {
+    value: any;
+    encoded: string;
+};
 export declare const createCodec: <T>(handlers: Codec<T>) => RuntimeCodec<T>;
 export declare const getCodecManifest: <T>(codec: RuntimeCodec<T>) => CodecManifest;
 export declare const codecRegistry: CodecRegistry;

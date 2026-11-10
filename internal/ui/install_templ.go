@@ -84,7 +84,7 @@ func Installation(v InstallView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"install-panel\"><p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag: the autoloader imports each component the first time its tag appears, including tags a Datastar morph adds later. The Datastar here is v1.0.4 with <a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"install-panel\"><p>Add Datastar with Rocket and the Starbase autoloader once per page, then use the tag: the autoloader imports each component the first time its tag appears, including tags a Datastar morph adds later. The Datastar here is v1.0.5 with <a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -97,7 +97,7 @@ func Installation(v InstallView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">Starbase's fixes</a> until they are released; the components also run on the official release.</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">Starbase's patches</a>, which the components need: the official v1.0.5 reads <code>checked=\"false\"</code> as checked and refuses a boolean prop's default. They also run on the official v1.0.4.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

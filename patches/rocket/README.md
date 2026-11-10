@@ -1,22 +1,17 @@
 # Rocket patches
 
-Applied to the Datastar v1.0.4 tag by `go tool task vendor` (`scripts/vendor-rocket.sh`) to build `static/vendor/datastar-rocket.js`. Drop a patch once a release contains its fix, then rebuild.
+Applied to the Datastar v1.0.5 tag by `go tool task vendor` (`scripts/vendor-rocket.sh`) to build `static/vendor/datastar-rocket.js`. Drop a patch once a release contains its fix, then rebuild.
 
 | Patch | Upstream issue |
 |---|---|
-| 0001 finish the teardown when deleting the signals throws | [#1217](https://github.com/starfederation/datastar/issues/1217) |
-| 0002 keep the element as it is on an atomic move | [#1218](https://github.com/starfederation/datastar/issues/1218) |
-| 0003 form-associated components and focus delegation | [#1220](https://github.com/starfederation/datastar/issues/1220) |
-| 0004 bool props follow HTML boolean attributes | [#1219](https://github.com/starfederation/datastar/issues/1219) |
-| 0005 clean up the shadow tree's attributes on disconnect | [#1221](https://github.com/starfederation/datastar/issues/1221) |
-| 0006 instances share one constructed stylesheet per CSS text | [#1222](https://github.com/starfederation/datastar/issues/1222) |
-| 0007 observers hear an attribute write whose value decodes the same | [#1223](https://github.com/starfederation/datastar/issues/1223) |
-| 0008 a morph that starts inside another keeps the outer one's pantry and id maps | [#1209](https://github.com/starfederation/datastar/issues/1209) |
-| 0009 a light component renders inside a data-ignore-morph ancestor | [#1224](https://github.com/starfederation/datastar/issues/1224) |
-| 0010 a removed element's mount root leaves the observed roots | [#1225](https://github.com/starfederation/datastar/issues/1225) |
-| 0011 a queued definition applies the shadow host's children that Datastar's first pass skipped | [#1226](https://github.com/starfederation/datastar/issues/1226) |
-| 0012 the pending-host observer scans a parent once per batch, not once per moved child | [#1227](https://github.com/starfederation/datastar/issues/1227) |
+| 0001 a bool prop reads "false" and "0" as false and may declare a default | [#1219](https://github.com/starfederation/datastar/issues/1219) |
+| 0002 observers hear an attribute write whose value decodes the same | [#1223](https://github.com/starfederation/datastar/issues/1223) |
 
-Upstream fixed #1209 for its next release without a public commit, so 0008 is Starbase's own fix (the one proposed in `docs/repro/rocket-morph-reentrancy/`, plus restoring the outer morph's id maps). Drop it with the release that has upstream's. `docs/upstream/08` is a comment for #1209 with a case that needs the id maps restored and throws nothing (`docs/repro/rocket-morph-ids/`).
+Upstream closed both issues with a different answer, so neither will be released:
+
+- #1219: v1.0.5 (Rocket beta.3) reads a bool prop by presence alone. `checked="false"` and `checked="0"` are true, and `bool.default(…)` throws when the component is defined. 0001 keeps presence for every other value, so `checked="checked"` is true, but reads `"false"` and `"0"` as false and lets an absent attribute take the declared default. Starbase's server says false in markup (`checked="false"`, `open="false"`), and twelve components declare `bool.default(true)`.
+- #1223: upstream keeps notifying only when the decoded value changes. 0002 makes an attribute write whose text changed reach `observeProps`, so `value=""` written onto an element rendered without `value` is heard.
+
+v1.0.5 has the other ten fixes this folder carried for v1.0.4: #1209, #1217, #1218, #1220, #1221, #1222, #1224, #1225, #1226 and #1227. Their repro pages in `docs/repro/` and the cases in the filed texts pass on the official v1.0.5 bundle. Rocket beta.3 makes form association its own way (`formAssociated`, `formValue` and the `onForm…` callbacks in the definition, `internals` in the setup context), not with the setup callbacks Starbase's patch had; no component used them.
 
 The issue texts as filed are in `docs/upstream/`.

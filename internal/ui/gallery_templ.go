@@ -555,7 +555,7 @@ func Collection(s Shell, v GalleryView) templ.Component {
 
 // Card's id lets the morph match cards across a sort or a search, so it moves
 // them, live previews and all, instead of morphing one card into another. It
-// needs the re-entrant morph of patches/rocket 0008 (upstream #1209).
+// needs the re-entrant morph of Datastar v1.0.5 (upstream #1209).
 func Card(s Shell, c queries.Card, preview string, size catalog.Size) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

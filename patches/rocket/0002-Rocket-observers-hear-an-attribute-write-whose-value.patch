@@ -1,18 +1,18 @@
-From 3d804475c01a8ce8c7592771a758ba5b96356c53 Mon Sep 17 00:00:00 2001
+From af17e762a16abdcffa875f66f6484dcaf4e29d53 Mon Sep 17 00:00:00 2001
 From: Michael Bolli <michael@zweiundeins.gmbh>
-Date: Tue, 29 Sep 2026 04:14:29 +0000
-Subject: [PATCH 7/7] Rocket: observers hear an attribute write whose value
+Date: Tue, 10 Nov 2026 05:20:39 +0000
+Subject: [PATCH 2/2] Rocket: observers hear an attribute write whose value
  decodes the same
 
 ---
- library/src/rocket/runtime.ts | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ library/src/rocket/runtime.ts | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
 diff --git a/library/src/rocket/runtime.ts b/library/src/rocket/runtime.ts
-index ef9589d..b0ba84d 100644
+index 1ca2ea26..efe1f4ef 100644
 --- a/library/src/rocket/runtime.ts
 +++ b/library/src/rocket/runtime.ts
-@@ -1017,8 +1017,12 @@ export function rocket<
+@@ -1157,10 +1157,14 @@ export function rocket<
      #setProp(
        name: keyof InferProps<Defs> & string,
        nextValue: InferProps<Defs>[typeof name],
@@ -24,9 +24,12 @@ index ef9589d..b0ba84d 100644
 +      const same = Object.is(this.#props[name], nextValue)
 +      if (same && !written) return
        this.#props[name] = nextValue
+-      this.#formPropsChanged?.()
++      if (!same) this.#formPropsChanged?.()
        const changes = { [name]: nextValue } as Partial<InferProps<Defs>>
        for (const observer of this.#propObservers) {
-@@ -1028,6 +1032,7 @@ export function rocket<
+         if (observer.names === null || observer.names.has(name)) {
+@@ -1169,6 +1173,7 @@ export function rocket<
        }
  
        // Notify prop observers synchronously, then optionally queue a render so a burst of writes still collapses into one render.
@@ -34,11 +37,19 @@ index ef9589d..b0ba84d 100644
        if (
          typeof renderOnPropChange === 'function'
            ? renderOnPropChange({
-@@ -1625,6 +1630,7 @@ export function rocket<
-         newValue === null
-           ? getCodecDefault(propDefs[propName])
-           : decodeCodec(propDefs[propName], newValue),
+@@ -1806,7 +1811,11 @@ export function rocket<
+         this.#pendingInitialAttrValues.delete(name)
+         return
+       }
+-      this.#setProp(propName, attributePropValue(propName, newValue))
++      this.#setProp(
++        propName,
++        attributePropValue(propName, newValue),
 +        oldValue !== newValue,
-       )
++      )
      }
  
+     disconnectedCallback() {
+-- 
+2.47.3
+

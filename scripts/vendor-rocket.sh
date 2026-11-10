@@ -3,9 +3,9 @@
 # the patches in patches/rocket/ applied, until they land upstream. Pages load
 # it, and install snippets pin it (/c/datastar@<hash>/datastar-rocket.js).
 # Its declarations go to internal/tscheck/types for the playground's type check.
-# Usage: DATASTAR_VERSION=v1.0.4 sh scripts/vendor-rocket.sh
+# Usage: DATASTAR_VERSION=v1.0.5 sh scripts/vendor-rocket.sh
 set -eu
-V="${DATASTAR_VERSION:-v1.0.4}"
+V="${DATASTAR_VERSION:-v1.0.5}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/static/vendor"
 TMP="$(mktemp -d)"

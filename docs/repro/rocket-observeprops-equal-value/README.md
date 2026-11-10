@@ -24,6 +24,8 @@ The page runs a self-test on load and prints the result; no devtools needed. It 
 | no attribute → `value=""` | ❌ silent — same, for a string |
 | `value="abc"` → `value=""` | ✅ runs |
 
+On v1.0.5, which reads a boolean attribute by presence alone, `open="true"` → `open="false"` is silent (both are true) and no attribute → `open="false"` runs; the string case stays silent, and upstream keeps it that way ([#1223](https://github.com/starfederation/datastar/issues/1223)). Starbase's build runs all four changes (`patches/rocket/0002`, with 0001 for `"false"`).
+
 ## Why it matters
 
 A component often keeps local state that follows a server-owned attribute: a disclosure's `open`, a switch's `checked`, an input's `value`. The user changes the local state; later the server writes the attribute to reset it. If the element never had the attribute, the server's `open="false"` or `value=""` decodes to the prop's default — the value the prop already holds — and nothing runs, so the local state the user set survives the server's reset.

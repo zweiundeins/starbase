@@ -1,0 +1,52 @@
+From 346c0414774f5990428e70ed8b5202db8731b38e Mon Sep 17 00:00:00 2001
+From: Michael Bolli <michael@zweiundeins.gmbh>
+Date: Tue, 10 Nov 2026 05:20:24 +0000
+Subject: [PATCH 1/2] Rocket: a bool prop reads "false" and "0" as false and
+ may declare a default
+
+---
+ library/src/rocket/runtime.ts | 23 +++++++----------------
+ 1 file changed, 7 insertions(+), 16 deletions(-)
+
+diff --git a/library/src/rocket/runtime.ts b/library/src/rocket/runtime.ts
+index 5f88c85d..1ca2ea26 100644
+--- a/library/src/rocket/runtime.ts
++++ b/library/src/rocket/runtime.ts
+@@ -706,27 +706,18 @@ export function rocket<
+       (name) => getCodecManifest(propDefs[name]).type === 'boolean',
+     ),
+   )
+-  for (const name of booleanProps) {
+-    const codec = propDefs[name]
+-    if (
+-      'defaultFactory' in codec &&
+-      typeof codec.defaultFactory === 'function'
+-    ) {
+-      throw new TypeError(
+-        `Rocket boolean prop "${name}" uses attribute presence and cannot declare a default.`,
+-      )
+-    }
+-  }
++  // A bool prop may declare a default, which an absent attribute takes, and a
++  // present one is true except "false" and "0", so a server can say false in markup.
+   const defaultPropValue = (name: keyof InferProps<Defs> & string) =>
+-    booleanProps.has(name) ? false : getCodecDefault(propDefs[name])
++    getCodecDefault(propDefs[name])
+   const attributePropValue = (
+     name: keyof InferProps<Defs> & string,
+     value: string | null,
+   ) =>
+-    booleanProps.has(name)
+-      ? value !== null
+-      : value === null
+-        ? defaultPropValue(name)
++    value === null
++      ? defaultPropValue(name)
++      : booleanProps.has(name)
++        ? value !== 'false' && value !== '0'
+         : decodeCodec(propDefs[name], value)
+ 
+   registeredTags.add(tag)
+-- 
+2.47.3
+

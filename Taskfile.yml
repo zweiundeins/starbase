@@ -80,4 +80,4 @@ tasks:
   vendor:
     desc: Rebuild the vendored Datastar + Rocket bundle (the pinned release with patches/rocket applied)
     cmds:
-      - DATASTAR_VERSION=v1.0.4 sh scripts/vendor-rocket.sh
+      - DATASTAR_VERSION=v1.0.5 sh scripts/vendor-rocket.sh

@@ -14,6 +14,7 @@ python3 -m http.server 8803    # module import needs http://, not file://
 |---|---|---|---|
 | v1.0.4 | nothing | `one` | nothing |
 | Starbase's build with `patches/rocket/0009` | `one` | `one` | `two` |
+| v1.0.5, which has the fix | `one` | `one` | `two` |
 
 With the patch, a server patch that targets the ignored element or anything in it still changes nothing (checked with an outer morph of its parent and a selector patch of a child).
 

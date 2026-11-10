@@ -1,9 +1,11 @@
 import type { ActionContext, ActionPlugin, AttributePlugin, HTMLOrSVG, Modifiers, Requirement, WatcherPlugin } from '../engine/types';
 export declare const actions: Record<string, (ctx: ActionContext, ...args: any[]) => any>;
 export declare const attribute: <R extends Requirement, B extends boolean>(plugin: AttributePlugin<R, B>) => void;
+export declare const hasAttributePlugin: (name: string) => boolean;
+export declare const setBindingPreprocessor: (prepare: (root: ParentNode, deep: boolean) => void) => void;
 export declare const action: <T>(plugin: ActionPlugin<T>) => void;
 export declare const watcher: (plugin: WatcherPlugin) => void;
-export declare const cleanupTree: (root: ParentNode) => void;
+export declare const cleanupTree: (root: HTMLOrSVG | ShadowRoot) => void;
 export declare const parseAttributeKey: (rawKey: string) => {
     pluginName: string;
     key: string | undefined;
@@ -12,6 +14,7 @@ export declare const parseAttributeKey: (rawKey: string) => {
 export declare const isDocumentObserverActive: () => boolean;
 export declare const apply: (root?: HTMLOrSVG | ShadowRoot, observeRoot?: boolean) => void;
 export declare const forgetRoot: (root: HTMLOrSVG | ShadowRoot) => void;
+export declare const applyMissing: (root: HTMLOrSVG, deep?: boolean) => void;
 export declare const applyElement: (el: HTMLOrSVG, onlyNew?: boolean) => void;
 type GenRxOptions = {
     returnsValue_?: boolean;
