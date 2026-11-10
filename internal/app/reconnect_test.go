@@ -68,11 +68,16 @@ const moving = async () => {
 	const c = clock()
 	return (await until(() => clock() !== c, 15000)) ? 'moving' : 'still'
 }
-// The command's outcome comes back on the render stream.
+// The command's outcome comes back on the render stream. Until the tab's
+// stream is open again, a command gets 409 and the slider goes back: send
+// it again, as a person would.
 const thrust = () => [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%')) ?? ''
 const command = async (value, ms) => {
-	document.querySelector('sb-slider[name="thrust"]').dispatchEvent(new CustomEvent('sb-change', { detail: { name: 'thrust', value }, bubbles: true, composed: true }))
-	return (await until(() => thrust() === value + '%' && thrust(), ms)) || thrust() || 'nothing'
+	for (const end = Date.now() + ms; Date.now() < end && thrust() !== value + '%'; ) {
+		document.querySelector('sb-slider[name="thrust"]').dispatchEvent(new CustomEvent('sb-change', { detail: { name: 'thrust', value }, bubbles: true, composed: true }))
+		await until(() => thrust() === value + '%', 1500)
+	}
+	return thrust() || 'nothing'
 }
 const out = [await moving(), await command(30, 10000)]
 const stream = document.getElementById('stream'), telemetry = document.getElementById('telemetry')
