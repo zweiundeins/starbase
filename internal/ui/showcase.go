@@ -47,7 +47,9 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
   data-on:sb-paint="@post('/cmd/paint', {
     payload: {color: evt.detail.color, cells: evt.detail.cells},
     requestCancellation: 'disabled'
-  })"></sb-pixel-board>`, "html")
+  })"
+  data-on:datastar-fetch="evt.detail.el === el &&
+    ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-pixel-board>`, "html")
 
 	boardGo = catalog.Highlight(`// internal/commands/board.go: runs inside the single writer's batch.
 func (c PaintPixels) Apply(tx *writer.Tx) error {

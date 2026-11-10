@@ -64,7 +64,7 @@ With `confirm`, it sets `:state(pending)` while the local value differs from the
 ```html
 <sb-input name="callsign" label="Call sign" confirm value="STARBASE-1" rev="7"
   data-on:sb-change="@post('/cmd/flight', {payload: evt.detail})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-input>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-input>
 ```
 
 A server that answers with the value it already had (it upper-cased `starbase-1` back to `STARBASE-1`, or ignored a no-op) sends identical markup, so the edit would stay pending. Render `rev`, a revision that changes with every command the server answers for this field, applied or refused (a counter will do): a new `rev` means the server has answered, and its value wins even when it is unchanged. A refused call sign goes back that way, while the page shows why. The same clears a chat-style field after its message was sent: `value=""` with a new `rev`.

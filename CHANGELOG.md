@@ -21,6 +21,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `sb-pixel-board` keeps a painted pixel pending until `cells` answers it, with its colour or another painter's, instead of dropping it after 3 seconds. `revert()` drops the pixels in flight: the Showcase calls it when a paint fails (the rate limit's 429, or no answer), so a refused stroke goes at once.
+- Pages and docs that revert a control on a failed command also do it on `retries-failed`, which Datastar sends instead of `error` when it gives up on a request that got no answer: the Showcase's flight plan and board, the kanban demo's landing markers, and the command examples in contribute.md and the components' READMEs.
 - A check a person can fail is a refusal the command records in the tab's state, answered 204, instead of a 400: the Showcase's thrust above 90% and a malformed call sign (`SetFlight.Apply`, `FlightPlan.Refusal`), and a playground snippet over 64 KB or a full snippet store (`SaveSnippet.Apply`, `TabState.ShareRefusal`, which also replaces the 507). The page renders the reason, and the control goes back through a new `rev`. A 400 is left for what no control sends.
 - The playground's Save & share button ends its pending state when the save fails (an error status, or no answer), and says so.
 - lith v0.5.4. Test databases run without fsync (`Synchronous: "OFF"`, only under `testing.Testing()`).

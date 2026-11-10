@@ -262,7 +262,7 @@ Without Datastar signals, the server can also re-render the element with a new `
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's selection when a command is rejected. `sb-toggle` reports opened and closed branches, so the server can keep `expanded` too. See [Commands and components](/contribute#commands-and-components).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's selection when a command never reaches the server (an error status, or `retries-failed`). `sb-toggle` reports opened and closed branches, so the server can keep `expanded` too. See [Commands and components](/contribute#commands-and-components).
 
 Links are followed, not selected: a tree of links marks the page with `aria-current`, and the server moves it when it renders the next page.
 

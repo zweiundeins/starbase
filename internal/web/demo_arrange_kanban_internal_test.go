@@ -67,7 +67,7 @@ func TestRenderKanban(t *testing.T) {
 	for _, want := range []string{
 		`<sb-kanban-board id="plan" data-ignore-morph class="demo-kanban" data-kanban-landing data-kanban-landing-timeout="3000" data-state="9: moon | 4: mars | 7:"`,
 		`data-on:sb-kanban-lane-move="@get('/demo/arrange/kanban-board?delay=400'`,
-		`data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()">`,
+		`data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.releaseLanding()">`,
 		`<section id="plan-lane-7" data-kanban-lane data-col="7" tabindex="-1" aria-label="En route">`,
 		`<button type="button" class="demo-kanban__grip" data-kanban-lane-grip aria-label="Move the En route lane">`,
 		`<article id="plan-mars" data-kanban-card="mars" tabindex="0">`,

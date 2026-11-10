@@ -181,12 +181,12 @@ With `time`, type the date and the time as the field shows them: `14.10.2026, 09
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components).
 
 ```html
 <sb-date-picker name="launch" confirm value="2026-10-14"
   data-on:sb-change="@post('/cmd/launch', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-date-picker>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-date-picker>
 ```
 
 A new `value` from the server always wins. A removed `value` attribute changes nothing, by design: morphs also strip attributes that were only reflected, so the picker can't take a missing one for "cleared". To clear, the server sends `value=""`. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).

@@ -109,7 +109,7 @@ Since each request carries the arrangement the page had when it left, two moves 
 <sb-kanban-board id="mission-board" data-ignore-morph class="demo-kanban" data-kanban-landing data-kanban-landing-timeout="3000" data-state="4: mars jupiter neptune | 7: europa titan | 9: moon"
 	data-on:sb-kanban-move="@get('/demo/arrange/kanban-board?delay=400', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
 	data-on:sb-kanban-lane-move="@get('/demo/arrange/kanban-board?delay=400', {payload: {id: el.id, state: el.dataset.state, move: evt.detail}})"
-	data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()">
+	data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.releaseLanding()">
 	<section id="mission-board-lane-4" data-kanban-lane data-col="4" tabindex="-1" aria-label="To visit">
 		<div class="demo-kanban__head">
 			<button type="button" class="demo-kanban__grip" data-kanban-lane-grip aria-label="Move the To visit lane">↔</button>
@@ -250,7 +250,7 @@ func renderKanban(id, state string) string {
 	esc := html.EscapeString
 	var b strings.Builder
 	on := arrangeOnAfter("kanban-board", 400)
-	refused := "evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()"
+	refused := "evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.releaseLanding()"
 	fmt.Fprintf(&b, "<sb-kanban-board id=\"%s\" data-ignore-morph class=\"demo-kanban\" data-kanban-landing data-kanban-landing-timeout=\"3000\" data-state=\"%s\"\n\tdata-on:sb-kanban-move=\"%s\"\n\tdata-on:sb-kanban-lane-move=\"%s\"\n\tdata-on:datastar-fetch=\"%s\">\n", esc(id), esc(state), on, on, refused)
 	for _, c := range cols {
 		title := esc(kanbanTitle(c.ID))
@@ -318,12 +318,12 @@ The marker goes away, and the board emits `sb-kanban-landing-end`, in one of thr
 - `"released"`: the page called the board's `releaseLanding()`. `releaseLanding({ cardId })` releases one card's marker, `releaseLanding({ col })` one lane's, and `releaseLanding()` all of them. A move event's detail works as the argument.
 - `"timeout"`: `data-kanban-landing-timeout` milliseconds (10000 by default) passed without either.
 
-A refused move never arrives, so release its marker when the refusal comes, or it stays until the timeout. The demo releases the board's markers when one of its requests fails:
+A refused move never arrives, so release its marker when the refusal comes, or it stays until the timeout. The demo releases the board's markers when one of its requests fails, with an error status or with `retries-failed` (Datastar gave up on a request without an answer):
 
 ```html
 <sb-kanban-board data-kanban-landing
   data-on:sb-kanban-move="@post('/board/move', {payload: evt.detail, requestCancellation: 'disabled'})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.releaseLanding()">
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.releaseLanding()">
 ```
 
 When the server answers a refusal with a signal instead, say `$moveAck`, an effect releases the card's marker: `data-effect="$moveAck.status === 'refused' && el.releaseLanding({ cardId: $moveAck.cardId })"`.

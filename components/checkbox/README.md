@@ -49,12 +49,12 @@ The live state is the `checked` property, so `data-bind` works with the `__prop`
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when the user flips it (`value` is the checked state): ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `checked` matches, and `revert()` goes back to the server's state when a command is rejected.
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the user flips it (`value` is the checked state): ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `checked` matches, and `revert()` goes back to the server's state when a command never reaches the server (an error status, or `retries-failed`).
 
 ```html
 <sb-checkbox name="beacon" confirm label="Distress beacon"
   data-on:sb-change="@post('/cmd/beacon', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-checkbox>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-checkbox>
 ```
 
 Style the wait from the page:

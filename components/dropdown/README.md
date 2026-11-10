@@ -122,13 +122,13 @@ Choosing *Newest first* reports `date.newest`, and the trigger reads *Sort by: N
 
 **One group per dropdown.** A second `type: "radio"` is ignored and reported to the console instead of guessed at; two questions want two dropdowns. Checkbox groups, with several items checked at once, can follow if anyone needs them.
 
-With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command is rejected. It is the same contract every value component follows:
+With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command never reaches the server (an error status, or `retries-failed`). It is the same contract every value component follows:
 
 ```html
 <sb-dropdown name="sort" label="Sort by" type="radio" confirm value="name"
   items='[{"value":"name","label":"Name"},{"value":"size","label":"Size"}]'
   data-on:sb-change="@post('/cmd/sort', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-dropdown>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-dropdown>
 ```
 
 ```css

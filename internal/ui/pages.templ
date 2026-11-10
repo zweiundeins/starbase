@@ -346,6 +346,10 @@ type BoardView struct {
 // requests to the same URL by default), or fast strokes would lose pixels.
 const paintExpr = "@post('/cmd/paint', {payload: {color: evt.detail.color, cells: evt.detail.cells}, requestCancellation: 'disabled'})"
 
+// paintFailed drops the pixels in flight when a paint never reached the
+// board: an error status (the rate limit's 429) or no answer.
+const paintFailed = "evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"
+
 // Showcase lays out the Showcase's sections. board is the board's
 // changing part (Board), or in the tab's stream the hole its view fills.
 templ Showcase(board templ.Component, flight model.FlightPlan) {
@@ -406,7 +410,7 @@ templ PixelBoard(board templ.Component) {
 			<div class="howto__body">
 				<p>This is the "one billion checkboxes" idea from Anders Murphy's hyperlith, done the way this whole site works: CQRS over one SQLite database, and the server rendering again whatever a change touched.</p>
 				<h3>1. The board is one attribute</h3>
-				<p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded.</p>
+				<p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded until a frame brings them. A paint that never gets through (too fast for the rate limit, or the connection is down) ends in <code>revert()</code>, which the page calls on the request's error: the faded pixels go, and nothing waits on a timer.</p>
 				@templ.Raw(boardHTML)
 				<h3>2. Painting is a command</h3>
 				<p>A stroke emits <code>sb-paint</code> every 80 ms, with the cells it crossed; fast drags are interpolated so there are no gaps. Each batch is a short <code>POST</code> that answers <code>204 No Content</code> and returns no HTML. <code>requestCancellation: 'disabled'</code> matters here: by default Datastar cancels an in-flight request when a new one goes to the same URL, which would drop pixels mid-stroke. A per-session token bucket (20 pixels per second, bursts up to 60) keeps any one painter from flooding the board.</p>
@@ -435,7 +439,7 @@ templ Board(v BoardView) {
 		</span>
 	</header>
 	<div id="board-grid" class="board-section__grid">
-		<sb-pixel-board id="board" size={ itoa(v.Size) } cells={ v.Cells } data-on:sb-paint={ paintExpr }></sb-pixel-board>
+		<sb-pixel-board id="board" size={ itoa(v.Size) } cells={ v.Cells } data-on:sb-paint={ paintExpr } data-on:datastar-fetch={ paintFailed }></sb-pixel-board>
 		<div class="board-section__about">
 			<p><strong>Paint together.</strong> Everyone on this page shares one 48×48 board. Pick a colour and drag.</p>
 			<p class="muted">Faded pixels are still in flight. About 20 pixels per second each, so everybody gets a turn.</p>

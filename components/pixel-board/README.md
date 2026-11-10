@@ -19,7 +19,7 @@ playground:
   style: "--sb-pixel-board-size: 18rem"
 ---
 
-A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **server-driven multiplayer**: the board state is one attribute, `cells` (one hex digit per cell, row by row), which the server renders. Painting doesn't change `cells`. It emits `sb-paint`, your backend applies it, and the next server frame brings the new `cells` to everyone. While a pixel is in flight, it's drawn slightly faded; if no frame confirms it within 3 seconds (say the server refused it), it goes back to the board's colour.
+A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **server-driven multiplayer**: the board state is one attribute, `cells` (one hex digit per cell, row by row), which the server renders. Painting doesn't change `cells`. It emits `sb-paint`, your backend applies it, and the next server frame brings the new `cells` to everyone. While a pixel is in flight, it's drawn slightly faded, until `cells` answers it: with its colour, or with another painter's. A paint that never reaches the board (the server refused it with a status, or the connection is down) ends when the page calls `revert()`, which drops the faded pixels; there is no timer.
 
 ## Examples
 
@@ -40,8 +40,11 @@ This is the wiring the multiplayer board on the [Showcase](/showcase) page uses.
   data-on:sb-paint="@post('/cmd/paint', {
     payload: {color: evt.detail.color, cells: evt.detail.cells},
     requestCancellation: 'disabled'
-  })"></sb-pixel-board>
+  })"
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-pixel-board>
 ```
+
+`revert()` drops every pixel still in flight, and the board shows the server's `cells` again: a paint that answered an error status (the Showcase's rate limit answers 429) or `retries-failed` (Datastar gave up on a request without an answer) never reaches the board. Pixels of other strokes still on their way come back with the next frame that brings them.
 
 `requestCancellation: 'disabled'` matters: a stroke posts every 80 ms, and by default Datastar cancels a request that is still running when the next one goes to the same URL, which would drop pixels mid-stroke on a slow connection. No `data-preserve-attr` here: `cells` belongs to the server, and every morph brings the latest board.
 

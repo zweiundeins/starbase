@@ -493,7 +493,7 @@ A real server should also neutralise text cells that start with `=`, `+`, `-` or
 
 ## With commands
 
-Give it a `name` and a `selection`, and it emits `sb-change` with `{ name, value }` (an array of row keys) when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` matches, and `revert()` goes back to the server's selection when a command is rejected. See [Commands and components](/contribute#commands-and-components).
+Give it a `name` and a `selection`, and it emits `sb-change` with `{ name, value }` (an array of row keys) when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` matches, and `revert()` goes back to the server's selection when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components).
 
 A new `selected` from the server always wins, and `selected="[]"` clears it. Markup re-sent with the same `selected` leaves the user's selection alone. The order (`sort`) is not part of the value: it only ever comes from the server. Neither are `hidden-columns` and `widths`: they are view state with their own events (`sb-columns`, `sb-column-widths`), never pending, and `revert()` leaves them as they are.
 

@@ -58,7 +58,7 @@ Post the detail as it is. The server validates the range as a whole and renders 
 ```html
 <sb-range name="window" confirm value='{"start":9,"end":17}' min="0" max="24"
   data-on:sb-change="@post('/cmd/window', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-range>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-range>
 ```
 
 With `confirm`, the host has `:state(pending)` while either end differs from the server's attribute, and `revert()` restores both ends. A command can never leave the server with only half a change. See [Commands and components](/contribute#commands-and-components).
