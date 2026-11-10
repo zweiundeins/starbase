@@ -410,7 +410,10 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 		Files     map[string]string `json:"files"`
 		Component string            `json:"component"`
 	}
-	if err := datastar.ReadSignals(r, &p); err != nil {
+	if err := datastar.ReadSignals(r, &p); edge.TooLarge(err) {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return
+	} else if err != nil {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}

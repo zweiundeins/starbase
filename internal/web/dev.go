@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/zweiundeins/lith/edge"
+
 	"starbase/internal/model"
 )
 
@@ -44,7 +46,10 @@ func (s *Server) devManifests(w http.ResponseWriter, r *http.Request) {
 	var doc struct {
 		Components []json.RawMessage `json:"components"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&doc); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&doc); edge.TooLarge(err) {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

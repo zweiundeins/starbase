@@ -24,6 +24,7 @@ All notable changes to this project are documented here. The format follows
 - The render streams' cap per client is lith's (`Spec.Client`, `Options.MaxStreamsPerClient`, still 24) instead of Starbase's own counter.
 - `/healthz` is lith's `edge.Health` (the same `ok <version>`, now `no-store`), and a panic is caught by `edge.Recover`, which logs its stack and aborts a response that has begun instead of appending an error to it.
 - The rate limits (painting, snippet saves, the playground's size line, type check and transpiler, the star catalog's downloads) are lith's `edge.Limiter`, with the same rates and bursts, and check the client's address before the session, so a client that drops its cookie no longer makes a bucket per request.
+- The server has a `ReadTimeout` of 15 s, so a client that trickles a body no longer holds a connection; the playground's large bodies (512 KiB) and the dev route's (4 MiB) are read through lith's `edge.UploadBody`, which gives a slow but steady upload the time it needs. A body over its cap on those routes gets 413 instead of 400.
 - The component bundle's budget is 104 kB (brotli), up from 100 kB: the bundle had reached 102.5 kB, and pages would have gone back to the autoloader.
 - No more Windows builds: releases and CI build for Linux and macOS.
 - Dependencies: lith v0.4.1, minify v2.24.22.

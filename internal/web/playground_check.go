@@ -32,7 +32,10 @@ func (s *Server) playgroundCheck(w http.ResponseWriter, r *http.Request) {
 		Name      string `json:"name"`
 		Code      string `json:"code"`
 	}
-	if err := datastar.ReadSignals(r, &p); err != nil || len(p.Code) > commands.MaxSnippetBytes || !mainFile(p.Name) {
+	if err := datastar.ReadSignals(r, &p); edge.TooLarge(err) {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return
+	} else if err != nil || len(p.Code) > commands.MaxSnippetBytes || !mainFile(p.Name) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}

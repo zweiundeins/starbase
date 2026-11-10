@@ -81,6 +81,7 @@ func run() error {
 		Addr:              cfg.Addr,
 		Handler:           a.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second, // bodies; streams and uploads (edge.UploadBody) are unaffected
 		IdleTimeout:       120 * time.Second,
 		// No WriteTimeout: render streams are long-lived.
 	}

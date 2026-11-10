@@ -541,6 +541,29 @@ func TestSnippetSaveRateLimit(t *testing.T) {
 	}
 }
 
+// The playground's routes take bodies up to 512 KiB, the others 64 KiB.
+func TestBodyLimits(t *testing.T) {
+	ts, c := newServer(t)
+	c.Get(ts.URL + "/playground") // session cookie
+	code := func(n int) string { return `{"name":"component.js","code":"` + strings.Repeat("x", n) + `"}` }
+	for _, tc := range []struct {
+		path, body string
+		want       int
+	}{
+		{"/playground/size", code(600 << 10), http.StatusRequestEntityTooLarge},
+		{"/playground/size", code(100 << 10), http.StatusBadRequest}, // over MaxSnippetBytes
+		{"/playground/size", code(10), http.StatusOK},
+		{"/cmd/snippet", code(600 << 10), http.StatusRequestEntityTooLarge},
+		{"/cmd/browse", `{"tabid":"` + strings.Repeat("x", 100<<10) + `"}`, http.StatusBadRequest},
+	} {
+		res := post(t, c, ts.URL+tc.path, tc.body, "same-origin")
+		res.Body.Close()
+		if res.StatusCode != tc.want {
+			t.Errorf("%s with %d bytes = %d, want %d", tc.path, len(tc.body), res.StatusCode, tc.want)
+		}
+	}
+}
+
 func TestSiteThemeFromCookie(t *testing.T) {
 	ts, c := newServer(t)
 	for _, tc := range []struct{ cookie, html, scheme string }{

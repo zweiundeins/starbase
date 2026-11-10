@@ -45,14 +45,23 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 				http.Error(w, "cross-site request rejected", http.StatusForbidden)
 				return
 			}
-			limit := int64(64 << 10)
+			// Large bodies may outlast the server's ReadTimeout on a slow link.
+			upload := int64(0)
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/dev/"):
-				limit = 4 << 20
+				upload = 4 << 20
 			case r.URL.Path == "/cmd/snippet", r.URL.Path == "/playground/size", r.URL.Path == "/playground/check":
-				limit = 512 << 10 // 64 KB of code, JSON-escaped
+				upload = 512 << 10 // 64 KB of code, JSON-escaped
 			}
-			r.Body = http.MaxBytesReader(w, r.Body, limit)
+			if upload == 0 {
+				r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+			} else {
+				body, err := edge.UploadBody(w, r, edge.UploadMinRate, upload)
+				if err != nil {
+					s.log.Warn("upload without a deadline", "path", r.URL.Path, "err", err)
+				}
+				r.Body = body
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
