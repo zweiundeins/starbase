@@ -219,7 +219,6 @@ type CodePlaygroundView struct {
 	ShareTS       bool   // that snippet is TypeScript, which can't be submitted yet
 	ShareURL      string
 	ShareRefusal  string // why the tab's last save was refused
-	ShareRev      int    // the tab's saves, so a repeated refusal is a new frame
 }
 
 // sizeText is a text of $_size for the first render ("–" when the initial
@@ -256,14 +255,14 @@ func checkExpr(component, preview string) string {
 }
 
 func shareExpr(component string) string {
-	return "$_shareErr = ''; el.classList.add('is-pending'); " + command("'share'", "@post('/cmd/snippet', {payload: {tabid: $tabid, component: "+jsString(component)+
-		", files: document.querySelector('sb-code-playground').files}})")
+	return "$_shareErr = ''; el.classList.add('is-pending'); " + command("'share'", "/cmd/snippet", "payload: {tabid: $tabid, component: "+jsString(component)+
+		", files: document.querySelector('sb-code-playground').files}")
 }
 
 // shareFailed ends the button's pending state when the save never reached
-// the tab's state: a refusal comes as a frame, which resets the button. A
-// 409 waits: sbCommand saves again once the tab's stream is open.
-const shareFailed = `evt.detail.el === el && (evt.detail.type === 'retries-failed' || evt.detail.type === 'error' && evt.detail.argsRaw.status !== '409') && (el.classList.remove('is-pending'), $_shareErr = evt.detail.type === 'error' ? 'That did not save. Try again in a moment.' : 'The connection is down. Try again once it is back.')`
+// the tab's state (sbCommand's sb-op-failed). A refusal comes as a frame,
+// which resets the button.
+const shareFailed = `el.classList.remove('is-pending'); $_shareErr = evt.detail.reason === 'retries-failed' ? 'The connection is down. Try again once it is back.' : 'That did not save. Try again in a moment.'`
 
 templ CodePlaygroundPage(v CodePlaygroundView) {
 	<div class="wrap code-page">
@@ -304,7 +303,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 			</sb-code-playground>
 		</div>
 		<div class="code-page__actions" data-signals="{_shareErr: ''}">
-			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) } data-on:datastar-fetch={ shareFailed }>
+			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) } data-on:sb-op-failed={ shareFailed }>
 				@Icon("rocket")
 				Save &amp; share
 			</button>
@@ -329,7 +328,7 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				<span class="muted">Saving creates a permanent link anyone can open. Then you can submit it as a component.</span>
 			}
 			if v.ShareRefusal != "" {
-				<p class="code-page__refusal" role="alert" data-rev={ itoa(v.ShareRev) }>{ v.ShareRefusal }</p>
+				<p class="code-page__refusal" role="alert">{ v.ShareRefusal }</p>
 			}
 			<p class="code-page__refusal" role="alert" data-show="$_shareErr" data-text="$_shareErr"></p>
 		</div>
@@ -359,21 +358,21 @@ templ Showcase(board templ.Component, flight model.FlightPlan) {
 	@FlightDemo(flight)
 }
 
-// flightCommand posts a control's sb-change as a command. The tab's frame
-// answers: the stored value with the field's new rev, which ends the
-// control's pending state, and the refusal when the server refused it.
-var flightCommand = `$_flightErr = ''; ` + command(`'flight:' + evt.detail.name`, `@post('/cmd/flight', {payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'})`)
+// flightCommand posts a control's sb-change as an op of its field. The
+// tab's frame answers: the stored value, the refusal when the server refused
+// it, and the op's ack, on which sbCommand puts a control the server didn't
+// follow back.
+var flightCommand = `$_flightErr = ''; ` + command(`'flight:' + evt.detail.name`, "/cmd/flight", "payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'")
 
-// flightFailed reverts a control whose command never reached the flight
-// plan (an error status, or no answer after Datastar's retries) and says so.
-// A 409 keeps it pending: sbCommand sends it again once the stream is open.
-const flightFailed = `evt.detail.el === el && (evt.detail.type === 'retries-failed' || evt.detail.type === 'error' && evt.detail.argsRaw.status !== '409') && (el.revert(), $_flightErr = (evt.detail.type === 'error' ? 'That did not reach the server' : 'The connection is down') + ', so ' + el.getAttribute('name') + ' is back at the stored value. Try again in a moment.')`
+// flightFailed says why a control went back when its command never reached
+// the flight plan (sbCommand's sb-op-failed, after it reverted it).
+const flightFailed = `$_flightErr = (evt.detail.reason === 'retries-failed' ? 'The connection is down' : 'That did not go through') + ', so ' + el.getAttribute('name') + ' is back at the stored value. Try again in a moment.'`
 
 // FlightDemo shows the command loop with components: each control's value
-// is a command; the server validates, stores (tab state) and re-renders, and
+// is an op; the server validates, stores (tab state) and re-renders, and
 // the new attribute confirms the control (:state(pending) until then). A
-// refusal is stored too: the old value with a new rev, which puts the
-// control back, and the reason.
+// refusal is stored too: the old value, the reason, and the op's ack, which
+// puts the control back.
 templ FlightDemo(f model.FlightPlan) {
 	<section class="flight-section" aria-labelledby="flight-title" data-signals="{_flightErr: ''}">
 		<header class="mission__head">
@@ -382,12 +381,12 @@ templ FlightDemo(f model.FlightPlan) {
 		<p class="flight__lede">Every control here sends a command. The server validates it, stores it and re-renders the page; until the new value comes back, the control is <em>pending</em> (dashed). The server upper-cases call signs, and it refuses thrust above 90%: the slider goes back, and the page says why.</p>
 		<div class="flight">
 			<div class="flight__controls">
-				<sb-slider name="thrust" label="Thrust" unit="%" max="100" confirm value={ strconv.Itoa(f.Thrust) } rev={ strconv.Itoa(f.ThrustRev) }
-					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightFailed }></sb-slider>
+				<sb-slider name="thrust" label="Thrust" unit="%" max="100" confirm value={ strconv.Itoa(f.Thrust) }
+					data-on:sb-change={ flightCommand } data-on:sb-op-failed={ flightFailed }></sb-slider>
 				<sb-toggle name="shields" label="Shields" confirm checked={ strconv.FormatBool(f.Shields) }
-					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightFailed }></sb-toggle>
-				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } rev={ strconv.Itoa(f.CallsignRev) } hint="Letters, digits and dashes; press Enter or leave the field."
-					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightFailed }></sb-input>
+					data-on:sb-change={ flightCommand } data-on:sb-op-failed={ flightFailed }></sb-toggle>
+				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } hint="Letters, digits and dashes; press Enter or leave the field."
+					data-on:sb-change={ flightCommand } data-on:sb-op-failed={ flightFailed }></sb-input>
 			</div>
 			<dl class="flight__state" aria-label="The server's state">
 				<div><dt>Thrust</dt><dd>{ strconv.Itoa(f.Thrust) }%</dd></div>

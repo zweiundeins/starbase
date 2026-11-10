@@ -102,16 +102,6 @@
       }
     },
     {
-      "name": "rev",
-      "attribute": "rev",
-      "type": "string",
-      "default": "",
-      "required": false,
-      "docs": {
-        "description": "Revision of the server's value, for commands: a count the server raises with every command it answers for this field, applied or refused. A new rev makes the server's value win even when it is unchanged (a refused value goes back)."
-      }
-    },
-    {
       "name": "name",
       "attribute": "name",
       "type": "string",

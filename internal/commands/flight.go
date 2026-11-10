@@ -15,8 +15,8 @@ import (
 // The server validates and normalizes; the page re-renders from the stored
 // plan, which is what confirms, corrects or refuses the control that sent it.
 type SetFlight struct {
-	SID, TabID  string
-	Name, Value string
+	SID, TabID, Op string
+	Name, Value    string
 }
 
 var callsignRe = regexp.MustCompile(`^[A-Z0-9-]{2,16}$`)
@@ -31,7 +31,7 @@ const (
 // Validate refuses what the controls never send: an unknown field, a thrust
 // off the slider, shields that are not on or off.
 func (c SetFlight) Validate() error {
-	if err := validTab(c.SID, c.TabID); err != nil {
+	if err := errors.Join(validTab(c.SID, c.TabID), validOp(c.Op)); err != nil {
 		return err
 	}
 	switch c.Name {
@@ -52,8 +52,8 @@ func (c SetFlight) Validate() error {
 }
 
 // Apply stores the field, or records why not: a thrust above 90 and a
-// malformed call sign are refusals in the tab's row. Either way the field's
-// rev counts the command, so its control takes the server's value.
+// malformed call sign are refusals in the tab's row. Either way the row acks
+// the op, and the page puts a control the server did not follow back.
 func (c SetFlight) Apply(tx *writer.Tx) error {
 	tx.Touch(TabTopic(c.TabID))
 	return updateTab(tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
@@ -61,7 +61,6 @@ func (c SetFlight) Apply(tx *writer.Tx) error {
 		f.Refusal = ""
 		switch c.Name {
 		case "thrust":
-			f.ThrustRev++
 			if n, _ := strconv.Atoi(c.Value); n > 90 {
 				f.Refusal = RefusedThrust
 			} else {
@@ -70,7 +69,6 @@ func (c SetFlight) Apply(tx *writer.Tx) error {
 		case "shields":
 			f.Shields = c.Value == "true"
 		case "callsign":
-			f.CallsignRev++
 			if sign := strings.ToUpper(strings.TrimSpace(c.Value)); callsignRe.MatchString(sign) {
 				f.Callsign = sign // the server normalizes
 			} else {
@@ -78,5 +76,6 @@ func (c SetFlight) Apply(tx *writer.Tx) error {
 			}
 		}
 		st.Flight = f
+		ack(st, OpFlight(c.Name), c.Op)
 	})
 }

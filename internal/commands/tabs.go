@@ -12,13 +12,45 @@ import (
 	"starbase/internal/model"
 )
 
-var tabIDRe = regexp.MustCompile(`^[a-z0-9]{8,32}$`)
+var (
+	tabIDRe = regexp.MustCompile(`^[a-z0-9]{8,32}$`)
+	opIDRe  = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
+)
 
 func validTab(sid, tabID string) error {
 	if sid == "" || !tabIDRe.MatchString(tabID) {
 		return errors.New("bad tab")
 	}
 	return nil
+}
+
+// validOp accepts no op (a client without op tracking) or an op id.
+func validOp(op string) error {
+	if op != "" && !opIDRe.MatchString(op) {
+		return errors.New("bad op id")
+	}
+	return nil
+}
+
+// The keys under which the tab's row acks ops (TabState.Ops).
+const (
+	OpBrowse = "browse"
+	OpSort   = "sort"
+	OpShare  = "share"
+)
+
+// OpFlight is the key of a flight plan field's ops.
+func OpFlight(field string) string { return "flight:" + field }
+
+// ack records op as the newest op of key in the tab's row.
+func ack(st *model.TabState, key, op string) {
+	if op == "" {
+		return
+	}
+	if st.Ops == nil {
+		st.Ops = map[string]string{}
+	}
+	st.Ops[key] = op
 }
 
 // updateTab reads the tab's state (or seed when absent), applies fn and
@@ -50,16 +82,19 @@ func updateTab(tx *writer.Tx, sid, tabID string, seed model.TabState, fn func(*m
 
 // SetBrowseFilter stores the gallery's search, category and sort for a tab.
 type SetBrowseFilter struct {
-	SID, TabID string
-	Browse     model.Browse
+	SID, TabID, Op string
+	Browse         model.Browse
 }
 
-func (c SetBrowseFilter) Validate() error { return validTab(c.SID, c.TabID) }
+func (c SetBrowseFilter) Validate() error {
+	return errors.Join(validTab(c.SID, c.TabID), validOp(c.Op))
+}
 
 func (c SetBrowseFilter) Apply(tx *writer.Tx) error {
 	tx.Touch(TabTopic(c.TabID))
 	return updateTab(tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
 		st.Browse = c.Browse.Normalize()
+		ack(st, OpBrowse, c.Op)
 	})
 }
 

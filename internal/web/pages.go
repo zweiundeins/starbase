@@ -38,6 +38,7 @@ type view struct {
 	Status      int            // 0 = 200
 	Schema      []any          // extra JSON-LD objects (schema.org), after the site's
 	LD          func() string  // the page's whole JSON-LD, computed once (the homepage's), in place of Schema
+	Acks        string         // the tab's acked ops as JSON (TabState.Ops), set by load
 }
 
 // renderCtx is the input of a page render: one read snapshot plus who is
@@ -88,6 +89,10 @@ func (s *Server) load(ctx context.Context, rd *queries.Reader, req *http.Request
 		tab = model.TabState{Browse: model.BrowseFromQuery(req.URL.Query(), prefs.DefaultSort())}
 	}
 	v, err = fn(&renderCtx{ctx: ctx, r: rd, req: req, sid: sid, tabID: tabID, stream: tabID != "", user: user, tab: tab, prefs: prefs})
+	if tab.Ops != nil {
+		b, _ := json.Marshal(tab.Ops)
+		v.Acks = string(b)
+	}
 	return v, user, err
 }
 
@@ -120,6 +125,7 @@ func (s *Server) shell(req *http.Request, user *model.User, v view) ui.Shell {
 		SocialImage:  strings.TrimSuffix(s.cfg.BaseURL, "/") + "/og.png",
 		JSONLD:       s.jsonLD(v),
 		Heartbeat:    s.cfg.StreamHeartbeat(),
+		Acks:         cmp.Or(v.Acks, "{}"),
 	}
 }
 

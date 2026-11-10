@@ -15,17 +15,19 @@ import (
 	"starbase/internal/queries"
 )
 
-// send enqueues a command and answers 204. The tab's render stream shows
-// the outcome; commands never return HTML.
+// send applies a command and answers 204 once it is committed, so the
+// tab's next frame acks its op. The tab's render stream shows the outcome;
+// commands never return HTML.
 func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd writer.Command) {
-	err := s.writer.Send(cmd)
+	err := s.writer.Do(r.Context(), cmd)
 	switch {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, writer.ErrInvalid):
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	case r.Context().Err() != nil: // the client went away
 	default:
-		s.log.Warn("command rejected", "err", err)
+		s.log.Warn("command failed", "err", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 }
@@ -36,8 +38,8 @@ func streamID(sid, tab string) string { return sid + "." + tab }
 
 // tabOpen admits a command that stores state for a tab: 400 for a tab id no
 // page makes, 409 while the tab has no open stream, so that a made-up tab id
-// creates no row. The page reverts on a 409, and its stream, once it
-// connects again, renders the tab's state.
+// creates no row. The page keeps the command pending on a 409 and sends it
+// again once its stream connects (static/js/commands.js).
 func (s *Server) tabOpen(w http.ResponseWriter, r *http.Request, tab string) bool {
 	switch {
 	case !tabIDRe.MatchString(tab):
@@ -72,7 +74,7 @@ func (s *Server) cmdBrowse(w http.ResponseWriter, r *http.Request) {
 	if !s.tabOpen(w, r, tabID) {
 		return
 	}
-	s.send(w, r, commands.SetBrowseFilter{SID: edge.SessionID(r.Context()), TabID: tabID, Browse: b})
+	s.send(w, r, commands.SetBrowseFilter{SID: edge.SessionID(r.Context()), TabID: tabID, Op: r.Header.Get("Op-Id"), Browse: b})
 }
 
 // cmdSort is a chosen sort: this page, and the session's default sort.
@@ -85,7 +87,7 @@ func (s *Server) cmdSort(w http.ResponseWriter, r *http.Request) {
 	if !s.tabOpen(w, r, tabID) {
 		return
 	}
-	s.send(w, r, commands.SetGallerySort{SID: edge.SessionID(r.Context()), TabID: tabID, Browse: b})
+	s.send(w, r, commands.SetGallerySort{SID: edge.SessionID(r.Context()), TabID: tabID, Op: r.Header.Get("Op-Id"), Browse: b})
 }
 
 func (s *Server) cmdStar(star bool) http.HandlerFunc {
@@ -159,5 +161,5 @@ func (s *Server) cmdFlight(w http.ResponseWriter, r *http.Request) {
 	case <-r.Context().Done():
 		return
 	}
-	s.send(w, r, commands.SetFlight{SID: edge.SessionID(r.Context()), TabID: p.TabID, Name: p.Name, Value: fmt.Sprint(p.Value)})
+	s.send(w, r, commands.SetFlight{SID: edge.SessionID(r.Context()), TabID: p.TabID, Op: r.Header.Get("Op-Id"), Name: p.Name, Value: fmt.Sprint(p.Value)})
 }

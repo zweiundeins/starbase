@@ -801,15 +801,22 @@ func TestFlightCommand(t *testing.T) {
 	}
 	until(t, next, "<dd>70%</dd>")
 	// A thrust the rules forbid is a refusal in the tab's frame: 204, the
-	// stored thrust with a new rev, and the reason.
-	res := post(t, c, ts.URL+"/cmd/flight", `{"tabid":"tab12345","name":"thrust","value":95}`, "same-origin")
+	// stored thrust, the reason, and the op's ack.
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/cmd/flight", strings.NewReader(`{"tabid":"tab12345","name":"thrust","value":95}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	req.Header.Set("Op-Id", "op95")
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
 	res.Body.Close()
 	if res.StatusCode != http.StatusNoContent {
 		t.Fatalf("refused thrust: %d, want 204", res.StatusCode)
 	}
-	e := until(t, next, "flight director")
-	if !strings.Contains(e, `value="70" rev="2"`) || !strings.Contains(e, "<dd>70%</dd>") {
-		t.Error("the refusal's frame lacks the stored thrust with a new rev")
+	e := html.UnescapeString(until(t, next, "flight director"))
+	if !strings.Contains(e, `value="70"`) || !strings.Contains(e, "<dd>70%</dd>") || !strings.Contains(e, `data-acks="{"flight:thrust":"op95"}"`) {
+		t.Error("the refusal's frame lacks the stored thrust or the op's ack")
 	}
 }
 

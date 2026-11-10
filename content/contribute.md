@@ -97,16 +97,16 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
 
 - **Intent:** when the user commits a value (release, blur, Enter; never every keystroke), emit `sb-change` with `{ name, value }`, and give the component a `name` prop. A page can then send it as is: `data-on:sb-change="@post('/cmd/…', {payload: evt.detail})"`.
 - **The server's value is the attribute.** A `value` (or `checked`, `selected`…) attribute the server changes wins over local edits; re-sent identical markup changes nothing. A *removed* attribute is ignored, so to clear, the server sends `value=""` or `checked="false"`.
-- **Pending and refusals:** with the `confirm` attribute, the component sets `:state(pending)` (a CSS custom state, styleable from the page, safe from morphs) while its local value differs from the server's. The server answers in the page it renders. A value it stores comes back as the new attribute. A value it refuses (a thrust above what the rules allow, a call sign with a space) is not an error status: the command records the refusal in the tab's state and answers 204, and the page renders the stored value with the reason. The stored value's markup hasn't changed, so the component takes a `rev` (`sb-input`, `sb-slider`): a count the server raises with every command it answers for the field, applied or refused. A new `rev` makes the server's value win, and the control goes back.
+- **Pending and refusals:** with the `confirm` attribute, the component sets `:state(pending)` (a CSS custom state, styleable from the page, safe from morphs) while its local value differs from the server's. The server answers in the page it renders. A value it stores comes back as the new attribute. A value it refuses (a thrust above what the rules allow, a call sign with a space) is not an error status: the command records the refusal in the tab's state and answers 204, and the page renders the stored value with the reason. The stored value's markup hasn't changed, so the component can't tell a refusal from an answer still on its way. The page can: Starbase's pages send each command with an op id in an `Op-Id` header, the command records the newest op of its field in the tab's state, applied or refused, and every frame carries those acks. When a frame acks the op and the control is still pending, the server didn't follow it, and the page calls `revert()`. The shell does this for every page (`sbCommand`, the op pattern of [lith](https://github.com/zweiundeins/lith)); a component needs nothing for it but `revert()`.
 - **Revert:** `host.revert()` goes back to the server's value, for a command that never reached the server's state: an error status (a rate limit, a server that is down) or `retries-failed`, which Datastar sends when it gives up on a request that got no answer:
 
 ```html
-<sb-slider name="thrust" confirm value="40" rev="3"
+<sb-slider name="thrust" confirm value="40"
   data-on:sb-change="@post('/cmd/flight', {payload: {tabid: $tabid, ...evt.detail}})"
   data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-slider>
 ```
 
-`datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. Starbase's own pages leave out one status: a 409 means the tab's render stream isn't open yet (the page just loaded, or a deploy is reconnecting), and the shell sends the command again once it is (`sbCommand`). The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a refused command.
+`datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. This is the minimal form, enough without refusals. Starbase's own pages go through `sbCommand`, which also leaves out one status: a 409 means the tab's render stream isn't open yet (the page just loaded, or a deploy is reconnecting), and it sends the command again once it is. The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a refused command.
 
 On the server, the handler reads the payload, checks that the tab's stream is open (a made-up tab id gets 409 and stores nothing) and sends a command, which answers 204. A 400 is only for what no control sends, such as an unknown field:
 
@@ -132,13 +132,13 @@ func (s *Server) cmdFlight(w http.ResponseWriter, r *http.Request) {
 	case <-r.Context().Done():
 		return
 	}
-	s.send(w, r, commands.SetFlight{SID: edge.SessionID(r.Context()), TabID: p.TabID, Name: p.Name, Value: fmt.Sprint(p.Value)})
+	s.send(w, r, commands.SetFlight{SID: edge.SessionID(r.Context()), TabID: p.TabID, Op: r.Header.Get("Op-Id"), Name: p.Name, Value: fmt.Sprint(p.Value)})
 }
 
 // tabOpen admits a command that stores state for a tab: 400 for a tab id no
 // page makes, 409 while the tab has no open stream, so that a made-up tab id
-// creates no row. The page reverts on a 409, and its stream, once it
-// connects again, renders the tab's state.
+// creates no row. The page keeps the command pending on a 409 and sends it
+// again once its stream connects (static/js/commands.js).
 func (s *Server) tabOpen(w http.ResponseWriter, r *http.Request, tab string) bool {
 	switch {
 	case !tabIDRe.MatchString(tab):
@@ -151,37 +151,39 @@ func (s *Server) tabOpen(w http.ResponseWriter, r *http.Request, tab string) boo
 	return false
 }
 
-// send enqueues a command and answers 204. The tab's render stream shows
-// the outcome; commands never return HTML.
+// send applies a command and answers 204 once it is committed, so the
+// tab's next frame acks its op. The tab's render stream shows the outcome;
+// commands never return HTML.
 func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd writer.Command) {
-	err := s.writer.Send(cmd)
+	err := s.writer.Do(r.Context(), cmd)
 	switch {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, writer.ErrInvalid):
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	case r.Context().Err() != nil: // the client went away
 	default:
-		s.log.Warn("command rejected", "err", err)
+		s.log.Warn("command failed", "err", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 }
 ```
 
-`Validate` refuses what no control sends. `Apply` runs in the single writer's transaction and decides the rest: it stores the value, normalized, or records why not, and counts the field's `rev` either way. It touches its tab's topic, so only that tab's page renders again:
+`Validate` refuses what no control sends. `Apply` runs in the single writer's transaction and decides the rest: it stores the value, normalized, or records why not, and acks the op either way. It touches its tab's topic, so only that tab's page renders again:
 
 ```go source=internal/commands/flight.go#SetFlight,SetFlight.Validate,SetFlight.Apply
 // SetFlight sets one field of the Showcase's flight plan (the commands demo).
 // The server validates and normalizes; the page re-renders from the stored
 // plan, which is what confirms, corrects or refuses the control that sent it.
 type SetFlight struct {
-	SID, TabID  string
-	Name, Value string
+	SID, TabID, Op string
+	Name, Value    string
 }
 
 // Validate refuses what the controls never send: an unknown field, a thrust
 // off the slider, shields that are not on or off.
 func (c SetFlight) Validate() error {
-	if err := validTab(c.SID, c.TabID); err != nil {
+	if err := errors.Join(validTab(c.SID, c.TabID), validOp(c.Op)); err != nil {
 		return err
 	}
 	switch c.Name {
@@ -202,8 +204,8 @@ func (c SetFlight) Validate() error {
 }
 
 // Apply stores the field, or records why not: a thrust above 90 and a
-// malformed call sign are refusals in the tab's row. Either way the field's
-// rev counts the command, so its control takes the server's value.
+// malformed call sign are refusals in the tab's row. Either way the row acks
+// the op, and the page puts a control the server did not follow back.
 func (c SetFlight) Apply(tx *writer.Tx) error {
 	tx.Touch(TabTopic(c.TabID))
 	return updateTab(tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) {
@@ -211,7 +213,6 @@ func (c SetFlight) Apply(tx *writer.Tx) error {
 		f.Refusal = ""
 		switch c.Name {
 		case "thrust":
-			f.ThrustRev++
 			if n, _ := strconv.Atoi(c.Value); n > 90 {
 				f.Refusal = RefusedThrust
 			} else {
@@ -220,7 +221,6 @@ func (c SetFlight) Apply(tx *writer.Tx) error {
 		case "shields":
 			f.Shields = c.Value == "true"
 		case "callsign":
-			f.CallsignRev++
 			if sign := strings.ToUpper(strings.TrimSpace(c.Value)); callsignRe.MatchString(sign) {
 				f.Callsign = sign // the server normalizes
 			} else {
@@ -228,13 +228,14 @@ func (c SetFlight) Apply(tx *writer.Tx) error {
 			}
 		}
 		st.Flight = f
+		ack(st, OpFlight(c.Name), c.Op)
 	})
 }
 ```
 
 The Showcase uses Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way.
 
-**No optimistic updates.** Never show a result the server hasn't produced: counts, lists, derived values and success messages come only from its render. The user's own input stays as they left it, marked pending (`:state(pending)`, or a faded item for operations) until the server confirms it, and goes back when the server refuses it (a new `rev`) or the command never reaches it (`revert()`). This is the [Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar#optimistic-updates) applied to components.
+**No optimistic updates.** Never show a result the server hasn't produced: counts, lists, derived values and success messages come only from its render. The user's own input stays as they left it, marked pending (`:state(pending)`, or a faded item for operations) until the server confirms it, and goes back with `revert()` when the server refuses it (the op's ack) or the command never reaches it. This is the [Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar#optimistic-updates) applied to components.
 
 ### Lists that hold the keyboard
 

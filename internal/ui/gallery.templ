@@ -152,7 +152,7 @@ templ Collection(s Shell, v GalleryView) {
 			</div>
 			<label class="select-field">
 				Sort by
-				<select name="sort" data-bind:sort data-on:change={ command("'sort'", "@post('/cmd/sort')") }>
+				<select name="sort" data-bind:sort data-on:change={ command("'sort'", "/cmd/sort", "") }>
 					for _, o := range model.Sorts {
 						<option value={ string(o.Value) } selected?={ v.Browse.Sort == o.Value }>{ o.Label }</option>
 					}

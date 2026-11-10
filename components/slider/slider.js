@@ -111,7 +111,6 @@ rocket('sb-slider', {
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
-		rev: string.docs({ description: 'Revision of the server\'s value, for commands: a count the server raises with every command it answers for this field, applied or refused. A new rev makes the server\'s value win even when it is unchanged (a refused value goes back).' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a form.' }),
 	}),
 	manifest: {
@@ -154,19 +153,8 @@ rocket('sb-slider', {
 		// on a slider rendered without one decodes to the same 0. The callback
 		// runs after the whole morph, when a new range has arrived as well.
 		let served = host.hasAttribute('value') ? props.value : null
-		let rev = host.getAttribute('rev')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				// A new rev answers commits, oldest first: as many as it counts up,
-				// all of them when it is no count.
-				const r = host.getAttribute('rev')
-				if (r !== null && r !== rev) {
-					const n = /^\d+$/.test(r) && /^\d+$/.test(rev ?? '') && +r > +rev ? +r - +rev : Infinity
-					rev = r
-					served = host.hasAttribute('value') ? props.value : served
-					sent = sent.slice(n)
-					return void (sent.length || served === null || ($$.value = clamp(served)))
-				}
 				if (!host.hasAttribute('value')) return void (served = null)
 				if (props.value === served) return
 				served = props.value
@@ -175,7 +163,7 @@ rocket('sb-slider', {
 				sent.length || ($$.value = clamp(served))
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['value', 'rev'] })
+		watch.observe(host, { attributeFilter: ['value'] })
 		cleanup(() => watch.disconnect())
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
 		const revert = () => peek(() => ($$.value = clamp(props.value)))

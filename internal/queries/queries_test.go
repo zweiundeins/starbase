@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -181,7 +182,7 @@ func TestTabState(t *testing.T) {
 	var st model.TabState
 	var ok bool
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, ok, err = r.Tab(ctx, "s", "tab12345"); return })
-	if want := (model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}}); !ok || st != want {
+	if want := (model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}}); !ok || !reflect.DeepEqual(st, want) {
 		t.Fatalf("tab = %+v, want %+v", st, want)
 	}
 	if err := e.w.Do(ctx, commands.SetBrowseFilter{SID: "s", TabID: "X"}); err == nil {
@@ -401,7 +402,7 @@ func TestSnippetStoreCap(t *testing.T) {
 	}
 	var st model.TabState
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
-	if st.ShareRefusal != commands.RefusedStoreFull || st.PlaygroundShare != "BBBBBBBB" || st.ShareRev != 3 {
+	if st.ShareRefusal != commands.RefusedStoreFull || st.PlaygroundShare != "BBBBBBBB" {
 		t.Fatalf("tab = %+v, want the full store's refusal after the second save", st)
 	}
 	// Code over MaxSnippetBytes is refused in the tab's row too.
@@ -410,7 +411,7 @@ func TestSnippetStoreCap(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
-	if st.ShareRefusal != commands.RefusedSnippetSize || st.ShareRev != 4 {
+	if st.ShareRefusal != commands.RefusedSnippetSize {
 		t.Fatalf("tab = %+v, want the size refusal", st)
 	}
 	if err := save("EEEEEEEE", 10); err != nil {
@@ -480,23 +481,31 @@ func TestSetFlight(t *testing.T) {
 		e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
 		return st.Flight
 	}
-	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11", CallsignRev: 1, ThrustRev: 1}
+	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11"}
 	if got := flight(); got != want {
 		t.Errorf("flight = %+v, want %+v (normalized)", got, want)
 	}
 	// What a person can choose but the rules forbid is a refusal in the
-	// tab's row: the value stays, the field's rev counts the command.
+	// tab's row: the value stays, and the row acks the op under its key.
 	for _, c := range []struct {
-		name, value, refusal string
-	}{{"thrust", "95", commands.RefusedThrust}, {"callsign", "no spaces", commands.RefusedCallsign}} {
-		if err := send(c.name, c.value); err != nil {
+		name, value, op, refusal string
+	}{{"thrust", "95", "op1", commands.RefusedThrust}, {"callsign", "no spaces", "op2", commands.RefusedCallsign}} {
+		if err := e.w.Do(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Op: c.op, Name: c.name, Value: c.value}); err != nil {
 			t.Fatalf("%s=%q: %v", c.name, c.value, err)
 		}
 		if got := flight().Refusal; got != c.refusal {
 			t.Errorf("%s=%q: refusal %q, want %q", c.name, c.value, got, c.refusal)
 		}
 	}
-	want.ThrustRev, want.CallsignRev, want.Refusal = 2, 2, commands.RefusedCallsign
+	var st model.TabState
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.Ops["flight:thrust"] != "op1" || st.Ops["flight:callsign"] != "op2" {
+		t.Errorf("acks = %v", st.Ops)
+	}
+	if err := e.w.Do(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Op: "Not An Op", Name: "shields", Value: "true"}); err == nil {
+		t.Error("a malformed op id must be rejected")
+	}
+	want.Refusal = commands.RefusedCallsign
 	if got := flight(); got != want {
 		t.Errorf("flight = %+v, want %+v (the refused values not applied)", got, want)
 	}

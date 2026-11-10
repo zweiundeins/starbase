@@ -100,20 +100,20 @@ func (c SetPreviewStyle) Apply(tx *writer.Tx) error {
 // for gallery URLs that name none. Search and category changes go through
 // SetBrowseFilter and leave the default alone.
 type SetGallerySort struct {
-	SID, TabID string
-	Browse     model.Browse
+	SID, TabID, Op string
+	Browse         model.Browse
 }
 
 func (c SetGallerySort) Validate() error {
 	if !c.Browse.Sort.Valid() {
 		return errors.New("unknown sort")
 	}
-	return validTab(c.SID, c.TabID)
+	return errors.Join(validTab(c.SID, c.TabID), validOp(c.Op))
 }
 
 func (c SetGallerySort) Apply(tx *writer.Tx) error {
 	b := c.Browse.Normalize()
-	if err := updateTab(tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) { st.Browse = b }); err != nil {
+	if err := updateTab(tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) { st.Browse = b; ack(st, OpSort, c.Op) }); err != nil {
 		return err
 	}
 	return updatePrefs(tx, c.SID, func(p *model.SessionPrefs) { p.GallerySort = b.Sort })

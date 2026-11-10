@@ -62,6 +62,9 @@ type Shell struct {
 	JSONLD      string // schema.org JSON-LD
 	// Heartbeat is how often the render stream patches $_ping (Watchdog).
 	Heartbeat time.Duration
+	// Acks is the tab's acked ops as JSON ({key: op id}), which
+	// static/js/commands.js reads from #ops after every frame.
+	Acks string
 }
 
 type navItem struct{ Key, Label, Href string }
@@ -89,6 +92,9 @@ func importMap(a Assets) string {
 // stream's live.Spec.Reconnect: on a deploy, the stream's last event copies
 // the element, and the copy's data-init opens the stream on the next process.
 const StreamID = "stream"
+
+// OpsID is the hidden element in #app whose data-acks every frame renders.
+const OpsID = "ops"
 
 // streamInit opens this tab's render stream: a long-lived POST to the page's
 // own URL. retry 'error' keeps asking through a restart's 502s and 503s, and
@@ -219,12 +225,16 @@ func onOff(b bool) string {
 	return "off"
 }
 
-// command runs post, a Datastar @post of a command, through sbCommand
-// (static/js/commands.js) under key, a JavaScript expression: after a 409 it
-// goes out again once the tab's stream connects.
-func command(key, post string) string {
-	return "sbCommand(el, " + key + ", () => " + post + ")"
+// command posts a command to path as an op of key (a JavaScript expression,
+// the command's key in TabState.Ops) through sbCommand
+// (static/js/commands.js): the op id goes in the Op-Id header, and opts
+// (JavaScript object members, or "") are the rest of @post's options.
+func command(key, path, opts string) string {
+	if opts != "" {
+		opts = ", " + opts
+	}
+	return "sbCommand(el, " + key + ", (op) => @post('" + path + "', {headers: {'Op-Id': op}" + opts + "}))"
 }
 
 // browseCommand posts the gallery's search and category.
-var browseCommand = command("'browse'", "@post('/cmd/browse')")
+var browseCommand = command("'browse'", "/cmd/browse", "")

@@ -59,15 +59,15 @@ Declare the signal first, because `data-bind` only writes to a signal that alrea
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed (Enter, or leaving a changed field): ready to post as a command. The `value` attribute is the server's value: a new one replaces what the user typed, and re-sent identical markup leaves an edit alone. To clear the field, the server sends `value=""`.
 
-With `confirm`, it sets `:state(pending)` while the local value differs from the server's. A value the server refuses comes back as the value it kept with a new `rev` (below), and `revert()` goes back to the server's value when a command never reached it (an error status, or `retries-failed`):
+With `confirm`, it sets `:state(pending)` while the local value differs from the server's. `revert()` goes back to the server's value when a command never reached it (an error status, or `retries-failed`):
 
 ```html
-<sb-input name="callsign" label="Call sign" confirm value="STARBASE-1" rev="7"
+<sb-input name="callsign" label="Call sign" confirm value="STARBASE-1"
   data-on:sb-change="@post('/cmd/flight', {payload: evt.detail})"
   data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-input>
 ```
 
-A server that answers with the value it already had (it upper-cased `starbase-1` back to `STARBASE-1`, or ignored a no-op) sends identical markup, so the edit would stay pending. Render `rev`, a revision that changes with every command the server answers for this field, applied or refused (a counter will do): a new `rev` means the server has answered, and its value wins even when it is unchanged. A refused call sign goes back that way, while the page shows why. The same clears a chat-style field after its message was sent: `value=""` with a new `rev`.
+A server that answers with the value it already had (it upper-cased `starbase-1` back to `STARBASE-1`, refused the edit, or ignored a no-op) sends identical markup, so the edit would stay pending. The general way out is the page's: an op id with each command, acked in the frame, and `revert()` when the ack comes and the field is still pending ([Commands and components](/contribute#commands-and-components) has it, and every Starbase page does it). `sb-input` also takes `rev`, a revision that changes with every command the server answers for this field (a counter will do): a new `rev` means the server has answered, and its value wins even when it is unchanged. The same clears a chat-style field after its message was sent: `value=""` with a new `rev`.
 
 [Commands and components](/contribute#commands-and-components) lists the handler and the command behind this call sign, and the [Showcase](/showcase) runs it.
 

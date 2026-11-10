@@ -67,11 +67,13 @@ await fetch('/__probe/result', { method: 'POST', body: [same, cell(), thrust(), 
 `
 
 // TestFlightRefusalInChrome: a thrust the rules forbid comes back as a
-// refusal in the tab's frame, and its new rev puts the slider back.
+// refusal in the tab's frame with the op's ack, on which the page puts the
+// slider back; an accepted thrust ends pending with its echo; a call sign
+// the server normalizes back to the stored one goes back on its ack too.
 func TestFlightRefusalInChrome(t *testing.T) {
 	_, body := probe(t, "/showcase", flightRefusalJS)
-	if got := string(body); got != "refused 40 not pending 40%" {
-		t.Fatalf("after a refused thrust the page shows %q, want the refusal and the slider back at 40", got)
+	if got, want := string(body), "refused 40 not pending 40%, accepted 70 not pending, normalized STARBASE-1 not pending"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }
 
@@ -84,15 +86,24 @@ const until = async (f, ms) => {
 	return ''
 }
 const refusal = () => [...document.querySelectorAll('.flight__error')].some((p) => p.textContent.includes('flight director'))
+const pending = (el) => (el.matches(':state(pending)') ? 'pending' : 'not pending')
+const thrust = () => [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%'))
 const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 10000)
-// Until Datastar has wired the page and the stream is open, nothing answers: commit again.
+const commit = (v) => ((slider.value = v), slider.shadowRoot.querySelector('input').dispatchEvent(new Event('change')))
+// Until Datastar has wired the page, a commit goes nowhere: commit again.
 for (let i = 0; i < 10 && !refusal(); i++) {
-	slider.value = 95
-	slider.shadowRoot.querySelector('input').dispatchEvent(new Event('change'))
+	commit(95)
 	await until(refusal, 1500)
 }
-await until(() => slider.value === 40, 2000)
-const thrust = [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%'))
-const out = [refusal() ? 'refused' : 'no refusal', slider.value, slider.matches(':state(pending)') ? 'pending' : 'not pending', thrust]
-await fetch('/__probe/result', { method: 'POST', body: out.join(' ') })
+await until(() => slider.value === 40 && !slider.matches(':state(pending)'), 3000)
+const out = [['refused', slider.value, pending(slider), thrust()].join(' ')]
+commit(70)
+await until(() => thrust() === '70%' && !slider.matches(':state(pending)'), 5000)
+out.push(['accepted', slider.value, pending(slider)].join(' '))
+const sign = document.querySelector('sb-input[name="callsign"]')
+sign.value = 'starbase-1'
+sign.dispatchEvent(new CustomEvent('sb-change', { detail: { name: 'callsign', value: 'starbase-1' }, bubbles: true, composed: true }))
+await until(() => sign.value === 'STARBASE-1' && !sign.matches(':state(pending)'), 5000)
+out.push(['normalized', sign.value, pending(sign)].join(' '))
+await fetch('/__probe/result', { method: 'POST', body: out.join(', ') })
 `

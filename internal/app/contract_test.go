@@ -92,12 +92,8 @@ for (const c of cases) {
 	}
 	el?.remove()
 }
-// rev: a new one makes the server's value win even when it is unchanged (a
-// refused value); sb-slider counts it, one commit answered per step.
-for (const c of [
-	{ tag: 'sb-input', server: 'STARBASE-1', local: 'no spaces', want: 'STARBASE-1' },
-	{ tag: 'sb-slider', server: '40', local: 95, want: 40 },
-]) {
+// rev: a new one makes the server's value win even when it is unchanged.
+for (const c of [{ tag: 'sb-input', server: 'STARBASE-1', local: 'no spaces', want: 'STARBASE-1' }]) {
 	const row = (step, want) => rows.push({ tag: c.tag + ' rev', step, got: JSON.stringify(el.value), want: JSON.stringify(want) })
 	let el
 	try {
@@ -112,19 +108,6 @@ for (const c of [
 		el.setAttribute('rev', '2')
 		await settle()
 		row('a new rev with the value unchanged wins', c.want)
-		if (c.tag === 'sb-slider') {
-			const commit = (v) => ((el.value = v), el.shadowRoot.querySelector('input').dispatchEvent(new Event('change')))
-			commit(60)
-			commit(70)
-			await settle()
-			el.setAttribute('value', '60')
-			el.setAttribute('rev', '3')
-			await settle()
-			row('the echo of the older commit keeps the newer one', 70)
-			el.setAttribute('rev', '4')
-			await settle()
-			row('the newer one refused: the server\'s value', 60)
-		}
 	} catch (e) {
 		rows.push({ tag: c.tag + ' rev', error: String(e) })
 	}

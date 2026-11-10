@@ -315,7 +315,7 @@ func (s *Server) componentDeps() string {
 
 func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	files := map[string]string{"component.js": starterJS, "index.html": starterHTML}
-	v := ui.CodePlaygroundView{Deps: s.cache.deps(), Share: rc.tab.PlaygroundShare, ShareRefusal: rc.tab.ShareRefusal, ShareRev: rc.tab.ShareRev}
+	v := ui.CodePlaygroundView{Deps: s.cache.deps(), Share: rc.tab.PlaygroundShare, ShareRefusal: rc.tab.ShareRefusal}
 	q := rc.req.URL.Query()
 	if id := q.Get("s"); id != "" {
 		sn, err := rc.r.Snippet(rc.ctx, id)
@@ -440,7 +440,7 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.catalog.Get(p.Component); !ok {
 		p.Component = ""
 	}
-	s.send(w, r, commands.SaveSnippet{SID: edge.SessionID(r.Context()), TabID: p.TabID, ID: snippetID(), Files: p.Files, Component: p.Component, UserID: uid})
+	s.send(w, r, commands.SaveSnippet{SID: edge.SessionID(r.Context()), TabID: p.TabID, Op: r.Header.Get("Op-Id"), ID: snippetID(), Files: p.Files, Component: p.Component, UserID: uid})
 }
 
 // snippetJSON is the public, read-only form of a snippet (used by the
