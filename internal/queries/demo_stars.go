@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/zweiundeins/lith/sqlite"
+
 	"starbase/internal/demo"
 )
 
@@ -79,6 +81,7 @@ func (r *Reader) DemoStarLongest(ctx context.Context) (DemoStarLongest, error) {
 func (r *Reader) EachDemoStar(ctx context.Context, sort string, desc bool, ids []int, fn func(demo.Star) error) error {
 	where, args := "", make([]any, len(ids))
 	if len(ids) > 0 {
+		ctx = sqlite.Uncached(ctx) // a text per length of the list
 		where = ` WHERE id IN (?` + strings.Repeat(", ?", len(ids)-1) + `)`
 		for i, id := range ids {
 			args[i] = id
