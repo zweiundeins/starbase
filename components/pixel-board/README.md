@@ -59,8 +59,8 @@ func (s *Server) cmdPaint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	if !s.paintLimit.allow(edge.SessionID(r.Context()), len(p.Cells), now) || !s.paintLimitIP.allow(edge.ClientKey(r), len(p.Cells), now) {
-		http.Error(w, "painting too fast", http.StatusTooManyRequests)
+	if !s.paintLimitIP.Allow(edge.ClientKey(r), len(p.Cells), now) || !s.paintLimit.Allow(edge.SessionID(r.Context()), len(p.Cells), now) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	s.send(w, r, commands.PaintPixels{Board: commands.BoardName, Color: p.Color, Cells: p.Cells})

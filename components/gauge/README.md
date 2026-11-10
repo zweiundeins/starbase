@@ -61,7 +61,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
 	if s.ctx.Err() != nil {
 		// Stopping: the page retries the 503 until the next process answers.
-		http.Error(w, "the server is restarting", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	// Uncompressed: an event is 130 bytes, where an encoder would hold 430 KiB

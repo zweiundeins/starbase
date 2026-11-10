@@ -348,8 +348,8 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	now := time.Now()
-	if !s.exportLimit.allow(edge.SessionID(r.Context()), 1, now) || !s.exportLimitIP.allow(edge.ClientKey(r), 1, now) {
-		http.Error(w, "exporting too often", http.StatusTooManyRequests)
+	if !s.exportLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.exportLimit.Allow(edge.SessionID(r.Context()), 1, now) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	// A download holds a read connection until it ends: slow ones must not
@@ -359,7 +359,7 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-s.exports }()
 	default:
 		w.Header().Set("Retry-After", "5")
-		http.Error(w, "too many downloads at once", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	rc := http.NewResponseController(w)
@@ -464,6 +464,7 @@ It reads the stars from a cursor in the same order as the windows, so the file h
 func (r *Reader) EachDemoStar(ctx context.Context, sort string, desc bool, ids []int, fn func(demo.Star) error) error {
 	where, args := "", make([]any, len(ids))
 	if len(ids) > 0 {
+		ctx = sqlite.Uncached(ctx) // a text per length of the list
 		where = ` WHERE id IN (?` + strings.Repeat(", ?", len(ids)-1) + `)`
 		for i, id := range ids {
 			args[i] = id
