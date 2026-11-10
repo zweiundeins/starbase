@@ -20,7 +20,7 @@ const until = async (f, ms) => {
 	return ''
 }
 const thrust = () => [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%'))
-const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 10000)
+const slider = await until(() => { const s = document.querySelector('sb-slider[name="thrust"]'); return s?.shadowRoot?.querySelector('input') && s }, 30000) // upgraded, with its shadow root
 // Until Datastar has wired the page, the event goes nowhere: send it again.
 let shown = ''
 for (let i = 0; i < 10 && !shown; i++) {
@@ -88,7 +88,7 @@ const until = async (f, ms) => {
 const refusal = () => [...document.querySelectorAll('.flight__error')].some((p) => p.textContent.includes('flight director'))
 const pending = (el) => (el.matches(':state(pending)') ? 'pending' : 'not pending')
 const thrust = () => [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%'))
-const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 10000)
+const slider = await until(() => { const s = document.querySelector('sb-slider[name="thrust"]'); return s?.shadowRoot?.querySelector('input') && s }, 30000) // upgraded, with its shadow root
 const commit = (v) => ((slider.value = v), slider.shadowRoot.querySelector('input').dispatchEvent(new Event('change')))
 // Until Datastar has wired the page, a commit goes nowhere: commit again.
 for (let i = 0; i < 10 && !refusal(); i++) {

@@ -46,8 +46,9 @@ const thrust = () => [...document.querySelectorAll('.flight__state dd')].map((d)
 let out
 try {
 	// The first test of a run starts the app cold: give the page time.
-	const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 60000)
-	if (!slider) throw new Error('no slider')
+	// Upgraded: the element can be there before Rocket gives it its shadow root.
+	const slider = await until(() => { const s = document.querySelector('sb-slider[name="thrust"]'); return s?.shadowRoot?.querySelector('input') && s }, 60000)
+	if (!slider) throw new Error('no upgraded slider')
 	let conflicts = 0
 	document.addEventListener('datastar-fetch', (e) => e.detail.el === slider && e.detail.type === 'error' && e.detail.argsRaw.status === '409' && conflicts++)
 	// Until Datastar has wired the page, a commit goes nowhere: commit until one meets the 409.
@@ -91,7 +92,7 @@ const until = async (f, ms) => {
 }
 let framed = false
 document.addEventListener('datastar-fetch', (e) => e.detail.el?.id === 'stream' && e.detail.type === 'datastar-patch-elements' && (framed = true))
-const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 10000)
+const slider = await until(() => { const s = document.querySelector('sb-slider[name="thrust"]'); return s?.shadowRoot?.querySelector('input') && s }, 30000) // upgraded, with its shadow root
 // A commit before the stream's first frame would end at that frame, without its ack.
 await until(() => framed, 5000)
 let answered = false
