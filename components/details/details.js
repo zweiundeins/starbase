@@ -32,6 +32,18 @@ const groups = new Map()
 // keeps its state when moved, and so does this.
 const states = new WeakMap()
 
+// The server's word on a boolean is its attribute's presence. "false" still
+// reads as absent until that spelling goes (deprecated, one warning per element).
+const warned = new WeakSet()
+const boolWord = (host, attr) => {
+	const v = host.getAttribute(attr)
+	if (v === 'false' && !warned.has(host)) {
+		warned.add(host)
+		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
+	}
+	return v !== null && v !== 'false'
+}
+
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-card, #141D32);
@@ -133,7 +145,7 @@ details[open]::details-content { block-size: auto; }
 rocket('sb-details', {
 	props: ({ bool, string }) => ({
 		summary: string.trim.default('Details').docs({ description: 'The heading on the summary row. The server can morph it; the summary slot overrides it.' }),
-		open: bool.docs({ description: 'Open. View state, not a value: a changed attribute from the server wins, a removed one is ignored (send open="false" to close). Local toggling never reflects it.' }),
+		open: bool.docs({ description: 'Open when present. View state, not a value: the server adding or removing the attribute wins, identical markup keeps the local state. Local toggling never reflects it. open="false" reads as closed but is deprecated: leave the attribute out.' }),
 		icon: string.trim.docs({ description: 'Short text or emoji before the summary (decorative).' }),
 		disabled: bool.docs({ description: 'Block toggling. The server can still open or close it.' }),
 		group: string.trim.docs({ description: 'Accordion group: opening one sb-details with this group name closes the others, and each of them emits its own sb-toggle.' }),
@@ -167,7 +179,7 @@ rocket('sb-details', {
 		// before any style is computed, and CSS transitions don't run on an
 		// element's first style.
 		let st = states.get(host)
-		if (!st) states.set(host, (st = { open: props.open, served: host.hasAttribute('open') ? props.open : null }))
+		if (!st) states.set(host, (st = { open: boolWord(host, 'open'), served: boolWord(host, 'open') }))
 
 		// The one place the open state changes, whoever asked: the native
 		// element's own toggle, host.open, show()/hide(), a sibling, the server.
@@ -227,25 +239,19 @@ rocket('sb-details', {
 			}),
 		)
 
-		// st.served is the server's last word on open, or null while it has no
-		// opinion. Only a *different* one wins, so re-rendering the same markup
-		// can never re-open a panel the user just closed, however often the
-		// attribute is written.
+		// st.served is the server's last word on open: the attribute's presence.
+		// Only a *different* one wins (added opens, removed closes), so
+		// re-rendering the same markup can never re-open a panel the user just
+		// closed, however often the attribute is written.
 		const serverSays = () =>
 			peek(() => {
-				// A *removed* attribute is ignored: morphs also strip attributes that
-				// were only reflected (see sb-slider). To close, the server sends
-				// open="false". A removal does clear the server's last word, so
-				// sending the attribute again later counts as a change.
-				if (!host.hasAttribute('open')) return void (st.served = null)
-				if (props.open === st.served) return
-				set((st.served = props.open), false)
+				const now = boolWord(host, 'open')
+				if (now === st.served) return
+				set((st.served = now), false)
 			})
-		// Why not observeProps: it only fires when the decoded value changes, so
-		// adding open="false" to an element that had no open attribute at all
-		// would go unnoticed — and that *is* the server changing its mind. The
-		// instruction is the attribute, so watch the attribute. (The callback is
-		// a microtask, after Rocket has decoded it and outside the morph's effect.)
+		// Not observeProps: the patched build decodes open="false" onto an
+		// element without the attribute to the same false. The callback is a
+		// microtask, after Rocket has decoded it and outside the morph's effect.
 		const watch = new MutationObserver(serverSays)
 		watch.observe(host, { attributes: true, attributeFilter: ['open'] })
 		cleanup(() => watch.disconnect())

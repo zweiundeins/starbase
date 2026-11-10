@@ -204,10 +204,9 @@ func (pg *Playground) Element() string {
 			if c.Initial == true {
 				b.WriteString(" " + c.Attr)
 			}
-			// Off removes the attribute and sets the property: a component that
-			// ignores a removed attribute (sb-toggle's checked, which the server
-			// clears with "false") still follows. Not "false": :host([x]) rules
-			// would match it.
+			// Off removes the attribute (a boolean is a word by presence) and sets
+			// the property, which also moves local state the attribute didn't set.
+			// Not "false": official Rocket reads it as true.
 			fmt.Fprintf(&b, ` data-attr:%s="$_pg.%s || (el.%s = false)"`, c.Attr, c.Prop, c.Prop)
 		case ControlText:
 			if s, _ := c.Initial.(string); s != "" {

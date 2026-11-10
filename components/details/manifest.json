@@ -18,7 +18,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Open. View state, not a value: a changed attribute from the server wins, a removed one is ignored (send open=\"false\" to close). Local toggling never reflects it."
+        "description": "Open when present. View state, not a value: the server adding or removing the attribute wins, identical markup keeps the local state. Local toggling never reflects it. open=\"false\" reads as closed but is deprecated: leave the attribute out."
       }
     },
     {

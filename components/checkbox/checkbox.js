@@ -17,6 +17,18 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// The server's word on a boolean is its attribute's presence. "false" still
+// reads as absent until that spelling goes (deprecated, one warning per element).
+const warned = new WeakSet()
+const boolWord = (host, attr) => {
+	const v = host.getAttribute(attr)
+	if (v === 'false' && !warned.has(host)) {
+		warned.add(host)
+		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
+	}
+	return v !== null && v !== 'false'
+}
+
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -86,7 +98,7 @@ const styles = /* css */ `
 
 rocket('sb-checkbox', {
 	props: ({ bool, string }) => ({
-		checked: bool.docs({ description: 'Checked or not. A new state from the server wins (send checked="false" to clear it); the live state is the checked property.' }),
+		checked: bool.docs({ description: 'Checked when present. The server\'s word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property. checked="false" reads as not checked but is deprecated: leave the attribute out.' }),
 		indeterminate: bool.docs({ description: 'Shows the mixed state (the server says "some"). A click resolves it to checked; the live state is the indeterminate property.' }),
 		label: string.trim.docs({ description: 'Visible label next to the box, and its accessible name.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
@@ -116,22 +128,25 @@ rocket('sb-checkbox', {
 			states[p.disabled ? 'add' : 'delete']('disabled')
 		}
 		take(props)
-		$$.on = keep.on ?? props.checked
+		$$.on = keep.on ?? boolWord(host, 'checked')
 		$$.mixed = keep.mixed ?? false
-		// A checked attribute sent by the server wins when it says something new
-		// (a morph with a new value); re-sending the same markup changes nothing,
-		// so edits survive re-renders. A *removed* checked is ignored (morphs also
-		// remove attributes that were only reflected), but it clears the server's
-		// last word, so sending it again counts; checked="false" clears. Not
-		// observeProps: it misses checked="false" onto an element without it.
+		// Commands: the attribute is the server's value, $$.on the local one.
+		// With confirm, :state(pending) marks an edit the server hasn't confirmed
+		// yet; revert() returns to the server's word (e.g. a rejected command).
+		const sync = () => peek(() => states[props.confirm && $$.on !== boolWord(host, 'checked') ? 'add' : 'delete']('pending'))
+		// A change of the checked attribute wins over a local edit: added says
+		// checked, removed says not. Re-sending the same markup changes nothing, so
+		// edits survive re-renders. Not observeProps: the patched build decodes
+		// checked="false" onto an element without it to the same false.
 		// indeterminate is the server's view state: any change of it wins. The
 		// same observer hands the host's aria-label to the box.
 		const attrs = () =>
 			peek(() => {
 				$$.aria = host.getAttribute('aria-label') ?? '' // a null would delete the signal
 				if (props.indeterminate !== keep.said) $$.mixed = keep.said = props.indeterminate
-				if (!host.hasAttribute('checked')) return void (keep.served = null)
-				if (props.checked !== keep.served) $$.on = keep.served = props.checked
+				const now = boolWord(host, 'checked')
+				if (now !== keep.served) $$.on = keep.served = now
+				sync()
 			})
 		attrs() // also catches what the server said while the element was detached
 		const watch = new MutationObserver(attrs)
@@ -139,15 +154,11 @@ rocket('sb-checkbox', {
 		cleanup(() => watch.disconnect())
 		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
 		overrideProp('indeterminate', () => peek(() => $$.mixed), (v) => peek(() => ($$.mixed = !!v)))
-		// Commands: the attribute is the server's value, $$.on the local one.
-		// With confirm, :state(pending) marks an edit the server hasn't confirmed
-		// yet; revert() returns to the server's word (e.g. a rejected command).
-		const sync = () => peek(() => states[props.confirm && $$.on !== props.checked ? 'add' : 'delete']('pending'))
 		// Rocket's disconnect wipes $$ (re-running this) before a move re-attaches.
 		effect(() => ((keep.on = $$.on ?? keep.on), (keep.mixed = $$.mixed ?? keep.mixed), sync()))
 		// peek: attribute changes arrive inside the effect of whoever set them.
 		observeProps((p) => peek(() => (take(p), sync())))
-		const revert = () => peek(() => (($$.on = props.checked), ($$.mixed = props.indeterminate), sync()))
+		const revert = () => peek(() => (($$.on = boolWord(host, 'checked')), ($$.mixed = props.indeterminate), sync()))
 		defineHostProp('revert', { value: revert })
 
 		// Forms: until Rocket can make this element form-associated, join the

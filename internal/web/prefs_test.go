@@ -38,7 +38,7 @@ func newSession() *http.Client {
 func TestThemePreviewRemembered(t *testing.T) {
 	ts, c := newServer(t)
 	themes := func(c *http.Client) string { _, page := get(t, c, ts.URL+"/themes"); return page }
-	if p := themes(c); !strings.Contains(p, `data-sb-theme="deep-space" data-sb-style="pixel"`) || !strings.Contains(p, `label="8-bit details" checked="true"`) {
+	if p := themes(c); !strings.Contains(p, `data-sb-theme="deep-space" data-sb-style="pixel"`) || !strings.Contains(p, `label="8-bit details" checked data-on:change=`) {
 		t.Fatal("default preview should be Deep Space with 8-bit details")
 	}
 	for path, want := range map[string]int{"/cmd/theme/daylight": 204, "/cmd/theme-style/smooth": 204, "/cmd/theme/hacker": 400} {
@@ -48,7 +48,7 @@ func TestThemePreviewRemembered(t *testing.T) {
 	}
 	eventually(t, "the stored preview renders", func() bool {
 		p := themes(c)
-		return strings.Contains(p, `data-sb-theme="daylight" data-sb-style="smooth"`) && strings.Contains(p, `label="8-bit details" checked="false"`)
+		return strings.Contains(p, `data-sb-theme="daylight" data-sb-style="smooth"`) && strings.Contains(p, `label="8-bit details" data-on:change=`)
 	})
 	pressed := regexp.MustCompile(`aria-pressed="true"[^>]*>\s*<span class="swatches"[^<]*(?:<span[^>]*></span>\s*)*</span>\s*<strong>([^<]+)</strong>`)
 	if m := pressed.FindStringSubmatch(themes(c)); m == nil || m[1] != "Daylight" {

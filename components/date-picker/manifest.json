@@ -102,7 +102,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "The calendar popover is open. View state: a changed attribute from the server opens or closes it (open=\"false\" closes); local toggling never reflects it."
+        "description": "The calendar popover is open when present. View state: the server adding or removing the attribute opens or closes it, identical markup keeps the local state; local toggling never reflects it. open=\"false\" reads as closed but is deprecated: leave the attribute out."
       }
     },
     {

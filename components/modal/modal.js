@@ -1,5 +1,17 @@
 import { rocket } from 'datastar'
 
+// The server's word on a boolean is its attribute's presence. "false" still
+// reads as absent until that spelling goes (deprecated, one warning per element).
+const warned = new WeakSet()
+const boolWord = (host, attr) => {
+	const v = host.getAttribute(attr)
+	if (v === 'false' && !warned.has(host)) {
+		warned.add(host)
+		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
+	}
+	return v !== null && v !== 'false'
+}
+
 const styles = /* css */ `
 :host {
 	--_shadow: var(--sb-shadow-overlay, 0 24px 48px -16px rgb(0 0 0 / 0.7));
@@ -50,7 +62,7 @@ footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.875re
 rocket('sb-modal', {
 	props: ({ bool, oneOf, string }) => ({
 		heading: string.trim.default('Dialog').docs({ description: 'Title of the dialog.' }),
-		open: bool.docs({ description: 'The server\'s word: a changed attribute wins (open="false" closes it, also after show()); a removed one is ignored. Emits no sb-open or sb-close. The property returns this word; isOpen tells whether it is showing.' }),
+		open: bool.docs({ description: 'Open when present: the server\'s word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing. open="false" reads as closed but is deprecated: leave the attribute out.' }),
 		inline: bool.docs({ description: 'Render in place, always visible, without an overlay or close button (previews, docs).' }),
 		closable: oneOf(true, false).docs({ description: 'Show the close button (not on inline panels). On by default: closable="false" turns it off.' }),
 	}),
@@ -66,20 +78,17 @@ rocket('sb-modal', {
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, props }) => {
 		adoptStyles(host, styles)
-		$$.open = props.open
+		$$.open = boolWord(host, 'open')
 		$$.footer = false
-		// The server's last word on open, or null while it has none. Only a
-		// *different* word wins, so re-sending the same markup never reopens a
-		// dialog the user dismissed. A removed attribute is ignored (morphs also
-		// strip reflected ones): to close, the server sends open="false".
-		// Why not observeProps: it only fires when the decoded value changes, so
-		// open="false" after show() (the prop is still false) would go unnoticed.
-		// No peek(): the callback is a microtask, outside any effect.
-		let served = host.hasAttribute('open') ? props.open : null
+		// The server's last word on open, the attribute's presence. Only a
+		// *different* word wins (added opens, removed closes), so re-sending the
+		// same markup never reopens a dialog the user dismissed. Not observeProps:
+		// the patched build decodes open="false" onto an element without the
+		// attribute to the same false. No peek(): the callback is a microtask.
+		let served = boolWord(host, 'open')
 		const watch = new MutationObserver(() => {
-			const was = served
-			served = host.hasAttribute('open') ? props.open : null
-			if (served != null && served !== was) $$.open = served
+			const now = boolWord(host, 'open')
+			if (now !== served) $$.open = served = now
 		})
 		watch.observe(host, { attributeFilter: ['open'] })
 		cleanup(() => watch.disconnect())

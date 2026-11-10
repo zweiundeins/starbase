@@ -595,7 +595,11 @@ await group('morphs', async () => {
 	await morph('<sb-date-picker id="' + el.id + '" label="Launch" value="2026-09-15"></sb-date-picker>')
 	check('a morph without open leaves it open', [state(el), el.value], [OPEN, '2026-09-15'])
 	await morph('<sb-date-picker id="' + el.id + '" label="Launch" value="2026-09-15" open="false"></sb-date-picker>')
-	check('a morph with open="false" closes it', state(el), SHUT)
+	check('open="false" reads as absent: no new word, it stays open', state(el), OPEN)
+	await morph('<sb-date-picker id="' + el.id + '" label="Launch" value="2026-09-15" open></sb-date-picker>')
+	check('a morph with open keeps it open', state(el), OPEN)
+	await morph('<sb-date-picker id="' + el.id + '" label="Launch" value="2026-09-15"></sb-date-picker>')
+	check('a morph that drops open closes it', state(el), SHUT)
 	el.remove()
 })
 

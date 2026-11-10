@@ -16,6 +16,17 @@ const peek = (fn) => {
 // (:state(pending)) are styleable from the page and morph-proof.
 const internals = new WeakMap();
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host);
+// The server's word on a boolean is its attribute's presence. "false" still
+// reads as absent until that spelling goes (deprecated, one warning per element).
+const warned = new WeakSet();
+const boolWord = (host, attr) => {
+    const v = host.getAttribute(attr);
+    if (v === 'false' && !warned.has(host)) {
+        warned.add(host);
+        console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host);
+    }
+    return v !== null && v !== 'false';
+};
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`;
@@ -234,7 +245,7 @@ rocket('sb-dropdown', {
         type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:"radio" on that item instead. The group reaches into its submenus, and a dropdown holds one group.' }),
         value: string.docs({ description: 'Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots ("date.newest"). A new value from the server wins (value="" clears it); the live value is the value property.' }),
         confirm: bool.docs({ description: 'Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server\'s value attribute (see revert()).' }),
-        open: bool.docs({ description: 'Open on first render. A changed attribute from the server opens or closes the menu (open="false" closes); re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client.' }),
+        open: bool.docs({ description: 'Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client. open="false" reads as closed but is deprecated: leave the attribute out.' }),
         disabled: bool.docs({ description: 'Disable the trigger (and close the menu).' }),
         name: string.trim.docs({ description: 'Name reported in sb-select and sb-change (e.g. the field of a command).' }),
     }),
@@ -259,7 +270,7 @@ rocket('sb-dropdown', {
         // Open/closed, which submenus are open, the focused row and the
         // type-ahead buffer are local: none of it is ever written to an
         // attribute, which a morph would reset anyway.
-        let isOpen = props.open; // plain too: cleanup runs after the signals are cleared
+        let isOpen = boolWord(host, 'open'); // plain too: cleanup runs after the signals are cleared
         $$.open = isOpen;
         // Where the keyboard focus is: plain, since nothing renders it.
         let focusLevel = 0; // level with the keyboard focus
@@ -642,14 +653,14 @@ rocket('sb-dropdown', {
             close('item');
         };
         // The open and value attributes: the first one sets the initial state, a
-        // changed one from the server wins over the local state (open="false"
-        // closes, value="" clears). A *removed* attribute is ignored: morphs also
-        // strip attributes that were only reflected. served and said are the
-        // server's last word (null without one), so a re-written identical
-        // attribute leaves the local state alone: a morph can never re-open a
-        // menu the user just closed. They are watched on the attribute, not
-        // through observeProps, which stays silent when the decoded value did
-        // not change (open="false" on an element that never had the attribute).
+        // changed one from the server wins over the local state. open is a word by
+        // presence (added opens, removed closes); value="" clears, and a *removed*
+        // value is ignored: morphs also strip attributes that were only reflected.
+        // served and said are the server's last word (said is null without one),
+        // so a re-written identical attribute leaves the local state alone: a
+        // morph can never re-open a menu the user just closed. They are watched on
+        // the attribute, not through observeProps, which stays silent when the
+        // decoded value did not change (value="" on an element without it).
         const states = internalsOf(host).states;
         const sync = () => peek(() => (props.confirm && $$.value !== servedV ? states.add('pending') : states.delete('pending')));
         // :state(open) follows the menu, whichever way it opens or closes.
@@ -664,13 +675,12 @@ rocket('sb-dropdown', {
             publish();
             sync();
         };
-        let served = host.hasAttribute('open') ? props.open : null;
+        let served = boolWord(host, 'open');
         const serverOpen = () => {
-            if (!host.hasAttribute('open'))
-                return void (served = null);
-            if (props.open === served)
+            const now = boolWord(host, 'open');
+            if (now === served)
                 return;
-            setOpen((served = props.open), { reason: 'server', defer: true });
+            setOpen((served = now), { reason: 'server', defer: true });
         };
         // Slotted items change without a slotchange when a morph only rewrites a
         // label or a flag: no attribute form for watching that either. Both

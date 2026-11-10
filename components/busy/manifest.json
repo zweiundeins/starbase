@@ -8,7 +8,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "The server forces the indicator on. It wins: while this is true the indicator stays up whatever the watched requests do (busy=\"false\" to clear it)."
+        "description": "The server forces the indicator on. It wins: while the attribute is present the indicator stays up whatever the watched requests do; leave it out to clear it (busy=\"false\" reads as absent but is deprecated)."
       }
     },
     {
