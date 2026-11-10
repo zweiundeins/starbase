@@ -92,5 +92,43 @@ for (const c of cases) {
 	}
 	el?.remove()
 }
+// rev: a new one makes the server's value win even when it is unchanged (a
+// refused value); sb-slider counts it, one commit answered per step.
+for (const c of [
+	{ tag: 'sb-input', server: 'STARBASE-1', local: 'no spaces', want: 'STARBASE-1' },
+	{ tag: 'sb-slider', server: '40', local: 95, want: 40 },
+]) {
+	const row = (step, want) => rows.push({ tag: c.tag + ' rev', step, got: JSON.stringify(el.value), want: JSON.stringify(want) })
+	let el
+	try {
+		await customElements.whenDefined(c.tag)
+		el = document.createElement(c.tag)
+		for (const [k, v] of Object.entries({ confirm: '', value: c.server, rev: '1' })) el.setAttribute(k, v)
+		box.append(el)
+		await settle()
+		el.value = c.local
+		await settle()
+		row('a local edit', c.local)
+		el.setAttribute('rev', '2')
+		await settle()
+		row('a new rev with the value unchanged wins', c.want)
+		if (c.tag === 'sb-slider') {
+			const commit = (v) => ((el.value = v), el.shadowRoot.querySelector('input').dispatchEvent(new Event('change')))
+			commit(60)
+			commit(70)
+			await settle()
+			el.setAttribute('value', '60')
+			el.setAttribute('rev', '3')
+			await settle()
+			row('the echo of the older commit keeps the newer one', 70)
+			el.setAttribute('rev', '4')
+			await settle()
+			row('the newer one refused: the server\'s value', 60)
+		}
+	} catch (e) {
+		rows.push({ tag: c.tag + ' rev', error: String(e) })
+	}
+	el?.remove()
+}
 await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
 `

@@ -2,7 +2,6 @@ package queries_test
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -393,12 +392,33 @@ func TestSnippetStoreCap(t *testing.T) {
 	if err := save("BBBBBBBB", 100); err != nil { // fits
 		t.Fatal(err)
 	}
-	if err := save("CCCCCCCC", 100); !errors.Is(err, commands.ErrSnippetStoreFull) {
-		t.Fatalf("err = %v, want ErrSnippetStoreFull", err)
+	if err := save("CCCCCCCC", 100); err != nil {
+		t.Fatal(err)
 	}
 	sn, _ := e.q.ViewValue(ctx, func(r *queries.Reader) (*queries.Snippet, error) { return r.Snippet(ctx, "CCCCCCCC") })
 	if sn != nil {
 		t.Fatal("the refused snippet must not be stored")
+	}
+	var st model.TabState
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.ShareRefusal != commands.RefusedStoreFull || st.PlaygroundShare != "BBBBBBBB" || st.ShareRev != 3 {
+		t.Fatalf("tab = %+v, want the full store's refusal after the second save", st)
+	}
+	// Code over MaxSnippetBytes is refused in the tab's row too.
+	commands.MaxSnippetStore = 1 << 30
+	if err := save("DDDDDDDD", commands.MaxSnippetBytes+1); err != nil {
+		t.Fatal(err)
+	}
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.ShareRefusal != commands.RefusedSnippetSize || st.ShareRev != 4 {
+		t.Fatalf("tab = %+v, want the size refusal", st)
+	}
+	if err := save("EEEEEEEE", 10); err != nil {
+		t.Fatal(err)
+	}
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.ShareRefusal != "" || st.PlaygroundShare != "EEEEEEEE" {
+		t.Fatalf("tab = %+v, want the new share and no refusal", st)
 	}
 }
 
@@ -449,19 +469,42 @@ func TestSetFlight(t *testing.T) {
 			t.Fatalf("%s=%s: %v", c[0], c[1], err)
 		}
 	}
-	if err := send("thrust", "95"); !errors.Is(err, commands.ErrThrust) {
-		t.Errorf("thrust 95: err = %v, want the business rule", err)
-	}
-	for _, bad := range [][2]string{{"thrust", "abc"}, {"shields", "maybe"}, {"callsign", "no spaces"}, {"warp", "9"}} {
+	// What no control sends is invalid.
+	for _, bad := range [][2]string{{"thrust", "abc"}, {"thrust", "101"}, {"shields", "maybe"}, {"warp", "9"}} {
 		if err := send(bad[0], bad[1]); err == nil {
 			t.Errorf("%s=%q must be rejected", bad[0], bad[1])
 		}
 	}
-	var st model.TabState
-	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
-	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11", CallsignRev: 1}
-	if st.Flight != want {
-		t.Errorf("flight = %+v, want %+v (normalized, the rejected thrust not applied)", st.Flight, want)
+	flight := func() model.FlightPlan {
+		var st model.TabState
+		e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+		return st.Flight
+	}
+	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11", CallsignRev: 1, ThrustRev: 1}
+	if got := flight(); got != want {
+		t.Errorf("flight = %+v, want %+v (normalized)", got, want)
+	}
+	// What a person can choose but the rules forbid is a refusal in the
+	// tab's row: the value stays, the field's rev counts the command.
+	for _, c := range []struct {
+		name, value, refusal string
+	}{{"thrust", "95", commands.RefusedThrust}, {"callsign", "no spaces", commands.RefusedCallsign}} {
+		if err := send(c.name, c.value); err != nil {
+			t.Fatalf("%s=%q: %v", c.name, c.value, err)
+		}
+		if got := flight().Refusal; got != c.refusal {
+			t.Errorf("%s=%q: refusal %q, want %q", c.name, c.value, got, c.refusal)
+		}
+	}
+	want.ThrustRev, want.CallsignRev, want.Refusal = 2, 2, commands.RefusedCallsign
+	if got := flight(); got != want {
+		t.Errorf("flight = %+v, want %+v (the refused values not applied)", got, want)
+	}
+	if err := send("shields", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if got := flight(); got.Refusal != "" || !got.Shields {
+		t.Errorf("an applied command keeps the refusal: %+v", got)
 	}
 	if (model.FlightPlan{}).OrDefault().Thrust != 40 {
 		t.Error("defaults")

@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `sb-slider` takes `rev`, like `sb-input`: a count the server raises with every command it answers for the field. A new `rev` makes the server's value win even when it is unchanged, so a refused value goes back; each step answers one commit, oldest first.
 - `sb-context-menu`: a trigger, or the element with its context id, checks items with `data-menu-checked="<action> …"` (`aria-checked`, as `menuitemradio` or `menuitemcheckbox` after the item's `data-menu-check`) and leaves items out with `data-menu-hidden="<action> …"`, along with the separators that strands, so one menu shows each trigger its own state. Patch 0150, an upstream candidate.
 - `sb-dropdown` link items: an item with an `href` (in `items`, or `<a slot="item" href>` as markup) renders as `<a role="menuitem" href>` the browser follows, also into a new tab with Ctrl, Cmd or a middle click. It emits no `sb-select`, the menu closes, and the keys, the type-ahead, submenus and `disabled` treat it like any item. A radio group's items never become links.
 - `sb-tree` reads its tree from nested lists inside the element, like `sb-toc`, so it works before JavaScript and crawlers see it. An item with an `<a href>` is a link row: a click, Enter, a middle click and Ctrl or Cmd with a click are the browser's. `aria-current` marks the page (its branches open), `data-icon` copies an icon (an inline SVG) into the row, `data-meta` shows a short text after the label, `data-open` opens a branch, and `data-lazy` asks for the children with `sb-load`, which the server answers by patching a `<ul>` into the `<li>`. A morph of the list keeps the user's open branches and focus; a changed `data-open` wins. The JSON `items` and `loaded` still work, and a list wins over them. The docs' `/demo/data/children` answers `&tree=<id>` with that markup.
@@ -20,6 +21,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- A check a person can fail is a refusal the command records in the tab's state, answered 204, instead of a 400: the Showcase's thrust above 90% and a malformed call sign (`SetFlight.Apply`, `FlightPlan.Refusal`), and a playground snippet over 64 KB or a full snippet store (`SaveSnippet.Apply`, `TabState.ShareRefusal`, which also replaces the 507). The page renders the reason, and the control goes back through a new `rev`. A 400 is left for what no control sends.
+- The playground's Save & share button ends its pending state when the save fails (an error status, or no answer), and says so.
 - lith v0.5.4. Test databases run without fsync (`Synchronous: "OFF"`, only under `testing.Testing()`).
 - The render streams' cap per client is lith's (`Spec.Client`, `Options.MaxStreamsPerClient`, still 24) instead of Starbase's own counter.
 - `/healthz` is lith's `edge.Health` (the same `ok <version>`, now `no-store`), and a panic is caught by `edge.Recover`, which logs its stack and aborts a response that has begun instead of appending an error to it.

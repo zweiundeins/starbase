@@ -65,3 +65,34 @@ const same = document.getElementById('board') === board ? 'same board' : 'anothe
 const viewers = document.querySelector('.board-stats')?.textContent.trim().split(' · ')[0] ?? ''
 await fetch('/__probe/result', { method: 'POST', body: [same, cell(), thrust(), viewers].join(' ') })
 `
+
+// TestFlightRefusalInChrome: a thrust the rules forbid comes back as a
+// refusal in the tab's frame, and its new rev puts the slider back.
+func TestFlightRefusalInChrome(t *testing.T) {
+	_, body := probe(t, "/showcase", flightRefusalJS)
+	if got := string(body); got != "refused 40 not pending 40%" {
+		t.Fatalf("after a refused thrust the page shows %q, want the refusal and the slider back at 40", got)
+	}
+}
+
+const flightRefusalJS = `
+const until = async (f, ms) => {
+	for (const end = Date.now() + ms; Date.now() < end; await new Promise((r) => setTimeout(r, 50))) {
+		const v = f()
+		if (v) return v
+	}
+	return ''
+}
+const refusal = () => [...document.querySelectorAll('.flight__error')].some((p) => p.textContent.includes('flight director'))
+const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 10000)
+// Until Datastar has wired the page and the stream is open, nothing answers: commit again.
+for (let i = 0; i < 10 && !refusal(); i++) {
+	slider.value = 95
+	slider.shadowRoot.querySelector('input').dispatchEvent(new Event('change'))
+	await until(refusal, 1500)
+}
+await until(() => slider.value === 40, 2000)
+const thrust = [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%'))
+const out = [refusal() ? 'refused' : 'no refusal', slider.value, slider.matches(':state(pending)') ? 'pending' : 'not pending', thrust]
+await fetch('/__probe/result', { method: 'POST', body: out.join(' ') })
+`

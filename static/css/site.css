@@ -1571,6 +1571,12 @@
 		font-size: var(--sb-font-size-1);
 	}
 
+	.code-page__refusal {
+		flex-basis: 100%;
+		margin: 0;
+		color: var(--sb-danger);
+	}
+
 		/* ── Commands and components (showcase) ───────────────────────────────── */
 	.flight-section {
 		display: grid;

@@ -315,7 +315,7 @@ func (s *Server) componentDeps() string {
 
 func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	files := map[string]string{"component.js": starterJS, "index.html": starterHTML}
-	v := ui.CodePlaygroundView{Deps: s.cache.deps(), Share: rc.tab.PlaygroundShare}
+	v := ui.CodePlaygroundView{Deps: s.cache.deps(), Share: rc.tab.PlaygroundShare, ShareRefusal: rc.tab.ShareRefusal, ShareRev: rc.tab.ShareRev}
 	q := rc.req.URL.Query()
 	if id := q.Get("s"); id != "" {
 		sn, err := rc.r.Snippet(rc.ctx, id)
@@ -435,9 +435,7 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if stored+commands.MaxSnippetBytes > commands.MaxSnippetStore {
-		s.log.Warn("snippet storage is full", "bytes", stored)
-		w.WriteHeader(http.StatusInsufficientStorage)
-		return
+		s.log.Warn("snippet storage is full", "bytes", stored) // SaveSnippet refuses the save in the tab's row
 	}
 	if _, ok := s.catalog.Get(p.Component); !ok {
 		p.Component = ""

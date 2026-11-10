@@ -482,6 +482,19 @@ func TestShareFlow(t *testing.T) {
 	if !strings.Contains(frame, `href="/submit?s=`+id+`"`) {
 		t.Error("frame lacks Submit as component")
 	}
+	// Code over the limit is a refusal in the tab's frame, answered 204.
+	big := post(t, c, ts.URL+"/cmd/snippet", `{"tabid":"tab12345","files":{"component.js":"`+strings.Repeat("x", 65<<10)+`"}}`, "same-origin")
+	if big.StatusCode != http.StatusNoContent {
+		t.Fatalf("save too large = %d, want 204", big.StatusCode)
+	}
+	select {
+	case frame = <-frames:
+	case <-ctx.Done():
+		t.Fatal("no frame after a refused save")
+	}
+	if !strings.Contains(frame, "over 64 KB") || !strings.Contains(frame, "/playground?s="+id) {
+		t.Error("the refused save's frame lacks the refusal, or lost the last link")
+	}
 	// The link opens the saved code; the JSON is public; /submit prefills.
 	_, body := get(t, c, ts.URL+"/playground?s="+id)
 	if !strings.Contains(body, "sb-shared") {
@@ -772,13 +785,25 @@ func TestFlightCommand(t *testing.T) {
 	}{
 		{`{"tabid":"tab12345","name":"thrust","value":70}`, http.StatusNoContent},
 		{`{"tabid":"tab12345","name":"shields","value":false}`, http.StatusNoContent},
-		{`{"tabid":"tab12345","name":"thrust","value":95}`, http.StatusBadRequest},
+		{`{"tabid":"tab12345","name":"thrust","value":101}`, http.StatusBadRequest}, // no slider sends it
 	} {
 		res := post(t, c, ts.URL+"/cmd/flight", tc.body, "same-origin")
 		res.Body.Close()
 		if res.StatusCode != tc.want {
 			t.Errorf("%s: %d, want %d", tc.body, res.StatusCode, tc.want)
 		}
+	}
+	until(t, next, "<dd>70%</dd>")
+	// A thrust the rules forbid is a refusal in the tab's frame: 204, the
+	// stored thrust with a new rev, and the reason.
+	res := post(t, c, ts.URL+"/cmd/flight", `{"tabid":"tab12345","name":"thrust","value":95}`, "same-origin")
+	res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("refused thrust: %d, want 204", res.StatusCode)
+	}
+	e := until(t, next, "flight director")
+	if !strings.Contains(e, `value="70" rev="2"`) || !strings.Contains(e, "<dd>70%</dd>") {
+		t.Error("the refusal's frame lacks the stored thrust with a new rev")
 	}
 }
 
