@@ -12,9 +12,10 @@ import (
 // their name, the user's local value once it changed, nothing while
 // disabled, and form.reset() brings back the server's value without firing
 // change events — unless the page cancelled the reset — and a form nested in
-// theirs by a script neither collects them nor resets them.
+// theirs by a script neither collects them nor resets them. With
+// STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
 func TestFormParticipation(t *testing.T) {
-	_, body := probe(t, "/", formsJS)
+	body := probeBundle(t, "/", formsJS, nil)
 	var rows []struct {
 		Tag, Step, Got, Want, Error string
 	}

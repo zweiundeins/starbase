@@ -16,7 +16,8 @@ import (
 // .docs() and the manifest: block), and checks that each component still
 // defines exactly the props its manifest.json lists — names, attributes,
 // types, defaults and values — only without the docs. A shrink that cut into
-// a prop chain would show up here.
+// a prop chain would show up here. With STARBASE_DATASTAR_BUNDLE=<file>, on
+// that Datastar build.
 func TestShrunkModulesKeepProps(t *testing.T) {
 	cat, err := catalog.Load(components.FS)
 	if err != nil {
@@ -27,7 +28,7 @@ func TestShrunkModulesKeepProps(t *testing.T) {
 		tags = append(tags, c.Tag)
 	}
 	tj, _ := json.Marshal(tags)
-	_, body := probe(t, "/", strings.Replace(definedPropsJS, "%TAGS%", string(tj), 1))
+	body := probeBundle(t, "/", strings.Replace(definedPropsJS, "%TAGS%", string(tj), 1), nil)
 	var got definedProps
 	if err := json.Unmarshal(body, &got); err != nil || got.Error != "" {
 		t.Fatalf("%v: %s", err, body)
