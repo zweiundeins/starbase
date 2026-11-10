@@ -29,7 +29,7 @@ type storedFile struct {
 func TestFileBodiesMigration(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "s.db")
-	pre, err := sqlite.Open(ctx, path, sqlite.Options{Migrate: func(ctx context.Context, w *sql.DB) error { return migrateTo(ctx, w, 9) }})
+	pre, err := sqlite.Open(ctx, path, sqlite.Options{Synchronous: "OFF", Migrate: func(ctx context.Context, w *sql.DB) error { return migrateTo(ctx, w, 9) }})
 	if err != nil {
 		t.Fatal(err)
 	}

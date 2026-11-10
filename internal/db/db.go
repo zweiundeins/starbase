@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"testing"
 
 	"github.com/zweiundeins/lith/sqlite"
 )
@@ -25,7 +26,7 @@ var migrations embed.FS
 // folder in tests; in-memory databases do not share across pools.
 func Open(ctx context.Context, path string) (*sqlite.DB, error) {
 	return sqlite.Open(ctx, path, sqlite.Options{
-		Synchronous: "NORMAL",
+		Synchronous: synchronous(),
 		Migrate:     func(ctx context.Context, w *sql.DB) error { return migrateTo(ctx, w, math.MaxInt) },
 		// Each render worker (one per CPU) holds a connection for good; the
 		// other half serves documents, demos and downloads.
@@ -34,6 +35,14 @@ func Open(ctx context.Context, path string) (*sqlite.DB, error) {
 		// No Litestream: the writer checkpoints between batches.
 		Checkpoint: sqlite.CheckpointWriter,
 	})
+}
+
+// synchronous is NORMAL, or OFF (no fsync) for the throwaway databases of tests.
+func synchronous() string {
+	if testing.Testing() {
+		return "OFF"
+	}
+	return "NORMAL"
 }
 
 // migrateTo applies migrations up to number last with lith's runner. A
