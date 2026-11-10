@@ -218,3 +218,13 @@ func onOff(b bool) string {
 	}
 	return "off"
 }
+
+// command runs post, a Datastar @post of a command, through sbCommand
+// (static/js/commands.js) under key, a JavaScript expression: after a 409 it
+// goes out again once the tab's stream connects.
+func command(key, post string) string {
+	return "sbCommand(el, " + key + ", () => " + post + ")"
+}
+
+// browseCommand posts the gallery's search and category.
+var browseCommand = command("'browse'", "@post('/cmd/browse')")

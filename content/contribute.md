@@ -98,7 +98,7 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
 - **Intent:** when the user commits a value (release, blur, Enter; never every keystroke), emit `sb-change` with `{ name, value }`, and give the component a `name` prop. A page can then send it as is: `data-on:sb-change="@post('/cmd/…', {payload: evt.detail})"`.
 - **The server's value is the attribute.** A `value` (or `checked`, `selected`…) attribute the server changes wins over local edits; re-sent identical markup changes nothing. A *removed* attribute is ignored, so to clear, the server sends `value=""` or `checked="false"`.
 - **Pending and refusals:** with the `confirm` attribute, the component sets `:state(pending)` (a CSS custom state, styleable from the page, safe from morphs) while its local value differs from the server's. The server answers in the page it renders. A value it stores comes back as the new attribute. A value it refuses (a thrust above what the rules allow, a call sign with a space) is not an error status: the command records the refusal in the tab's state and answers 204, and the page renders the stored value with the reason. The stored value's markup hasn't changed, so the component takes a `rev` (`sb-input`, `sb-slider`): a count the server raises with every command it answers for the field, applied or refused. A new `rev` makes the server's value win, and the control goes back.
-- **Revert:** `host.revert()` goes back to the server's value, for a command that never reached the server's state: an error status (a 409 while the tab's stream isn't open, a rate limit, a server that is down) or `retries-failed`, which Datastar sends when it gives up on a request that got no answer:
+- **Revert:** `host.revert()` goes back to the server's value, for a command that never reached the server's state: an error status (a rate limit, a server that is down) or `retries-failed`, which Datastar sends when it gives up on a request that got no answer:
 
 ```html
 <sb-slider name="thrust" confirm value="40" rev="3"
@@ -106,7 +106,7 @@ Starbase is built on CQRS: a change is a command sent to the server, and the pag
   data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-slider>
 ```
 
-`datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a refused command.
+`datastar-fetch` reaches every listener, so the handler checks `evt.detail.el === el` first. Starbase's own pages leave out one status: a 409 means the tab's render stream isn't open yet (the page just loaded, or a deploy is reconnecting), and the shell sends the command again once it is (`sbCommand`). The [Showcase](/showcase) has it running: a pending state, a server-normalized value and a refused command.
 
 On the server, the handler reads the payload, checks that the tab's stream is open (a made-up tab id gets 409 and stores nothing) and sends a command, which answers 204. A 400 is only for what no control sends, such as an unknown field:
 

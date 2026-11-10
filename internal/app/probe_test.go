@@ -99,6 +99,10 @@ func serveProbe(t *testing.T, ln net.Listener, path, script string, h http.Handl
 			once.Do(func() { results <- body; close(release) })
 		case page:
 			if r.Method != http.MethodGet {
+				if x := extra[r.Method+" "+page]; x != nil { // a test's own stream handler
+					x(w, r)
+					return
+				}
 				h.ServeHTTP(w, r)
 				return
 			}

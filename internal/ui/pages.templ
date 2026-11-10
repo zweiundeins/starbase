@@ -256,13 +256,14 @@ func checkExpr(component, preview string) string {
 }
 
 func shareExpr(component string) string {
-	return "$_shareErr = ''; el.classList.add('is-pending'); @post('/cmd/snippet', {payload: {tabid: $tabid, component: " + jsString(component) +
-		", files: document.querySelector('sb-code-playground').files}})"
+	return "$_shareErr = ''; el.classList.add('is-pending'); " + command("'share'", "@post('/cmd/snippet', {payload: {tabid: $tabid, component: "+jsString(component)+
+		", files: document.querySelector('sb-code-playground').files}})")
 }
 
 // shareFailed ends the button's pending state when the save never reached
-// the tab's state: a refusal comes as a frame, which resets the button.
-const shareFailed = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && (el.classList.remove('is-pending'), $_shareErr = evt.detail.type === 'error' ? 'That did not save. Try again in a moment.' : 'The connection is down. Try again once it is back.')`
+// the tab's state: a refusal comes as a frame, which resets the button. A
+// 409 waits: sbCommand saves again once the tab's stream is open.
+const shareFailed = `evt.detail.el === el && (evt.detail.type === 'retries-failed' || evt.detail.type === 'error' && evt.detail.argsRaw.status !== '409') && (el.classList.remove('is-pending'), $_shareErr = evt.detail.type === 'error' ? 'That did not save. Try again in a moment.' : 'The connection is down. Try again once it is back.')`
 
 templ CodePlaygroundPage(v CodePlaygroundView) {
 	<div class="wrap code-page">
@@ -361,11 +362,12 @@ templ Showcase(board templ.Component, flight model.FlightPlan) {
 // flightCommand posts a control's sb-change as a command. The tab's frame
 // answers: the stored value with the field's new rev, which ends the
 // control's pending state, and the refusal when the server refused it.
-const flightCommand = `$_flightErr = ''; @post('/cmd/flight', {payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'})`
+var flightCommand = `$_flightErr = ''; ` + command(`'flight:' + evt.detail.name`, `@post('/cmd/flight', {payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'})`)
 
 // flightFailed reverts a control whose command never reached the flight
 // plan (an error status, or no answer after Datastar's retries) and says so.
-const flightFailed = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && (el.revert(), $_flightErr = (evt.detail.type === 'error' ? 'That did not reach the server' : 'The connection is down') + ', so ' + el.getAttribute('name') + ' is back at the stored value. Try again in a moment.')`
+// A 409 keeps it pending: sbCommand sends it again once the stream is open.
+const flightFailed = `evt.detail.el === el && (evt.detail.type === 'retries-failed' || evt.detail.type === 'error' && evt.detail.argsRaw.status !== '409') && (el.revert(), $_flightErr = (evt.detail.type === 'error' ? 'That did not reach the server' : 'The connection is down') + ', so ' + el.getAttribute('name') + ' is back at the stored value. Try again in a moment.')`
 
 // FlightDemo shows the command loop with components: each control's value
 // is a command; the server validates, stores (tab state) and re-renders, and
