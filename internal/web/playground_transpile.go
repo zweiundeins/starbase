@@ -27,7 +27,7 @@ func (s *Server) playgroundTranspile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad body", http.StatusBadRequest)
 		return
 	}
-	if !s.transpileLimit.allow(edge.ClientKey(r), 1, time.Now()) {
+	if !s.transpileLimit.Allow(edge.ClientKey(r), 1, time.Now()) {
 		http.Error(w, "transpiling too often", http.StatusTooManyRequests)
 		return
 	}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/starfederation/datastar-go/datastar"
@@ -68,49 +67,6 @@ func (s *Server) boardHTML(ctx context.Context, rd *queries.Reader) ([]byte, err
 // page being rendered, whose stream may not be open yet.
 func (s *Server) viewers() int { return max(1, s.hub.Count(commands.TopicBoard)) }
 
-// limiter is a per-session token bucket for painting: an edge concern that
-// protects the shared board from floods, not domain state.
-type limiter struct {
-	mu      sync.Mutex
-	rate    float64 // tokens per second
-	burst   float64
-	buckets map[string]*bucket
-}
-
-type bucket struct {
-	tokens float64
-	at     time.Time
-}
-
-func newLimiter(rate, burst float64) *limiter {
-	return &limiter{rate: rate, burst: burst, buckets: map[string]*bucket{}}
-}
-
-// allow takes n tokens for key, if available.
-func (l *limiter) allow(key string, n int, now time.Time) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	b, ok := l.buckets[key]
-	if !ok {
-		if len(l.buckets) > 10000 { // forget idle sessions
-			for k, v := range l.buckets {
-				if now.Sub(v.at) > time.Minute {
-					delete(l.buckets, k)
-				}
-			}
-		}
-		b = &bucket{tokens: l.burst, at: now}
-		l.buckets[key] = b
-	}
-	b.tokens = min(l.burst, b.tokens+now.Sub(b.at).Seconds()*l.rate)
-	b.at = now
-	if b.tokens < float64(n) {
-		return false
-	}
-	b.tokens -= float64(n)
-	return true
-}
-
 // cmdPaint paints cells of the shared board (anyone may paint, rate-limited).
 func (s *Server) cmdPaint(w http.ResponseWriter, r *http.Request) {
 	var p struct {
@@ -122,7 +78,7 @@ func (s *Server) cmdPaint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	if !s.paintLimit.allow(edge.SessionID(r.Context()), len(p.Cells), now) || !s.paintLimitIP.allow(edge.ClientKey(r), len(p.Cells), now) {
+	if !s.paintLimitIP.Allow(edge.ClientKey(r), len(p.Cells), now) || !s.paintLimit.Allow(edge.SessionID(r.Context()), len(p.Cells), now) {
 		http.Error(w, "painting too fast", http.StatusTooManyRequests)
 		return
 	}

@@ -37,7 +37,7 @@ func (s *Server) playgroundCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	if !s.checkLimit.allow(edge.SessionID(r.Context()), 1, now) || !s.checkLimitIP.allow(edge.ClientKey(r), 1, now) {
+	if !s.checkLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.checkLimit.Allow(edge.SessionID(r.Context()), 1, now) {
 		http.Error(w, "checking too often", http.StatusTooManyRequests)
 		return
 	}

@@ -30,7 +30,7 @@ func (s *Server) playgroundSize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	if !s.sizeLimit.allow(edge.SessionID(r.Context()), 1, now) || !s.sizeLimitIP.allow(edge.ClientKey(r), 1, now) {
+	if !s.sizeLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.sizeLimit.Allow(edge.SessionID(r.Context()), 1, now) {
 		http.Error(w, "measuring too often", http.StatusTooManyRequests)
 		return
 	}

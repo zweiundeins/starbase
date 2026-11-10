@@ -415,7 +415,7 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	if !s.saveLimit.allow(edge.SessionID(r.Context()), 1, now) || !s.saveLimitIP.allow(edge.ClientKey(r), 1, now) {
+	if !s.saveLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.saveLimit.Allow(edge.SessionID(r.Context()), 1, now) {
 		http.Error(w, "saving too often, try again in a minute", http.StatusTooManyRequests)
 		return
 	}

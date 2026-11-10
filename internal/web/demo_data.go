@@ -303,7 +303,7 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	now := time.Now()
-	if !s.exportLimit.allow(edge.SessionID(r.Context()), 1, now) || !s.exportLimitIP.allow(edge.ClientKey(r), 1, now) {
+	if !s.exportLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.exportLimit.Allow(edge.SessionID(r.Context()), 1, now) {
 		http.Error(w, "exporting too often", http.StatusTooManyRequests)
 		return
 	}

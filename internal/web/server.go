@@ -39,27 +39,27 @@ type Server struct {
 	cache        *renderCache // what pages render from the binary's content alone (rendercache.go)
 	previews     *previewCache
 	board        atomic.Pointer[boardCache]
-	boardRegion  *region  // the Showcase's board, a view of its own
-	paintLimit   *limiter // per session
-	paintLimitIP *limiter
-	saveLimit    *limiter // snippets, per session
-	saveLimitIP  *limiter
-	sizeLimit    *limiter // playground size line, per session
-	sizeLimitIP  *limiter
+	boardRegion  *region       // the Showcase's board, a view of its own
+	paintLimit   *edge.Limiter // per session
+	paintLimitIP *edge.Limiter
+	saveLimit    *edge.Limiter // snippets, per session
+	saveLimitIP  *edge.Limiter
+	sizeLimit    *edge.Limiter // playground size line, per session
+	sizeLimitIP  *edge.Limiter
 	sizeMu       sync.Mutex
 	sizes        map[[32]byte]map[string]any // playground code → $_size (playground_size.go)
 	checker      *tscheck.Checker            // nil without an embedded compiler
-	checkLimit   *limiter                    // playground type checks, per session
-	checkLimitIP *limiter
+	checkLimit   *edge.Limiter               // playground type checks, per session
+	checkLimitIP *edge.Limiter
 	checkMu      sync.Mutex
 	checks       map[[32]byte][]tscheck.Diagnostic // playground code → its diagnostics (playground_check.go)
 
-	transpileLimit *limiter // the runner's TypeScript, per client (it has no session)
+	transpileLimit *edge.Limiter // the runner's TypeScript, per client (it has no session)
 	transpileMu    sync.Mutex
 	transpiled     map[[32]byte][]byte // component.ts → the JSON answer (playground_transpile.go)
 
-	exportLimit   *limiter // the star catalog's downloads, per session
-	exportLimitIP *limiter
+	exportLimit   *edge.Limiter // the star catalog's downloads, per session
+	exportLimitIP *edge.Limiter
 	exports       chan struct{} // the downloads streaming now, each holding a read connection
 
 	starsMu      sync.Mutex
@@ -99,24 +99,24 @@ func New(ctx context.Context, d Deps) *Server {
 		secure:   secure,
 		sessions: edge.Sessions{Secure: secure, Accept: legacySessionID.MatchString},
 
-		paintLimit:   newLimiter(20, 60), // pixels per second, burst
-		paintLimitIP: newLimiter(60, 180),
-		saveLimit:    newLimiter(0.1, 10), // snippet saves: 6 a minute
-		saveLimitIP:  newLimiter(0.5, 30),
-		sizeLimit:    newLimiter(3, 20), // size measurements: the client debounces edits
-		sizeLimitIP:  newLimiter(10, 60),
+		paintLimit:   edge.NewLimiter(20, 60), // pixels per second, burst
+		paintLimitIP: edge.NewLimiter(60, 180),
+		saveLimit:    edge.NewLimiter(0.1, 10), // snippet saves: 6 a minute
+		saveLimitIP:  edge.NewLimiter(0.5, 30),
+		sizeLimit:    edge.NewLimiter(3, 20), // size measurements: the client debounces edits
+		sizeLimitIP:  edge.NewLimiter(10, 60),
 		sizes:        map[[32]byte]map[string]any{},
 		checker:      d.Checker,
-		checkLimit:   newLimiter(3, 20), // like sizes: after debounced edits and runs
-		checkLimitIP: newLimiter(10, 60),
+		checkLimit:   edge.NewLimiter(3, 20), // like sizes: after debounced edits and runs
+		checkLimitIP: edge.NewLimiter(10, 60),
 		checks:       map[[32]byte][]tscheck.Diagnostic{},
 		previews:     newPreviewCache(d.Config.RepoURL, d.Config.GitHubToken),
 
-		transpileLimit: newLimiter(5, 40), // once per run
+		transpileLimit: edge.NewLimiter(5, 40), // once per run
 		transpiled:     map[[32]byte][]byte{},
 
-		exportLimit:   newLimiter(0.2, 3), // a download every five seconds, three in a row
-		exportLimitIP: newLimiter(1, 10),
+		exportLimit:   edge.NewLimiter(0.2, 3), // a download every five seconds, three in a row
+		exportLimitIP: edge.NewLimiter(1, 10),
 		exports:       make(chan struct{}, 2), // the read pool has at least four
 	}
 	s.oauth = newOAuth(d.Config)
