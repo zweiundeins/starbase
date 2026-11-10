@@ -3,7 +3,6 @@
 package web
 
 import (
-	"cmp"
 	"context"
 	"io/fs"
 	"log/slog"
@@ -188,10 +187,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /demo/arrange/{kind}", s.demoArrange) // drag-and-drop demos (demo_arrange.go)
 	mux.HandleFunc("OPTIONS /demo/", demoPreflight)
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte("ok " + cmp.Or(s.cfg.Version, "dev") + "\n"))
-	})
+	mux.Handle("GET /healthz", edge.Health(s.cfg.Version))
 
 	if s.cfg.Dev {
 		s.devRoutes(mux)
@@ -203,7 +199,7 @@ func (s *Server) Handler() http.Handler {
 	h = s.sessions.Handler(h)
 	h = edge.SecurityHeaders{Policy: s.csp, HSTS: s.secure}.Handler(h)
 	h = edge.Compress(h)
+	h = edge.Recover(s.log, h) // around Compress: a panic drops the held body
 	h = s.logRequests(h)
-	h = s.recoverer(h)
 	return h
 }

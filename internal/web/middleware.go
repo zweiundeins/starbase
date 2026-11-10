@@ -98,18 +98,3 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		}
 	})
 }
-
-func (s *Server) recoverer(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if v := recover(); v != nil {
-				if v == http.ErrAbortHandler {
-					panic(v)
-				}
-				s.log.Error("panic", "path", r.URL.Path, "err", v)
-				http.Error(w, "internal error", http.StatusInternalServerError)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
