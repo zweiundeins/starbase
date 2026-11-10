@@ -18,6 +18,8 @@ import (
 	"starbase/internal/app"
 	"starbase/internal/catalog"
 	"starbase/internal/config"
+
+	"github.com/zweiundeins/lith/edge"
 )
 
 // version is set at build time: -ldflags "-X main.version=v0.1.0".
@@ -92,7 +94,7 @@ func run() error {
 	}
 	errc := make(chan error, 1)
 	go func() {
-		log.Info("listening", "addr", cfg.Addr, "metrics", maddr, "url", cfg.BaseURL, "dev", cfg.Dev)
+		log.Info("listening", "addr", cfg.Addr, "metrics", maddr, "url", cfg.BaseURL, "dev", cfg.Dev, "trusted_proxies", edge.TrustedProxies(ln.Addr()))
 		errc <- httpSrv.Serve(ln)
 	}()
 
@@ -122,8 +124,9 @@ func listen(addr string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The proxy runs as another user; the directory's permissions are the gate.
-	if err := os.Chmod(path, 0o666); err != nil {
+	// The proxy connects as a member of the service's group; nobody else may, since
+	// a peer on the socket can name any client in the proxy headers.
+	if err := os.Chmod(path, 0o660); err != nil {
 		ln.Close()
 		return nil, err
 	}

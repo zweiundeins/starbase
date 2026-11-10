@@ -35,6 +35,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The Unix socket is `0660` in a `0750` directory, for the proxy in the service's group: at `0666`, any local user could connect and name any client in the proxy headers, past the rate limits and the stream cap. Startup logs whom the proxy headers are trusted from.
 - `sb-tree` cuts a long label with an ellipsis in a narrow container instead of pushing its rows out of it; the meta stays in view. Markup and JSON alike.
 - `sb-context-menu` sets `position-area: none` with the rest of its anchored position, so a page's own `position-area` no longer moves it off its trigger. Patch 0007, an upstream candidate. Its README also says how to keep the element from showing as an empty box before its module runs.
 - `sb-tree` leaves keys with Alt, Ctrl or Cmd to the browser: Alt+Left on a row went nowhere instead of back.

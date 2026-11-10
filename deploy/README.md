@@ -37,6 +37,7 @@ sudo install -d -o starbase -g starbase -m 750 /var/lib/starbase
 sudo install -D -m 640 -g starbase starbase.env.example /etc/starbase/starbase.env   # then edit BASE_URL
 sudo install -m 644 starbase.service starbase-metrics.socket /etc/systemd/system/ && sudo systemctl daemon-reload
 sudo systemctl enable --now starbase-metrics.socket && sudo systemctl enable starbase
+sudo usermod -aG starbase caddy && sudo systemctl restart caddy   # the socket is 0660, for the group
 sudo install -m 644 starbase.caddy /etc/caddy/sites/
 sudo runuser -u caddy -- env HOME=/var/lib/caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl reload caddy
