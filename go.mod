@@ -13,8 +13,8 @@ require (
 	github.com/starfederation/datastar-go v1.2.2
 	github.com/tdewolff/minify/v2 v2.24.22
 	github.com/yuin/goldmark v1.8.6
-	github.com/zweiundeins/lith v0.5.5
-	github.com/zweiundeins/lith/prom v0.5.5
+	github.com/zweiundeins/lith v0.5.6
+	github.com/zweiundeins/lith/prom v0.5.6
 	go.abhg.dev/goldmark/frontmatter v0.3.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.49.0
