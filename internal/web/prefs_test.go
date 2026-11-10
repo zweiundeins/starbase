@@ -76,6 +76,10 @@ func TestGallerySortDefault(t *testing.T) {
 	if s, _ := gallery(c, "/"); s != "popular" {
 		t.Fatalf("default sort = %s", s)
 	}
+	for _, tab := range []string{"tab12345", "tab99999"} {
+		next, _ := openStream(t, c, ts.URL+"/", tab)
+		until(t, next, `id="app"`)
+	}
 	for body, want := range map[string]int{`{"tabid":"tab12345","sort":"weird"}`: 400, `{"tabid":"tab12345","sort":"newest"}`: 204} {
 		if r := post(t, c, ts.URL+"/cmd/sort", body, "same-origin"); r.StatusCode != want {
 			t.Errorf("sort %s = %d, want %d", body, r.StatusCode, want)

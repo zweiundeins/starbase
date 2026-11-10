@@ -30,6 +30,26 @@ func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd writer.Command
 	}
 }
 
+// streamID names a tab's render stream by its session and its tab, so a
+// command finds only its own session's streams.
+func streamID(sid, tab string) string { return sid + "." + tab }
+
+// tabOpen admits a command that stores state for a tab: 400 for a tab id no
+// page makes, 409 while the tab has no open stream, so that a made-up tab id
+// creates no row. The page reverts on a 409, and its stream, once it
+// connects again, renders the tab's state.
+func (s *Server) tabOpen(w http.ResponseWriter, r *http.Request, tab string) bool {
+	switch {
+	case !tabIDRe.MatchString(tab):
+		w.WriteHeader(http.StatusBadRequest)
+	case !s.hub.HasStream(streamID(edge.SessionID(r.Context()), tab)):
+		w.WriteHeader(http.StatusConflict)
+	default:
+		return true
+	}
+	return false
+}
+
 // browseSignals reads the gallery's signals: the tab and its Browse.
 func browseSignals(r *http.Request) (tabID string, b model.Browse, err error) {
 	var sig struct {
@@ -49,6 +69,9 @@ func (s *Server) cmdBrowse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad signals", http.StatusBadRequest)
 		return
 	}
+	if !s.tabOpen(w, r, tabID) {
+		return
+	}
 	s.send(w, r, commands.SetBrowseFilter{SID: edge.SessionID(r.Context()), TabID: tabID, Browse: b})
 }
 
@@ -57,6 +80,9 @@ func (s *Server) cmdSort(w http.ResponseWriter, r *http.Request) {
 	tabID, b, err := browseSignals(r)
 	if err != nil {
 		http.Error(w, "bad signals", http.StatusBadRequest)
+		return
+	}
+	if !s.tabOpen(w, r, tabID) {
 		return
 	}
 	s.send(w, r, commands.SetGallerySort{SID: edge.SessionID(r.Context()), TabID: tabID, Browse: b})
@@ -123,6 +149,9 @@ func (s *Server) cmdFlight(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := datastar.ReadSignals(r, &p); err != nil {
 		http.Error(w, "bad payload", http.StatusBadRequest)
+		return
+	}
+	if !s.tabOpen(w, r, p.TabID) {
 		return
 	}
 	select {

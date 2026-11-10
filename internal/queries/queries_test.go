@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/zweiundeins/lith/writer"
 
@@ -186,6 +187,40 @@ func TestTabState(t *testing.T) {
 	}
 	if err := e.w.Do(ctx, commands.SetBrowseFilter{SID: "s", TabID: "X"}); err == nil {
 		t.Fatal("bad tab id must be rejected")
+	}
+}
+
+// The sweep forgets tabs untouched for TabTTL and keeps the session's
+// preferences.
+func TestPruneTabs(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	for _, cmd := range []writer.Command{
+		commands.SetGallerySort{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: model.SortNewest}},
+		commands.SetBrowseFilter{SID: "s", TabID: "tab67890", Browse: model.Browse{Q: "hi"}},
+		writer.Func(func(tx *writer.Tx) error {
+			_, err := tx.Exec(`UPDATE tab_state SET updated_at = ? WHERE tab_id = 'tab12345'`, time.Now().Add(-commands.TabTTL-time.Minute).Unix())
+			return err
+		}),
+		commands.PruneTabs{OlderThan: commands.TabTTL},
+	} {
+		if err := e.w.Do(ctx, cmd); err != nil {
+			t.Fatalf("%T: %v", cmd, err)
+		}
+	}
+	var old, fresh bool
+	var prefs model.SessionPrefs
+	e.q.View(ctx, func(r *queries.Reader) (err error) {
+		_, old, _ = r.Tab(ctx, "s", "tab12345")
+		_, fresh, _ = r.Tab(ctx, "s", "tab67890")
+		prefs, err = r.Prefs(ctx, "s")
+		return
+	})
+	if old || !fresh {
+		t.Errorf("after the sweep: stale tab kept %v, fresh tab kept %v", old, fresh)
+	}
+	if prefs.GallerySort != model.SortNewest {
+		t.Errorf("the sweep dropped the session's preferences: %+v", prefs)
 	}
 }
 

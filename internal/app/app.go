@@ -118,7 +118,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		closeAll()
 		return nil, err
 	}
-	w.Send(commands.PruneTabs{OlderThan: 30 * 24 * time.Hour})
+	go sweepTabs(hubCtx, w, log)
 	w.Send(commands.PruneSessionPrefs{OlderThan: 400 * 24 * time.Hour})
 	w.Send(commands.SeedBoard{})
 	w.Send(commands.SeedDemo{})
@@ -139,4 +139,21 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		Checker:  checker,
 	})
 	return &App{Handler: srv.Handler(), Catalog: cat, Writer: w, Hub: hub, close: closeAll}, nil
+}
+
+// sweepTabs forgets the state of tabs untouched for commands.TabTTL, at
+// startup and then every hour, through the writer. Session preferences stay.
+func sweepTabs(ctx context.Context, w *writer.Writer, log *slog.Logger) {
+	t := time.NewTicker(time.Hour)
+	defer t.Stop()
+	for {
+		if err := w.Do(ctx, commands.PruneTabs{OlderThan: commands.TabTTL}); err != nil && ctx.Err() == nil {
+			log.Warn("sweeping tab state", "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
 }

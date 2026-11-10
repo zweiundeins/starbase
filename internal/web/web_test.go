@@ -234,6 +234,16 @@ func TestCommandsRequireSameOrigin(t *testing.T) {
 	if res := post(t, c, ts.URL+"/cmd/browse", body, "cross-site"); res.StatusCode != http.StatusForbidden {
 		t.Errorf("cross-site = %d, want 403", res.StatusCode)
 	}
+	// A tab without an open stream gets 409 and no row.
+	if res := post(t, c, ts.URL+"/cmd/browse", body, "same-origin"); res.StatusCode != http.StatusConflict {
+		t.Errorf("no stream = %d, want 409", res.StatusCode)
+	}
+	next, _ := openStream(t, c, ts.URL+"/", "tab12345")
+	until(t, next, `id="app"`)
+	// Another session doesn't reach this session's tab.
+	if res := post(t, newSession(), ts.URL+"/cmd/browse", body, "same-origin"); res.StatusCode != http.StatusConflict {
+		t.Errorf("another session = %d, want 409", res.StatusCode)
+	}
 	if res := post(t, c, ts.URL+"/cmd/browse", body, "same-origin"); res.StatusCode != http.StatusNoContent {
 		t.Errorf("same-origin = %d, want 204", res.StatusCode)
 	}
@@ -529,6 +539,8 @@ func TestAutoloaderCloak(t *testing.T) {
 func TestSnippetSaveRateLimit(t *testing.T) {
 	ts, c := newServer(t)
 	c.Get(ts.URL + "/playground") // session cookie
+	next, _ := openStream(t, c, ts.URL+"/playground", "tab12345")
+	until(t, next, `id="app"`)
 	body := `{"tabid":"tab12345","files":{"component.js":"rocket('sb-x', {})"}}`
 	codes := map[int]int{}
 	for range 12 {
@@ -752,6 +764,8 @@ func TestSEO(t *testing.T) {
 func TestFlightCommand(t *testing.T) {
 	ts, c := newServer(t)
 	get(t, c, ts.URL+"/showcase") // session cookie
+	next, _ := openStream(t, c, ts.URL+"/showcase", "tab12345")
+	until(t, next, `id="app"`)
 	for _, tc := range []struct {
 		body string
 		want int

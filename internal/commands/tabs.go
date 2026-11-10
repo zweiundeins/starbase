@@ -63,8 +63,12 @@ func (c SetBrowseFilter) Apply(tx *writer.Tx) error {
 	})
 }
 
+// TabTTL is how long a tab's state outlives the tab's last command.
+const TabTTL = 24 * time.Hour
+
 // PruneTabs forgets tab state that has not been touched for a while. It
-// touches no topic: no open page shows it.
+// touches no topic: a page open that long renders its defaults at its next
+// frame.
 type PruneTabs struct{ OlderThan time.Duration }
 
 func (c PruneTabs) Apply(tx *writer.Tx) error {

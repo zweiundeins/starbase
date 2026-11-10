@@ -417,6 +417,9 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
+	if !s.tabOpen(w, r, p.TabID) {
+		return
+	}
 	now := time.Now()
 	if !s.saveLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.saveLimit.Allow(edge.SessionID(r.Context()), 1, now) {
 		w.WriteHeader(http.StatusTooManyRequests)
