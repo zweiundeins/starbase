@@ -146,6 +146,9 @@ func (s Submission) Build(author string, since time.Time) (Result, error) {
 	default:
 		tag = matches[0][1]
 	}
+	if lines := catalog.BoolDefaults(s.Code); len(lines) > 0 {
+		add("Line %d of the component code declares `bool.default(…)`, which Rocket refuses when the component is defined: a bool prop is read by presence, so it is false when the attribute is absent. A flag that is on by default is `oneOf(true, false)`, turned off with `x=\"false\"`.", lines[0])
+	}
 	if strings.TrimSpace(s.Name) == "" {
 		add("Please give the component a name.")
 	}

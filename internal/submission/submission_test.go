@@ -89,6 +89,14 @@ func TestBuildReportsProblems(t *testing.T) {
 	}
 }
 
+func TestBuildRefusesBoolDefaults(t *testing.T) {
+	b := strings.Replace(body, "rocket('sb-orbit-picker', {\n", "rocket('sb-orbit-picker', {\n  props: ({ bool }) => ({ shown: bool.default(true) }),\n", 1)
+	_, err := submission.Parse(b).Build("astroalex", time.Now())
+	if err == nil || !strings.Contains(err.Error(), "Line 3 of the component code declares `bool.default(…)`") {
+		t.Errorf("Build = %v, want the bool.default problem", err)
+	}
+}
+
 func TestPlaygroundYAML(t *testing.T) {
 	b := strings.Replace(body, "### Playground settings\n\n_No response_", "### Playground settings\n\n```yaml\nvalues: {label: Hi}\n```", 1)
 	res, err := submission.Parse(b).Build("astroalex", time.Now())
