@@ -17,17 +17,17 @@ import (
 // instead of being inlined, so a library a component loads on demand (ECharts)
 // is not pulled into every page.
 func (cat *Catalog) Bundle() ([]byte, error) {
-	if b, ok := bundleCache.Load(cat.Hash); ok {
+	if b, ok := bundleCache.Load(cat.content); ok {
 		return b.([]byte), nil
 	}
 	b, err := cat.bundle()
 	if err == nil {
-		bundleCache.Store(cat.Hash, b)
+		bundleCache.Store(cat.content, b)
 	}
 	return b, err
 }
 
-var bundleCache sync.Map // Catalog.Hash → bundle bytes (a process loads the same catalog many times)
+var bundleCache sync.Map // Catalog.content → bundle bytes (a process loads the same catalog many times)
 
 func (cat *Catalog) bundle() ([]byte, error) {
 	var entry strings.Builder

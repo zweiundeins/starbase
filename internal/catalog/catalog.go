@@ -112,7 +112,17 @@ type Catalog struct {
 	FS         fs.FS
 	Components []*Component // sorted by slug
 	bySlug     map[string]*Component
-	Hash       string // hash over snapshotFormat and all component hashes
+	Hash       string // names its snapshot: snapshotFormat, every component's hash and the pinned Datastar build
+	content    string // snapshotFormat and every component's hash: what the bundle is made of
+}
+
+// PinBuild makes the catalog's hash cover the Datastar build its snapshot
+// pins, so a new build gets a new snapshot instead of the one that pins the old.
+func (c *Catalog) PinBuild(datastar []byte) {
+	h := sha256.New()
+	h.Write([]byte(c.content))
+	h.Write([]byte(VersionHash(datastar)))
+	c.Hash = hex.EncodeToString(h.Sum(nil))[:12]
 }
 
 func (c *Catalog) Get(slug string) (*Component, bool) {
@@ -162,7 +172,8 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	for _, c := range cat.Components {
 		h.Write([]byte(c.Hash))
 	}
-	cat.Hash = hex.EncodeToString(h.Sum(nil))[:12]
+	cat.content = hex.EncodeToString(h.Sum(nil))[:12]
+	cat.Hash = cat.content
 	if err := cat.computeSizes(); err != nil {
 		return nil, err
 	}

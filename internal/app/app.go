@@ -84,6 +84,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 	if err != nil {
 		return nil, err
 	}
+	cat.PinBuild(static.Datastar())
 	database, err := db.Open(ctx, cfg.DBPath)
 	if err != nil {
 		return nil, err

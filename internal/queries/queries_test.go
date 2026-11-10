@@ -519,3 +519,41 @@ func TestSetFlight(t *testing.T) {
 		t.Error("defaults")
 	}
 }
+
+// A new Datastar build with the same components makes a new snapshot that pins
+// it; the one that pinned the old build keeps pinning the old build.
+func TestSnapshotPinsItsBuild(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	fsys := component("delta", "sb-delta", "forms", "2026-04-01", "Docking lights")
+	pinned := func(build string) string {
+		cat, err := catalog.Load(fsys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cat.PinBuild([]byte(build))
+		if err := e.w.Do(ctx, commands.SyncCatalog{Catalog: cat, Datastar: []byte(build)}); err != nil {
+			t.Fatal(err)
+		}
+		files, err := e.q.ViewValue(ctx, func(r *queries.Reader) ([]queries.VersionedFile, error) { return r.SnapshotFiles(ctx, cat.Hash) })
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files {
+			if f.Slug == catalog.DatastarSlug {
+				return cat.Hash + " " + f.Hash
+			}
+		}
+		return cat.Hash + " no build"
+	}
+	old, next := pinned("// build 1"), pinned("// build 2")
+	if old == next || strings.HasSuffix(next, " no build") {
+		t.Fatalf("one snapshot for two builds: %s, then %s", old, next)
+	}
+	if want := " " + catalog.VersionHash([]byte("// build 2")); !strings.HasSuffix(next, want) {
+		t.Errorf("the new snapshot pins %s, want the new build%s", next, want)
+	}
+	if again := pinned("// build 1"); again != old {
+		t.Errorf("the first build's snapshot: %s, then %s", old, again)
+	}
+}
