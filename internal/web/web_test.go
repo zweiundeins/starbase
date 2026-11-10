@@ -68,6 +68,12 @@ func startServer(t *testing.T) testServer {
 // startServerWith is startServer on cfg, with its URLs filled in.
 func startServerWith(t *testing.T, cfg config.Config) testServer {
 	t.Helper()
+	return startServerKeeping(t, cfg, 0)
+}
+
+// startServerKeeping is startServerWith with web.Deps.TabKeepalive.
+func startServerKeeping(t *testing.T, cfg config.Config, keepalive time.Duration) testServer {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -100,7 +106,7 @@ func startServerWith(t *testing.T, cfg config.Config) testServer {
 	ts.Start()
 	cfg.BaseURL, cfg.RepoURL = ts.URL, "https://example.com/repo"
 	srv := web.New(ctx, web.Deps{Config: cfg, Log: log, Writer: wr, Hub: hub, Queries: queries.New(d),
-		Catalog: cat, StaticFS: static.FS, Content: content.FS, Checker: tscheck.New(t.TempDir())})
+		Catalog: cat, StaticFS: static.FS, Content: content.FS, Checker: tscheck.New(t.TempDir()), TabKeepalive: keepalive})
 	ts.Config.Handler = srv.Handler()
 	t.Cleanup(func() { cancel(); ts.Close() })
 	jar, _ := cookiejar.New(nil)

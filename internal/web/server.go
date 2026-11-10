@@ -3,6 +3,7 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"io/fs"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/live"
@@ -65,6 +67,8 @@ type Server struct {
 	starsLongest queries.DemoStarLongest // the star catalog's longest values (starLongest), for starsTotal stars
 	starsTotal   int
 
+	tabs openTabs // the tabs with a render stream under way
+
 	capWarn  quietWarn // clients at MaxStreamsPerClient
 	roomWarn quietWarn // the streams' budget full: memory caps the streams
 	fullWarn quietWarn // the hub at MaxStreams, a backstop
@@ -80,6 +84,9 @@ type Deps struct {
 	StaticFS fs.FS
 	Content  fs.FS
 	Checker  *tscheck.Checker // optional: the playground's type check
+	// TabKeepalive is how often the rows of tabs with an open stream are
+	// marked as touched (an hour when zero).
+	TabKeepalive time.Duration
 }
 
 func New(ctx context.Context, d Deps) *Server {
@@ -121,6 +128,7 @@ func New(ctx context.Context, d Deps) *Server {
 	s.oauth = newOAuth(d.Config)
 	s.cache = newRenderCache(s)
 	s.boardRegion = s.newBoardRegion()
+	go s.keepTabs(ctx, cmp.Or(d.TabKeepalive, time.Hour))
 	return s
 }
 

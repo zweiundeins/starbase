@@ -269,7 +269,10 @@ func (s *Server) stream(fn pageFunc, regions []*region) http.HandlerFunc {
 			spec.Views = append(spec.Views, rg.view)
 		}
 		spec.WriteTick = resetWatchdog(fillHoles(tab.Key, regions))
+		k := commands.TabKey{SID: sid, Tab: sig.TabID}
+		s.tabs.add(k)
 		err := s.hub.Serve(w, r, spec)
+		s.tabs.remove(k)
 		switch {
 		case errors.Is(err, live.ErrClientFull):
 			// The hub answered 429, which retry 'error' asks again, as after its 503.

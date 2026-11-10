@@ -13,6 +13,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"starbase/internal/commands"
+	"starbase/internal/config"
 	"starbase/internal/model"
 )
 
@@ -164,5 +165,72 @@ func TestOldSessionIDsStayValid(t *testing.T) {
 		if set, _ := themes(cookie); len(set) != 1 || set[0].Name != "sid" || len(set[0].Value) != 43 {
 			t.Errorf("cookie %q: got %v, want a new 256-bit id", cookie, set)
 		}
+	}
+}
+
+// A tab whose stream is open keeps its row through the sweep; a closed
+// tab's row goes.
+func TestOpenTabsOutliveTheSweep(t *testing.T) {
+	s := startServerKeeping(t, config.Config{}, 50*time.Millisecond)
+	get(t, s.c, s.ts.URL+"/showcase")
+	open, _ := openStream(t, s.c, s.ts.URL+"/showcase", "keepa000")
+	until(t, open, `id="app"`)
+	closed, stop := openStream(t, s.c, s.ts.URL+"/showcase", "keepb000")
+	until(t, closed, `id="app"`)
+	for _, tab := range []string{"keepa000", "keepb000"} {
+		if r := post(t, s.c, s.ts.URL+"/cmd/flight", `{"tabid":"`+tab+`","name":"thrust","value":70}`, "same-origin"); r.StatusCode != http.StatusNoContent {
+			t.Fatalf("%s: flight = %d", tab, r.StatusCode)
+		}
+	}
+	ctx := context.Background()
+	rows := func() (n int) {
+		s.wr.Do(ctx, writer.Func(func(tx *writer.Tx) error {
+			return tx.QueryRow(`SELECT count(*) FROM tab_state WHERE tab_id IN ('keepa000', 'keepb000')`).Scan(&n)
+		}))
+		return n
+	}
+	eventually(t, "both tabs have rows", func() bool { return rows() == 2 })
+	stop()
+	eventually(t, "the closed tab's stream ends", func() bool { return s.hub.Stats().Streams == 1 })
+	old := time.Now().Add(-2 * time.Hour).Unix()
+	if err := s.wr.Do(ctx, writer.Func(func(tx *writer.Tx) error {
+		_, err := tx.Exec(`UPDATE tab_state SET updated_at = ?`, old)
+		return err
+	})); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the open tab's row is touched", func() bool {
+		var at int64
+		s.wr.Do(ctx, writer.Func(func(tx *writer.Tx) error {
+			return tx.QueryRow(`SELECT updated_at FROM tab_state WHERE tab_id = 'keepa000'`).Scan(&at)
+		}))
+		return at > old
+	})
+	// Keeping a tab renders nothing.
+	stable(t, s.hub)
+	renders := s.hub.Stats().Renders
+	time.Sleep(300 * time.Millisecond)
+	if n := s.hub.Stats().Renders - renders; n != 0 {
+		t.Errorf("keeping the open tab rendered %d views", n)
+	}
+	if err := s.wr.Do(ctx, commands.PruneTabs{OlderThan: time.Hour}); err != nil {
+		t.Fatal(err)
+	}
+	var kept []string
+	s.wr.Do(ctx, writer.Func(func(tx *writer.Tx) error {
+		r, err := tx.Query(`SELECT tab_id FROM tab_state WHERE tab_id IN ('keepa000', 'keepb000')`)
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		for r.Next() {
+			var id string
+			r.Scan(&id)
+			kept = append(kept, id)
+		}
+		return r.Err()
+	}))
+	if len(kept) != 1 || kept[0] != "keepa000" {
+		t.Errorf("after the sweep: %v, want the open tab's row alone", kept)
 	}
 }

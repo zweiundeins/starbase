@@ -63,7 +63,25 @@ func (c SetBrowseFilter) Apply(tx *writer.Tx) error {
 	})
 }
 
-// TabTTL is how long a tab's state outlives the tab's last command.
+// TabKey names one tab's row.
+type TabKey struct{ SID, Tab string }
+
+// KeepTabs marks the rows of tabs whose page is open as touched, so the
+// sweep keeps them. It touches no topic: nothing on those pages changes.
+type KeepTabs struct{ Tabs []TabKey }
+
+func (c KeepTabs) Apply(tx *writer.Tx) error {
+	now := time.Now().Unix()
+	for _, k := range c.Tabs {
+		if _, err := tx.Exec(`UPDATE tab_state SET updated_at = ? WHERE sid = ? AND tab_id = ?`, now, k.SID, k.Tab); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TabTTL is how long a tab's state outlives its last command, or its page
+// (KeepTabs).
 const TabTTL = 24 * time.Hour
 
 // PruneTabs forgets tab state that has not been touched for a while. It

@@ -34,7 +34,7 @@ All notable changes to this project are documented here. The format follows
 - Refusals no person reads (rate limits, a busy writer, a full snippet store, the telemetry stream while the server stops, the downloads' cap) answer with their status and no body, as lith's streams do.
 - A download of selected stars runs its `IN` list with `sqlite.Uncached`, so the lists' many texts take no place in the statement cache.
 - The playground's transpiler keeps its answers in a `live.Cache` of 4 MiB, which keeps the ones asked for again, instead of a map of 256 that it emptied when full.
-- A command that stores a tab's state (the gallery's search, category and sort, the Showcase's flight plan, a playground share) answers 409 while the tab has no open render stream, so a made-up tab id creates no row. A render stream's id is its session and its tab. Tab state untouched for a day is swept every hour, instead of after 30 days at startup.
+- A command that stores a tab's state (the gallery's search, category and sort, the Showcase's flight plan, a playground share) answers 409 while the tab has no open render stream, so a made-up tab id creates no row. A render stream's id is its session and its tab. Tab state untouched for a day is swept every hour, instead of after 30 days at startup. A page left open keeps its state: every hour, one command marks the rows of the tabs with an open stream as touched, without rendering anything.
 - The component bundle's budget is 104 kB (brotli), up from 100 kB: the bundle had reached 102.5 kB, and pages would have gone back to the autoloader.
 - No more Windows builds: releases and CI build for Linux and macOS.
 - Dependencies: lith v0.4.1, minify v2.24.22.
