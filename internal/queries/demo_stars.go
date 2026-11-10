@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/zweiundeins/lith/sqlite"
+
 	"starbase/internal/demo"
 )
 
@@ -55,12 +57,31 @@ func (r *Reader) DemoStars(ctx context.Context, sort string, desc bool, offset, 
 	return out, total, rows.Err()
 }
 
+// DemoStarLongest is what the star catalog's widest values are made of: the
+// most characters of each text column, and the range of each number.
+type DemoStarLongest struct {
+	Name, Class, Constellation int
+	Distance, MagnitudeMin     float64
+	MagnitudeMax               float64
+	Planets                    int
+}
+
+// DemoStarLongest scans the catalog for its longest values.
+func (r *Reader) DemoStarLongest(ctx context.Context) (DemoStarLongest, error) {
+	var l DemoStarLongest
+	err := r.tx.QueryRowContext(ctx, `SELECT coalesce(max(length(name)), 0), coalesce(max(length(class)), 0), coalesce(max(length(constellation)), 0),
+		coalesce(max(distance), 0), coalesce(min(magnitude), 0), coalesce(max(magnitude), 0), coalesce(max(planets), 0) FROM demo_stars`).
+		Scan(&l.Name, &l.Class, &l.Constellation, &l.Distance, &l.MagnitudeMin, &l.MagnitudeMax, &l.Planets)
+	return l, err
+}
+
 // EachDemoStar calls fn with every star in the order DemoStars gives them, or
 // only with the stars whose id is in ids, and stops at fn's first error. The
 // rows stream from the cursor: a whole export never sits in memory.
 func (r *Reader) EachDemoStar(ctx context.Context, sort string, desc bool, ids []int, fn func(demo.Star) error) error {
 	where, args := "", make([]any, len(ids))
 	if len(ids) > 0 {
+		ctx = sqlite.Uncached(ctx) // a text per length of the list
 		where = ` WHERE id IN (?` + strings.Repeat(", ?", len(ids)-1) + `)`
 		for i, id := range ids {
 			args[i] = id

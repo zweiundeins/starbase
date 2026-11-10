@@ -32,12 +32,34 @@ func (cat *Catalog) ModuleFiles(c *Component) (map[string][]byte, error) {
 	return out, err
 }
 
+// TypeScriptFiles returns the component's .ts and .d.ts files, keyed by
+// path inside the folder: its source, when it is written in TypeScript, and
+// the modules and declarations that source may import.
+func (cat *Catalog) TypeScriptFiles(c *Component) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	err := fs.WalkDir(cat.FS, c.Slug, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".ts") {
+			return err
+		}
+		b, err := fs.ReadFile(cat.FS, p)
+		out[strings.TrimPrefix(p, c.Slug+"/")] = b
+		return err
+	})
+	return out, err
+}
+
 // Loaded returns the module files a page using c actually loads: its main
 // module and every file reached from it through relative imports (static or
 // dynamic), by name inside the folder. A file only the docs' examples import
 // (autoloader's demo-badge.js) is served and versioned like the others, but
 // not counted in the component's download size.
 func (cat *Catalog) Loaded(c *Component, files map[string][]byte) map[string]bool {
+	return reach(files, strings.TrimPrefix(c.Script, c.Slug+"/"))
+}
+
+// reach returns the files reached from start (by name inside the folder)
+// through relative imports, static or dynamic, start included.
+func reach(files map[string][]byte, start string) map[string]bool {
 	seen := map[string]bool{}
 	var walk func(string)
 	walk = func(name string) {
@@ -55,7 +77,7 @@ func (cat *Catalog) Loaded(c *Component, files map[string][]byte) map[string]boo
 			}
 		}
 	}
-	walk(strings.TrimPrefix(c.Script, c.Slug+"/"))
+	walk(start)
 	return seen
 }
 
@@ -68,16 +90,17 @@ func SRI(b []byte) string {
 
 var usesTagRe = regexp.MustCompile(`<(sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
 
-// AutoloaderJS generates the autoloader: a map from every tag to its module
-// and the components each one renders (found as <sb-… in its source).
-// Module URLs are versioned (<slug>@<hash>/…, immutable) and relative to the
-// autoloader, behind prefix: "" for /c/autoloader.js, "../" for a pinned
-// snapshot at /c/@<catalog hash>/autoloader.js.
+// AutoloaderJS generates the autoloader: a map from every tag to its
+// one-file bundle (onefile.go: one request per component) and the components
+// each one renders (found as <sb-… in its source), whose bundles it loads
+// too. Bundle URLs are versioned (<slug>@<hash>/…, immutable) and relative
+// to the autoloader, behind prefix: "" for /c/autoloader.js, "../" for a
+// pinned snapshot at /c/@<catalog hash>/autoloader.js.
 func AutoloaderJS(cat *Catalog, prefix string) string {
 	modules := map[string]string{}
 	requires := map[string][]string{}
 	for _, c := range cat.Components {
-		modules[c.Tag] = prefix + c.VersionedMinScript() // the minified module (see min.go)
+		modules[c.Tag] = prefix + c.VersionedBundle()
 	}
 	for _, c := range cat.Components {
 		for _, u := range cat.Uses(c) {

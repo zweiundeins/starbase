@@ -155,9 +155,13 @@ func toFloat(v any) (float64, bool) {
 	return 0, false
 }
 
+// SmoothSignal is the key in $_pg of the stage's style switch: true previews
+// the component with data-sb-style="smooth" (--sb-notch: 0 and the other style tokens).
+const SmoothSignal = "smoothStyle"
+
 // Signals is the initial value of $_pg as a JS object literal.
 func (pg *Playground) Signals() string {
-	m := map[string]any{}
+	m := map[string]any{SmoothSignal: false}
 	for _, c := range pg.Controls {
 		m[c.Prop] = c.Initial
 	}

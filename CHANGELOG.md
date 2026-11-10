@@ -8,7 +8,111 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `sb-context-menu`: a trigger, or the element with its context id, checks items with `data-menu-checked="<action> …"` (`aria-checked`, as `menuitemradio` or `menuitemcheckbox` after the item's `data-menu-check`) and leaves items out with `data-menu-hidden="<action> …"`, along with the separators that strands, so one menu shows each trigger its own state. Patch 0150, an upstream candidate.
+- `sb-dropdown` link items: an item with an `href` (in `items`, or `<a slot="item" href>` as markup) renders as `<a role="menuitem" href>` the browser follows, also into a new tab with Ctrl, Cmd or a middle click. It emits no `sb-select`, the menu closes, and the keys, the type-ahead, submenus and `disabled` treat it like any item. A radio group's items never become links.
+- `sb-tree` reads its tree from nested lists inside the element, like `sb-toc`, so it works before JavaScript and crawlers see it. An item with an `<a href>` is a link row: a click, Enter, a middle click and Ctrl or Cmd with a click are the browser's. `aria-current` marks the page (its branches open), `data-icon` copies an icon (an inline SVG) into the row, `data-meta` shows a short text after the label, `data-open` opens a branch, and `data-lazy` asks for the children with `sb-load`, which the server answers by patching a `<ul>` into the `<li>`. A morph of the list keeps the user's open branches and focus; a changed `data-open` wins. The JSON `items` and `loaded` still work, and a list wins over them. The docs' `/demo/data/children` answers `&tree=<id>` with that markup.
+- `sb-tree` keeps the children a lazy item received while a morph sends its `<li>` again with `data-lazy` and no list, so one server-rendered tree can serve every tab: a list from the server replaces them, and an item the server leaves out forgets them. Its README says how this works in a shared view, and how to colour the copied `data-icon`s, which page classes don't reach.
+- `sb-data-table` columns the user resizes: with `resizable`, each header has a grip at its end to drag (the pointer is captured, the tracks follow once a frame) or double-click to fit, and Alt+ArrowRight or Alt+ArrowLeft on a header moves to its separator, where the arrows change the width by 8 px (32 with Shift), Home and End go to the minimum and the fit, and Escape puts the width back. `widths` (`{key: px}`) is view state like `hidden-columns`: a new map from the server wins, the same one keeps the user's, and `sb-column-widths {name, widths}` reports the whole map once per change, never during a drag. Per column, `resizable: false`, `min` and `fit` (the server's width for the whole result; without it the table measures the rows at hand). The column picker gets "Reset column widths". The docs' star catalog (`/demo/data/rows`) sends a `fit` per column from SQLite.
+- `sb-data-table`: a cell whose text is clipped shows all of it while it is pointed at or focused, over its neighbours, and a cell in the last column grows toward the start. The row keeps its height and the list its scroll size, so the virtual scroll's window stays put.
+- `sb-virtual-scroll` keeps the reader's place when items arrive before the window: items with a key (`data-key`, else `id`) keep the one in the top row of the view where it was after a morph, unless the list is at the top and idle, where new items show at the top as before. Without keys nothing changes.
+- `sb-virtual-scroll` is `aria-busy` while a window is on its way, like `:state(loading)`, through its `ElementInternals`, so a morph never strips it.
+- Metrics for Prometheus on a loopback listener of their own (`METRICS_ADDR`, on the host `starbase-metrics.socket` at 127.0.0.1:8198): the writer's, the render loop's and the stream budget's numbers from lith/prom under `starbase_`, so Starbase shows on the host's "lith apps" dashboard. lith v0.4.1.
+
+### Changed
+
+- Starbase's pages send commands as ops, lith's pattern: `sbCommand` (`static/js/commands.js`) gives each an op id in the `Op-Id` header under a key, the command records the newest op of its key in the tab's row, applied or refused (`TabState.Ops`), and every frame renders the acks in `#ops`. A control still pending when its op is acked goes back with `revert()`, so a refusal or a value normalized back to the stored one needs no `rev`; so does one whose request failed, or whose stream connected again without the ack, with `sb-op-failed` for the page's words. Commands answer 204 once committed (`writer.Do`), so the next frame acks them. The Showcase drops `rev` from its call sign.
+- A command that meets 409 (its tab's stream is not open, right after the page loads or while a deploy's reconnect is under way) stays pending and goes out again once the stream connects, the newest per key and at most once per connect (`static/js/commands.js`): the gallery's search, category and sort, the Showcase's flight controls and the playground's Save & share.
+- `sb-pixel-board` keeps a painted pixel pending until `cells` answers it, with its colour or another painter's, instead of dropping it after 3 seconds. `revert()` drops the pixels in flight: the Showcase calls it when a paint fails (the rate limit's 429, or no answer), so a refused stroke goes at once.
+- Pages and docs that revert a control on a failed command also do it on `retries-failed`, which Datastar sends instead of `error` when it gives up on a request that got no answer: the Showcase's flight plan and board, the kanban demo's landing markers, and the command examples in contribute.md and the components' READMEs.
+- A check a person can fail is a refusal the command records in the tab's state, answered 204, instead of a 400: the Showcase's thrust above 90% and a malformed call sign (`SetFlight.Apply`, `FlightPlan.Refusal`), and a playground snippet over 64 KB or a full snippet store (`SaveSnippet.Apply`, `TabState.ShareRefusal`, which also replaces the 507). The page renders the reason, and the control goes back on the op's ack (below). A 400 is left for what no control sends.
+- The playground's Save & share button ends its pending state when the save fails (an error status, or no answer), and says so.
+- lith v0.5.4. Test databases run without fsync (`Synchronous: "OFF"`, only under `testing.Testing()`).
+- The render streams' cap per client is lith's (`Spec.Client`, `Options.MaxStreamsPerClient`, still 24) instead of Starbase's own counter.
+- `/healthz` is lith's `edge.Health` (the same `ok <version>`, now `no-store`), and a panic is caught by `edge.Recover`, which logs its stack and aborts a response that has begun instead of appending an error to it.
+- The rate limits (painting, snippet saves, the playground's size line, type check and transpiler, the star catalog's downloads) are lith's `edge.Limiter`, with the same rates and bursts, and check the client's address before the session, so a client that drops its cookie no longer makes a bucket per request.
+- The server has a `ReadTimeout` of 15 s, so a client that trickles a body no longer holds a connection; the playground's large bodies (512 KiB) and the dev route's (4 MiB) are read through lith's `edge.UploadBody`, which gives a slow but steady upload the time it needs. A body over its cap on those routes gets 413 instead of 400.
+- Refusals no person reads (rate limits, a busy writer, a full snippet store, the telemetry stream while the server stops, the downloads' cap) answer with their status and no body, as lith's streams do.
+- A download of selected stars runs its `IN` list with `sqlite.Uncached`, so the lists' many texts take no place in the statement cache.
+- The playground's transpiler keeps its answers in a `live.Cache` of 4 MiB, which keeps the ones asked for again, instead of a map of 256 that it emptied when full.
+- A command that stores a tab's state (the gallery's search, category and sort, the Showcase's flight plan, a playground share) answers 409 while the tab has no open render stream, so a made-up tab id creates no row. A render stream's id is its session and its tab. Tab state untouched for a day is swept every hour, instead of after 30 days at startup. A page left open keeps its state: every hour, one command marks the rows of the tabs with an open stream as touched, without rendering anything.
+- The component bundle's budget is 104 kB (brotli), up from 100 kB: the bundle had reached 102.5 kB, and pages would have gone back to the autoloader.
+- No more Windows builds: releases and CI build for Linux and macOS.
+- Dependencies: lith v0.4.1, minify v2.24.22.
+- The data table's docs list the server code behind its fit widths again, so its page needs a 512 KiB compression window per tab: 120 MiB of stream memory now holds about 105 of its tabs with zstd and 65 in browsers without zstd (the largest page; smaller pages hold more).
+
+### Fixed
+
+- The Unix socket is `0660` in a `0750` directory, for the proxy in the service's group: at `0666`, any local user could connect and name any client in the proxy headers, past the rate limits and the stream cap. Startup logs whom the proxy headers are trusted from.
+- `sb-tree` cuts a long label with an ellipsis in a narrow container instead of pushing its rows out of it; the meta stays in view. Markup and JSON alike.
+- `sb-context-menu` sets `position-area: none` with the rest of its anchored position, so a page's own `position-area` no longer moves it off its trigger. Patch 0007, an upstream candidate. Its README also says how to keep the element from showing as an empty box before its module runs.
+- `sb-tree` leaves keys with Alt, Ctrl or Cmd to the browser: Alt+Left on a row went nowhere instead of back.
+- `sb-range`'s docs show "<label> start" and "<label> end" as text instead of a stray, empty label.
+- `sb-data-table`'s header lines up with its rows when column widths are in `ch` or `em`: the header row was bold, and those units resolve in each row's own font (1 to 10 px of drift over seven `ch` columns in Pixelify Sans). Header text takes its font through `::part(column)`, never `::part(header)`; the README's styling example now does.
+- `sb-virtual-scroll` puts the focus back on the item with the focused item's key, wherever the window now has it, as soon as the window lands, so a key pressed right after it acts on the right item. An item inserted above the focused one sent the focus to the item that then had its index, also where the morph had kept the right element focused; the index is the fallback once the item is gone.
+- Go 1.27.3, which distrusts compromised intermediate certificates in `crypto/x509` (GO-2026-6809).
+- The docs' demo data (`/demo/data/rows`, `/children` and `/search`) goes out compressed: a data table's window is 8.1 KB instead of 44.9 KB. These answers bypassed lith's stream compression.
+- `sb-select` and `sb-date-picker` fit a column narrower than their input's natural width (about 20 characters) instead of overflowing it, and a long chip in `sb-select` shrinks to the host.
+- `sb-select`'s clear button no longer covers the end of a long label: while it (or the spinner) shows, the text stops before it.
+- Typing into a single searchable `sb-select` that shows its value's label searches only what was typed. After Escape, a pick or a focus that left the label unselected, the typed text was appended to it ("Yuki Tanakamat"), so the search found nothing.
+- The `sb-select` and `sb-date-picker` READMEs say that a removed `value` attribute is ignored and the server clears with `value=""`.
+
+## [0.8.0] - 2026-10-14
+
+The server runs on [lith](https://lith.zweiundeins.gmbh): memory caps the live streams, every stream is compressed, and pages reconnect after a deploy. Every component also ships as one file, `sb-select` fits a toolbar, `sb-select`, `sb-dropdown` and `sb-date-picker` can be restyled to match it, and `--sb-notch: 0` turns every pixel detail smooth. Pages render faster, file storage shrinks to a third, and Go 1.27.2 closes three `net/http` vulnerabilities.
+
+### Added
+
+- `sb-kanban-board` landing markers: with `data-kanban-landing`, a drop the server hasn't confirmed opens a gap at the drop slot with a marker the size of the card, until the card arrives there, the page calls `releaseLanding()` (after a refused move) or `data-kanban-landing-timeout` passes; each end emits `sb-kanban-landing-end {cardId, col, reason}`. Keyboard drops and lane moves get one too. The marker shows what the person did, never a guess at the result, and it costs no more than a drop without one.
+- `sb-select` with `multiple` fits a toolbar: `summary="{count} of {total} sources"` and `max-chips` keep the closed control one line high, and `actions` adds "Select all" ("Select the N matches" while a search filters) and "Clear" rows, each one change.
+- Every component as one file: `/c/<slug>@<hash>/<slug>.bundle.min.js` holds all its modules in one minified module that imports only `datastar` (`sb-kanban-board`: one request instead of twelve in three rounds), frozen and pinned like the other versioned files. The "This component" and "Self-host" install tabs offer it, and `go run ./cmd/dist -out <dir> [slug ...]` writes the same bytes from a checkout.
+- `sb-select`: `:state(open)` while its list is open, and the arrow as `::part(arrow)`, so a page can draw its own, such as a stroked chevron that turns over with `:state(open)` (the README's toolbar example). By default the arrow looks as before.
+- `sb-date-picker`: `:state(open)` while its calendar popover is open.
+- `sb-dropdown`: `:state(open)` while its menu is open, and the caret as `::part(caret)`, so a page can recolour it with `color` or draw its own, such as a stroked chevron that turns over with `:state(open)` (the README's toolbar example). By default the caret looks as before.
+- `--sb-display-case`, a style token for display text in capitals: `uppercase` by default, `none` under `data-sb-style="smooth"`. The capitals of `sb-button`'s `pixel` label, `sb-image-compare`'s tags, `sb-toc`'s label and counter and `sb-gauge`'s label follow it, so the smooth style shows them as written.
+- Component pages: a "smooth style" switch in the Playground previews the component with `data-sb-style="smooth"` on its stage only (no pixel corners, hairline frames, the UI font). `sb-select`'s Playground can tick `loading`.
+
+### Changed
+
+- Pages render the parts that depend only on the catalog and the embedded files once, not on every frame of their render stream: the install snippets' highlighting, the Playground and API sections, the Themes page's CSS and the content pages' Markdown. A frame of a component page allocates about 22 kB instead of 1.4 MB and takes a tenth of the CPU; the Themes page about 15 kB instead of 2.2 MB. The pages are byte for byte the same.
+- The autoloader loads each component as its one-file bundle, one request where it made one per module file (`sb-kanban-board`: 1 instead of 13); snapshots pinned before keep loading what they did. A component's size is its bundle and those of the components it renders, on the gallery cards, its page and the playground's size line (`sb-kanban-board`: 8.8 kB instead of 14.4 kB), with the module files under "As module files"; a library it loads on first use counts, and is marked as such (ECharts' 298.8 kB).
+- The database keeps each distinct body of the published component files once (migration 010, which then vacuums the file), shared by every version that has the same bytes: on the production site 4.9 MB instead of 16.6 MB. Every pinned URL serves the same bytes with the same integrity.
+- The server runs on [lith](https://lith.zweiundeins.gmbh) ([v0.2.0](https://github.com/zweiundeins/lith/releases/tag/v0.2.0)), the Go, SQLite and Datastar runtime built by zwei und eins gmbh: its writer batches the commands, and its render loop renders each changed page at most once every 50 ms, in one read transaction per render worker. Render streams are compressed with zstd where the browser takes it (Brotli otherwise) and hold less memory per open tab. Memory, not a count, caps them: the server keeps as many tabs live as 120 MiB of stream memory holds (about 134 tabs of the data table's page, the largest, 91 in browsers without zstd, and more of a smaller page), every one compressed with a window that holds its whole page, so an update costs little more than what changed, and a tab beyond that shows its page and gets its live updates once another closes, asking again every few seconds. On the Showcase, the pixel board is a view of its own: a paint renders it once for everyone watching and renders no one's page (with 150 tabs open, one person painting took about 0.1 cores instead of 7 to 11), and a viewer joining or leaving sends the others the board with the new count, not their whole page. A page reopens its stream when the connection goes silent without closing (a ping every 5 s, reopened after 15 to 20 s without one), and one address (an IPv6 /64) holds at most 24 open streams, so no one can take them all; a large group behind one shared address (carrier-grade NAT, an office, conference Wi-Fi) can meet that limit, and a page past it gets its live updates once a stream closes.
+
+### Fixed
+
+- The PD rockets components' minified modules also loaded three of their readable modules (`core/drag-state`, `core/keyboard`, `core/visual-outlets`), which then ran twice; `sb-kanban-board` made 14 requests instead of 12.
+- The PD rockets surfaces' move animation measures every item before it animates any, so a move of many cards forces one layout instead of one per card (80 layouts, 113 ms on a 200-card board with the CPU four times slower).
+- The playground's type check is the first process the kernel ends when the service runs out of memory, so a large check can no longer take the site down with it.
+- `sb-gauge` and `sb-sparkline` follow `--sb-notch`: at 0 they draw smoothly at the screen's resolution (the sparkline's line straight from point to point, not stepped) instead of scaling up a pixel raster, and they redraw when it changes.
+- `sb-toast`: its status light follows `--sb-notch`, a dot at 0 like `sb-alert`'s, instead of always notched.
+- `sb-busy` and `sb-button`'s loading spinner follow `--sb-notch` in their motion: at 0 the bar fills, sweeps and shimmers smoothly, and the spinners' blocks are round dots, the lit one fading out to leave a trail instead of blinking.
+- `sb-toggle` and `sb-meter` follow `--sb-notch` in their motion: at 0 the knob slides, the track changes colour and the blocks light up smoothly, instead of in steps.
+- `sb-popover`: its arrow follows `--sb-notch`. At 0 it is a plain triangle instead of a stepped pixel one.
+- `sb-details`: its marker follows `--sb-notch`. At 0 it is a plain triangle that turns smoothly, instead of a stepped one turning in three steps.
+- `sb-tree`: its carets follow `--sb-notch`. At 0 they are plain triangles that turn smoothly, instead of stepped ones turning in two steps.
+- `sb-data-table`: its sort arrow follows `--sb-notch`. At 0 it is a plain triangle instead of a stepped pixel one.
+- `sb-dropdown`: its caret and its submenu arrows follow `--sb-notch`. At 0 they are plain triangles, and the caret turns smoothly instead of in two steps.
+- `sb-date-picker`: its paging arrows follow `--sb-notch`. At 0 they are plain triangles instead of stepped pixel ones.
+- `sb-select`: its arrow and its loading spinner follow `--sb-notch`. At 0 the arrow is a plain triangle and the spinner a ring turning smoothly, instead of the stepped pixel ones.
+- After a deploy, Mission Control and the live examples in the gauge, meter and sparkline docs stood still until the page was reloaded. When the server restarts, it now asks each page to open its streams again, and a stream it ends for another reason stays closed.
+- A page that doesn't exist asked the server for its live updates every few seconds for as long as it stayed open. The server now refuses that request with 204, which the page doesn't repeat.
+
+### Security
+
+- Go 1.27.2, for three fixes in `net/http` and its HTTP/2 code (GO-2026-6612, GO-2026-6613, GO-2026-6617). Starbase calls into all three.
+
+## [0.7.0] - 2026-10-07
+
+Ten new components, seven of them drag-and-drop and editing surfaces from derekr's PD rockets; TypeScript in the playground, with a type check on every run, and components written in TypeScript; and a licence on every component page.
+
+### Added
+
+- Seven surfaces from derekr's [PD rockets](https://github.com/derekr/pd-rockets), under its Beer-Ware licence: `sb-sortable-list`, `sb-drag-group`, `sb-kanban-board`, `sb-sortable-tree`, `sb-context-menu`, `sb-bento-workspace` (experimental) and `sb-inline-edit`. They work over server-rendered markup and emit what the user did (a move, a rename, a menu action) for the server to apply. `go run ./cmd/vendorpd` vendors a release with the fixes in `patches/pd-rockets` applied, each ready to offer upstream, and their docs' demos are answered by the stateless `GET /demo/arrange/{kind}`. `sb-kanban-board` also moves lanes, by a grip, Alt and the arrows, or step buttons (`sb-kanban-lane-move`, with lane ids, so a server can refuse a stale move).
+- Three components that replace zweiundeins.gmbh's Lit components: `sb-image-compare`, two pictures of the same size with a divider the reader drags, taps or moves with the keys, and an optional full screen view; `sb-toc`, a table of contents that marks the section being read, with reading progress and a compact bar for narrow screens; and `sb-typewriter`, text typed behind a blinking cursor, or a cycle of phrases, without moving anything around it.
+- A component can name its licence with `license:` front matter; its page and its JSON-LD show it.
 - TypeScript in the playground: a switch turns `component.js` into `component.ts`, which runs with its types stripped on the server, its errors reported at the lines written. TypeScript, and JavaScript that starts with `// @ts-check`, is checked by TypeScript on the server on every run, against the types of the patched Datastar build, and its problems are underlined in the editor. TypeScript snippets can't be submitted as components yet. The compiler, TypeScript's native port, is embedded in the binary; release archives and the container image carry its licence and notices.
+- Components can be written in TypeScript: `go tool task ts` type-checks `<slug>.ts` strictly, with helper modules and `.d.ts` declarations from its folder, and writes the committed `.js` that the site, the install snippets and the pinned versions serve. `sb-code-editor`, `sb-data-table`, `sb-date-picker`, `sb-dropdown`, `sb-select`, `sb-tree` and `sb-virtual-scroll` are TypeScript now (their modules are the compiler's output, so they get new versions that behave the same), and the playground opens them as TypeScript.
+- A pull request's preview of a component written in TypeScript opens its `.ts` source with the TypeScript switch on, and the type check reads the modules it imports at that commit.
 - `sb-code-editor`: highlights TypeScript (`language="ts"`), and `diagnostics` underlines problems sent by the page or the server, the line under the code shows the one at the caret, and F8 and Shift+F8 move between them. A problem whose word has changed disappears, so an older list doesn't point at the wrong place. `sb-code-playground` hands its own `diagnostics` to its editors, per file.
 
 ### Changed
@@ -19,6 +123,9 @@ All notable changes to this project are documented here. The format follows
 
 - `sb-code-playground`: setting `files` while the console had output threw, and an error thrown while the code loads now shows its line.
 - The playground's size line read "undefined" until the first edit when its modules came from the browser's cache.
+- `sb-pixel-board`: a `palette` bound to a signal (`data-attr`) on an element added after load overflowed the stack. It, `sb-code-editor`, `sb-count-up`, `sb-gauge`, `sb-qr-code` and `sb-relative-time` no longer make such a binding depend on their own state.
+- `sb-tree`: selected rows and the open arrows stay visible in forced colours.
+- The gallery's "live demo" hint sits on the preview's top edge instead of covering the first item of a demo, and screen readers skip it.
 
 ## [0.6.0] - 2026-10-01
 
@@ -296,7 +403,9 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/zweiundeins/starbase/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/zweiundeins/starbase/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/zweiundeins/starbase/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/zweiundeins/starbase/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zweiundeins/starbase/compare/v0.3.0...v0.4.0

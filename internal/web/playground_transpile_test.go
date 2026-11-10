@@ -11,7 +11,7 @@ import (
 
 // The runner's TypeScript: types out, lines mapped, from its opaque origin.
 func TestPlaygroundTranspile(t *testing.T) {
-	ts, c, _, _ := newServerBus(t)
+	ts, c, _, _ := newServerWriter(t)
 	transpile := func(src string) (map[string]any, *http.Response) {
 		t.Helper()
 		req, _ := http.NewRequest(http.MethodPost, ts.URL+"/playground/transpile", strings.NewReader(src))

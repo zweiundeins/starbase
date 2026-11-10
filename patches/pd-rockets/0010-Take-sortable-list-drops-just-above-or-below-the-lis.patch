@@ -1,0 +1,40 @@
+From fcda33ce47a9f7837ea3e74e3da29d925b3210e3 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:04:13 +0000
+Subject: [PATCH 10/11] Take sortable list drops just above or below the list
+
+A drop counted only where the pointer was over the list itself, so in a list
+without padding, a drop just below the last item did nothing, and moving an
+item to the end meant aiming at the lower half of the last one. Up to an
+item's height above the first item or below the last now lands at that end.
+---
+ rocket/sortable-list/client.ts | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/sortable-list/client.ts b/rocket/sortable-list/client.ts
+index ac3c14f..c9e9762 100644
+--- a/rocket/sortable-list/client.ts
++++ b/rocket/sortable-list/client.ts
+@@ -30,9 +30,18 @@ rocket(sortableListContract.tag, {
+     const items = () => [...host.querySelectorAll<HTMLElement>(sortableListContract.selectors.item)].filter(owns);
+     const flip = installFlip({ host, itemSelector: sortableListContract.selectors.item, itemId });
+     const indicator = installTargetIndicator(host);
++    // A drop up to an item's height above or below the list lands at that end, so the list needs no padding there.
++    const nearEnd = (x: number, y: number) => {
++      const all = items();
++      const list = host.getBoundingClientRect();
++      const first = all[0]?.getBoundingClientRect();
++      const last = all.at(-1)?.getBoundingClientRect();
++      if (!first || !last || x < list.left || x > list.right) return false;
++      return (y < first.top && y >= first.top - first.height) || (y >= last.bottom && y < last.bottom + last.height);
++    };
+     const targetAt = (x: number, y: number, sourceId: string) => {
+       const hit = document.elementFromPoint(x, y);
+-      if (!hit || !owns(hit as HTMLElement)) return null;
++      if (!(hit && owns(hit as HTMLElement)) && !nearEnd(x, y)) return null;
+       const candidates = items()
+         .filter((item) => item.dataset.sortableItem !== sourceId)
+         .map((item) => {
+-- 
+2.55.0
+

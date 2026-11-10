@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -17,6 +18,8 @@ import (
 	"starbase/internal/app"
 	"starbase/internal/catalog"
 	"starbase/internal/config"
+
+	"github.com/zweiundeins/lith/edge"
 )
 
 // version is set at build time: -ldflags "-X main.version=v0.1.0".
@@ -44,19 +47,43 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	if _, set := os.LookupEnv("GOMEMLIMIT"); !set {
+		debug.SetMemoryLimit(app.MemoryLimit)
+	}
 	log.Info("starting", "version", version)
 	cfg.Version = version
 	catalog.SourceURL = strings.TrimSuffix(cfg.RepoURL, "/") + "/blob/main/"
-	a, err := app.New(ctx, cfg, log)
+	mln, err := metricsListener(cfg.MetricsAddr)
 	if err != nil {
 		return err
 	}
+	a, err := app.New(ctx, cfg, log)
+	if err != nil {
+		if mln != nil {
+			mln.Close()
+		}
+		return err
+	}
 	defer a.Close()
+
+	// The metrics never go on the public listener.
+	maddr := ""
+	if mln != nil {
+		maddr = mln.Addr().String()
+		msrv := &http.Server{Handler: metrics(a.Writer, a.Hub, log), ReadHeaderTimeout: 5 * time.Second}
+		defer msrv.Close()
+		go func() {
+			if err := msrv.Serve(mln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("metrics", "err", err)
+			}
+		}()
+	}
 
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           a.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second, // bodies; streams and uploads (edge.UploadBody) are unaffected
 		IdleTimeout:       120 * time.Second,
 		// No WriteTimeout: render streams are long-lived.
 	}
@@ -67,7 +94,7 @@ func run() error {
 	}
 	errc := make(chan error, 1)
 	go func() {
-		log.Info("listening", "addr", cfg.Addr, "url", cfg.BaseURL, "dev", cfg.Dev)
+		log.Info("listening", "addr", cfg.Addr, "metrics", maddr, "url", cfg.BaseURL, "dev", cfg.Dev, "trusted_proxies", edge.TrustedProxies(ln.Addr()))
 		errc <- httpSrv.Serve(ln)
 	}()
 
@@ -97,8 +124,9 @@ func listen(addr string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The proxy runs as another user; the directory's permissions are the gate.
-	if err := os.Chmod(path, 0o666); err != nil {
+	// The proxy connects as a member of the service's group; nobody else may, since
+	// a peer on the socket can name any client in the proxy headers.
+	if err := os.Chmod(path, 0o660); err != nil {
 		ln.Close()
 		return nil, err
 	}

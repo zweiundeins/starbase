@@ -1,0 +1,38 @@
+From 37f5e48f1f91ad8f0c6f85e9cffb3e94eb397d92 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:04:32 +0000
+Subject: [PATCH 11/11] Declare the sortable list's move event in its Rocket
+ manifest
+
+Rocket publishes the manifest to tools that list a component's API, and
+without it the list showed no events there.
+---
+ rocket/sortable-list/client.ts | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/rocket/sortable-list/client.ts b/rocket/sortable-list/client.ts
+index c9e9762..d7e132a 100644
+--- a/rocket/sortable-list/client.ts
++++ b/rocket/sortable-list/client.ts
+@@ -12,6 +12,18 @@ import { sortableListContract, type SortableMoveDetail } from "../../contracts/s
+ 
+ rocket(sortableListContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: sortableListContract.events.move,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description:
++          'An item was dropped, or a keyboard move committed. detail: { itemId, before }, where before is the id of the item it now precedes, or "" for the end.',
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     cleanup(markRocketHost(host));
+     const owns = (item: HTMLElement) => ownsRocketElement(host, item);
+-- 
+2.55.0
+

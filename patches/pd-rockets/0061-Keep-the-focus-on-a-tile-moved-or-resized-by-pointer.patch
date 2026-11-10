@@ -1,0 +1,92 @@
+From 6c14e9c759a91a87bf8e591dd34e0c2ce09dd811 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:03:32 +0000
+Subject: [PATCH 61/61] Keep the focus on a tile moved or resized by pointer
+
+Pressing a tile focuses it. When the server's markup reuses tiles by
+position, the focus stayed on whichever tile took the old place, and
+the next keyboard move moved that one. Pointer commits now restore the
+focus the way keyboard commits do, when the tile holds it.
+---
+ rocket/bento/client.ts | 44 +++++++++++++++++++++++++-----------------
+ 1 file changed, 26 insertions(+), 18 deletions(-)
+
+diff --git a/rocket/bento/client.ts b/rocket/bento/client.ts
+index 64d0a04..33b746b 100644
+--- a/rocket/bento/client.ts
++++ b/rocket/bento/client.ts
+@@ -194,6 +194,26 @@ rocket(bentoContract.tag, {
+       if (pendingTimer) clearTimeout(pendingTimer);
+       pendingTimer = setTimeout(clearProjection, 2000);
+     };
++    // A DOM patch that reuses tiles by position would leave the focus on whichever tile takes the old place.
++    const expectFocus = (id: string, target: Target) => {
++      const source = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
++        (candidate) => itemId(candidate) === id,
++      );
++      if (source?.contains(document.activeElement))
++        focus.expect(source, () => {
++          const item = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
++            (candidate) => itemId(candidate) === id,
++          );
++          if (!item || gridFor(item)?.dataset.bentoGrid !== target.gridId) return null;
++          const position = cells(item);
++          return position.col === target.col &&
++            position.row === target.row &&
++            position.width === target.width &&
++            position.height === target.height
++            ? item
++            : null;
++        });
++    };
+     const emitMove = (id: string, target: Target) => {
+       const item = [...host.querySelectorAll<HTMLElement>(itemSelector)].find((candidate) => itemId(candidate) === id);
+       const fromGrid = item && gridFor(item)?.dataset.bentoGrid;
+@@ -245,7 +265,10 @@ rocket(bentoContract.tag, {
+       retainPreviewOnCommit: true,
+       canStart: (event) => !(event.target as HTMLElement).closest(resizeSelector),
+       beforeCommit: (id, rect) => flip.prepare({ itemId: id, rect }),
+-      commit: emitMove,
++      commit: (id, target) => {
++        expectFocus(id, target);
++        emitMove(id, target);
++      },
+     });
+ 
+     let resizing: {
+@@ -318,6 +341,7 @@ rocket(bentoContract.tag, {
+       }
+       resizing = null;
+       host.removeAttribute("data-resize-active");
++      expectFocus(item.dataset.bentoItem ?? "", target);
+       flip.prepare();
+       emitResize(item.dataset.bentoItem ?? "", target);
+     };
+@@ -330,23 +354,7 @@ rocket(bentoContract.tag, {
+       owns,
+       onCancel: () => mark(null),
+       onCommit: ({ id, target, kind }) => {
+-        const source = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
+-          (candidate) => itemId(candidate) === id,
+-        );
+-        if (source)
+-          focus.expect(source, () => {
+-            const item = [...host.querySelectorAll<HTMLElement>(itemSelector)].find(
+-              (candidate) => itemId(candidate) === id,
+-            );
+-            if (!item || gridFor(item)?.dataset.bentoGrid !== target.gridId) return null;
+-            const position = cells(item);
+-            return position.col === target.col &&
+-              position.row === target.row &&
+-              position.width === target.width &&
+-              position.height === target.height
+-              ? item
+-              : null;
+-          });
++        expectFocus(id, target);
+         flip.prepare();
+         if (kind === "move") emitMove(id, target);
+         else emitResize(id, target);
+-- 
+2.55.0
+

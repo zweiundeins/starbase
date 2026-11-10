@@ -1,0 +1,30 @@
+From faab3abd01a7fa02dfddde3eb82f0b2e1b620d72 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 21:20:24 +0000
+Subject: [PATCH] Type the context menu host as the element setup receives
+
+Rocket's setup context hands a plain element; the menu methods exist only
+after installContextMenu runs, so the host is cast there instead.
+---
+ rocket/context-menu/client.ts | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index ca7fce5..cec8a78 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -42,8 +42,9 @@ export function installContextMenu(
+ 
+ rocket(contextMenuContract.tag, {
+   mode: "light",
+-  setup({ host, cleanup }: { host: MenuHost; cleanup: (fn: () => void) => void }) {
+-    installContextMenu(host, cleanup);
++  setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
++    // The menu methods are installed below; Rocket hands setup a plain element.
++    installContextMenu(host as MenuHost, cleanup);
+   },
+ });
+ 
+-- 
+2.55.0
+

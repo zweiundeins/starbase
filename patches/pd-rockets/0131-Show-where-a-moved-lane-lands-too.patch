@@ -1,0 +1,86 @@
+From f2c9f2003dfa8322d5b0a8cd5ada3ace4952a524 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Thu, 8 Oct 2026 07:35:57 +0000
+Subject: [PATCH 131/132] Show where a moved lane lands, too
+
+With data-kanban-landing, a lane move the host hasn't confirmed outlines the place the lane takes until the lanes arrive in that order, the page releases it, or the timeout runs out, like a card's landing.
+---
+ rocket/kanban/client.ts  | 10 +++++++++-
+ rocket/kanban/landing.ts | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 42 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 54ef3f1..6adbb09 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -15,7 +15,7 @@ import {
+   type KanbanLaneMoveDetail,
+   type KanbanMoveDetail,
+ } from "../../contracts/kanban";
+-import { cardLanding, installLandings } from "./landing";
++import { cardLanding, installLandings, laneLanding } from "./landing";
+ import { installLaneMoves, laneBefore } from "./lane-moves";
+ 
+ type Target = { col: number; before: string; lane: HTMLElement };
+@@ -253,6 +253,14 @@ rocket(kanbanContract.tag, {
+           detail: { col: Number(col), before },
+         }),
+       );
++      if (host.hasAttribute(kanbanContract.attributes.landing)) {
++        const prepare = (id: string, at: { left: number; top: number }) => laneFlip.prepare({ itemId: id, rect: at });
++        const origin = rect ?? lane.getBoundingClientRect();
++        landings.add(
++          laneLanding({ lanes, cards, cardsIn }, lane, target, before, origin, prepare, laneFlip),
++          landingTimeout(),
++        );
++      }
+       return true;
+     };
+     const laneMoves = installLaneMoves({ host, lanes, owns, commit: emitLaneMove });
+diff --git a/rocket/kanban/landing.ts b/rocket/kanban/landing.ts
+index d68de01..862a9c1 100644
+--- a/rocket/kanban/landing.ts
++++ b/rocket/kanban/landing.ts
+@@ -267,6 +267,39 @@ export function cardLanding(
+   };
+ }
+ 
++/** The landing of a lane moved into `target`'s place, before lane `before` ("" for the end). */
++export function laneLanding(
++  geometry: Geometry,
++  lane: HTMLElement,
++  target: HTMLElement,
++  before: string,
++  origin: { left: number; top: number },
++  prepare: (col: string, rect: Rect) => void,
++  group: object,
++): LandingSpec {
++  const col = lane.dataset.col ?? "";
++  const targetCol = target.dataset.col ?? "";
++  return {
++    key: `lane:${col}`,
++    detail: { col: Number(col) },
++    marker: landingMarker(null, "lane"),
++    origin,
++    place: () => {
++      const slot = geometry.lanes().find((candidate) => candidate.dataset.col === targetCol);
++      if (!slot?.parentElement) return null;
++      const { left, top, width, height } = slot.getBoundingClientRect();
++      return { rect: { left, top, width, height }, gap: null, clip: slot.parentElement };
++    },
++    arrived: () => {
++      const all = geometry.lanes();
++      const index = all.findIndex((candidate) => candidate.dataset.col === col);
++      return index >= 0 && (all[index + 1]?.dataset.col ?? "") === before;
++    },
++    prepare: (rect) => prepare(col, rect),
++    group,
++  };
++}
++
+ function contentBox(element: HTMLElement): Rect {
+   const rect = element.getBoundingClientRect();
+   const style = getComputedStyle(element);
+-- 
+2.55.0
+

@@ -1,0 +1,63 @@
+From dca28fdec712626c1c68b532d246eec3461ea7fc Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:09:58 +0000
+Subject: [PATCH 55/58] Close the menu when its trigger button is clicked again
+
+A click outside the open menu light dismisses it before the click event, so a second click
+on the trigger found the menu closed and opened it again. Remember at pointerdown that the
+menu was open for that trigger, and close it instead.
+---
+ rocket/context-menu/client.ts | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 530d566..85513d7 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -65,6 +65,7 @@ function setupMenu(
+   let contextId = "";
+   let unpositionRoot: (() => void) | null = null;
+   let pendingContextOpen = 0;
++  let pressedTrigger: HTMLElement | null = null;
+   const levels: Level[] = [];
+   const keyboard = keyboardBindings(host, { ...platformFocusKeys(navigator.platform), ...cancelKeys });
+   const mobile = matchMedia(options.mobileQuery);
+@@ -189,11 +190,18 @@ function setupMenu(
+       if (source.isConnected) openFor(source, point);
+     });
+   };
++  // Light dismiss hides the menu before the click on its trigger arrives, so note at pointerdown that it was open.
++  const onPointerDown = (event: PointerEvent) => {
++    pressedTrigger = trigger && event.target instanceof Node && trigger.contains(event.target) ? trigger : null;
++  };
+   const onTriggerClick = (event: MouseEvent) => {
+     const source = event.target instanceof Element && ownsTrigger(event.target);
++    const again = source === pressedTrigger && event.detail > 0;
++    pressedTrigger = null;
+     if (source && source.matches("button, a")) {
+       event.preventDefault();
+-      openFor(source);
++      if (again) close(true);
++      else openFor(source);
+     }
+   };
+   const onClick = (event: MouseEvent) => {
+@@ -281,6 +289,7 @@ function setupMenu(
+   if (options.captureTriggers) {
+     document.addEventListener("contextmenu", onContextMenu);
+     document.addEventListener("click", onTriggerClick);
++    document.addEventListener("pointerdown", onPointerDown, true);
+   }
+   host.addEventListener("click", onClick);
+   host.addEventListener("mouseover", onHover);
+@@ -295,6 +304,7 @@ function setupMenu(
+     if (options.captureTriggers) {
+       document.removeEventListener("contextmenu", onContextMenu);
+       document.removeEventListener("click", onTriggerClick);
++      document.removeEventListener("pointerdown", onPointerDown, true);
+     }
+     host.removeEventListener("click", onClick);
+     host.removeEventListener("mouseover", onHover);
+-- 
+2.55.0
+

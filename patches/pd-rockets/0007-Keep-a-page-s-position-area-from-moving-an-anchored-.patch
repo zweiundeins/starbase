@@ -1,0 +1,48 @@
+From 0bae3e3e8aae1da3a23c13df938be8c0ce1617fa Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 22:06:27 +0000
+Subject: [PATCH] Keep a page's position-area from moving an anchored menu
+
+With CSS anchor positioning, the menu places itself with insets against its anchor. A page that
+gives its popovers or menus a position-area, for its own anchored overlays, also turned that area
+on for this menu: the insets then applied inside one cell of the area's grid, so the menu landed
+away from its trigger, unless the page set position-area: none on it. The menu now sets
+position-area: none inline with the rest of its position, and restores the previous value when
+it closes, like the other properties it sets.
+---
+ core/popover.ts | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/core/popover.ts b/core/popover.ts
+index 23d2353..0f77846 100644
+--- a/core/popover.ts
++++ b/core/popover.ts
+@@ -40,7 +40,15 @@ export function showPositionedPopover(
+     const point = anchor instanceof HTMLElement ? null : document.createElement("span");
+     const target = point ?? (anchor as HTMLElement);
+     const previousAnchor = target.style.getPropertyValue("anchor-name");
+-    const properties = ["position", "inset", "left", "top", "position-anchor", "position-try-fallbacks"] as const;
++    const properties = [
++      "position",
++      "inset",
++      "left",
++      "top",
++      "position-anchor",
++      "position-area",
++      "position-try-fallbacks",
++    ] as const;
+     const previous = properties.map((property) => popover.style.getPropertyValue(property));
+     if (point && !(anchor instanceof HTMLElement)) {
+       point.setAttribute("aria-hidden", "true");
+@@ -51,6 +59,8 @@ export function showPositionedPopover(
+     popover.style.position = "fixed";
+     popover.style.inset = "auto";
+     popover.style.setProperty("position-anchor", name);
++    // A page's position-area would shift the insets below into one of its cells.
++    popover.style.setProperty("position-area", "none");
+     popover.style.left = side === "beside" ? "calc(anchor(right) + 6px)" : "anchor(left)";
+     popover.style.top =
+       side === "beside" ? "anchor(top)" : side === "point" ? "anchor(bottom)" : "calc(anchor(bottom) + 6px)";
+-- 
+2.55.0
+

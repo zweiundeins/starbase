@@ -93,12 +93,12 @@ The live value is the `value` property, an array. Keep it in a signal with `sb-c
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when the user checks or clears a choice, with the whole array as `value`: one command for the whole decision. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` attribute matches (the order doesn't matter), and `revert()` goes back to the server's value when a command is rejected.
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the user checks or clears a choice, with the whole array as `value`: one command for the whole decision. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` attribute matches (the order doesn't matter), and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`).
 
 ```html
 <sb-checkbox-group name="alerts" confirm value='["hull"]' label="Crew alerts"
   data-on:sb-change="@post('/cmd/alerts', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()">
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()">
   <sb-check value="hull">Hull</sb-check>
   <sb-check value="fuel">Fuel</sb-check>
 </sb-checkbox-group>

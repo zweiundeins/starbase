@@ -22,6 +22,26 @@ func TestDemoDataEndpoints(t *testing.T) {
 	if !strings.Contains(body, `"_tree":[{"id":"milkyway"`) || !strings.Contains(body, `"lazy":true`) {
 		t.Errorf("top level:\n%.300s", body)
 	}
+	// Markup for an sb-tree: the children as a list appended to the parent's
+	// <li>, and the top level as the tree's whole list. Every kind has an icon.
+	_, body = get(t, c, ts.URL+"/demo/data/children?parent=solarsystem&tree=sky")
+	for _, want := range []string{`data: selector #sky li[data-id="solarsystem"]`, "data: mode append", `<li data-id="jupiter" data-lazy><svg data-icon`, `Jupiter <span data-meta>`, "</ul>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("tree markup lacks %q:\n%.600s", want, body)
+		}
+	}
+	_, top := get(t, c, ts.URL+"/demo/data/children?tree=sky")
+	if !strings.Contains(top, "data: selector #sky") || !strings.Contains(top, "data: mode inner") || !strings.Contains(top, `<li data-id="milkyway" data-lazy>`) {
+		t.Errorf("tree markup, top level:\n%.300s", top)
+	}
+	if strings.Contains(body+top, `d=""`) {
+		t.Error("a kind without an icon")
+	}
+	for _, bad := range []string{"tree=a%20b", "tree=sky&parent=a%22%5D"} {
+		if res, _ := get(t, c, ts.URL+"/demo/data/children?"+bad); res.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s: status %d", bad, res.StatusCode)
+		}
+	}
 	// JSON on request.
 	req, _ := http.NewRequest("GET", ts.URL+"/demo/data/search?q=orion", nil)
 	req.Header.Set("Accept", "application/json")
@@ -47,6 +67,22 @@ func TestDemoDataEndpoints(t *testing.T) {
 	res.Body.Close()
 	if !strings.Contains(string(b), "datastar-patch-signals") {
 		t.Errorf("a Datastar request got:\n%.200s", b)
+	}
+	// Patches go out compressed, like every stream: a data-table window is 45 KB raw.
+	for _, path := range []string{"/demo/data/rows?offset=0&count=200", "/demo/data/children?parent=mars", "/demo/data/search?q=orion"} {
+		req, _ = http.NewRequest("GET", ts.URL+path, nil)
+		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Accept-Encoding", "br, gzip")
+		req.Header.Set("Datastar-Request", "true")
+		res, err = c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.Copy(io.Discard, res.Body)
+		res.Body.Close()
+		if res.Header.Get("Content-Encoding") == "" || res.Header.Get("Access-Control-Allow-Origin") != "*" {
+			t.Errorf("%s: Content-Encoding %q, ACAO %q", path, res.Header.Get("Content-Encoding"), res.Header.Get("Access-Control-Allow-Origin"))
+		}
 	}
 	if r, _ := get(t, c, ts.URL+"/demo/data/search?q=a&into=x.y"); r.StatusCode != 400 {
 		t.Errorf("a bad signal name = %d, want 400", r.StatusCode)
@@ -112,6 +148,32 @@ func TestDemoList(t *testing.T) {
 	for _, bad := range []string{"", "1x", "x%22onload%3D%22y"} {
 		if r, _ := get(t, c, ts.URL+"/demo/data/list?id="+bad); r.StatusCode != 400 {
 			t.Errorf("id %q = %d, want 400", bad, r.StatusCode)
+		}
+	}
+}
+
+// TestDemoListEndsItsStream: the list's answer ends its compressed stream in
+// every encoding, so a decoder reads it to the end without an error.
+func TestDemoListEndsItsStream(t *testing.T) {
+	ts, c := newServer(t)
+	for _, enc := range []string{"identity", "gzip", "br", "zstd"} {
+		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/demo/data/list?id=stars&count=200", nil)
+		req.Header.Set("Datastar-Request", "true")
+		req.Header.Set("Accept-Encoding", enc)
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(decoded(t, res))
+		res.Body.Close()
+		if err != nil {
+			t.Errorf("%s: %v", enc, err)
+		}
+		if got := res.Header.Get("Content-Encoding"); got != strings.TrimPrefix(enc, "identity") {
+			t.Errorf("%s: Content-Encoding %q", enc, got)
+		}
+		if n := strings.Count(string(body), `role="listitem"`); !strings.HasPrefix(string(body), "event: datastar-patch-elements\n") || n != 200 {
+			t.Errorf("%s: %d items in\n%.300s", enc, n, body)
 		}
 	}
 }

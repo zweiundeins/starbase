@@ -15,10 +15,10 @@ func TestDemoStars(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	for range 2 { // idempotent, and next to the bodies
-		if err := e.bus.Exec(ctx, commands.SeedStars{}); err != nil {
+		if err := e.w.Do(ctx, commands.SeedStars{}); err != nil {
 			t.Fatal(err)
 		}
-		if err := e.bus.Exec(ctx, commands.SeedDemo{}); err != nil {
+		if err := e.w.Do(ctx, commands.SeedDemo{}); err != nil {
 			t.Fatal(err)
 		}
 	}

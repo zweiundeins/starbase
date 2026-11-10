@@ -1,0 +1,16 @@
+// starbase: its Caddy access log, through the host's caddy_logs pipeline (config.alloy).
+// Installed as /etc/alloy/starbase.alloy by deploy/setup-host.sh.
+
+local.file_match "starbase_access" {
+	path_targets = [
+		{"__path__" = "/var/log/caddy/starbase-access.log", "job" = "caddy", "site" = "starbase"},
+	]
+}
+
+loki.source.file "starbase_access" {
+	targets    = local.file_match.starbase_access.targets
+	forward_to = [loki.process.caddy_logs.receiver]
+	// A newly added log starts at its end: Loki rejects lines older than a week,
+	// and referrer-rollup.py --files covers the history instead.
+	tail_from_end = true
+}

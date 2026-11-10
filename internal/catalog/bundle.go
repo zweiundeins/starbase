@@ -3,7 +3,6 @@ package catalog
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"path"
 	"strings"
 	"sync"
@@ -94,12 +93,7 @@ func (cat *Catalog) fsPlugin() api.Plugin {
 				}
 				return api.OnResolveResult{Path: p, Namespace: "cfs"}, nil
 			})
-			b.OnLoad(api.OnLoadOptions{Filter: `.*`, Namespace: "cfs"}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
-				body, err := fs.ReadFile(cat.FS, args.Path)
-				_, name, _ := strings.Cut(args.Path, "/") // inside the component folder
-				s := string(shrink(name, body))
-				return api.OnLoadResult{Contents: &s, Loader: api.LoaderJS}, err
-			})
+			b.OnLoad(api.OnLoadOptions{Filter: `.*`, Namespace: "cfs"}, cat.loadShrunk)
 		},
 	}
 }

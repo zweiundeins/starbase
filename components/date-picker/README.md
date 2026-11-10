@@ -181,15 +181,15 @@ With `time`, type the date and the time as the field shows them: `14.10.2026, 09
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components).
 
 ```html
 <sb-date-picker name="launch" confirm value="2026-10-14"
   data-on:sb-change="@post('/cmd/launch', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-date-picker>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-date-picker>
 ```
 
-A new `value` from the server always wins, and `value=""` clears it. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).
+A new `value` from the server always wins. A removed `value` attribute changes nothing, by design: morphs also strip attributes that were only reflected, so the picker can't take a missing one for "cleared". To clear, the server sends `value=""`. Markup re-sent with the same `value` leaves the user's pick alone. A range is one command: the server accepts or rejects both ends together, and validates what lies between them (a booked night inside the range, say).
 
 With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), with `time-zone` an instant with the zone's offset (`2026-10-14T09:30+02:00`), and with `mode="range"` both as `{ start, end }`. It is sent once per Apply, Enter in the time row or typed value, never for a day picked in the calendar or a change in the time row. The server may send a zone picker any RFC 3339 instant (`2026-10-14T07:30:00Z`) and gets back the offset form, which parses to the same instant. A new `time` attribute from the server, or with `time` a new `step` or `time-zone`, reads its `value` again in the new format, and that value replaces the local one.
 
@@ -205,9 +205,10 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** the field fills the width it is given, up to `20rem`; set `max-inline-size` on the element to change that. The field is `2.75rem` tall, and each day `2.25rem` square, so the calendar is about `17rem` wide.
 - **Fonts:** the label, the field, the month and the days use your page's font.
-- **Colours:** the field is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder is `--sb-control-placeholder`, the label `--sb-text-2`, the button and the weekdays `--sb-text-muted`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and invalid text a `--sb-danger` edge and message. The calendar is `--sb-surface-raised`; a picked day is `--sb-brand` with `--sb-text-on-brand` text, the days of a range `--sb-brand-subtle`, the day under the pointer `--sb-surface-hover`, and today `--sb-brand-light`. The time fields are drawn like the field, a focused one with a `--sb-brand-light` ring on `--sb-brand-subtle`; Apply is `--sb-brand` (`--sb-brand-hover` under the pointer). Corners are `--sb-control-radius`, and `--sb-notch: 0` rounds the calendar, the days and Apply instead of notching them.
+- **Colours:** the field is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder is `--sb-control-placeholder`, the label `--sb-text-2`, the button and the weekdays `--sb-text-muted`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and invalid text a `--sb-danger` edge and message. The calendar is `--sb-surface-raised`; a picked day is `--sb-brand` with `--sb-text-on-brand` text, the days of a range `--sb-brand-subtle`, the day under the pointer `--sb-surface-hover`, and today `--sb-brand-light`. The time fields are drawn like the field, a focused one with a `--sb-brand-light` ring on `--sb-brand-subtle`; Apply is `--sb-brand` (`--sb-brand-hover` under the pointer). Corners are `--sb-control-radius`, and `--sb-notch: 0` rounds the calendar, the days and Apply instead of notching them, and turns the stepped paging arrows into plain triangles.
 - **Shadow:** `--sb-shadow-overlay` sets the calendar's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Parts:** `label`, `control` (the field's box), `input`, `button` (opens the calendar), `error`, `calendar`, `title` (the month), `nav` (the four paging buttons) and `grid`. Every date is `day`, plus `today`, `selected`, `range`, `start`, `end` or `disabled` as they apply: `::part(day today)`. With `time`: `time` (a line of the time row), `time-label` (the date in front of it), `segment` (the hour, minute, second and day period fields) and `apply`. Your page's `::part()` rules win over the component's own, without `!important`.
+- **States:** `:state(open)` while the calendar popover is open, however it opened or closed (the button, a key, a click outside, the server's `open`), and `:state(pending)` with `confirm`. Both work from the page: `sb-date-picker:state(open)::part(button)`. An `inline` calendar is never `open`.
 
 ```html preview
 <style>

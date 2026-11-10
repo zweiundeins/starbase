@@ -55,7 +55,7 @@ With `clearable`, picking the current value again resets it to 0. Only picking c
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is picked: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is picked: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components).
 
 ## Forms
 

@@ -1,0 +1,44 @@
+From e2e3093b903fa4f10a8a07fbae0ef9bac50089a4 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:10:28 +0000
+Subject: [PATCH 58/58] Declare the context menu's events in its Rocket
+ manifest
+
+Tools that read Rocket manifests listed no events for the menu. Declare both, with their
+details.
+---
+ rocket/context-menu/client.ts | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index ceebfc6..12b693b 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -44,6 +44,24 @@ export function installContextMenu(
+ 
+ rocket(contextMenuContract.tag, {
+   mode: "light",
++  manifest: {
++    events: [
++      {
++        name: contextMenuContract.events.action,
++        kind: "custom-event",
++        bubbles: true,
++        composed: true,
++        description: "An item with data-action was chosen. detail: { action, contextId }.",
++      },
++      {
++        name: contextMenuContract.events.scope,
++        kind: "custom-event",
++        bubbles: true,
++        composed: false,
++        description: "The menu opened (active: true) or closed. detail: { root, active }.",
++      },
++    ],
++  },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     // The menu methods are installed below; Rocket hands setup a plain element.
+     installContextMenu(host as MenuHost, cleanup);
+-- 
+2.55.0
+

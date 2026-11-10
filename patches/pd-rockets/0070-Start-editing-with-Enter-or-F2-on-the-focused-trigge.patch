@@ -1,0 +1,40 @@
+From 75b3afe992ec626abfb8174e312482c3e29296e1 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:09:43 +0000
+Subject: [PATCH 70/73] Start editing with Enter or F2 on the focused trigger
+
+A double press is a pointer gesture only. When the page makes the trigger focusable, Enter and F2 on it now
+request the field as well, so keyboard users have a built-in way in. Enter's default is prevented, so a button
+trigger is not also clicked.
+---
+ rocket/inline-edit/client.ts | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/inline-edit/client.ts b/rocket/inline-edit/client.ts
+index 31b5198..f41ecfa 100644
+--- a/rocket/inline-edit/client.ts
++++ b/rocket/inline-edit/client.ts
+@@ -32,8 +32,19 @@ rocket(inlineEditContract.tag, {
+       emit<InlineEditRequestDetail>(inlineEditContract.events.request, { contextId: contextId() });
+     };
+     const onKeyDown = (event: KeyboardEvent) => {
++      if (event.defaultPrevented || event.isComposing) return;
+       const input = inputFor(event.target);
+-      if (!input || event.defaultPrevented || event.isComposing) return;
++      if (!input) {
++        const onTrigger =
++          event.target instanceof Element &&
++          event.target.matches(inlineEditContract.selectors.trigger) &&
++          host.contains(event.target);
++        if (onTrigger && (event.key === "Enter" || event.key === "F2")) {
++          event.preventDefault();
++          emit<InlineEditRequestDetail>(inlineEditContract.events.request, { contextId: contextId() });
++        }
++        return;
++      }
+       if (event.key === "Enter") {
+         event.preventDefault();
+         input.blur();
+-- 
+2.55.0
+

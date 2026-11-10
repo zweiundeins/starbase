@@ -16,6 +16,7 @@ const styles = /* css */ `
 	--_danger: var(--sb-danger, #F2777A);
 	--_label: var(--sb-text-2, #AEBBDD);
 	--_text: var(--sb-text-1, #F3F4FA);
+	--_notch: var(--sb-notch, 1);
 	display: block;
 	inline-size: 100%;
 	max-inline-size: var(--sb-meter-width, 22rem);
@@ -41,7 +42,7 @@ const styles = /* css */ `
 .bar > * {
 	block-size: var(--sb-meter-height, 12px);
 	background: color-mix(in oklch, var(--_edge) 60%, transparent);
-	transition: 120ms steps(2);
+	transition: 120ms steps(calc(2 + 998 * (1 - var(--_notch)))); /* stepped at notch 1, smooth at 0 */
 	transition-delay: calc(var(--i) * 18ms);
 }
 [part~=lit] { background: var(--_c); box-shadow: inset 0 -3px 0 color-mix(in oklch, var(--_c), black 25%); }

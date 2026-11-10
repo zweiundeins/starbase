@@ -47,7 +47,7 @@ Bind the `checked` property with `data-bind` and the `__prop` and `__event` modi
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 The server's `checked` wins when it sends a new one, even onto a toggle rendered without it; the same markup again leaves the user's switch alone. A removed attribute changes nothing, so send `checked="false"` to switch it off. Write it as `checked`, `checked="true"` or `checked="false"`: `checked="checked"` (like `disabled="disabled"`) reads as false.
 
@@ -61,7 +61,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** `size` (`sm`, `md`, `lg`) sets the switch.
 - **Fonts:** the label uses your page's font, size and colour.
-- **Colours:** the track is `--sb-border-strong` when off and `--sb-brand` when on; the knob is `--sb-toggle-knob` (default `--sb-text-1`, and `--sb-text-on-brand` on the brand track), the focus ring `--sb-brand-light`. `--sb-notch: 0` rounds the switch instead of notching it.
+- **Colours:** the track is `--sb-border-strong` when off and `--sb-brand` when on; the knob is `--sb-toggle-knob` (default `--sb-text-1`, and `--sb-text-on-brand` on the brand track), the focus ring `--sb-brand-light`. `--sb-notch: 0` rounds the switch instead of notching it, and its knob and colour move smoothly instead of in steps.
 - **Parts:** `switch` (the track) and `label`. The knob has no part: colour it with `--sb-toggle-knob`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

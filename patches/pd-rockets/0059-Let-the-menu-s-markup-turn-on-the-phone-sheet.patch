@@ -1,0 +1,29 @@
+From e00cd9080dc4c4d499b1264e172cd641db516a67 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 20:09:52 +0000
+Subject: [PATCH] Let the menu's markup turn on the phone sheet
+
+installContextMenu takes mobileSheet and mobileQuery, but the element calls it without options, so a page could only make pd-context-menu a sheet by overriding its inline position with !important. data-pd-mobile-sheet on the menu now turns the sheet on, and data-pd-mobile-query sets the media query that stands for a phone, (max-width: 650px) without it.
+---
+ rocket/context-menu/client.ts | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 12b693b..546f726 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -64,7 +64,10 @@ rocket(contextMenuContract.tag, {
+   },
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     // The menu methods are installed below; Rocket hands setup a plain element.
+-    installContextMenu(host as MenuHost, cleanup);
++    installContextMenu(host as MenuHost, cleanup, {
++      mobileSheet: host.hasAttribute("data-pd-mobile-sheet"),
++      mobileQuery: host.getAttribute("data-pd-mobile-query") || undefined,
++    });
+   },
+ });
+ 
+-- 
+2.55.0
+

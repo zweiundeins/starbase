@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. An item is {value, label?, description?, icon?, disabled?, danger?}, {\"divider\":true} (\"-\" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. Server data: a new array replaces the whole tree, open or not."
+        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?}, {\"divider\":true} (\"-\" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not."
       }
     },
     {
@@ -111,7 +111,7 @@
     },
     {
       "name": "item",
-      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, or <hr slot=\"item\"> for a divider. A submenu is data-children='[…]' (the same JSON as items). They are read as data; items wins when it is not empty."
+      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, <a slot=\"item\" href=\"/x\">Label</a> for a link, or <hr slot=\"item\"> for a divider. A submenu is data-children='[…]' (the same JSON as items). They are read as data; items wins when it is not empty."
     }
   ],
   "events": [
@@ -120,7 +120,7 @@
       "name": "sb-select",
       "bubbles": true,
       "composed": true,
-      "description": "A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, and an item of a radio group reports sb-change instead."
+      "description": "A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, an item of a radio group reports sb-change instead, and a link reports nothing: the browser follows it."
     },
     {
       "kind": "event",

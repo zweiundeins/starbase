@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -75,9 +76,13 @@ func TestShrinkComponents(t *testing.T) {
 			} else if len(r.docs) > 0 || len(r.manifests) > 0 {
 				t.Errorf("%s/%s: %d docs and %d manifests left", c.Slug, name, len(r.docs), len(r.manifests))
 			}
-			if name == c.Slug+".js" && string(out) == string(src) {
+			if name == c.Slug+".js" && string(out) == string(src) && shrinkableRe.Match(src) {
 				t.Errorf("%s: nothing was shrunk (did the scanner give up?)", c.Slug)
 			}
 		}
 	}
 }
+
+// shrinkableRe finds what shrinking takes out: docs, a manifest, CSS and
+// markup templates. A module without any (sb-sortable-list's) stays as it is.
+var shrinkableRe = regexp.MustCompile(`\.docs\(|manifest:|/\* css \*/|\b(html|svg)` + "`")

@@ -94,8 +94,13 @@ type TabState struct {
 	Browse Browse `json:"browse"`
 	// PlaygroundShare is the id of the snippet this tab saved last.
 	PlaygroundShare string `json:"share,omitempty"`
+	// ShareRefusal says why the tab's last save was refused.
+	ShareRefusal string `json:"shareRefusal,omitempty"`
 	// Flight is the Showcase's commands demo (FlightPlan.OrDefault).
 	Flight FlightPlan `json:"flight,omitempty"`
+	// Ops acks the newest op (the page's Op-Id) of each command key the
+	// tab sent, applied or refused: the page ends its pending state on it.
+	Ops map[string]string `json:"ops,omitempty"`
 }
 
 // FlightPlan is the state behind the Showcase's "Commands and components"
@@ -105,9 +110,8 @@ type FlightPlan struct {
 	Thrust   int    `json:"thrust"`
 	Shields  bool   `json:"shields"`
 	Callsign string `json:"callsign"`
-	// CallsignRev counts the applied call sign commands: sb-input's rev, so
-	// a sign the server normalizes back to the stored one still confirms it.
-	CallsignRev int `json:"callsignRev,omitempty"`
+	// Refusal says why the last command was refused; empty once one applies.
+	Refusal string `json:"refusal,omitempty"`
 }
 
 // OrDefault is the plan, or the starting plan when nothing is stored yet.

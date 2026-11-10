@@ -1,0 +1,4 @@
+# Blackbox probes for starbase, installed as /etc/prometheus/targets/starbase.yml.
+# `module` picks the blackbox module; see the host's /etc/prometheus/blackbox.yml.
+- targets: ['https://starbase.zweiundeins.gmbh/']
+  labels: { service: starbase, module: http_2xx_starbase }

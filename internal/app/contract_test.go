@@ -53,6 +53,7 @@ const cases = [
 	{ tag: 'sb-tree', attrs: { items: '[{"id":"a","label":"A"},{"id":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
 	{ tag: 'sb-data-table', attrs: { selection: 'multiple', columns: '[{"key":"name"}]', rows: '[{"id":"a","name":"A"},{"id":"b","name":"B"}]' }, prop: 'selected', attr: 'selected', local: ['b'], server: '[]', want: [] },
 	{ tag: 'sb-data-table', attrs: { columns: '[{"key":"a"},{"key":"b"},{"key":"c"}]' }, prop: 'hiddenColumns', attr: 'hidden-columns', local: ['b'], server: '[]', want: [] },
+	{ tag: 'sb-data-table', attrs: { resizable: '', columns: '[{"key":"a"},{"key":"b"}]' }, prop: 'widths', attr: 'widths', local: { a: 120 }, server: '{}', want: {} },
 	{ tag: 'sb-dropdown', attrs: { type: 'radio', items: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, attr: 'value', local: 'b', server: '', want: '' },
 	{ tag: 'sb-tabs', prop: 'selected', attr: 'selected', local: 2, server: '0', want: 0 },
 	{ tag: 'sb-details', prop: 'open', attr: 'open', local: true, server: 'false', want: false },
@@ -88,6 +89,27 @@ for (const c of cases) {
 		row('the same word again after a removal counts', c.want)
 	} catch (e) {
 		rows.push({ tag: c.tag, error: String(e) })
+	}
+	el?.remove()
+}
+// rev: a new one makes the server's value win even when it is unchanged.
+for (const c of [{ tag: 'sb-input', server: 'STARBASE-1', local: 'no spaces', want: 'STARBASE-1' }]) {
+	const row = (step, want) => rows.push({ tag: c.tag + ' rev', step, got: JSON.stringify(el.value), want: JSON.stringify(want) })
+	let el
+	try {
+		await customElements.whenDefined(c.tag)
+		el = document.createElement(c.tag)
+		for (const [k, v] of Object.entries({ confirm: '', value: c.server, rev: '1' })) el.setAttribute(k, v)
+		box.append(el)
+		await settle()
+		el.value = c.local
+		await settle()
+		row('a local edit', c.local)
+		el.setAttribute('rev', '2')
+		await settle()
+		row('a new rev with the value unchanged wins', c.want)
+	} catch (e) {
+		rows.push({ tag: c.tag + ' rev', error: String(e) })
 	}
 	el?.remove()
 }

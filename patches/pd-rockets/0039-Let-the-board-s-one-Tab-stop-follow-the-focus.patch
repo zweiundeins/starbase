@@ -1,0 +1,64 @@
+From 50d3db1a55bee0830b93fec6b05097c887bd4261 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 20:02:13 +0000
+Subject: [PATCH] Let the board's one Tab stop follow the focus
+
+A page that renders one card with tabindex="0" and the others with tabindex="-1" makes the board one Tab stop, but the stop stayed on that card: once the arrows had moved the focus on, Shift+Tab went back to it instead of leaving the board. The stop now follows the focus to any card or empty lane, and Tab sets it again before the browser moves on, since a morph puts back the tabindex the server rendered. A board whose cards all take Tab is unchanged.
+---
+ rocket/kanban/client.ts | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index e774413..66254ca 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -128,6 +128,19 @@ rocket(kanbanContract.tag, {
+       stop.focus();
+       if (isCard(stop)) emitSelect(stop);
+     };
++    // Cards the page renders with tabindex="-1" make the board one Tab stop that follows the focus. Tab sets it again
++    // before the browser moves on, since a morph puts back the tabindex the server rendered.
++    const rove = (target: EventTarget | null): void => {
++      if (!(target instanceof HTMLElement) || !owns(target)) return;
++      const card = target.closest<HTMLElement>(kanbanContract.selectors.card);
++      const stop =
++        card && owns(card) ? card : target.matches(kanbanContract.selectors.lane) && emptyStop(target) ? target : null;
++      if (!stop || !cards().some((other) => other.getAttribute("tabindex") === "-1")) return;
++      for (const other of [...cards(), ...lanes()])
++        if (other !== stop && other.getAttribute("tabindex") === "0") other.setAttribute("tabindex", "-1");
++      if (stop.getAttribute("tabindex") !== "0") stop.setAttribute("tabindex", "0");
++    };
++    const onFocusIn = (event: FocusEvent) => rove(event.target);
+     const onPointerDown = (event: PointerEvent) => {
+       const target = event.target;
+       if (event.button !== 0 || !(target instanceof HTMLElement) || !owns(target)) return;
+@@ -251,6 +264,10 @@ rocket(kanbanContract.tag, {
+       laneMoves.mark(lane, target);
+     };
+     const onKeyDown = (event: KeyboardEvent) => {
++      if (event.key === "Tab") {
++        rove(event.target);
++        return;
++      }
+       const grip =
+         event.target instanceof HTMLElement && !event.defaultPrevented && !event.isComposing
+           ? event.target.closest<HTMLElement>(kanbanContract.selectors.laneGrip)
+@@ -346,6 +363,7 @@ rocket(kanbanContract.tag, {
+     };
+     host.addEventListener("keydown", onKeyDown);
+     host.addEventListener("pointerdown", onPointerDown);
++    host.addEventListener("focusin", onFocusIn);
+     cleanup(() => {
+       staging.dispose();
+       focus.dispose();
+@@ -356,6 +374,7 @@ rocket(kanbanContract.tag, {
+       laneFlip.dispose();
+       host.removeEventListener("keydown", onKeyDown);
+       host.removeEventListener("pointerdown", onPointerDown);
++      host.removeEventListener("focusin", onFocusIn);
+       clearMarks();
+       clearDragging();
+     });
+-- 
+2.55.0
+

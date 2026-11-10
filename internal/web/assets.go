@@ -1,22 +1,21 @@
 package web
 
 import (
-	"path"
-
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/tdewolff/minify/v2"
-	mincss "github.com/tdewolff/minify/v2/css"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"path"
 	"regexp"
-	"starbase/internal/precompress"
 	"strconv"
 	"strings"
 
 	"github.com/benbjohnson/hashfs"
+	"github.com/tdewolff/minify/v2"
+	mincss "github.com/tdewolff/minify/v2/css"
+	"github.com/zweiundeins/lith/edge"
 
 	"starbase/internal/catalog"
 	"starbase/internal/pixelart"
@@ -27,6 +26,7 @@ import (
 type assets struct {
 	static      *hashfs.FS
 	art         map[string]generated
+	artSVG      map[string]string // the same as strings, for inlining without a copy
 	catalog     *catalog.Catalog
 	components  generated            // /c/index.js: imports every component module
 	bundle      generated            // /c/bundle.js: every component in one file
@@ -50,9 +50,10 @@ func hashOf(b []byte) string {
 }
 
 func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
-	a := &assets{static: hashfs.NewFS(staticFS), art: map[string]generated{}, catalog: cat, dev: dev}
+	a := &assets{static: hashfs.NewFS(staticFS), art: map[string]generated{}, artSVG: map[string]string{}, catalog: cat, dev: dev}
 	for name, svg := range pixelart.All() {
 		a.art[name] = generated{body: []byte(svg), hash: hashOf([]byte(svg))}
+		a.artSVG[name] = svg
 	}
 	var js strings.Builder
 	// The readable modules: the manifest publisher needs their .docs() and
@@ -64,7 +65,7 @@ func newAssets(staticFS fs.FS, cat *catalog.Catalog, dev bool) *assets {
 	a.components = generated{body: []byte(js.String()), hash: hashOf([]byte(js.String()))}
 	if b, err := cat.Bundle(); err == nil {
 		a.bundle = generated{body: b, hash: hashOf(b)}
-		br, _ := precompress.Get(b)
+		br, _ := edge.Precompress(b)
 		a.bundleFits = len(br) <= bundleBudget
 		if !a.bundleFits {
 			slog.Warn("component bundle over budget: pages load the autoloader", "brotli", len(br), "budget", bundleBudget)
@@ -160,13 +161,13 @@ func (a *assets) serveBundle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // the runner's opaque origin loads it
 	a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
-	precompress.Write(w, r, g.body)
+	edge.ServePrecompressed(w, r, g.body)
 }
 
 func (a *assets) serveAutoTheme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	a.cacheHeader(w, r.URL.Query().Get("v") == a.autoTheme.hash)
-	precompress.Write(w, r, a.autoTheme.body)
+	edge.ServePrecompressed(w, r, a.autoTheme.body)
 }
 
 func (a *assets) Static(name string) string { return "/static/" + a.static.HashName(name) }
@@ -180,9 +181,9 @@ func (a *assets) Bundle() string { return "/c/bundle.js?v=" + a.bundle.hash }
 // go back to the autoloader. Measured on production (slow 4G, cold cache):
 // at 66 kB the bundle makes a visit that includes the homepage 250-450 ms
 // faster, and costs a visitor who lands on one component page about 265 ms;
-// that cost grows with the bundle, the autoloader's doesn't. 100 kB keeps it
-// under about 400 ms.
-const bundleBudget = 100 << 10
+// that cost grows with the bundle, the autoloader's doesn't. 104 kB keeps it
+// at about 400 ms.
+const bundleBudget = 104 << 10
 
 // useBundle reports whether a page loads the one-file bundle (the default
 // while it fits the budget) or the autoloader. ?load=auto and ?load=bundle
@@ -201,7 +202,7 @@ func (a *assets) useBundle(r *http.Request) bool {
 // the dev manifest publisher needs them all, with their docs.
 func (a *assets) AllComponents() string { return "/c/index.js?v=" + a.components.hash }
 
-func (a *assets) ArtSVG(name string) string { return string(a.art[name].body) }
+func (a *assets) ArtSVG(name string) string { return a.artSVG[name] }
 
 var svgSizeRe = regexp.MustCompile(`<svg[^>]* width="(\d+)" height="(\d+)"`)
 
@@ -217,10 +218,10 @@ func (a *assets) Art(name string) string {
 	return "/art/" + name + ".svg?v=" + a.art[name].hash
 }
 
-// ComponentScript is the component's versioned (immutable) module URL, the
-// minified one: what the site itself loads.
+// ComponentScript is the component's versioned (immutable) one-file
+// bundle: what the playground's previews load for the components they use.
 func (a *assets) ComponentScript(c *catalog.Component) string {
-	return "/c/" + c.VersionedMinScript()
+	return "/c/" + c.VersionedBundle()
 }
 
 const immutable = "public, max-age=31536000, immutable"
@@ -255,7 +256,7 @@ func (a *assets) serveStatic() http.Handler {
 		if ctype, ok := precompressedTypes[path.Ext(name)]; ok && fs.ValidPath(name) {
 			if body, err := fs.ReadFile(a.static, name); err == nil {
 				w.Header().Set("Content-Type", ctype)
-				precompress.Write(w, r, body)
+				edge.ServePrecompressed(w, r, body)
 				return
 			}
 		}
@@ -301,7 +302,7 @@ func (a *assets) serveArt(w http.ResponseWriter, r *http.Request) {
 	if !a.dev && r.URL.Query().Get("v") == "" {
 		w.Header().Set("Cache-Control", "public, max-age=86400") // e.g. linked from docs; art rarely changes
 	}
-	precompress.Write(w, r, g.body)
+	edge.ServePrecompressed(w, r, g.body)
 }
 
 // serveComponents serves /c/index.js and /c/<slug>/<file>.js from the
@@ -312,7 +313,7 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*") // usable from any site
 		a.cacheHeader(w, r.URL.Query().Get("v") == g.hash)
-		precompress.Write(w, r, g.body)
+		edge.ServePrecompressed(w, r, g.body)
 		return
 	}
 	// A component's own .js and .mjs files are public (its module, plus
@@ -339,7 +340,7 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // installable from other sites and the sandbox
 	a.cacheHeader(w, r.URL.Query().Get("v") == c.Hash)
-	precompress.Write(w, r, b)
+	edge.ServePrecompressed(w, r, b)
 }
 
 // warm precompresses the generated and static text assets in the
@@ -349,20 +350,20 @@ func (a *assets) serveComponents(w http.ResponseWriter, r *http.Request) {
 func (a *assets) warm() {
 	for _, g := range []generated{a.components, a.autoloader, a.bundle, a.autoTheme} {
 		if g.body != nil {
-			precompress.Get(g.body)
+			edge.Precompress(g.body)
 		}
 	}
 	for _, g := range a.bundles {
-		precompress.Get(g.body)
+		edge.Precompress(g.body)
 	}
 	for _, g := range a.art {
-		precompress.Get(g.body)
+		edge.Precompress(g.body)
 	}
 	fs.WalkDir(a.static, ".", func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
 			if _, ok := precompressedTypes[path.Ext(p)]; ok {
 				if b, err := fs.ReadFile(a.static, p); err == nil {
-					precompress.Get(b)
+					edge.Precompress(b)
 				}
 			}
 		}

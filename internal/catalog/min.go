@@ -15,8 +15,9 @@ import (
 // "view source" show the real code); the autoloader and the site load .min.
 //
 // Minified bytes depend on the esbuild version, and versioned URLs are
-// immutable, so a version's .min files are frozen the first time they are
-// stored (SyncCatalog, component_files) and served from there afterwards.
+// immutable, so a version's .min files (and its one-file bundle) are frozen
+// the first time they are stored (SyncCatalog, component_files) and served
+// from there afterwards.
 
 // MinPath is the minified sibling of a module file: "x.js" → "x.min.js".
 func MinPath(p string) string {
@@ -47,7 +48,7 @@ func (c *Component) VersionedMinScript() string {
 var minCache sync.Map // Component.Hash → map[string][]byte (min path → bytes)
 
 // MinFiles returns the component's minified module files, keyed by their
-// .min path inside the folder.
+// .min path inside the folder, and its one-file bundle (onefile.go).
 func (cat *Catalog) MinFiles(c *Component) (map[string][]byte, error) {
 	if m, ok := minCache.Load(c.Hash); ok {
 		return m.(map[string][]byte), nil
@@ -72,6 +73,11 @@ func (cat *Catalog) MinFiles(c *Component) (map[string][]byte, error) {
 		}
 		out[MinPath(p)] = rewriteImports(b, p, files)
 	}
+	bundle, err := cat.BundleOf(c)
+	if err != nil {
+		return nil, err
+	}
+	out[BundleName(c.Slug)] = bundle.Body
 	minCache.Store(c.Hash, out)
 	return out, nil
 }
@@ -79,12 +85,15 @@ func (cat *Catalog) MinFiles(c *Component) (map[string][]byte, error) {
 // minify shrinks (shrink.go) and minifies one module file; name is its path
 // inside the component folder.
 func minify(name string, src []byte) ([]byte, error) {
-	loader := api.LoaderJS
-	if strings.HasSuffix(name, ".ts") {
-		loader = api.LoaderTS
+	if strings.HasSuffix(name, ".ts") { // shrink reads JavaScript
+		t, err := Transpile(string(src))
+		if err != nil {
+			return nil, fmt.Errorf("esbuild: %w", err)
+		}
+		name, src = strings.TrimSuffix(name, ".ts")+".js", []byte(t.Code)
 	}
 	res := api.Transform(string(shrink(name, src)), api.TransformOptions{
-		Loader:            loader,
+		Loader:            api.LoaderJS,
 		Format:            api.FormatESModule,
 		Target:            api.ESNext, // minify only; never lower the syntax
 		MinifyWhitespace:  true,

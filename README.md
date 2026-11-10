@@ -13,17 +13,17 @@ Go · templ · SQLite · Datastar + Rocket · CQRS · plain modern CSS. No Node,
 
 ## Features
 
-- **41 components** (forms, navigation, feedback, layout, media, data, utilities, and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**.
+- **51 components** (forms, navigation, feedback, layout, media, data, utilities, drag-and-drop surfaces from derekr's [PD rockets](https://github.com/derekr/pd-rockets), and a multiplayer pixel board), each with live demos, API tables generated from its Rocket manifest, and an auto-generated props **Playground**. The seven from PD rockets keep its Beer-Ware licence; everything else is MIT.
 - **Code playground:** edit a component's JS (or TypeScript) and HTML in a sandboxed live preview, type-check it against Datastar's types, save and share immutable links, submit the result as a component.
 - **Submissions without tools:** a GitHub issue form (paste code, link a repo or a playground link); a bot validates it and opens a pull request.
 - **Autoloader:** one `<script>` loads each `<sb-*>` component on first use, on any site.
 - **Showcase:** a live Mission Control dashboard and a multiplayer pixel board, both server-driven.
-- **Realtime everything:** every tab keeps one Brotli-compressed SSE render stream; state changes are CQRS commands.
+- **Realtime everything:** every tab keeps one compressed SSE render stream (zstd or Brotli); state changes are CQRS commands.
 - Themes, pixel-art design system, zero Node, single static binary with embedded assets and SQLite.
 
 ## Run a release
 
-Binaries for Linux, macOS and Windows are on the [releases page](https://github.com/zweiundeins/starbase/releases), and a multi-arch image on GHCR:
+Binaries for Linux and macOS are on the [releases page](https://github.com/zweiundeins/starbase/releases), and a multi-arch image on GHCR:
 
 ```sh
 docker run -p 7331:7331 -v starbase-data:/data ghcr.io/zweiundeins/starbase:latest
@@ -57,7 +57,7 @@ Without GitHub credentials, dev builds sign you in as a fake user at `/auth/dev?
 
 To avoid a flash of undefined elements, add `class="sb-cloak"` to `<html>` and `.sb-cloak :not(:defined) { visibility: hidden }` to your CSS. The autoloader removes the class once the components present at startup are defined, or after 3 seconds at most. It also exports `ready`, a promise for the same moment.
 
-The autoloader (generated from the catalog) imports each `<sb-*>` component the first time its tag appears. It also watches for tags added later, and loads the components a component renders itself. For shadow roots of your own components, call `discover(shadowRoot)`, which it exports.
+The autoloader (generated from the catalog) imports each `<sb-*>` component the first time its tag appears, as one file (its bundle, see below). It also watches for tags added later, and loads the components a component renders itself. For shadow roots of your own components, call `discover(shadowRoot)`, which it exports.
 
 ### Pinning, for production
 
@@ -76,13 +76,26 @@ Every component page's Installation section has this snippet with the current ca
 | URL | |
 |---|---|
 | `/c/<slug>@<hash>/<file>.js` | one version of a component's file (its module and vendored files) |
-| `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions |
+| `/c/<slug>@<hash>/<slug>.bundle.min.js` | one version of a component as one file (see below) |
+| `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions (their bundles; a snapshot from before the bundles keeps loading the module files) |
 | `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load, Datastar's included |
 | `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.5 release with Starbase's patches (`patches/rocket`) |
 
 The components run on the official v1.0.4 release, but not on the official v1.0.5: it reads every boolean attribute that is present as true, `checked="false"` too, and refuses a boolean prop's default. The patches and the reasons for them are in `patches/rocket/README.md`.
 
-With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`.
+With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`, then the bodies no row refers to any more: `DELETE FROM file_bodies WHERE integrity NOT IN (SELECT integrity FROM component_files)` (each distinct body is stored once, shared by the versions that have it).
+
+### One file per component
+
+A component's modules also come as one minified module, `/c/<slug>@<hash>/<slug>.bundle.min.js`, which is what the autoloader loads and what a component's size counts. The browser fetches a component's module files in as many rounds as its imports are deep: `sb-kanban-board` has thirteen, in three rounds. Its bundle is one request. A bundle imports `datastar` from your import map and nothing else, except a library the component loads on first use, which stays a file next to it (`vendor/prism.min.js` for `sb-code-editor`). A component that renders another (`sb-code-playground` renders `sb-code-editor`) loads that one's bundle too. The "This component" and "Self-host" tabs of a component page have the snippet, with integrity hashes.
+
+To vendor the same files from a checkout of this repository:
+
+```sh
+go run ./cmd/dist -out js kanban-board modal   # or: go tool task dist -- -out js kanban-board modal
+```
+
+This writes `js/kanban-board.js`, `js/modal.js`, the components they render and the files they load on first use, and prints each file's integrity. Each `<slug>.js` is byte for byte the bundle the site serves for that version; its first line names it, for example `/*! sb-kanban-board, version kanban-board@<hash>: its modules in one file */`.
 
 ## Adding a component
 
@@ -94,7 +107,7 @@ With integrity in place, a changed file is refused instead of run. The autoloade
 go tool task new -- my-widget --category forms --author your-handle
 ```
 
-This creates `components/my-widget/README.md` (front matter + docs, where ```` ```html preview ```` blocks become live demos) and `my-widget.js` (the `rocket('sb-my-widget', …)` definition). Open `/components/my-widget` in the dev server. The page publishes Rocket's manifest and the server writes `manifest.json`, which drives the API tables. No Go changes are needed. See [/contribute](content/contribute.md) for the house rules.
+This creates `components/my-widget/README.md` (front matter + docs, where ```` ```html preview ```` blocks become live demos) and `my-widget.js` (the `rocket('sb-my-widget', …)` definition). To write it in TypeScript, rename that to `my-widget.ts` and run `go tool task ts`, which type-checks it strictly, with any helper `.ts` modules and `.d.ts` declarations in its folder, and writes the `.js` the site serves next to each module (commit both). Open `/components/my-widget` in the dev server. The page publishes Rocket's manifest and the server writes `manifest.json`, which drives the API tables. No Go changes are needed. See [/contribute](content/contribute.md) for the house rules.
 
 Every component page also gets a **Playground**, generated from the manifest: number props become sliders, booleans toggles, `oneOf` selects and strings inputs. Each control is bound to a local signal that drives the live element through `data-attr`. Tune it in the README front matter:
 
@@ -110,24 +123,25 @@ playground:
 
 ## Architecture
 
-CQRS in the style of [hyperlith](https://github.com/andersmurphy/hyperlith):
+CQRS in the style of [hyperlith](https://github.com/andersmurphy/hyperlith), on lith, the runtime of our Go and SQLite apps:
 
 ```
 GET  /page           full server render (SEO), then data-init opens ↓
-POST /page           the tab's render stream (SSE, Brotli): render → wait for hub → render …
+POST /page           the tab's render stream (SSE, zstd or Brotli): the tab's view, rendered again
+                     in the next tick (at most one per 50 ms) after a commit touches it
 POST /cmd/...        commands: validate → enqueue → 204. Never HTML.
                      single writer: drain queue → one transaction (savepoint per command)
-                     → commit → wake affected streams (per session, or all)
+                     → commit → mark the views of the topics it touched (a tab, a session, the board, or all)
 ```
 
-- **Write side:** `internal/cqrs` (Bus and Hub) and `internal/commands` (one struct per state change).
-- **Read side:** `internal/queries` runs every render inside one read transaction.
+- **Write side:** `internal/commands` (one struct per state change), applied by lith's writer.
+- **Read side:** `internal/queries` runs every render inside one read transaction: a document's own, or a render worker's, which all the pages it renders in a tick share.
 - **Views:** `internal/ui` holds templ components, pure functions of the read model. The same function serves the GET and every stream frame. Datastar morphs `#app`.
 - **Per-tab UI state** (filters, sort, preview theme) is stored in SQLite, in `tab_state`. The stream keeps the URL in sync.
 - **Catalog:** `components/` is embedded. At startup `SyncCatalog` mirrors it into SQLite (FTS5 for search).
 - **Design system:** `static/css`. Primitive `--sb-*` tokens feed semantic tokens, which feed components. Layers, container queries, nesting and OKLCH. Themes remap the semantic tokens only.
 - **Pixel art** is generated in Go (`internal/pixelart`) and served as cached SVG.
-- **Multiplayer pixel board** (Showcase): `sb-pixel-board` is driven by one server-owned attribute (`cells`, a hex digit per pixel) re-rendered in every stream frame. Painting is the `PaintPixels` command (`POST /cmd/paint`, rate-limited per session). The hub counts viewers per page ("N watching").
+- **Multiplayer pixel board** (Showcase): `sb-pixel-board` is driven by one server-owned attribute (`cells`, a hex digit per pixel), which the board's own view renders once for every viewer. Painting is the `PaintPixels` command (`POST /cmd/paint`, rate-limited per session); it touches only the board, so no one's page renders. The board's view also counts the viewers ("N watching").
 - **Code playground:** `/playground` (and "Open in playground" on every component) edits a component's JS and HTML with `sb-code-editor` and `sb-code-playground`. Previews run in a `sandbox="allow-scripts allow-modals"` iframe served by `/playground/run`, with its own CSP and an opaque origin. A TypeScript switch turns `component.js` into `component.ts`, which the runner has the server transpile (`/playground/transpile`, esbuild). TypeScript, and JavaScript that starts with `// @ts-check`, is type-checked on the server against the patched Datastar build's declarations (`internal/tscheck`: TypeScript's native compiler, embedded in the binary and run as a subprocess) and underlined in the editor. "Save & share" is the `SaveSnippet` command (immutable `/playground?s=<id>` links). "Submit as component" prefills the issue form with that link, and the bot imports it (set the repository variable `STARBASE_URL`).
 - **Live demo data:** `GET /demo/telemetry` streams a simulated mission as signal patches (`$_tm`). It is a pure function of time, with no state. The Showcase page's Mission Control and the gauge, sparkline and meter docs use it.
 - **Example dataset:** a small universe (galaxies, star systems, planets, moons, bright stars by constellation), seeded into SQLite at startup (`internal/demo`, `SeedDemo`). Two generic, stateless endpoints serve it to any component's docs:
@@ -147,6 +161,7 @@ Every open tab keeps one long-lived SSE connection (its render stream). Over HTT
 | `ADDR` | `:7331` | listen address, or `unix:/path/to.sock` for a Unix socket |
 | `BASE_URL` | `http://localhost:7331` | public origin (OAuth callback, CSRF origin, `__Host-` cookies on https) |
 | `DB_PATH` | `data/starbase.db` | SQLite file |
+| `METRICS_ADDR` | | the metrics for Prometheus (`starbase_writer_*`, `starbase_live_*`, `starbase_sse_budget_*`, `go_*`, `process_*`) on a loopback `host:port` of their own, never the public listener; empty serves none. A socket systemd passes as `metrics` takes its place ([deploy/](deploy/README.md#monitoring)) |
 | `REPO_URL` | `https://github.com/zweiundeins/starbase` | "Edit on GitHub" links |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | | GitHub OAuth app; callback `$BASE_URL/auth/github/callback` |
 | `GITHUB_TOKEN` | | optional read-only token for pull request preview checks (API rate limit) |
@@ -161,4 +176,8 @@ CI runs vet, tests, the templ and manifest checks, govulncheck, cross-platform b
 
 ## Licences
 
-Code: [MIT](LICENSE), © zwei und eins gmbh and starbase contributors. Fonts: Pixelify Sans and JetBrains Mono (SIL OFL, see `static/fonts`). Icons: Lucide (ISC), GitHub mark (MIT, Octicons). Datastar + Rocket bundle: MIT, vendored in `static/vendor`. TypeScript compiler: Apache-2.0, embedded for the playground's type check; release archives carry its licence and notices in `typescript/`, the container image in `/usr/share/doc/typescript`.
+Code: [MIT](LICENSE), © [zwei und eins gmbh](https://zweiundeins.gmbh) and starbase contributors. Fonts: Pixelify Sans and JetBrains Mono (SIL OFL, see `static/fonts`). Icons: Lucide (ISC), GitHub mark (MIT, Octicons). Datastar + Rocket bundle: MIT, vendored in `static/vendor`. TypeScript compiler: Apache-2.0, embedded for the playground's type check; release archives carry its licence and notices in `typescript/`, the container image in `/usr/share/doc/typescript`.
+
+## Maintainer
+
+Maintained by [zwei und eins gmbh](https://zweiundeins.gmbh), Aarberg, Switzerland.

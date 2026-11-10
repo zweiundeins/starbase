@@ -66,7 +66,8 @@ const styles = /* css */ `
 .label { color: var(--_text); font-size: 0.8125rem; }
 .vh { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* Spinner: eight pixel blocks, one lit at a time. */
+/* Spinner: eight pixel blocks, one lit at a time. At notch 0 they are dots, and
+   the lit one fades out over the turn, so a trail follows it round. */
 .spinner { position: relative; flex: none; inline-size: var(--_s); block-size: var(--_s); }
 .spinner span {
 	position: absolute;
@@ -74,13 +75,14 @@ const styles = /* css */ `
 	margin: auto;
 	inline-size: var(--_d);
 	block-size: var(--_d);
+	border-radius: calc(var(--_d) / 2 * (1 - var(--_notch)));
 	background: var(--_fill);
 	opacity: 0.22;
 	transform: rotate(calc(var(--i) * 45deg)) translateY(calc(var(--_s) / -2 + var(--_d) / 2));
-	animation: sb-busy-blink 720ms steps(1, end) infinite;
+	animation: sb-busy-blink 720ms steps(calc(1 + 999 * (1 - var(--_notch))), end) infinite;
 	animation-delay: calc(var(--i) * 90ms);
 }
-@keyframes sb-busy-blink { 0% { opacity: 1; } 12.5%, 100% { opacity: 0.22; } }
+@keyframes sb-busy-blink { 0% { opacity: 1; } 12.5% { opacity: calc(0.22 + 0.38 * (1 - var(--_notch))); } 100% { opacity: 0.22; } }
 
 /* Bar: a notched track with a fill; indeterminate sweeps a chunk across it. */
 .bar {
@@ -99,13 +101,13 @@ const styles = /* css */ `
 	inline-size: var(--_p, 0%);
 	background: var(--_fill);
 	box-shadow: inset 0 -3px 0 var(--_edge);
-	transition: inline-size 160ms steps(6, end);
+	transition: inline-size 160ms steps(calc(6 + 994 * (1 - var(--_notch))), end);
 }
-.bar.sweeping .fill { inline-size: 34%; animation: sb-busy-sweep 1.1s steps(9, end) infinite; }
+.bar.sweeping .fill { inline-size: 34%; animation: sb-busy-sweep 1.1s steps(calc(9 + 991 * (1 - var(--_notch))), end) infinite; }
 @keyframes sb-busy-sweep { from { translate: -105% 0; } to { translate: 320% 0; } }
 :host(:dir(rtl)) .bar { scale: -1 1; }
 
-/* Skeleton: notched blocks with a shimmer that steps across them. */
+/* Skeleton: notched blocks with a shimmer that steps across them (glides at notch 0). */
 .skel { display: grid; gap: calc(var(--_l) * 0.7); }
 .skel span {
 	display: block;
@@ -117,7 +119,7 @@ const styles = /* css */ `
 	box-shadow: 0 0 0 2px var(--_border);
 	clip-path: ${notch('var(--_n)')};
 	border-radius: calc(3px * (1 - var(--_notch)));
-	animation: sb-busy-shimmer 1.4s steps(12, end) infinite;
+	animation: sb-busy-shimmer 1.4s steps(calc(12 + 988 * (1 - var(--_notch))), end) infinite;
 	animation-delay: calc(var(--i) * 140ms);
 }
 .skel span:last-child:not(:first-child) { inline-size: 62%; }

@@ -32,7 +32,7 @@ The menu is a native `popover` in the top layer, positioned with CSS anchor posi
 
 ### Actions
 
-`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`. The string `"-"` is a divider too.
+`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`; one with an `href` is a [link](#links). The string `"-"` is a divider too.
 
 ```html preview
 <div data-signals:_actionPick="''" style="display: grid; gap: 12px; justify-items: start">
@@ -122,13 +122,13 @@ Choosing *Newest first* reports `date.newest`, and the trigger reads *Sort by: N
 
 **One group per dropdown.** A second `type: "radio"` is ignored and reported to the console instead of guessed at; two questions want two dropdowns. Checkbox groups, with several items checked at once, can follow if anyone needs them.
 
-With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command is rejected. It is the same contract every value component follows:
+With `confirm`, the item the user chose stays marked pending until the server's `value` says the same, and `revert()` puts it back when the command never reaches the server (an error status, or `retries-failed`). It is the same contract every value component follows:
 
 ```html
 <sb-dropdown name="sort" label="Sort by" type="radio" confirm value="name"
   items='[{"value":"name","label":"Name"},{"value":"size","label":"Size"}]'
   data-on:sb-change="@post('/cmd/sort', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-dropdown>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-dropdown>
 ```
 
 ```css
@@ -157,6 +157,46 @@ The `trigger` slot fills the trigger with your own content: text, an icon, an `s
 </sb-dropdown>
 ```
 
+### A caret to match a toolbar button
+
+Beside an `sb-button` with a `caret`, the dropdown can take the button's look: its box and text through `::part(trigger)`, and the caret through `::part(caret)`. Here the caret is a chevron stroked in the text's colour, as thick as the button's, and it turns over while the menu is open (`:state(open)`):
+
+```html preview
+<style>
+  .tb-menu::part(trigger) {
+    min-block-size: 2rem;
+    padding-inline: 0.75rem;
+    font-size: 0.8125rem;
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--sb-brand-light);
+    clip-path: none;
+    border-radius: var(--sb-control-radius);
+  }
+  .tb-menu::part(trigger):hover, .tb-menu:state(open)::part(trigger) { background: var(--sb-brand-subtle); }
+  .tb-menu::part(trigger):focus-visible { box-shadow: inset 0 0 0 2px var(--sb-brand-light); }
+  .tb-menu::part(caret) {
+    box-sizing: border-box;
+    inline-size: 7px;
+    block-size: 7px;
+    color: inherit;
+    background: none;
+    clip-path: none;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    translate: 0 -25%;
+    rotate: 45deg;
+    transition: rotate 120ms, translate 120ms;
+  }
+  .tb-menu:state(open)::part(caret) { translate: 0 25%; rotate: 225deg; }
+</style>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+  <sb-button variant="outline" size="sm" caret>Export</sb-button>
+  <sb-dropdown class="tb-menu" label="Share" items='["Copy link", "Email", "-", "Embed"]'></sb-dropdown>
+</div>
+```
+
+The page's `::part()` rules win over the component's own whatever their specificity, so a `rotate` set on `::part(caret)` replaces the default turn in both states: give the open one too, with `:state(open)`. Rules that leave `rotate` alone keep the turn, and `color` alone recolours the default caret. The same goes for `::part(trigger)`: a `box-shadow` there replaces the edge, the hover and the focus ring, so give `:hover` and `:focus-visible` their own.
+
 ### Items as markup
 
 Instead of `items`, write the menu as light DOM. The items are read **as data** (label, `value`, `disabled`, `data-icon`, `data-description`, `data-danger`, and `<hr>` for a divider) and rendered inside the menu, so the component never writes roles or `tabindex` into your markup, where the next morph would strip them. `items` wins whenever it is not empty.
@@ -179,6 +219,33 @@ A slotted item opens a submenu with `data-children='[…]'`, the same JSON as `i
 ```html
 <button slot="item" data-children='[{"value":"csv","label":"CSV"},{"value":"json","label":"JSON"}]'>Export</button>
 ```
+
+### Links
+
+An item with an `href` is a link: the menu renders it as `<a role="menuitem" href>`, and the browser follows it. A click, Enter or Space opens it here; a Ctrl, Cmd or middle click, Shift+Enter or the browser's context menu open it in a new tab or window, as with any link, and hovering one shows its URL in the status bar. The menu closes on a click, Enter or Space (a middle click leaves it open), and a link emits no `sb-select`: there is no command to post, the navigation is the result.
+
+In `items`, give the item an `href`; as markup, write `<a slot="item" href>`. Links mix freely with actions, dividers and submenus, and the keys, the type-ahead and `disabled` treat a link like any other item. A disabled link has no `href`, so it goes nowhere.
+
+```html preview
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+  <sb-dropdown label="Go to"
+    items='[{"value":"gallery","label":"Gallery","icon":"🌌","href":"/"},
+            {"value":"playground","label":"Playground","icon":"🧪","href":"/playground"},
+            {"label":"Components","icon":"📦","children":[
+              {"value":"select","label":"Select","href":"/components/select"},
+              {"value":"tree","label":"Tree","href":"/components/tree"}]},
+            {"divider":true},
+            {"value":"copy","label":"Copy this page’s link","icon":"🔗"}]'></sb-dropdown>
+  <sb-dropdown label="Docs">
+    <a slot="item" href="/contribute" data-description="How components are built">Contribute</a>
+    <a slot="item" href="/themes">Themes</a>
+    <hr slot="item">
+    <a slot="item" href="/submit" aria-disabled="true">Submit (closed)</a>
+  </sb-dropdown>
+</div>
+```
+
+Markup links stay real links in your page, so crawlers and a page without JavaScript still find them. A parent with `children` drops its `href`, since it opens its submenu, and so does every item of a radio group: a [current choice](#a-current-choice) changes a value and reports `sb-change`.
 
 ### Server data
 
@@ -237,7 +304,11 @@ el.hide()        // close, and leave the focus where it is
 
 ## Styling
 
-Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`. Parts: `trigger`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
+Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`, and turns the stepped caret and submenu arrows into plain triangles, the caret turning smoothly. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
+
+- **Parts:** `trigger` (the button), `caret`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Caret:** a block filled with its `color` (the trigger's text at 70%) and cut by a `clip-path`: a pixel staircase, or a plain triangle at `--sb-notch: 0`. It turns 180° while the menu is open. Recolour it with `color`, or replace the look with `background`, `clip-path`, `mask` or `border` on `::part(caret)`, as in [A caret to match a toolbar button](#a-caret-to-match-a-toolbar-button).
+- **States:** `:state(open)` while the menu is open, and `:state(pending)` with `confirm` (see [A current choice](#a-current-choice)). Both work from the page: `sb-dropdown:state(open)::part(trigger)`.
 
 Set the tokens on the element (or any ancestor), not on a part: the component reads them once, on its host.
 
@@ -250,7 +321,7 @@ sb-dropdown::part(trigger) { font-weight: 700; }
 
 It follows the WAI-ARIA menu button pattern:
 
-- **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s, dividers are `separator`s and disabled items are `aria-disabled`.
+- **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s (links are `<a role="menuitem" href>`), dividers are `separator`s and disabled items are `aria-disabled`.
 - **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in: the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves. A parent that only leads to the choice stays a `menuitem` with `aria-haspopup`: its faint mark is decoration (`aria-hidden`), never a checked state. The trigger names what the menu is *and* what is chosen ("Sort by: Newest first"), so the visible text and the accessible name stay the same string.
 - **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item, and the same letter again cycles through the items it starts (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
 - **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item, also when hovering opened it already; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.

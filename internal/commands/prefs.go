@@ -1,21 +1,23 @@
 package commands
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/zweiundeins/lith/writer"
+
 	"starbase/internal/model"
 )
 
 // updatePrefs reads the session's preferences (or none), applies fn and
-// writes them back.
-func updatePrefs(ctx context.Context, tx *sql.Tx, sid string, fn func(*model.SessionPrefs)) error {
+// writes them back. Every page of the session shows them.
+func updatePrefs(tx *writer.Tx, sid string, fn func(*model.SessionPrefs)) error {
+	tx.Touch(SessionTopic(sid))
 	var p model.SessionPrefs
 	var raw string
-	err := tx.QueryRowContext(ctx, `SELECT data FROM session_prefs WHERE sid = ?`, sid).Scan(&raw)
+	err := tx.QueryRow(`SELECT data FROM session_prefs WHERE sid = ?`, sid).Scan(&raw)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 	case err != nil:
@@ -30,7 +32,7 @@ func updatePrefs(ctx context.Context, tx *sql.Tx, sid string, fn func(*model.Ses
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `
+	_, err = tx.Exec(`
 		INSERT INTO session_prefs (sid, data, updated_at) VALUES (?, ?, ?)
 		ON CONFLICT (sid) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
 		sid, string(b), time.Now().Unix())
@@ -53,10 +55,8 @@ func (c SetInstallTab) Validate() error {
 	return nil
 }
 
-func (c SetInstallTab) Scope() string { return c.SID }
-
-func (c SetInstallTab) Apply(ctx context.Context, tx *sql.Tx) error {
-	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.InstallTab = c.Tab })
+func (c SetInstallTab) Apply(tx *writer.Tx) error {
+	return updatePrefs(tx, c.SID, func(p *model.SessionPrefs) { p.InstallTab = c.Tab })
 }
 
 // SetPreviewTheme selects the token set the Themes page previews.
@@ -74,10 +74,8 @@ func (c SetPreviewTheme) Validate() error {
 	return nil
 }
 
-func (c SetPreviewTheme) Scope() string { return c.SID }
-
-func (c SetPreviewTheme) Apply(ctx context.Context, tx *sql.Tx) error {
-	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.PreviewTheme = c.Theme })
+func (c SetPreviewTheme) Apply(tx *writer.Tx) error {
+	return updatePrefs(tx, c.SID, func(p *model.SessionPrefs) { p.PreviewTheme = c.Theme })
 }
 
 // SetPreviewStyle turns the 8-bit details of the Themes page previews on or off.
@@ -93,10 +91,8 @@ func (c SetPreviewStyle) Validate() error {
 	return nil
 }
 
-func (c SetPreviewStyle) Scope() string { return c.SID }
-
-func (c SetPreviewStyle) Apply(ctx context.Context, tx *sql.Tx) error {
-	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.PreviewSmooth = c.Smooth })
+func (c SetPreviewStyle) Apply(tx *writer.Tx) error {
+	return updatePrefs(tx, c.SID, func(p *model.SessionPrefs) { p.PreviewSmooth = c.Smooth })
 }
 
 // SetGallerySort is a sort chosen in the gallery: the tab shows it (its
@@ -104,34 +100,31 @@ func (c SetPreviewStyle) Apply(ctx context.Context, tx *sql.Tx) error {
 // for gallery URLs that name none. Search and category changes go through
 // SetBrowseFilter and leave the default alone.
 type SetGallerySort struct {
-	SID, TabID string
-	Browse     model.Browse
+	SID, TabID, Op string
+	Browse         model.Browse
 }
 
 func (c SetGallerySort) Validate() error {
 	if !c.Browse.Sort.Valid() {
 		return errors.New("unknown sort")
 	}
-	return validTab(c.SID, c.TabID)
+	return errors.Join(validTab(c.SID, c.TabID), validOp(c.Op))
 }
 
-func (c SetGallerySort) Scope() string { return c.SID }
-
-func (c SetGallerySort) Apply(ctx context.Context, tx *sql.Tx) error {
+func (c SetGallerySort) Apply(tx *writer.Tx) error {
 	b := c.Browse.Normalize()
-	if err := updateTab(ctx, tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) { st.Browse = b }); err != nil {
+	if err := updateTab(tx, c.SID, c.TabID, model.TabState{}, func(st *model.TabState) { st.Browse = b; ack(st, OpSort, c.Op) }); err != nil {
 		return err
 	}
-	return updatePrefs(ctx, tx, c.SID, func(p *model.SessionPrefs) { p.GallerySort = b.Sort })
+	return updatePrefs(tx, c.SID, func(p *model.SessionPrefs) { p.GallerySort = b.Sort })
 }
 
 // PruneSessionPrefs forgets the preferences of sessions idle for a while
-// (the session cookie itself lasts 400 days).
+// (the session cookie itself lasts 400 days). It touches no topic: those
+// sessions have no open page.
 type PruneSessionPrefs struct{ OlderThan time.Duration }
 
-func (c PruneSessionPrefs) Scope() string { return "" } // touches no live view
-
-func (c PruneSessionPrefs) Apply(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `DELETE FROM session_prefs WHERE updated_at < ?`, time.Now().Add(-c.OlderThan).Unix())
+func (c PruneSessionPrefs) Apply(tx *writer.Tx) error {
+	_, err := tx.Exec(`DELETE FROM session_prefs WHERE updated_at < ?`, time.Now().Add(-c.OlderThan).Unix())
 	return err
 }

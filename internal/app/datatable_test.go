@@ -7,8 +7,9 @@ import (
 
 // TestDataTableCells checks sb-data-table in the browser, one row per check:
 // cell objects (checks 1 to 8), hidden columns and their menu (9), sb-export (10).
+// With STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build (see TestVirtualScrollFocus).
 func TestDataTableCells(t *testing.T) {
-	_, body := probe(t, "/", dataTableJS)
+	body := probeBundle(t, "/", dataTableJS, nil)
 	var rows []struct {
 		Check                  int
 		Step, Got, Want, Error string
@@ -209,7 +210,7 @@ check(async () => {
 	const cols = [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }, { key: 'c', label: 'C' }]
 	const el = await make({ 'column-picker': '', 'hidden-columns': ['b'], selection: 'multiple', confirm: '', selected: [], columns: cols,
 		rows: [{ id: 1, a: 'a1', b: 'b1', c: 'c1' }, { id: 2, a: 'a2', b: 'b2', c: 'c2' }] })
-	const heads = () => $$(el, '.th').map((t) => t.lastElementChild.textContent)
+	const heads = () => $$(el, '.th').map((t) => t.querySelector(':scope > span:not(.grip)').textContent)
 	const shows = (x) => getComputedStyle(x).display !== 'none'
 	const toolbar = $(el, '.toolbar'), button = $(el, '.columns'), menu = $(el, '.menu')
 	const boxes = () => $$(el, '.menu input')
@@ -345,7 +346,7 @@ check(async () => {
 	row('hidden by data-show: no toolbar', bar(), false)
 	wrap.remove()
 
-	await customElements.whenDefined('sb-drawer')
+	await Promise.race([customElements.whenDefined('sb-drawer'), new Promise((_, no) => setTimeout(() => no(new Error('sb-drawer is not defined: is the page on the autoloader (the bundle over web.bundleBudget)?')), 5000))])
 	const drawer = document.createElement('sb-drawer')
 	drawer.setAttribute('modal', 'false')
 	drawer.innerHTML = '<button id="dt-other">x</button>'

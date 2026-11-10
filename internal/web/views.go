@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"starbase/internal/catalog"
-	"starbase/internal/commands"
 	"starbase/internal/ui"
 )
 
@@ -25,11 +24,11 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 		return view{}, err
 	}
 	previews := make(map[string]string, len(res.Cards))
-	sizes := make(map[string]catalog.Size, len(res.Cards))
+	sizes := make(map[string]catalog.Sizes, len(res.Cards))
 	for _, c := range res.Cards {
 		if comp, ok := s.catalog.Get(c.Slug); ok {
 			previews[c.Slug] = comp.Preview
-			sizes[c.Slug] = comp.Sizes.Total
+			sizes[c.Slug] = comp.Sizes
 		}
 	}
 	def := rc.prefs.DefaultSort()
@@ -45,6 +44,7 @@ func (s *Server) galleryPage(rc *renderCtx) (view, error) {
 			return ui.Gallery(sh, ui.GalleryView{Browse: b, DefaultSort: def, Result: res, Previews: previews, Sizes: sizes})
 		},
 		URL:        u,
+		LD:         s.cache.homeLD,
 		SearchLive: true,
 		Search:     b.Q,
 		Signals:    map[string]any{"q": b.Q, "cat": b.Category, "sort": string(b.Sort)},
@@ -72,6 +72,10 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 	if err != nil {
 		return view{}, err
 	}
+	parts, err := s.componentParts(comp)
+	if err != nil {
+		return view{}, err
+	}
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
 	repo := strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug
 	schema := map[string]any{
@@ -82,7 +86,7 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 		"codeRepository":      cmp.Or(comp.Source, repo),
 		"programmingLanguage": "JavaScript",
 		"runtimePlatform":     "Web browser (Datastar Rocket)",
-		"license":             "https://opensource.org/licenses/MIT",
+		"license":             comp.LicenseURL(),
 		"keywords":            strings.Join(comp.Tags, ", "),
 		"dateCreated":         comp.Since,
 		"author":              map[string]any{"@type": "Person", "name": comp.Author, "url": "https://github.com/" + comp.Author},
@@ -95,19 +99,41 @@ func (s *Server) componentPage(rc *renderCtx) (view, error) {
 		Nav:         "components",
 		Body: func(sh ui.Shell) templ.Component {
 			return ui.ComponentPage(sh, ui.ComponentView{
-				Card:       *card,
-				Component:  comp,
-				Playground: comp.Playground(),
-				Install:    install,
-				EditURL:    strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug,
+				Card:      *card,
+				Component: comp,
+				Parts:     parts,
+				Install:   install,
+				EditURL:   strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/components/" + slug,
 			})
 		},
 	}, nil
 }
 
-// install builds a component page's Installation tabs (model.InstallTabs).
-// Every snippet is exactly what to paste: the explanations are the page's.
+// install is a component page's Installation tabs (model.InstallTabs), the
+// session's tab selected. The rest depends only on the catalog and on stored
+// integrities, which never change once stored (INSERT OR IGNORE), so a view
+// built when all of them were there is kept per component (rendercache.go).
 func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, error) {
+	v, ok := s.cache.install(c.Slug)
+	if !ok {
+		var complete bool
+		var err error
+		if v, complete, err = s.buildInstall(rc, c); err != nil {
+			return v, err
+		}
+		if complete {
+			s.cache.setInstall(c.Slug, v)
+		}
+	}
+	v.Tab = rc.prefs.InstallTabOrDefault()
+	return v, nil
+}
+
+// buildInstall builds the Installation tabs without a selected tab. Every
+// snippet is exactly what to paste: the explanations are the page's.
+// complete is false while an integrity it pins isn't stored yet.
+func (s *Server) buildInstall(rc *renderCtx, c *catalog.Component) (v ui.InstallView, complete bool, err error) {
+	complete = true
 	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
 	// The patched Datastar + Rocket build pages load, pinned like a component
 	// version (patches/rocket; every component works on the official release too).
@@ -115,11 +141,11 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	usage := c.InstallMarkup()
 	deps := s.catalog.Deps(c)
 	all := append([]*catalog.Component{c}, deps...)
-	v := ui.InstallView{Tab: rc.prefs.InstallTabOrDefault(), Datastar: dsURL, Patches: strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/patches/rocket"}
+	v = ui.InstallView{Datastar: dsURL, Patches: strings.TrimSuffix(s.cfg.RepoURL, "/") + "/tree/main/patches/rocket"}
 	for _, d := range deps {
 		v.Deps = append(v.Deps, d.Tag)
 	}
-	snippet := func(raw string) ui.Snippet { return ui.Snippet{Raw: raw, HTML: catalog.Highlight(raw, "html")} }
+	snippet := ui.NewSnippet
 	importMap := func(datastar string) string {
 		return fmt.Sprintf("<script type=\"importmap\">\n  { \"imports\": { \"datastar\": %q } }\n</script>\n", datastar)
 	}
@@ -130,7 +156,8 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 	// Integrity for everything the page will load: Datastar, and every file
 	// these components ship (the module, plus what it imports itself, like
 	// code-editor's Prism). A script tag's integrity covers only that file, so
-	// the imported ones are pinned through the import map.
+	// the imported ones are pinned through the import map. The module files
+	// first, then (below) the bundles.
 	var entries strings.Builder
 	fmt.Fprintf(&entries, "      %q: %q", dsURL, s.assets.datastarSRI)
 	for _, d := range all {
@@ -138,14 +165,16 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
 			p := catalog.MinOf(f.Name)
 			sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, p)
 			if err != nil {
-				return v, err
+				return v, false, err
 			}
+			complete = complete && sri != ""
 			if sri != "" {
 				fmt.Fprintf(&entries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
 			}
 		}
 	}
-	pinnedMap := fmt.Sprintf(`<script type="importmap">
+	pinMap := func(entries string) string {
+		return fmt.Sprintf(`<script type="importmap">
   {
     "imports": { "datastar": %q },
     "integrity": {
@@ -153,67 +182,113 @@ func (s *Server) install(rc *renderCtx, c *catalog.Component) (ui.InstallView, e
     }
   }
 </script>
-`, dsURL, entries.String())
+`, dsURL, entries)
+	}
+	modulesMap := pinMap(entries.String())
 
-	// This component (and what it renders), pinned to this version.
+	// This component (and what it renders), pinned to this version: each as
+	// one file (catalog/onefile.go), and what those load lazily pinned
+	// through the import map. The snapshot's autoloader imports the bundles,
+	// so its map (bundleEntries) pins them too.
+	var oneEntries, bundleEntries, oneScripts strings.Builder
+	fmt.Fprintf(&oneEntries, "      %q: %q", dsURL, s.assets.datastarSRI)
+	fmt.Fprintf(&bundleEntries, "      %q: %q", dsURL, s.assets.datastarSRI)
+	for _, d := range all {
+		bundle, err := s.catalog.BundleOf(d)
+		if err != nil {
+			return v, false, err
+		}
+		for _, p := range bundle.Lazy {
+			sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, p)
+			if err != nil {
+				return v, false, err
+			}
+			complete = complete && sri != ""
+			if sri != "" {
+				fmt.Fprintf(&oneEntries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
+				fmt.Fprintf(&bundleEntries, ",\n      %q: %q", base+"/c/"+d.Slug+"@"+d.Hash+"/"+p, sri)
+			}
+		}
+		sri, err := rc.r.FileIntegrity(rc.ctx, d.Slug, d.Hash, catalog.BundleName(d.Slug))
+		if err != nil {
+			return v, false, err
+		}
+		if sri == "" { // not stored yet: the first sync stores exactly these bytes
+			sri, complete = catalog.SRI(bundle.Body), false
+		}
+		fmt.Fprintf(&bundleEntries, ",\n      %q: %q", base+"/c/"+d.VersionedBundle(), sri)
+		fmt.Fprintf(&oneScripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, d.VersionedBundle(), sri)
+	}
+	v.Component = snippet(pinMap(oneEntries.String()) + oneScripts.String() + "\n" + usage)
+
+	// The same, as the module files: the minified module of each, pinned.
 	var scripts strings.Builder
 	for _, d := range all {
-		script, sri, err := s.pinnedScript(rc, d)
+		script, sri, stored, err := s.pinnedScript(rc, d)
 		if err != nil {
-			return v, err
+			return v, false, err
 		}
+		complete = complete && stored
 		fmt.Fprintf(&scripts, "<script type=\"module\" src=\"%s/c/%s\" integrity=\"%s\"></script>\n", base, script, sri)
 	}
-	v.Component = snippet(pinnedMap + scripts.String() + "\n" + usage)
+	v.ModuleFiles = c.Sizes.ModuleFiles // the Size section's "As module files" count
+	v.ComponentModules = snippet(modulesMap + scripts.String() + "\n" + usage)
 
 	// Today's catalog snapshot: its autoloader, and integrity for Datastar
 	// and every file this component loads (importmap.json has them all).
 	_, snapshotSRI, _, err := rc.r.Snapshot(rc.ctx, s.catalog.Hash)
 	if err != nil {
-		return v, err
+		return v, false, err
 	}
+	complete = complete && snapshotSRI != ""
 	v.ImportMap = fmt.Sprintf("%s/c/@%s/importmap.json", base, s.catalog.Hash)
 	if snapshotSRI != "" {
-		v.Pinned = snippet(pinnedMap + fmt.Sprintf(`<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
+		v.Pinned = snippet(pinMap(bundleEntries.String()) + fmt.Sprintf(`<script type="module" src="%s/c/@%s/autoloader.js" integrity="%s"></script>
 
 %s`, base, s.catalog.Hash, snapshotSRI, usage))
 	}
 
 	// Self-host: the files, and an import map at your own Datastar.
-	var own strings.Builder
+	var own, ownModules strings.Builder
 	for _, d := range all {
 		g := ui.SelfHostGroup{Tag: d.Tag}
+		u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
+		for _, f := range append([]catalog.NamedSize{d.Sizes.Bundle}, d.Sizes.Lazy...) {
+			g.Bundle = append(g.Bundle, ui.SelfHostFile{Name: f.Name, Min: u + f.Name, Size: f.Size})
+		}
 		for _, f := range d.Sizes.Files {
-			u := base + "/c/" + d.Slug + "@" + d.Hash + "/"
 			g.Files = append(g.Files, ui.SelfHostFile{Name: f.Name, Min: u + catalog.MinOf(f.Name), Readable: u + f.Name, Size: f.Size})
 		}
 		v.Files = append(v.Files, g)
-		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))
+		fmt.Fprintf(&own, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.BundleName(d.Slug))
+		fmt.Fprintf(&ownModules, "<script type=\"module\" src=\"/js/%s/%s\"></script>\n", d.Slug, catalog.MinPath(strings.TrimPrefix(d.Script, d.Slug+"/")))
 	}
 	v.SelfHost = snippet(importMap("/js/datastar-rocket.js") + own.String() + "\n" + usage)
-	return v, nil
+	v.SelfHostModules = snippet(importMap("/js/datastar-rocket.js") + ownModules.String() + "\n" + usage)
+	return v, complete, nil
 }
 
 // pinnedScript is a component's module pinned to its version: the minified
 // file with its frozen integrity (from when this version was first
 // published, see catalog/min.go), or the readable file while this version
-// isn't stored yet.
-func (s *Server) pinnedScript(rc *renderCtx, c *catalog.Component) (script, sri string, err error) {
+// isn't stored yet (stored false).
+func (s *Server) pinnedScript(rc *renderCtx, c *catalog.Component) (script, sri string, stored bool, err error) {
 	sri, err = rc.r.FileIntegrity(rc.ctx, c.Slug, c.Hash, catalog.MinPath(strings.TrimPrefix(c.Script, c.Slug+"/")))
 	if err != nil || sri == "" {
-		return c.VersionedScript(), c.Integrity, err
+		return c.VersionedScript(), c.Integrity, false, err
 	}
-	return c.VersionedMinScript(), sri, nil
+	return c.VersionedMinScript(), sri, true, nil
 }
 
 func (s *Server) themesPage(rc *renderCtx) (view, error) {
 	theme := rc.prefs.PreviewThemeOrDefault()
+	code := s.themeCode(theme)
 	return view{
 		Title:       "Themes · Starbase",
 		Description: "Every component is styled with semantic design tokens. Swap the token set, restyle everything.",
 		Nav:         "themes",
 		Body: func(ui.Shell) templ.Component {
-			return ui.ThemesPage(ui.ThemesView{Theme: theme, Smooth: rc.prefs.PreviewSmooth, CSS: s.themeCSS(theme), CSSHTML: catalog.Highlight(s.themeCSS(theme), "css"), Previews: s.themePreviews()})
+			return ui.ThemesPage(ui.ThemesView{Theme: theme, Smooth: rc.prefs.PreviewSmooth, CSS: code.CSS, CSSHTML: code.HTML, Previews: s.themePreviews()})
 		},
 	}, nil
 }
@@ -221,57 +296,61 @@ func (s *Server) themesPage(rc *renderCtx) (view, error) {
 // contentPage renders content/<name>.md, optionally after an extra block.
 func (s *Server) contentPage(name, nav string, extra ...templ.Component) pageFunc {
 	return func(rc *renderCtx) (view, error) {
-		src, err := fs.ReadFile(s.content, name+".md")
-		if err != nil {
-			return view{}, errNotFound
-		}
-		var meta struct {
-			Title       string `yaml:"title"`
-			Lede        string `yaml:"lede"`
-			Description string `yaml:"description"`
-		}
-		html, err := catalog.RenderMarkdown(src, &meta)
+		doc, err := s.contentDoc(name)
 		if err != nil {
 			return view{}, err
 		}
 		return view{
-			Title:       meta.Title + " · Starbase",
-			Description: meta.Description,
+			Title:       doc.Title + " · Starbase",
+			Description: doc.Description,
 			Nav:         nav,
 			Body: func(ui.Shell) templ.Component {
 				var x templ.Component
 				if len(extra) > 0 {
 					x = extra[0]
 				}
-				return ui.ContentPage(meta.Title, meta.Lede, html, x)
+				return ui.ContentPage(doc.Title, doc.Lede, doc.HTML, x)
 			},
 		}, nil
 	}
 }
 
+// buildContentDoc renders content/<name>.md (contentDoc caches it).
+func (s *Server) buildContentDoc(name string) (contentDoc, error) {
+	src, err := fs.ReadFile(s.content, name+".md")
+	if err != nil {
+		return contentDoc{}, errNotFound
+	}
+	var meta struct {
+		Title       string `yaml:"title"`
+		Lede        string `yaml:"lede"`
+		Description string `yaml:"description"`
+	}
+	html, err := catalog.RenderMarkdown(src, &meta)
+	if err != nil {
+		return contentDoc{}, err
+	}
+	return contentDoc{Title: meta.Title, Lede: meta.Lede, Description: meta.Description, HTML: html}, nil
+}
+
 // showcasePage: Mission Control (a client island fed by /demo/telemetry)
-// and the multiplayer pixel board (server-owned, re-rendered every frame).
+// and the multiplayer pixel board (server-owned, a region with a view of
+// its own).
 func (s *Server) showcasePage(rc *renderCtx) (view, error) {
 	v, err := s.contentPage("showcase", "showcase")(rc)
 	if err != nil {
 		return view{}, err
 	}
-	cells, pixels, err := s.boardState(rc.ctx, rc.r)
+	board, err := rc.region(s.boardRegion)
 	if err != nil {
 		return view{}, err
 	}
-	src, _ := fs.ReadFile(s.content, "showcase.md")
-	var meta struct {
-		Title string `yaml:"title"`
-		Lede  string `yaml:"lede"`
-	}
-	html, err := catalog.RenderMarkdown(src, &meta)
+	doc, err := s.contentDoc("showcase")
 	if err != nil {
 		return view{}, err
 	}
-	board := ui.BoardView{Cells: cells, Size: commands.BoardSize, Pixels: pixels, Viewers: max(1, s.hub.Count("/showcase"))}
 	v.Body = func(ui.Shell) templ.Component {
-		return ui.ContentPage(meta.Title, meta.Lede, html, ui.Showcase(board, rc.tab.Flight.OrDefault()))
+		return ui.ContentPage(doc.Title, doc.Lede, doc.HTML, ui.Showcase(board, rc.tab.Flight.OrDefault()))
 	}
 	return v, nil
 }

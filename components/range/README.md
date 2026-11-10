@@ -58,7 +58,7 @@ Post the detail as it is. The server validates the range as a whole and renders 
 ```html
 <sb-range name="window" confirm value='{"start":9,"end":17}' min="0" max="24"
   data-on:sb-change="@post('/cmd/window', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()"></sb-range>
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-range>
 ```
 
 With `confirm`, the host has `:state(pending)` while either end differs from the server's attribute, and `revert()` restores both ends. A command can never leave the server with only half a change. See [Commands and components](/contribute#commands-and-components).
@@ -90,4 +90,4 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 ## Accessibility
 
-The field is a group named by its `label`. Each thumb is a native slider, announced as "<label> start" and "<label> end" with its value and unit (`aria-valuetext`). Without a `label` they are "Range start" and "Range end". The range shown next to the label is plain text, not a live region, so a step is announced once, by the thumb that moved. The focused thumb gets a ring inside its edge.
+The field is a group named by its `label`. Each thumb is a native slider, announced as "\<label> start" and "\<label> end" with its value and unit (`aria-valuetext`). Without a `label` they are "Range start" and "Range end". The range shown next to the label is plain text, not a live region, so a step is announced once, by the thumb that moved. The focused thumb gets a ring inside its edge.

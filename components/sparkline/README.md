@@ -50,23 +50,38 @@ A point is added when the value *changes*: the same value again adds nothing (`e
 The server pushes `$_tm.alt` four times a second. Push mode turns every change into a new point.
 
 ```html preview
-<div data-signals="{_tm: {alt: 0}}" data-init="@get('/demo/telemetry')">
+<div data-signals="{_tm: {alt: 0}}">
+  <div id="telemetry" hidden data-init="@get('/demo/telemetry', {retry: 'error', retryMaxCount: Infinity, retryInterval: 400, retryMaxWait: 4000})"></div>
   <sb-sparkline data-attr:value="$_tm.alt" data-preserve-attr="value" length="80" show-value unit=" km" tone="accent" label="Altitude" style="--sb-sparkline-width: 22rem"></sb-sparkline>
 </div>
 ```
 
-The endpoint is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. `TelemetryAt` computes the sample from the clock, so every viewer watches the same flight:
+The endpoint is Go with the `sse` package of lith, Starbase's runtime; any [Datastar SDK](https://data-star.dev/reference/sdks) works the same way. `TelemetryAt` computes the sample from the clock, so every viewer watches the same flight. When the server stops for a deploy, its last event replaces the hidden element by a copy, which opens the stream again, and `retry: 'error'` keeps asking until the next process answers:
 
 ```go source=internal/web/demo.go#Server.demoTelemetry
 // demoTelemetry streams the demo mission as signal patches ($_tm): a pure
-// query stream, no commands, no database.
+// query stream, no commands, no database. When the server stops (a deploy),
+// the last event asks the page to open it again from #telemetry.
 func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	sse := datastar.NewSSE(w, r)
+	if s.ctx.Err() != nil {
+		// Stopping: the page retries the 503 until the next process answers.
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	// Uncompressed: an event is 130 bytes, where an encoder would hold 430 KiB
+	// or more for as long as a page shows the telemetry.
+	stream, err := sse.Open(w, r, sse.Options{NoCompression: true})
+	if err != nil {
+		return
+	}
+	var last [][]byte
+	defer func() { stream.CloseWith(last...) }()
 	tick := time.NewTicker(250 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		if err := sse.MarshalAndPatchSignals(map[string]any{"_tm": TelemetryAt(time.Now())}); err != nil {
+		tm, _ := json.Marshal(map[string]any{"_tm": TelemetryAt(time.Now())})
+		if err := stream.Write(sse.PatchSignals(tm, false)); err != nil {
 			return
 		}
 		select {
@@ -74,6 +89,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case <-s.ctx.Done():
+			last = append(last, sse.Reconnect(ui.TelemetryID))
 			return
 		}
 	}
@@ -91,6 +107,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** `--sb-sparkline-width` (default `12rem`) is the width of the line and the value together, and `--sb-sparkline-height` (default `2.25rem`) the height of the line. Its pixels stay square: the line is 24 of them high and as many wide as fit.
 - **Fonts:** the value uses your page's font.
 - **Colours:** `tone` picks the line's token: `brand` is `--sb-brand-light`, `ok` `--sb-ok`, `warn` `--sb-warn`, `danger` `--sb-danger`, `accent` `--sb-accent`. The line repaints whenever that colour changes: a theme switch, the system's light or dark mode, or your own class that redefines the token. The value is `--sb-text-1`.
+- **8-bit details:** at `--sb-notch: 0` (`data-sb-style="smooth"`) the line runs straight from point to point instead of in steps, drawn smoothly at the screen's resolution, and it redraws when the token changes.
 - **Parts:** `line` (the canvas) and `value`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

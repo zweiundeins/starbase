@@ -1,0 +1,46 @@
+From 9298fa049bfa18bc98c4e8f8b3e7b182399c9775 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:09:22 +0000
+Subject: [PATCH 53/58] Fill menu placeholders from the trigger's
+ data-menu-param attributes
+
+Templates could only use {contextId}, or values a script passed to openFor, so an item's
+label could not name the thing it acts on. A trigger, and the element that carries its
+context id, now provide {name} through data-menu-param-name. Values passed to openFor
+still win, and contextId always comes from the context.
+---
+ rocket/context-menu/client.ts | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 46f00b2..24334bb 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -147,7 +147,7 @@ function setupMenu(
+     if (template) {
+       content = document.createElement("div");
+       content.setAttribute("data-menu-content", "");
+-      content.append(bindTemplate(template, { ...context, contextId }));
++      content.append(bindTemplate(template, { ...triggerParams(source), ...context, contextId }));
+       host.append(content);
+     } else content = live ?? host;
+     // Submenus stay hidden until they open.
+@@ -302,6 +302,15 @@ function setupMenu(
+   });
+ }
+ 
++/** The data-menu-param-<name> values of a trigger and of the element that carries its context id. */
++function triggerParams(trigger: HTMLElement): Record<string, string> {
++  const params: Record<string, string> = {};
++  for (const element of [trigger.closest<HTMLElement>("[data-context-id]"), trigger])
++    for (const [key, value] of Object.entries(element?.dataset ?? {}))
++      if (/^menuParam[A-Z]/.test(key) && value !== undefined) params[key[9]!.toLowerCase() + key.slice(10)] = value;
++  return params;
++}
++
+ function showSheet(menu: HTMLElement): () => void {
+   menu.showPopover();
+   return () => {};
+-- 
+2.55.0
+

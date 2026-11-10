@@ -19,7 +19,7 @@ playground:
   style: "--sb-pixel-board-size: 18rem"
 ---
 
-A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **server-driven multiplayer**: the board state is one attribute, `cells` (one hex digit per cell, row by row), which the server renders. Painting doesn't change `cells`. It emits `sb-paint`, your backend applies it, and the next server frame brings the new `cells` to everyone. While a pixel is in flight, it's drawn slightly faded; if no frame confirms it within 3 seconds (say the server refused it), it goes back to the board's colour.
+A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **server-driven multiplayer**: the board state is one attribute, `cells` (one hex digit per cell, row by row), which the server renders. Painting doesn't change `cells`. It emits `sb-paint`, your backend applies it, and the next server frame brings the new `cells` to everyone. While a pixel is in flight, it's drawn slightly faded, until `cells` answers it: with its colour, or with another painter's. A paint that never reaches the board (the server refused it with a status, or the connection is down) ends when the page calls `revert()`, which drops the faded pixels; there is no timer.
 
 ## Examples
 
@@ -33,15 +33,18 @@ A grid of chunky pixels to paint on, with a 16-colour palette. It's built for **
 
 ### Server-driven (the Showcase board)
 
-This is the wiring the multiplayer board on the [Showcase](/showcase) page uses. The server renders `cells` into every frame of the page's render stream, and painting is a command:
+This is the wiring the multiplayer board on the [Showcase](/showcase) page uses. The server renders `cells` into every frame of the board's view, which every viewer's render stream carries, and painting is a command:
 
 ```html
 <sb-pixel-board id="board" size="48" cells="…rendered by the server…"
   data-on:sb-paint="@post('/cmd/paint', {
     payload: {color: evt.detail.color, cells: evt.detail.cells},
     requestCancellation: 'disabled'
-  })"></sb-pixel-board>
+  })"
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"></sb-pixel-board>
 ```
+
+`revert()` drops every pixel still in flight, and the board shows the server's `cells` again: a paint that answered an error status (the Showcase's rate limit answers 429) or `retries-failed` (Datastar gave up on a request without an answer) never reaches the board. Pixels of other strokes still on their way come back with the next frame that brings them.
 
 `requestCancellation: 'disabled'` matters: a stroke posts every 80 ms, and by default Datastar cancels a request that is still running when the next one goes to the same URL, which would drop pixels mid-stroke on a slow connection. No `data-preserve-attr` here: `cells` belongs to the server, and every morph brings the latest board.
 
@@ -59,8 +62,8 @@ func (s *Server) cmdPaint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	if !s.paintLimit.allow(sessionID(r), len(p.Cells), now) || !s.paintLimitIP.allow(clientIP(r), len(p.Cells), now) {
-		http.Error(w, "painting too fast", http.StatusTooManyRequests)
+	if !s.paintLimitIP.Allow(edge.ClientKey(r), len(p.Cells), now) || !s.paintLimit.Allow(edge.SessionID(r.Context()), len(p.Cells), now) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	s.send(w, r, commands.PaintPixels{Board: commands.BoardName, Color: p.Color, Cells: p.Cells})
@@ -68,9 +71,8 @@ func (s *Server) cmdPaint(w http.ResponseWriter, r *http.Request) {
 ```
 
 ```go source=internal/commands/board.go#PaintPixels,PaintPixels.Validate,PaintPixels.Apply
-// PaintPixels paints cells of the shared board. Not Scoped: every viewer's
-// stream re-renders (pages without the board produce identical frames,
-// which the stream skips).
+// PaintPixels paints cells of the shared board. It touches TopicBoard: the
+// board's view renders again, and no page does.
 type PaintPixels struct {
 	Board string
 	Color int
@@ -95,17 +97,18 @@ func (c PaintPixels) Validate() error {
 	return nil
 }
 
-func (c PaintPixels) Apply(ctx context.Context, tx *sql.Tx) error {
+func (c PaintPixels) Apply(tx *writer.Tx) error {
+	tx.Touch(TopicBoard)
 	now := time.Now().Unix()
 	for _, i := range c.Cells {
-		if _, err := tx.ExecContext(ctx, `
+		if _, err := tx.Exec(`
 			INSERT INTO board_cells (board, idx, color, painted_at) VALUES (?, ?, ?, ?)
 			ON CONFLICT (board, idx) DO UPDATE SET color = excluded.color, painted_at = excluded.painted_at`,
 			c.Board, i, c.Color, now); err != nil {
 			return err
 		}
 	}
-	_, err := tx.ExecContext(ctx, `
+	_, err := tx.Exec(`
 		INSERT INTO boards (board, version, pixels) VALUES (?, 1, ?)
 		ON CONFLICT (board) DO UPDATE SET version = version + 1, pixels = pixels + excluded.pixels`,
 		c.Board, len(c.Cells))

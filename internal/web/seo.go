@@ -36,11 +36,10 @@ type sitemapURL struct {
 
 // sitemap lists the pages and every component page.
 func (s *Server) sitemap(w http.ResponseWriter, r *http.Request) {
-	var comps []queries.SitemapEntry
-	if err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
-		comps, err = rd.SitemapComponents(r.Context())
-		return
-	}); err != nil {
+	comps, err := s.q.ViewValue(r.Context(), func(rd *queries.Reader) ([]queries.SitemapEntry, error) {
+		return rd.SitemapComponents(r.Context())
+	})
+	if err != nil {
 		s.fail(w, r, err)
 		return
 	}

@@ -16,11 +16,15 @@ func TestSaveSnippetValidate(t *testing.T) {
 		"bad id":   {SID: "s", TabID: "tab12345", ID: "x", Files: ok.Files},
 		"no files": {SID: "s", TabID: "tab12345", ID: "AbCd2345"},
 		"bad name": {SID: "s", TabID: "tab12345", ID: "AbCd2345", Files: map[string]string{"../etc/passwd": "x"}},
-		"too big":  {SID: "s", TabID: "tab12345", ID: "AbCd2345", Files: map[string]string{"a.js": strings.Repeat("x", 65<<10)}},
 		"bad tab":  {SID: "s", TabID: "?", ID: "AbCd2345", Files: ok.Files},
 	} {
 		if c.Validate() == nil {
 			t.Errorf("%s: expected a validation error", name)
 		}
+	}
+	// Code a person can write too long is Apply's refusal, not Validate's.
+	big := commands.SaveSnippet{SID: "s", TabID: "tab12345", ID: "AbCd2345", Files: map[string]string{"component.js": strings.Repeat("x", 65<<10)}}
+	if err := big.Validate(); err != nil {
+		t.Errorf("too big: Validate = %v, want nil", err)
 	}
 }

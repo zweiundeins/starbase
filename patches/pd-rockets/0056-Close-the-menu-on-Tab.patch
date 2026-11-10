@@ -1,0 +1,30 @@
+From 194597d07fbc663ce8e8992480abd3dd64f9316d Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:10:03 +0000
+Subject: [PATCH 56/58] Close the menu on Tab
+
+Tab moved the focus out of the open menu and left it open. Close it and return the focus
+to the trigger, so the browser tabs on from there, as menu buttons do.
+---
+ rocket/context-menu/client.ts | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/rocket/context-menu/client.ts b/rocket/context-menu/client.ts
+index 85513d7..70b7465 100644
+--- a/rocket/context-menu/client.ts
++++ b/rocket/context-menu/client.ts
+@@ -241,6 +241,11 @@ function setupMenu(
+       (event.target as Element).closest("input, textarea, [contenteditable]")
+     )
+       return;
++    if (event.key === "Tab") {
++      // Hand the focus back to the trigger, and the browser moves on from there.
++      close(true);
++      return;
++    }
+     const active = document.activeElement as HTMLElement;
+     const scope = active.closest<HTMLElement>('[role="menu"]') ?? host;
+     if (keyboard.matches("cancel", event)) {
+-- 
+2.55.0
+

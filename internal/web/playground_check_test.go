@@ -12,7 +12,7 @@ import (
 
 // The playground's type check answers with $_diag for component.js.
 func TestPlaygroundCheck(t *testing.T) {
-	ts, c, _, cat := newServerBus(t)
+	ts, c, _, cat := newServerWriter(t)
 	check := func(slug, code string) string {
 		t.Helper()
 		body := `{"component":` + strconv.Quote(slug) + `,"code":` + strconv.Quote(code) + `}`
@@ -44,6 +44,16 @@ func TestPlaygroundCheck(t *testing.T) {
 	src, _ := fs.ReadFile(cat.FS, editor.Script)
 	if got := check("code-editor", "// @ts-check\n"+string(src)); strings.Contains(got, `\"code\":2307`) {
 		t.Errorf("an import of the component's own files is not found:\n%s", got)
+	}
+	// A component written in TypeScript opens as component.ts and checks clean.
+	table, _ := cat.Get("data-table")
+	if _, page := get(t, c, ts.URL+"/playground?component=data-table"); !strings.Contains(page, "component.ts&#34;") {
+		t.Error("the playground doesn't open data-table's TypeScript")
+	}
+	tsSrc, _ := fs.ReadFile(cat.FS, table.SourceFile)
+	body = `{"component":"data-table","name":"component.ts","code":` + strconv.Quote(string(tsSrc)) + `}`
+	if b, _ := io.ReadAll(post(t, c, ts.URL+"/playground/check", body, "same-origin").Body); !strings.Contains(string(b), `{\"component.ts\":[]}`) {
+		t.Errorf("data-table.ts in the playground:\n%s", b)
 	}
 	if got := check("", "// @ts-check\nimport { x } from '/etc/x.js'\n"); !strings.Contains(got, `\"col\":19,\"length\":11,\"text\":\"'/etc/x.js'\",\"code\":2307`) {
 		t.Errorf("a missing file outside the folder:\n%s", got)

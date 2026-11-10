@@ -1,0 +1,44 @@
+From 2f6904b8aeec0418ba3366e153834774d30041c5 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 16:44:00 +0000
+Subject: [PATCH] Keep the browser's own drag from ending a pointer drag that
+ starts on a link or image
+
+Links and images are draggable by default. A press on one inside an item, such as an image in a card or a card handle that is a link, let the browser start its own drag after a few pixels, which sends pointercancel and ended the surface's drag before it began. While a press can still become a surface drag, the host now cancels dragstart.
+---
+ core/pointer-drag.ts | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/core/pointer-drag.ts b/core/pointer-drag.ts
+index c07051a..bd5879e 100644
+--- a/core/pointer-drag.ts
++++ b/core/pointer-drag.ts
+@@ -134,6 +134,10 @@ export function installPointerDrag<ItemId, Target>(options: PointerDragOptions<I
+     }
+     options.host.setPointerCapture?.(pointer.pointerId);
+   };
++  // Links and images are draggable: the browser's own drag would send pointercancel and end this one.
++  const onDragStart = (event: Event): void => {
++    if (active) event.preventDefault();
++  };
+   const onDown = (event: Event): void => {
+     const pointer = event as PointerEvent;
+     if (pointer.button !== 0 || active) return;
+@@ -153,12 +157,14 @@ export function installPointerDrag<ItemId, Target>(options: PointerDragOptions<I
+   };
+ 
+   options.host.addEventListener("pointerdown", onDown);
++  options.host.addEventListener("dragstart", onDragStart);
+   window.addEventListener("pointermove", onMove);
+   window.addEventListener("pointerup", onUp);
+   window.addEventListener("pointercancel", onCancel);
+   return () => {
+     finish(null, true);
+     options.host.removeEventListener("pointerdown", onDown);
++    options.host.removeEventListener("dragstart", onDragStart);
+     window.removeEventListener("pointermove", onMove);
+     window.removeEventListener("pointerup", onUp);
+     window.removeEventListener("pointercancel", onCancel);
+-- 
+2.55.0
+

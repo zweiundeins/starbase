@@ -10,6 +10,7 @@
 package catalog
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -35,10 +36,21 @@ type Meta struct {
 	Preview  string   `yaml:"preview"`  // the gallery card's live demo
 	Usage    string   `yaml:"usage"`    // optional: the smallest markup to paste into a page; installation snippets fall back to Preview
 	Source   string   `yaml:"source"`   // optional: upstream repository (pinned)
+	License  string   `yaml:"license"`  // optional: an SPDX id from licenses; MIT when empty
 	Unlisted bool     `yaml:"unlisted"` // part of the site, not the gallery: served and documented, but not browsed
 
 	Playground PlaygroundMeta `yaml:"playground"`
 }
+
+// licenses are the SPDX ids a component may name: MIT, Starbase's own, and
+// the licences of code vendored from elsewhere.
+var licenses = []string{"MIT", "Beerware"}
+
+// LicenseID is the component's SPDX licence id.
+func (m Meta) LicenseID() string { return cmp.Or(m.License, "MIT") }
+
+// LicenseURL is the licence's text on spdx.org.
+func (m Meta) LicenseURL() string { return "https://spdx.org/licenses/" + m.LicenseID() + ".html" }
 
 // InstallMarkup is the markup the installation snippets end with: the
 // component's usage, or its gallery preview when it has none.
@@ -51,11 +63,14 @@ func (m Meta) InstallMarkup() string {
 
 type Component struct {
 	Meta
-	Slug     string
-	Script   string // path inside the components FS, e.g. "button/button.js"
-	DocHTML  string
-	Manifest *Manifest
-	Hash     string // content hash over every file in the folder
+	Slug   string
+	Script string // path inside the components FS, e.g. "button/button.js"
+	// SourceFile is the file the component is written in: Script, or the
+	// <slug>.ts that Script is compiled from (internal/tsgen).
+	SourceFile string
+	DocHTML    string
+	Manifest   *Manifest
+	Hash       string // content hash over every file in the folder
 	// Integrity is the SRI hash of the component's module (<slug>.js).
 	Integrity string
 	Headings  []Heading
@@ -97,7 +112,7 @@ type Catalog struct {
 	FS         fs.FS
 	Components []*Component // sorted by slug
 	bySlug     map[string]*Component
-	Hash       string // hash over all component hashes
+	Hash       string // hash over snapshotFormat and all component hashes
 }
 
 func (c *Catalog) Get(slug string) (*Component, bool) {
@@ -143,6 +158,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	}
 	slices.SortFunc(cat.Components, func(a, b *Component) int { return strings.Compare(a.Slug, b.Slug) })
 	h := sha256.New()
+	h.Write([]byte(snapshotFormat))
 	for _, c := range cat.Components {
 		h.Write([]byte(c.Hash))
 	}
@@ -154,10 +170,17 @@ func Load(fsys fs.FS) (*Catalog, error) {
 }
 
 // minFormat is part of every component's version hash. A version's .min
-// files are frozen the first time they are stored (min.go), so a change to
-// how they are made (esbuild options, shrink.go) must change it: every
-// component then gets a new version, whose .min files are made the new way.
-const minFormat = "min2"
+// files and its one-file bundle are frozen the first time they are stored
+// (min.go, onefile.go), so a change to how they are made (esbuild options,
+// shrink.go, the bundle's banner) must change it: every component then gets a
+// new version, whose files are made the new way.
+const minFormat = "min3"
+
+// snapshotFormat is part of the catalog's hash, which names a snapshot
+// (/c/@<hash>/autoloader.js) whose autoloader is frozen the first time it is
+// stored. A change to what the autoloader loads must change it, so the
+// catalog gets a new snapshot while the old ones keep their maps.
+const snapshotFormat = "bundles"
 
 // The Datastar + Rocket build pages load (static/vendor, patches/rocket) is
 // served like a component version, /c/datastar@<hash>/datastar-rocket.js, so
@@ -186,6 +209,10 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 		return nil, fmt.Errorf("missing README.md")
 	}
 	c := &Component{Slug: slug, Script: path.Join(slug, slug+".js")}
+	c.SourceFile = c.Script
+	if _, err := fs.Stat(fsys, path.Join(slug, slug+".ts")); err == nil {
+		c.SourceFile = path.Join(slug, slug+".ts")
+	}
 	c.DocHTML, err = RenderMarkdown(readme, &c.Meta)
 	if err != nil {
 		return nil, fmt.Errorf("README.md: %w", err)
@@ -237,6 +264,14 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 	}
 	if c.Source != "" && !strings.HasPrefix(c.Source, "https://github.com/") {
 		problems = append(problems, "front matter: source must be a https://github.com/ URL")
+	}
+	for _, name := range []string{slug + ".bundle.js", BundleName(slug)} {
+		if _, err := fs.Stat(fsys, path.Join(slug, name)); err == nil {
+			problems = append(problems, fmt.Sprintf("%s is reserved for the one-file bundle: rename it", name))
+		}
+	}
+	if c.License != "" && !slices.Contains(licenses, c.License) {
+		problems = append(problems, fmt.Sprintf("front matter: license %q must be one of %s", c.License, strings.Join(licenses, ", ")))
 	}
 	if len(c.Summary) > 90 {
 		problems = append(problems, "front matter: summary must be at most 90 characters")

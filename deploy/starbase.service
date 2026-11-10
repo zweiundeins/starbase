@@ -22,14 +22,18 @@ RestartSec=2
 # host: other services listen there (Caddy's admin API, internal app ports,
 # monitoring). DNS goes through systemd-resolved's stub, which stays allowed.
 RuntimeDirectory=starbase
-RuntimeDirectoryMode=0755
+RuntimeDirectoryMode=0750
 IPAddressDeny=localhost
 IPAddressAllow=127.0.0.53 127.0.0.54
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Prometheus scrapes 127.0.0.1:8198, which starbase-metrics.socket holds: the
+# deny above covers the service's own sockets, not that one.
+Sockets=starbase-metrics.socket
 
 # Public and unauthenticated (pixel board, playground): keep it well away
-# from the other services' memory.
-MemoryHigh=256M
+# from the other services' memory. internal/app plans for up to 80% of
+# MemoryMax (streamBudget, MemoryLimit); MemoryHigh throttles only past that.
+MemoryHigh=320M
 MemoryMax=384M
 TasksMax=256
 

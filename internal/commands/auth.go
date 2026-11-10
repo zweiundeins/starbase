@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/zweiundeins/lith/writer"
 
 	"starbase/internal/model"
 )
@@ -22,12 +22,11 @@ func (c SignIn) Validate() error {
 	return nil
 }
 
-func (c SignIn) Scope() string { return c.SID }
-
-func (c SignIn) Apply(ctx context.Context, tx *sql.Tx) error {
+func (c SignIn) Apply(tx *writer.Tx) error {
+	tx.Touch(SessionTopic(c.SID))
 	now := time.Now().Unix()
 	var id int64
-	err := tx.QueryRowContext(ctx, `
+	err := tx.QueryRow(`
 		INSERT INTO users (github_id, login, name, avatar_url, created_at) VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT (github_id) DO UPDATE SET login = excluded.login, name = excluded.name, avatar_url = excluded.avatar_url
 		RETURNING id`,
@@ -35,7 +34,7 @@ func (c SignIn) Apply(ctx context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `
+	_, err = tx.Exec(`
 		INSERT INTO sessions (sid, user_id, created_at) VALUES (?, ?, ?)
 		ON CONFLICT (sid) DO UPDATE SET user_id = excluded.user_id`, c.SID, id, now)
 	return err
@@ -44,9 +43,8 @@ func (c SignIn) Apply(ctx context.Context, tx *sql.Tx) error {
 // SignOut unbinds the session.
 type SignOut struct{ SID string }
 
-func (c SignOut) Scope() string { return c.SID }
-
-func (c SignOut) Apply(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE sid = ?`, c.SID)
+func (c SignOut) Apply(tx *writer.Tx) error {
+	tx.Touch(SessionTopic(c.SID))
+	_, err := tx.Exec(`DELETE FROM sessions WHERE sid = ?`, c.SID)
 	return err
 }

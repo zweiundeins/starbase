@@ -1,11 +1,21 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
+
+// observeProps callbacks run inside the effect that set the attribute (a
+// data-attr binding): reads in them must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 // A 16-colour palette tuned to the site: space, steel, violet, sky, nature, fire.
 const PALETTE = [
 	'#080D1D', '#1B1F3B', '#283552', '#7785A8', '#AEBBDD', '#F3F4FA', '#8C6BFF', '#B09AFF',
 	'#5B4FD6', '#65BFFF', '#2F7BE0', '#6EF59A', '#4CC46A', '#FFD84D', '#FF9F43', '#E5484D',
 ]
-const PENDING_MS = 3000
 const FLUSH_MS = 80
 const BATCH = 60 // cells per sb-paint at most (the Showcase server's burst)
 
@@ -73,7 +83,7 @@ rocket('sb-pixel-board', {
 		cells: string.docs({ description: 'Board state: one hex digit (palette index) per cell, row by row. Usually server-owned.' }),
 		palette: array(string.trim).default(() => PALETTE).docs({ description: '16 colours as a JSON array of #rrggbb.' }),
 		color: number.clamp(0, 15).default(7).docs({ description: 'Selected palette index (the attribute sets it; the user can change it).' }),
-		local: bool.docs({ description: 'Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells echoes them.' }),
+		local: bool.docs({ description: 'Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells answers them, or the page calls revert().' }),
 		readonly: bool.docs({ description: 'Watch only: no painting, no palette.' }),
 		grid: bool.docs({ description: 'Show faint cell lines.' }),
 	}),
@@ -83,7 +93,7 @@ rocket('sb-pixel-board', {
 		],
 	},
 	renderOnPropChange: ({ changes }) => 'readonly' in changes || 'grid' in changes || 'size' in changes,
-	setup: ({ $$, action, adoptStyles, cleanup, emit, host, observeProps, props }) => {
+	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, observeProps, props }) => {
 		adoptStyles(host, styles)
 		$$.color = props.color
 		$$.palette = props.palette
@@ -94,7 +104,7 @@ rocket('sb-pixel-board', {
 
 		const n = () => props.size
 		let [buf, from] = boards.get(host) || []
-		const pending = new Map() // idx → { color }
+		const pending = new Map() // idx → { color, was: the server's colour then, mine: colours painted there before, still on their way }
 		const queue = new Set()
 		let ctx = null, img = null, raf = 0, flushTimer = 0
 		let pid, last = -1, hover = -1
@@ -108,8 +118,9 @@ rocket('sb-pixel-board', {
 				const v = parseInt(s[i] ?? '0', 16)
 				buf[i] = Number.isNaN(v) ? 0 : v
 			}
-			// Pixels the server has confirmed are no longer pending.
-			for (const [i, p] of pending) if (buf[i] === p.color) pending.delete(i)
+			// A pending pixel ends when the server's cells answer it: with its colour, or with
+			// another painter's, which the board shows as it is.
+			for (const [i, p] of pending) if (buf[i] === p.color || (buf[i] !== p.was && !p.mine.includes(buf[i]))) pending.delete(i)
 		}
 		const paint = () => {
 			raf = 0
@@ -148,9 +159,8 @@ rocket('sb-pixel-board', {
 			if (props.readonly) return
 			if (props.local) buf[i] = $$.color
 			else {
-				const p = { color: $$.color }
-				pending.set(i, p)
-				setTimeout(() => pending.get(i) === p && (pending.delete(i), redraw()), PENDING_MS)
+				const q = pending.get(i)
+				if (q || buf[i] !== $$.color) pending.set(i, { color: $$.color, was: buf[i], mine: q ? [...q.mine, q.color] : [] })
 			}
 			queue.add(i)
 			if (queue.size >= BATCH) flush()
@@ -213,17 +223,18 @@ rocket('sb-pixel-board', {
 			redraw()
 		})
 		action('blur', () => (($$.cur = -1), redraw()))
+		// For a paint the server never applied (an error status, retries-failed): the board shows its cells again.
+		defineHostProp('revert', { value: () => (pending.clear(), redraw()) })
 
-		observeProps(() => (decode(), redraw()), 'cells', 'size')
-		observeProps(() => ($$.palette = props.palette, redraw()), 'palette')
-		observeProps(() => ($$.color = props.color), 'color')
+		observeProps(() => peek(() => (decode(), redraw())), 'cells', 'size')
+		observeProps(() => peek(() => (($$.palette = props.palette), redraw())), 'palette')
+		observeProps(() => peek(() => ($$.color = props.color)), 'color')
 		if (from !== props.cells || buf?.length !== n() * n()) decode()
 		$$.label = () => ($$.v, describe($$.cur))
 		redraw()
 		cleanup(() => {
 			cancelAnimationFrame(raf)
 			clearTimeout(flushTimer)
-			pending.clear() // the per-cell timers find nothing left to expire
 		})
 	},
 	render: ({ html, props: { size, readonly, grid } }) => html`

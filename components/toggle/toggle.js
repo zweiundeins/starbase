@@ -44,7 +44,7 @@ button {
 	clip-path: ${notch('calc(var(--_u) * var(--_notch))')};
 	border-radius: calc(var(--_u) * 3 * (1 - var(--_notch)));
 	/* cursor: the label's (all: unset inherits it) */
-	transition: background 180ms steps(3);
+	transition: background 180ms steps(calc(3 + 997 * (1 - var(--_notch)))); /* stepped at notch 1, smooth at 0 */
 }
 .sm { --_u: 3px; }
 .md { --_u: 4px; }
@@ -57,7 +57,7 @@ button {
 	background: var(--_knob);
 	clip-path: ${notch('calc(var(--_u) / 2 * var(--_notch))')};
 	border-radius: calc(var(--_u) * 2 * (1 - var(--_notch)));
-	transition: inset-inline-start 180ms steps(5);
+	transition: inset-inline-start 180ms steps(calc(5 + 995 * (1 - var(--_notch))));
 }
 button.on { background: var(--_on); }
 button.on .knob { inset-inline-start: calc(var(--_u) * 6); background: var(--_knob-on); }

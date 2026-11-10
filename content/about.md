@@ -15,8 +15,8 @@ This site collects Rocket components the community has already built, so you can
 The site is itself a Datastar app, built the way Datastar recommends: **CQRS** over a single SQLite database.
 
 - **Commands:** starring a component, filtering the gallery or picking a theme is a short `POST`. It is validated, queued, and answers `204 No Content`.
-- **One writer:** a single goroutine drains the queue, applies every queued command in one transaction, commits, and then wakes only the affected render streams.
-- **Queries:** every open tab holds one long-lived SSE stream. After each relevant commit the server re-renders the whole page from one read snapshot and sends it. Datastar morphs the difference, and Brotli, sharing one window across frames, keeps resends tiny.
+- **One writer:** a single goroutine drains the queue, applies every queued command in one transaction, commits, and then marks only the affected pages for a new render.
+- **Queries:** every open tab holds one long-lived SSE stream. After a relevant commit the server re-renders the whole page from one read snapshot, at most once every 50 ms however many commits came in, and sends it. Datastar morphs the difference, and zstd (or Brotli), sharing one window across frames, keeps resends tiny. A part that every viewer sees alike, such as the Showcase's pixel board, has a view of its own, which renders once for all of them. When the server stops for a deploy, the stream's last event has the page open it again on the new process, and `retry: 'error'` keeps asking until that process answers.
 - **Server-owned UI state:** your filters and sort order live in SQLite per tab, not in client JavaScript. The URL stays in sync, so links are shareable.
 
 Go, [templ](https://templ.guide), SQLite (pure Go, no cgo), Datastar and Rocket. No Node, no bundler.

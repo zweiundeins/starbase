@@ -1,0 +1,20 @@
+# /etc/systemd/system/starbase-metrics.socket
+# The metrics' listener for the host's Prometheus (observability/starbase.metrics.yml),
+# which systemd holds and passes to starbase.service. Connections on it are
+# filtered by this unit, not by the service's IPAddressDeny=localhost: so
+# localhost reaches this one port, while Starbase still reaches no local port.
+# Change the port here, in starbase.env's METRICS_ADDR and in the scrape file
+# together (TestMetricsPort).
+[Unit]
+Description=Starbase's metrics for Prometheus (loopback only)
+Documentation=https://github.com/zweiundeins/starbase/tree/main/deploy
+
+[Socket]
+ListenStream=127.0.0.1:8198
+FileDescriptorName=metrics
+Service=starbase.service
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=sockets.target

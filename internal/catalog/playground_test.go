@@ -69,7 +69,7 @@ func TestPlaygroundControls(t *testing.T) {
 	}
 
 	var sig map[string]any
-	if err := json.Unmarshal([]byte(pg.Signals()), &sig); err != nil || sig["yaw"] != 30.0 || sig["showValue"] != true {
+	if err := json.Unmarshal([]byte(pg.Signals()), &sig); err != nil || sig["yaw"] != 30.0 || sig["showValue"] != true || sig[catalog.SmoothSignal] != false {
 		t.Errorf("signals = %s (%v)", pg.Signals(), err)
 	}
 

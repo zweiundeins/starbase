@@ -7,26 +7,49 @@ import (
 	"time"
 
 	"github.com/starfederation/datastar-go/datastar"
+	"github.com/zweiundeins/lith/edge"
+	"github.com/zweiundeins/lith/writer"
 
 	"starbase/internal/commands"
-	"starbase/internal/cqrs"
 	"starbase/internal/model"
 	"starbase/internal/queries"
 )
 
-// send enqueues a command and answers 204. The tab's render stream shows
-// the outcome; commands never return HTML.
-func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd cqrs.Command) {
-	err := s.bus.Send(cmd)
+// send applies a command and answers 204 once it is committed, so the
+// tab's next frame acks its op. The tab's render stream shows the outcome;
+// commands never return HTML.
+func (s *Server) send(w http.ResponseWriter, r *http.Request, cmd writer.Command) {
+	err := s.writer.Do(r.Context(), cmd)
 	switch {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
-	case errors.Is(err, cqrs.ErrInvalid):
+	case errors.Is(err, writer.ErrInvalid):
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	case r.Context().Err() != nil: // the client went away
 	default:
-		s.log.Warn("command rejected", "err", err)
-		http.Error(w, "busy, try again", http.StatusServiceUnavailable)
+		s.log.Warn("command failed", "err", err)
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}
+}
+
+// streamID names a tab's render stream by its session and its tab, so a
+// command finds only its own session's streams.
+func streamID(sid, tab string) string { return sid + "." + tab }
+
+// tabOpen admits a command that stores state for a tab: 400 for a tab id no
+// page makes, 409 while the tab has no open stream, so that a made-up tab id
+// creates no row. The page keeps the command pending on a 409 and sends it
+// again once its stream connects (static/js/commands.js).
+func (s *Server) tabOpen(w http.ResponseWriter, r *http.Request, tab string) bool {
+	switch {
+	case !tabIDRe.MatchString(tab):
+		w.WriteHeader(http.StatusBadRequest)
+	case !s.hub.HasStream(streamID(edge.SessionID(r.Context()), tab)):
+		w.WriteHeader(http.StatusConflict)
+	default:
+		return true
+	}
+	return false
 }
 
 // browseSignals reads the gallery's signals: the tab and its Browse.
@@ -48,7 +71,10 @@ func (s *Server) cmdBrowse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad signals", http.StatusBadRequest)
 		return
 	}
-	s.send(w, r, commands.SetBrowseFilter{SID: sessionID(r), TabID: tabID, Browse: b})
+	if !s.tabOpen(w, r, tabID) {
+		return
+	}
+	s.send(w, r, commands.SetBrowseFilter{SID: edge.SessionID(r.Context()), TabID: tabID, Op: r.Header.Get("Op-Id"), Browse: b})
 }
 
 // cmdSort is a chosen sort: this page, and the session's default sort.
@@ -58,16 +84,16 @@ func (s *Server) cmdSort(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad signals", http.StatusBadRequest)
 		return
 	}
-	s.send(w, r, commands.SetGallerySort{SID: sessionID(r), TabID: tabID, Browse: b})
+	if !s.tabOpen(w, r, tabID) {
+		return
+	}
+	s.send(w, r, commands.SetGallerySort{SID: edge.SessionID(r.Context()), TabID: tabID, Op: r.Header.Get("Op-Id"), Browse: b})
 }
 
 func (s *Server) cmdStar(star bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var user *model.User
-		err := s.q.View(r.Context(), func(rd *queries.Reader) error {
-			var err error
-			user, err = rd.SessionUser(r.Context(), sessionID(r))
-			return err
+		user, err := s.q.ViewValue(r.Context(), func(rd *queries.Reader) (*model.User, error) {
+			return rd.SessionUser(r.Context(), edge.SessionID(r.Context()))
 		})
 		if err != nil {
 			s.fail(w, r, err)
@@ -94,11 +120,11 @@ func (s *Server) cmdStar(star bool) http.HandlerFunc {
 // cmdTheme and cmdThemeStyle set the Themes page preview, a session
 // preference: it carries across pages and browser tabs.
 func (s *Server) cmdTheme(w http.ResponseWriter, r *http.Request) {
-	s.send(w, r, commands.SetPreviewTheme{SID: sessionID(r), Theme: r.PathValue("theme")})
+	s.send(w, r, commands.SetPreviewTheme{SID: edge.SessionID(r.Context()), Theme: r.PathValue("theme")})
 }
 
 func (s *Server) cmdThemeStyle(w http.ResponseWriter, r *http.Request) {
-	s.send(w, r, commands.SetPreviewStyle{SID: sessionID(r), Smooth: r.PathValue("style") == "smooth"})
+	s.send(w, r, commands.SetPreviewStyle{SID: edge.SessionID(r.Context()), Smooth: r.PathValue("style") == "smooth"})
 }
 
 // cmdInstallTab remembers the component pages' installation tab for the
@@ -111,7 +137,7 @@ func (s *Server) cmdInstallTab(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
-	s.send(w, r, commands.SetInstallTab{SID: sessionID(r), Tab: p.Tab})
+	s.send(w, r, commands.SetInstallTab{SID: edge.SessionID(r.Context()), Tab: p.Tab})
 }
 
 // cmdFlight is the Showcase's commands demo: one field per request, from a
@@ -127,10 +153,13 @@ func (s *Server) cmdFlight(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
+	if !s.tabOpen(w, r, p.TabID) {
+		return
+	}
 	select {
 	case <-time.After(400 * time.Millisecond):
 	case <-r.Context().Done():
 		return
 	}
-	s.send(w, r, commands.SetFlight{SID: sessionID(r), TabID: p.TabID, Name: p.Name, Value: fmt.Sprint(p.Value)})
+	s.send(w, r, commands.SetFlight{SID: edge.SessionID(r.Context()), TabID: p.TabID, Op: r.Header.Get("Op-Id"), Name: p.Name, Value: fmt.Sprint(p.Value)})
 }

@@ -84,7 +84,7 @@ With `text`, a problem shows only while the code at its place still reads `text`
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command is rejected. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 A new `value` from the server replaces the code; the same markup sent again leaves the user's edits alone. To clear it, the server sends `value=""` (a removed attribute changes nothing). Moving the editor elsewhere in the page keeps its edits, like a `<textarea>`.
 

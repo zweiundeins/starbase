@@ -5,8 +5,9 @@ import (
 	"io/fs"
 	"net/http"
 	"regexp"
-	"starbase/internal/precompress"
 	"strings"
+
+	"github.com/zweiundeins/lith/edge"
 
 	"starbase/internal/catalog"
 	"starbase/internal/queries"
@@ -16,6 +17,7 @@ import (
 // so other sites can pin exactly what they reviewed:
 //
 //	/c/<slug>@<hash>/<file>.js      one version of a component's file
+//	/c/<slug>@<hash>/<slug>.bundle.min.js  that version in one file (catalog/onefile.go)
 //	/c/@<catalog>/autoloader.js     a snapshot of the whole catalog's autoloader
 //	/c/@<catalog>/importmap.json    SRI hashes for everything that snapshot loads
 //
@@ -71,7 +73,7 @@ func (s *Server) serveVersioned(w http.ResponseWriter, r *http.Request, slug, ha
 		return
 	}
 	s.immutableModule(w, "text/javascript; charset=utf-8")
-	precompress.Write(w, r, body)
+	edge.ServePrecompressed(w, r, body)
 }
 
 func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request, hash, file string) {
@@ -99,7 +101,7 @@ func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request, hash, fil
 	}
 	if file == "autoloader.js" {
 		s.immutableModule(w, "text/javascript; charset=utf-8")
-		precompress.Write(w, r, []byte(auto))
+		edge.ServePrecompressed(w, r, []byte(auto))
 		return
 	}
 	// Merge "integrity" into your import map; browsers then refuse any
@@ -111,7 +113,7 @@ func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request, hash, fil
 	}
 	s.immutableModule(w, "application/json")
 	body, _ := json.MarshalIndent(map[string]any{"integrity": m}, "", "  ")
-	precompress.Write(w, r, append(body, '\n'))
+	edge.ServePrecompressed(w, r, append(body, '\n'))
 }
 
 func (s *Server) immutableModule(w http.ResponseWriter, contentType string) {

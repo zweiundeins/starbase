@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The columns: [{key, label?, width?, align?, sortable?}]. width is a CSS grid track (a number is px; default minmax(6rem, 1fr)); align is start, center or end. A row's value for a key is a scalar or a cell object {value, text?, suffix?, href?, tone?}."
+        "description": "The columns: [{key, label?, width?, align?, sortable?, resizable?, min?, fit?}]. With resizable: resizable: false keeps a column's width, min is its narrowest (px, default 40), fit its width for the whole result (px). width is a CSS grid track (a number is px; default minmax(6rem, 1fr)); ch and em resolve in each row's own font, so style header text through ::part(column), never ::part(header); align is start, center or end. A row's value for a key is a scalar or a cell object {value, text?, suffix?, href?, tone?}."
       }
     },
     {
@@ -175,6 +175,46 @@
       "docs": {
         "description": "The Columns button's text, and the accessible name of its menu."
       }
+    },
+    {
+      "name": "resizable",
+      "attribute": "resizable",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The user can resize columns: a grip at each header's end (drag, double-click to fit), or Alt+Arrow to its separator."
+      }
+    },
+    {
+      "name": "widths",
+      "attribute": "widths",
+      "type": "json",
+      "default": {},
+      "required": false,
+      "docs": {
+        "description": "View state: widths in px by column key, {\"name\": 180}, over the columns' width. A new object from the server wins, the same one keeps the user's; the live map is the widths property."
+      }
+    },
+    {
+      "name": "resizeHint",
+      "attribute": "resize-hint",
+      "type": "string",
+      "default": "Drag to resize, double-click to fit",
+      "required": false,
+      "docs": {
+        "description": "The resize grip's tooltip."
+      }
+    },
+    {
+      "name": "resetWidthsLabel",
+      "attribute": "reset-widths-label",
+      "type": "string",
+      "default": "Reset column widths",
+      "required": false,
+      "docs": {
+        "description": "The column picker's reset item."
+      }
     }
   ],
   "slots": [
@@ -239,6 +279,13 @@
       "bubbles": true,
       "composed": true,
       "description": "The user showed or hid a column in the column picker. detail: { name, hidden } (the keys of every hidden column). View state: not emitted for a change the server made or a property write."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-column-widths",
+      "bubbles": true,
+      "composed": true,
+      "description": "The user resized a column (at the end of a drag, never during it). detail: { name, widths }, the whole map. Not emitted for the server's changes or a property write."
     }
   ]
 }

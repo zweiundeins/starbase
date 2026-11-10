@@ -2,17 +2,19 @@ package queries_test
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
+
+	"github.com/zweiundeins/lith/writer"
 
 	"starbase/internal/catalog"
 	"starbase/internal/commands"
-	"starbase/internal/cqrs"
 	"starbase/internal/db"
 	"starbase/internal/model"
 	"starbase/internal/queries"
@@ -29,8 +31,8 @@ func component(slug, tag, category, since, summary string) fstest.MapFS {
 }
 
 type env struct {
-	bus *cqrs.Bus
-	q   *queries.Queries
+	w *writer.Writer
+	q *queries.Queries
 }
 
 func setup(t *testing.T) env {
@@ -42,8 +44,12 @@ func setup(t *testing.T) env {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { d.Close() })
-	bus := cqrs.NewBus(d.W, cqrs.NewHub(), slog.New(slog.NewTextHandler(io.Discard, nil)))
-	go bus.Run(ctx)
+	w, err := writer.New(d, writer.Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	go w.Run(ctx)
+	t.Cleanup(func() { w.Close() })
 
 	fsys := fstest.MapFS{}
 	for _, c := range []fstest.MapFS{
@@ -59,20 +65,19 @@ func setup(t *testing.T) env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := bus.Exec(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
+	if err := w.Do(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
 		t.Fatal(err)
 	}
-	return env{bus: bus, q: queries.New(d.R)}
+	return env{w: w, q: queries.New(d)}
 }
 
 func (e env) signIn(t *testing.T, sid, login string, ghID int64) *model.User {
 	t.Helper()
 	ctx := context.Background()
-	if err := e.bus.Exec(ctx, commands.SignIn{SID: sid, User: model.User{GitHubID: ghID, Login: login}}); err != nil {
+	if err := e.w.Do(ctx, commands.SignIn{SID: sid, User: model.User{GitHubID: ghID, Login: login}}); err != nil {
 		t.Fatal(err)
 	}
-	var u *model.User
-	e.q.View(ctx, func(r *queries.Reader) (err error) { u, err = r.SessionUser(ctx, sid); return })
+	u, _ := e.q.ViewValue(ctx, func(r *queries.Reader) (*model.User, error) { return r.SessionUser(ctx, sid) })
 	if u == nil || u.Login != login {
 		t.Fatalf("session user = %+v", u)
 	}
@@ -81,10 +86,8 @@ func (e env) signIn(t *testing.T, sid, login string, ghID int64) *model.User {
 
 func (e env) browse(t *testing.T, b model.Browse, uid int64) queries.BrowseResult {
 	t.Helper()
-	var res queries.BrowseResult
-	err := e.q.View(context.Background(), func(r *queries.Reader) (err error) {
-		res, err = r.Browse(context.Background(), b.Normalize(), uid)
-		return
+	res, err := e.q.ViewValue(context.Background(), func(r *queries.Reader) (queries.BrowseResult, error) {
+		return r.Browse(context.Background(), b.Normalize(), uid)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -107,12 +110,12 @@ func TestStarsAreIdempotentAndCounted(t *testing.T) {
 	bob := e.signIn(t, "sid-bob", "bob", 2)
 
 	for range 3 { // double clicks must not double count
-		if err := e.bus.Exec(ctx, commands.Star{UserID: ada.ID, Slug: "charlie"}); err != nil {
+		if err := e.w.Do(ctx, commands.Star{UserID: ada.ID, Slug: "charlie"}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	e.bus.Exec(ctx, commands.Star{UserID: bob.ID, Slug: "charlie"})
-	e.bus.Exec(ctx, commands.Star{UserID: bob.ID, Slug: "alpha"})
+	e.w.Do(ctx, commands.Star{UserID: bob.ID, Slug: "charlie"})
+	e.w.Do(ctx, commands.Star{UserID: bob.ID, Slug: "alpha"})
 
 	res := e.browse(t, model.Browse{Sort: model.SortPopular}, ada.ID)
 	if got := slugs(res.Cards); got[0] != "charlie" || got[1] != "alpha" {
@@ -123,7 +126,7 @@ func TestStarsAreIdempotentAndCounted(t *testing.T) {
 	}
 
 	for range 2 {
-		e.bus.Exec(ctx, commands.Unstar{UserID: ada.ID, Slug: "charlie"})
+		e.w.Do(ctx, commands.Unstar{UserID: ada.ID, Slug: "charlie"})
 	}
 	res = e.browse(t, model.Browse{}, ada.ID)
 	for _, c := range res.Cards {
@@ -132,10 +135,10 @@ func TestStarsAreIdempotentAndCounted(t *testing.T) {
 		}
 	}
 
-	if err := e.bus.Exec(ctx, commands.Star{Slug: "alpha"}); err == nil {
+	if err := e.w.Do(ctx, commands.Star{Slug: "alpha"}); err == nil {
 		t.Fatal("anonymous star must be rejected")
 	}
-	if err := e.bus.Exec(ctx, commands.Star{UserID: ada.ID, Slug: "nope"}); err != nil {
+	if err := e.w.Do(ctx, commands.Star{UserID: ada.ID, Slug: "nope"}); err != nil {
 		t.Fatalf("starring a missing component should be a no-op, got %v", err)
 	}
 }
@@ -173,17 +176,51 @@ func TestTabState(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	cmd := commands.SetBrowseFilter{SID: "s", TabID: "tab12345", Browse: model.Browse{Q: "  hi  ", Category: "bogus", Sort: "weird"}}
-	if err := e.bus.Exec(ctx, cmd); err != nil {
+	if err := e.w.Do(ctx, cmd); err != nil {
 		t.Fatal(err)
 	}
 	var st model.TabState
 	var ok bool
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, ok, err = r.Tab(ctx, "s", "tab12345"); return })
-	if want := (model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}}); !ok || st != want {
+	if want := (model.TabState{Browse: model.Browse{Q: "hi", Sort: model.SortPopular}}); !ok || !reflect.DeepEqual(st, want) {
 		t.Fatalf("tab = %+v, want %+v", st, want)
 	}
-	if err := e.bus.Exec(ctx, commands.SetBrowseFilter{SID: "s", TabID: "X"}); err == nil {
+	if err := e.w.Do(ctx, commands.SetBrowseFilter{SID: "s", TabID: "X"}); err == nil {
 		t.Fatal("bad tab id must be rejected")
+	}
+}
+
+// The sweep forgets tabs untouched for TabTTL and keeps the session's
+// preferences.
+func TestPruneTabs(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	for _, cmd := range []writer.Command{
+		commands.SetGallerySort{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: model.SortNewest}},
+		commands.SetBrowseFilter{SID: "s", TabID: "tab67890", Browse: model.Browse{Q: "hi"}},
+		writer.Func(func(tx *writer.Tx) error {
+			_, err := tx.Exec(`UPDATE tab_state SET updated_at = ? WHERE tab_id = 'tab12345'`, time.Now().Add(-commands.TabTTL-time.Minute).Unix())
+			return err
+		}),
+		commands.PruneTabs{OlderThan: commands.TabTTL},
+	} {
+		if err := e.w.Do(ctx, cmd); err != nil {
+			t.Fatalf("%T: %v", cmd, err)
+		}
+	}
+	var old, fresh bool
+	var prefs model.SessionPrefs
+	e.q.View(ctx, func(r *queries.Reader) (err error) {
+		_, old, _ = r.Tab(ctx, "s", "tab12345")
+		_, fresh, _ = r.Tab(ctx, "s", "tab67890")
+		prefs, err = r.Prefs(ctx, "s")
+		return
+	})
+	if old || !fresh {
+		t.Errorf("after the sweep: stale tab kept %v, fresh tab kept %v", old, fresh)
+	}
+	if prefs.GallerySort != model.SortNewest {
+		t.Errorf("the sweep dropped the session's preferences: %+v", prefs)
 	}
 }
 
@@ -192,18 +229,18 @@ func TestTabState(t *testing.T) {
 func TestSessionPrefs(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
-	for _, cmd := range []cqrs.Command{
+	for _, cmd := range []writer.Command{
 		commands.SetPreviewTheme{SID: "s", Theme: "nebula"},
 		commands.SetPreviewStyle{SID: "s", Smooth: true},
 		commands.SetInstallTab{SID: "s", Tab: "pinned"},
 		commands.SetGallerySort{SID: "s", TabID: "tab12345", Browse: model.Browse{Q: "hi", Sort: model.SortNewest}},
 	} {
-		if err := e.bus.Exec(ctx, cmd); err != nil {
+		if err := e.w.Do(ctx, cmd); err != nil {
 			t.Fatalf("%T: %v", cmd, err)
 		}
 	}
-	prefs := func(sid string) (p model.SessionPrefs) {
-		e.q.View(ctx, func(r *queries.Reader) (err error) { p, err = r.Prefs(ctx, sid); return })
+	prefs := func(sid string) model.SessionPrefs {
+		p, _ := e.q.ViewValue(ctx, func(r *queries.Reader) (model.SessionPrefs, error) { return r.Prefs(ctx, sid) })
 		return p
 	}
 	want := model.SessionPrefs{InstallTab: "pinned", PreviewTheme: "nebula", PreviewSmooth: true, GallerySort: model.SortNewest}
@@ -217,21 +254,21 @@ func TestSessionPrefs(t *testing.T) {
 		t.Errorf("tab browse = %+v", st.Browse)
 	}
 	// A search or category change leaves the default sort alone.
-	e.bus.Exec(ctx, commands.SetBrowseFilter{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: model.SortName}})
+	e.w.Do(ctx, commands.SetBrowseFilter{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: model.SortName}})
 	if got := prefs("s").GallerySort; got != model.SortNewest {
 		t.Errorf("a browse filter changed the default sort to %q", got)
 	}
 	if got := prefs("other"); got != (model.SessionPrefs{}) || got.PreviewThemeOrDefault() != "deep-space" || got.DefaultSort() != model.SortPopular {
 		t.Errorf("another session: %+v", got)
 	}
-	for _, bad := range []cqrs.Command{
+	for _, bad := range []writer.Command{
 		commands.SetPreviewTheme{SID: "s", Theme: "hacker"},
 		commands.SetPreviewTheme{SID: "", Theme: "nebula"},
 		commands.SetPreviewStyle{SID: ""},
 		commands.SetGallerySort{SID: "s", TabID: "tab12345", Browse: model.Browse{Sort: "weird"}},
 		commands.SetGallerySort{SID: "s", TabID: "X", Browse: model.Browse{Sort: model.SortName}},
 	} {
-		if err := e.bus.Exec(ctx, bad); err == nil {
+		if err := e.w.Do(ctx, bad); err == nil {
 			t.Errorf("%+v must be rejected", bad)
 		}
 	}
@@ -241,7 +278,7 @@ func TestSyncDeactivatesRemovedComponents(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	cat, _ := catalog.Load(component("alpha", "sb-alpha", "forms", "2026-01-01", "Launch forms quickly"))
-	if err := e.bus.Exec(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
+	if err := e.w.Do(ctx, commands.SyncCatalog{Catalog: cat}); err != nil {
 		t.Fatal(err)
 	}
 	if got := slugs(e.browse(t, model.Browse{}, 0).Cards); len(got) != 1 || got[0] != "alpha" {
@@ -270,10 +307,10 @@ func TestSnippetSaveAndLoad(t *testing.T) {
 	ctx := context.Background()
 	u := e.signIn(t, "sid-snip", "coder", 9)
 	cmd := commands.SaveSnippet{SID: "sid-snip", TabID: "tab12345", ID: "AbCd2345", Files: map[string]string{"component.js": "rocket('sb-x', {})"}, Component: "alpha", UserID: u.ID}
-	if err := e.bus.Exec(ctx, cmd); err != nil {
+	if err := e.w.Do(ctx, cmd); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.bus.Exec(ctx, cmd); err == nil {
+	if err := e.w.Do(ctx, cmd); err == nil {
 		t.Fatal("ids are unique; saving twice must fail")
 	}
 	var sn *queries.Snippet
@@ -296,7 +333,7 @@ func TestSnippetSaveAndLoad(t *testing.T) {
 func TestBoard(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
-	if err := e.bus.Exec(ctx, commands.SeedBoard{}); err != nil {
+	if err := e.w.Do(ctx, commands.SeedBoard{}); err != nil {
 		t.Fatal(err)
 	}
 	read := func() (cells string, version, pixels int64) {
@@ -314,11 +351,11 @@ func TestBoard(t *testing.T) {
 		t.Fatalf("seeded board has %d cells, all empty: %v", len(seeded), strings.Count(seeded, "0") == len(seeded))
 	}
 	// Seeding twice is a no-op.
-	e.bus.Exec(ctx, commands.SeedBoard{})
+	e.w.Do(ctx, commands.SeedBoard{})
 	if again, v, _ := read(); again != seeded || v != v1 {
 		t.Fatal("second seed changed the board")
 	}
-	if err := e.bus.Exec(ctx, commands.PaintPixels{Board: "main", Color: 13, Cells: []int{0, 1, 47}}); err != nil {
+	if err := e.w.Do(ctx, commands.PaintPixels{Board: "main", Color: 13, Cells: []int{0, 1, 47}}); err != nil {
 		t.Fatal(err)
 	}
 	cells, v2, pixels := read()
@@ -342,13 +379,12 @@ func TestSnippetStoreCap(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	save := func(id string, size int) error {
-		return e.bus.Exec(ctx, commands.SaveSnippet{SID: "s", TabID: "tab12345", ID: id, Files: map[string]string{"component.js": strings.Repeat("x", size)}})
+		return e.w.Do(ctx, commands.SaveSnippet{SID: "s", TabID: "tab12345", ID: id, Files: map[string]string{"component.js": strings.Repeat("x", size)}})
 	}
 	if err := save("AAAAAAAA", 100); err != nil {
 		t.Fatal(err)
 	}
-	var n int64
-	e.q.View(ctx, func(r *queries.Reader) (err error) { n, err = r.SnippetBytes(ctx); return })
+	n, _ := e.q.ViewValue(ctx, func(r *queries.Reader) (int64, error) { return r.SnippetBytes(ctx) })
 	if n < 100 || n > 200 {
 		t.Fatalf("stored bytes = %d, want the JSON size of one ~100 byte snippet", n)
 	}
@@ -357,13 +393,33 @@ func TestSnippetStoreCap(t *testing.T) {
 	if err := save("BBBBBBBB", 100); err != nil { // fits
 		t.Fatal(err)
 	}
-	if err := save("CCCCCCCC", 100); !errors.Is(err, commands.ErrSnippetStoreFull) {
-		t.Fatalf("err = %v, want ErrSnippetStoreFull", err)
+	if err := save("CCCCCCCC", 100); err != nil {
+		t.Fatal(err)
 	}
-	var sn *queries.Snippet
-	e.q.View(ctx, func(r *queries.Reader) (err error) { sn, err = r.Snippet(ctx, "CCCCCCCC"); return })
+	sn, _ := e.q.ViewValue(ctx, func(r *queries.Reader) (*queries.Snippet, error) { return r.Snippet(ctx, "CCCCCCCC") })
 	if sn != nil {
 		t.Fatal("the refused snippet must not be stored")
+	}
+	var st model.TabState
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.ShareRefusal != commands.RefusedStoreFull || st.PlaygroundShare != "BBBBBBBB" {
+		t.Fatalf("tab = %+v, want the full store's refusal after the second save", st)
+	}
+	// Code over MaxSnippetBytes is refused in the tab's row too.
+	commands.MaxSnippetStore = 1 << 30
+	if err := save("DDDDDDDD", commands.MaxSnippetBytes+1); err != nil {
+		t.Fatal(err)
+	}
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.ShareRefusal != commands.RefusedSnippetSize {
+		t.Fatalf("tab = %+v, want the size refusal", st)
+	}
+	if err := save("EEEEEEEE", 10); err != nil {
+		t.Fatal(err)
+	}
+	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+	if st.ShareRefusal != "" || st.PlaygroundShare != "EEEEEEEE" {
+		t.Fatalf("tab = %+v, want the new share and no refusal", st)
 	}
 }
 
@@ -371,7 +427,7 @@ func TestDemoData(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	for range 2 { // idempotent
-		if err := e.bus.Exec(ctx, commands.SeedDemo{}); err != nil {
+		if err := e.w.Do(ctx, commands.SeedDemo{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -407,26 +463,57 @@ func TestSetFlight(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	send := func(name, value string) error {
-		return e.bus.Exec(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Name: name, Value: value})
+		return e.w.Do(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Name: name, Value: value})
 	}
 	for _, c := range [][2]string{{"thrust", "70"}, {"shields", "false"}, {"callsign", " apollo-11 "}} {
 		if err := send(c[0], c[1]); err != nil {
 			t.Fatalf("%s=%s: %v", c[0], c[1], err)
 		}
 	}
-	if err := send("thrust", "95"); !errors.Is(err, commands.ErrThrust) {
-		t.Errorf("thrust 95: err = %v, want the business rule", err)
-	}
-	for _, bad := range [][2]string{{"thrust", "abc"}, {"shields", "maybe"}, {"callsign", "no spaces"}, {"warp", "9"}} {
+	// What no control sends is invalid.
+	for _, bad := range [][2]string{{"thrust", "abc"}, {"thrust", "101"}, {"shields", "maybe"}, {"warp", "9"}} {
 		if err := send(bad[0], bad[1]); err == nil {
 			t.Errorf("%s=%q must be rejected", bad[0], bad[1])
 		}
 	}
+	flight := func() model.FlightPlan {
+		var st model.TabState
+		e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
+		return st.Flight
+	}
+	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11"}
+	if got := flight(); got != want {
+		t.Errorf("flight = %+v, want %+v (normalized)", got, want)
+	}
+	// What a person can choose but the rules forbid is a refusal in the
+	// tab's row: the value stays, and the row acks the op under its key.
+	for _, c := range []struct {
+		name, value, op, refusal string
+	}{{"thrust", "95", "op1", commands.RefusedThrust}, {"callsign", "no spaces", "op2", commands.RefusedCallsign}} {
+		if err := e.w.Do(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Op: c.op, Name: c.name, Value: c.value}); err != nil {
+			t.Fatalf("%s=%q: %v", c.name, c.value, err)
+		}
+		if got := flight().Refusal; got != c.refusal {
+			t.Errorf("%s=%q: refusal %q, want %q", c.name, c.value, got, c.refusal)
+		}
+	}
 	var st model.TabState
 	e.q.View(ctx, func(r *queries.Reader) (err error) { st, _, err = r.Tab(ctx, "s", "tab12345"); return })
-	want := model.FlightPlan{Set: true, Thrust: 70, Shields: false, Callsign: "APOLLO-11", CallsignRev: 1}
-	if st.Flight != want {
-		t.Errorf("flight = %+v, want %+v (normalized, the rejected thrust not applied)", st.Flight, want)
+	if st.Ops["flight:thrust"] != "op1" || st.Ops["flight:callsign"] != "op2" {
+		t.Errorf("acks = %v", st.Ops)
+	}
+	if err := e.w.Do(ctx, commands.SetFlight{SID: "s", TabID: "tab12345", Op: "Not An Op", Name: "shields", Value: "true"}); err == nil {
+		t.Error("a malformed op id must be rejected")
+	}
+	want.Refusal = commands.RefusedCallsign
+	if got := flight(); got != want {
+		t.Errorf("flight = %+v, want %+v (the refused values not applied)", got, want)
+	}
+	if err := send("shields", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if got := flight(); got.Refusal != "" || !got.Shields {
+		t.Errorf("an applied command keeps the refusal: %+v", got)
 	}
 	if (model.FlightPlan{}).OrDefault().Thrust != 40 {
 		t.Error("defaults")

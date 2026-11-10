@@ -1,0 +1,86 @@
+From 425ffbe53d41dc85d79825d76701a1e6650e36f5 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:10:43 +0000
+Subject: [PATCH 72/73] Decide a blur once the page has settled, against the
+ text the field started from
+
+A page that answers with new markup can remove or move the focused field, and the browser blurs it on the
+way, while the markup is half replaced. The blur then compared the field with a [data-inline-edit-value] that
+might be gone or already new, and sent a commit or cancel nobody made. The decision now waits a microtask: a
+field the page removed, or one that has the focus again, sends nothing. The saved text is read when the field
+takes the focus, so a missing or changed value element no longer turns a blur into a commit.
+
+Switching to another window no longer commits either: the field keeps the focus there, and the edit goes on
+when the reader comes back.
+---
+ rocket/inline-edit/client.ts | 31 ++++++++++++++++++++++++++-----
+ 1 file changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/rocket/inline-edit/client.ts b/rocket/inline-edit/client.ts
+index 8243859..62429ed 100644
+--- a/rocket/inline-edit/client.ts
++++ b/rocket/inline-edit/client.ts
+@@ -11,6 +11,9 @@ rocket(inlineEditContract.tag, {
+   setup({ host, cleanup }: { host: HTMLElement; cleanup: (fn: () => void) => void }) {
+     let lastPress = 0;
+     let cancelling = false;
++    // The saved text each field started from, read when it took the focus.
++    const startedFrom = new WeakMap<HTMLInputElement, string | null | undefined>();
++    const savedText = () => host.querySelector(inlineEditContract.selectors.value)?.textContent;
+     const contextId = () => host.dataset.contextId ?? "";
+     const emit = <T>(name: string, detail: T) =>
+       host.dispatchEvent(new CustomEvent<T>(name, { bubbles: true, composed: true, detail }));
+@@ -52,27 +55,45 @@ rocket(inlineEditContract.tag, {
+       } else if (event.key === "Escape") {
+         event.preventDefault();
+         cancelling = true;
++        startedFrom.delete(input);
+         emit<InlineEditRequestDetail>(inlineEditContract.events.cancel, { contextId: contextId() });
+         input.blur();
+         cancelling = false;
+       }
+     };
++    const onFocusIn = (event: FocusEvent) => {
++      const input = inputFor(event.target);
++      if (input && !startedFrom.has(input)) startedFrom.set(input, savedText());
++    };
+     const onFocusOut = (event: FocusEvent) => {
+       if (cancelling) return;
+       const input = inputFor(event.target);
+       if (!input) return;
+-      if (input.value === host.querySelector(inlineEditContract.selectors.value)?.textContent) {
+-        emit<InlineEditRequestDetail>(inlineEditContract.events.cancel, { contextId: contextId() });
+-      } else {
+-        emit<InlineEditCommitDetail>(inlineEditContract.events.commit, { contextId: contextId(), value: input.value });
+-      }
++      // A morph that removes or moves the field blurs it on the way: decide once the page has settled.
++      queueMicrotask(() => {
++        const root = input.getRootNode();
++        const focused = (root instanceof Document || root instanceof ShadowRoot) && root.activeElement === input;
++        if (!input.isConnected || focused) return;
++        const saved = startedFrom.has(input) ? startedFrom.get(input) : savedText();
++        startedFrom.delete(input);
++        if (input.value === saved) {
++          emit<InlineEditRequestDetail>(inlineEditContract.events.cancel, { contextId: contextId() });
++        } else {
++          emit<InlineEditCommitDetail>(inlineEditContract.events.commit, {
++            contextId: contextId(),
++            value: input.value,
++          });
++        }
++      });
+     };
+     host.addEventListener("pointerdown", onPointerDown);
+     host.addEventListener("keydown", onKeyDown);
++    host.addEventListener("focusin", onFocusIn);
+     host.addEventListener("focusout", onFocusOut);
+     cleanup(() => {
+       host.removeEventListener("pointerdown", onPointerDown);
+       host.removeEventListener("keydown", onKeyDown);
++      host.removeEventListener("focusin", onFocusIn);
+       host.removeEventListener("focusout", onFocusOut);
+     });
+   },
+-- 
+2.55.0
+

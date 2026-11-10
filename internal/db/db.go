@@ -1,118 +1,98 @@
-// Package db opens the SQLite database as two pools: a single-connection
-// writer used only by the command bus, and a read-only pool for queries.
+// Package db opens the SQLite database through lith/sqlite with starbase's
+// migrations: one write connection, which the writer owns, and a pool of
+// query_only connections for everything else.
 package db
 
 import (
 	"context"
 	"database/sql"
 	"embed"
-	"errors"
 	"fmt"
 	"io/fs"
-	"net/url"
-	"os"
-	"path/filepath"
+	"math"
 	"runtime"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
+	"testing"
 
-	_ "modernc.org/sqlite"
+	"github.com/zweiundeins/lith/sqlite"
 )
 
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-type DB struct {
-	W *sql.DB // writer: exactly one connection, BEGIN IMMEDIATE
-	R *sql.DB // readers: query_only
+// Open opens (and migrates) the database at path. Use a file in a temp
+// folder in tests; in-memory databases do not share across pools.
+func Open(ctx context.Context, path string) (*sqlite.DB, error) {
+	return sqlite.Open(ctx, path, sqlite.Options{
+		Synchronous: synchronous(),
+		Migrate:     func(ctx context.Context, w *sql.DB) error { return migrateTo(ctx, w, math.MaxInt) },
+		// Each render worker (one per CPU) holds a connection for good; the
+		// other half serves documents, demos and downloads.
+		Readers:  2 * max(4, runtime.GOMAXPROCS(0)),
+		CacheKiB: 16000,
+		// No Litestream: the writer checkpoints between batches.
+		Checkpoint: sqlite.CheckpointWriter,
+	})
 }
 
-var commonPragmas = []string{
-	"journal_mode(WAL)",
-	"synchronous(NORMAL)",
-	"busy_timeout(5000)",
-	"temp_store(MEMORY)",
-	"foreign_keys(ON)",
-	"cache_size(-16000)",
+// synchronous is NORMAL, or OFF (no fsync) for the throwaway databases of tests.
+func synchronous() string {
+	if testing.Testing() {
+		return "OFF"
+	}
+	return "NORMAL"
 }
 
-func dsn(path string, extra ...string) string {
-	q := url.Values{}
-	for _, p := range append(commonPragmas, extra...) {
-		q.Add("_pragma", p)
-	}
-	return "file:" + path + "?" + q.Encode()
-}
-
-// Open opens (and migrates) the database at path. Use ":memory:"-like
-// temp files in tests; in-memory databases do not share across pools.
-func Open(ctx context.Context, path string) (*DB, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, err
-	}
-	w, err := sql.Open("sqlite", dsn(path)+"&_txlock=immediate")
-	if err != nil {
-		return nil, err
-	}
-	w.SetMaxOpenConns(1)
-	w.SetConnMaxLifetime(0)
-	if err := migrate(ctx, w); err != nil {
-		w.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
-	}
-	r, err := sql.Open("sqlite", dsn(path, "query_only(1)", "mmap_size(268435456)"))
-	if err != nil {
-		w.Close()
-		return nil, err
-	}
-	r.SetMaxOpenConns(max(4, runtime.NumCPU()))
-	r.SetMaxIdleConns(max(4, runtime.NumCPU()))
-	return &DB{W: w, R: r}, nil
-}
-
-func (d *DB) Close() error {
-	return errors.Join(d.R.Close(), d.W.Close())
-}
-
-// migrate applies migrations/NNN_*.sql whose number exceeds PRAGMA user_version.
-func migrate(ctx context.Context, w *sql.DB) error {
+// migrateTo applies migrations up to number last with lith's runner. A
+// migration with the line "-- then: VACUUM" has the database vacuumed once
+// it is committed.
+func migrateTo(ctx context.Context, w *sql.DB, last int) error {
 	var version int
 	if err := w.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	entries, err := fs.ReadDir(migrations, "migrations")
+	m, err := fs.Sub(migrations, "migrations")
 	if err != nil {
 		return err
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	for _, e := range entries {
-		n, err := strconv.Atoi(strings.SplitN(e.Name(), "_", 2)[0])
-		if err != nil {
-			return fmt.Errorf("bad migration name %q", e.Name())
+	pending := upTo{m, last}
+	if err := sqlite.Migrate(ctx, w, pending); err != nil {
+		return err
+	}
+	entries, err := pending.ReadDir(".")
+	if err != nil {
+		return err
+	}
+	vacuum := slices.ContainsFunc(entries, func(e fs.DirEntry) bool {
+		body, err := fs.ReadFile(m, e.Name())
+		return err == nil && number(e.Name()) > version && strings.Contains(string(body), "\n-- then: VACUUM\n")
+	})
+	// Only a database that had rows before has space to give back.
+	if vacuum && version > 0 {
+		if _, err := w.ExecContext(ctx, "VACUUM"); err != nil {
+			return fmt.Errorf("vacuum: %w", err)
 		}
-		if n <= version {
-			continue
-		}
-		body, err := migrations.ReadFile("migrations/" + e.Name())
-		if err != nil {
-			return err
-		}
-		tx, err := w.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, string(body)); err != nil {
-			tx.Rollback()
-			return fmt.Errorf("%s: %w", e.Name(), err)
-		}
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", n)); err != nil {
-			tx.Rollback()
-			return err
-		}
-		if err := tx.Commit(); err != nil {
-			return err
-		}
+		_, err := w.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)") // VACUUM wrote the whole database into the WAL
+		return err
 	}
 	return nil
+}
+
+// upTo lists the migrations numbered up to last; with last below the
+// newest, lith's runner would otherwise apply them all.
+type upTo struct {
+	fs.FS
+	last int
+}
+
+func (u upTo) ReadDir(name string) ([]fs.DirEntry, error) {
+	entries, err := fs.ReadDir(u.FS, name)
+	return slices.DeleteFunc(entries, func(e fs.DirEntry) bool { return number(e.Name()) > u.last }), err
+}
+
+func number(name string) int {
+	n, _ := strconv.Atoi(strings.SplitN(name, "_", 2)[0])
+	return n
 }

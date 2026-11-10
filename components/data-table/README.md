@@ -20,10 +20,10 @@ playground:
   style: "block-size: 18rem"
   props: {rowHeight: {min: 24, max: 64}}
   values: {selection: single, label: Star catalog}
-  exclude: [offset, total, rowKey, buffer, confirm, name, hiddenColumns]
+  exclude: [offset, total, rowKey, buffer, confirm, name, hiddenColumns, widths, resizeHint, resetWidthsLabel]
 ---
 
-A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges; a column picker lets the user hide columns, and exports come from the server, which has every row. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
+A table for rows the server keeps: a sticky header, sorting (on the server, or in the table when it has every row), row selection, and a virtual scroll the server drives. Cells can be links, carry a muted suffix or show as badges; a column picker lets the user hide columns, `resizable` lets them resize columns, and exports come from the server, which has every row. The table asks for the rows in view (plus a buffer), the server sends that window, and a table of a million rows ships a few hundred of them.
 
 The rows scroll in an [sb-virtual-scroll](/components/virtual-scroll), after the virtual scroll in Anders Murphy's [hyperlith](https://github.com/andersmurphy/hyperlith). Every row has the same height (`row-height`), so the scroll position alone tells which rows are in view. When the view comes halfway into the buffer, the table emits `sb-window` with the rows it wants; until they arrive, the rows it lacks show as placeholders.
 
@@ -101,6 +101,73 @@ With `column-picker`, a Columns button above the table opens a menu of every col
 
 A server that should remember the choice posts `sb-columns` as a command and keeps the list as a session preference, so the next page renders it into `hidden-columns`. A new list from the server wins over the user's, the same list again leaves it alone, and `el.hiddenColumns` reads or sets the list on the page without an event. At least one column always shows: the menu won't hide the last one, and a list that hides every column still shows the first.
 
+### Columns the user resizes
+
+With `resizable`, each header has a grip at its end: drag it, or double-click it to fit the column. `widths` holds the user's widths, `{key: px}`, and the table emits `sb-column-widths` with the whole map once per change, at the end of a drag. It is view state like `hidden-columns`, kept here in a page signal as a JSON string: assigning an object to a signal merges into it, and the menu's "Reset column widths" sends `{}`.
+
+```html preview
+<div data-signals="{_wide: {rows: [], offset: 0, total: 0, fit: {}}, _widths: '{}'}" style="display: grid; gap: 12px">
+  <sb-data-table label="Star catalog" resizable column-picker style="block-size: 20rem"
+    data-attr="{columns: JSON.stringify(['name', 'constellation', 'distance', 'magnitude'].map((key) => ({key, fit: $_wide.fit[key]}))), rows: JSON.stringify($_wide.rows), offset: $_wide.offset, total: $_wide.total, widths: $_widths}"
+    data-preserve-attr="columns rows offset total widths"
+    data-on:sb-window="@get('/demo/data/rows?into=_wide&cells=rich&' + new URLSearchParams(evt.detail))"
+    data-on:sb-column-widths="$_widths = JSON.stringify(evt.detail.widths)"></sb-data-table>
+  <span>Widths: <b data-text="$_widths"></b></span>
+</div>
+```
+
+A new `widths` from the server wins, the same one again keeps the user's, and `el.widths` reads or sets the map without an event; a server that keeps it posts `sb-column-widths` as a command, like `sb-columns`. Widths go by key, so a hidden column has its width again when it shows.
+
+A fit never makes a column narrower than its header. A table that holds only a window can't measure the rest, so the server sends each column's `fit` for the whole result. Here SQLite finds each column's longest value:
+
+```go source=internal/queries/demo_stars.go#Reader.DemoStarLongest
+// DemoStarLongest scans the catalog for its longest values.
+func (r *Reader) DemoStarLongest(ctx context.Context) (DemoStarLongest, error) {
+	var l DemoStarLongest
+	err := r.tx.QueryRowContext(ctx, `SELECT coalesce(max(length(name)), 0), coalesce(max(length(class)), 0), coalesce(max(length(constellation)), 0),
+		coalesce(max(distance), 0), coalesce(min(magnitude), 0), coalesce(max(magnitude), 0), coalesce(max(planets), 0) FROM demo_stars`).
+		Scan(&l.Name, &l.Class, &l.Constellation, &l.Distance, &l.MagnitudeMin, &l.MagnitudeMax, &l.Planets)
+	return l, err
+}
+```
+
+`demoStarFits` turns them into widths at 8.4 px a character, JetBrains Mono's width at 14 px, plus the padding, unit and badge: exact in a monospace font, an estimate in others.
+
+```go source=internal/web/demo_data.go#demoStarFits
+// demoStarFits are sb-data-table's fit widths for the catalog's columns, in
+// px: the most characters a column's values take as the table formats them
+// (numbers with grouping and up to three decimals), at 8.4 px each, plus the
+// cell's padding. The site's table text is JetBrains Mono at 14 px, whose
+// every character is 0.6 em wide, so this is exact there and an estimate in
+// other fonts. Rich cells add the distance's unit and the magnitude's badge.
+func demoStarFits(l queries.DemoStarLongest, rich bool) map[string]int {
+	const char, em, pad = 8.4, 14.0, 24 + 1
+	width := func(chars int, extra float64) int { return int(math.Ceil(float64(chars)*char+extra)) + pad }
+	number := func(v float64) int { // "-12,345.678"
+		n := len(strconv.Itoa(int(math.Abs(v))))
+		n += (n-1)/3 + 4
+		if v < 0 {
+			n++
+		}
+		return n
+	}
+	unit, badge := 0.0, 0.0
+	if rich {
+		unit, badge = 2*char+0.35*em, 0.8*em+2 // "ly" after a 0.35em margin; a badge's padding and border
+	}
+	return map[string]int{
+		"name":          width(l.Name, 0),
+		"class":         width(l.Class, 0),
+		"constellation": width(l.Constellation, 0),
+		"distance":      width(number(l.Distance), unit),
+		"magnitude":     width(max(number(l.MagnitudeMin), number(l.MagnitudeMax)), badge),
+		"planets":       width(len(strconv.Itoa(l.Planets)), 0),
+	}
+}
+```
+
+Without `fit`, the table measures the rows at hand.
+
 ## Server side
 
 The handler behind the first example is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. It reads the window and the order from the query, and `demoAnswer` patches the signal named by `into` (it also serves plain JSON and the demo's `delay`). The answer carries the order it used, so the header shows what the rows are, not what was clicked. With `cells=rich`, each star goes through `demoStarCells` (below, with the export), which turns it into cell objects:
@@ -109,7 +176,8 @@ The handler behind the first example is Go with the [Datastar SDK](https://data-
 // demoRows answers a table's window and sort requests (sb-data-table's
 // sb-window and sb-sort) with ?count= stars from ?offset= (at most 500) in the
 // order asked for (?key=, ?dir=), and says which order it used. With
-// &cells=rich, the rows hold cell objects (demoStarCells).
+// &cells=rich, the rows hold cell objects (demoStarCells). fit is each
+// column's width for the whole catalog (demoStarFit).
 func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	offset, _ := strconv.Atoi(q.Get("offset"))
@@ -133,7 +201,7 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}}
+	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}, "fit": s.demoStarFit(r.Context(), total, q.Get("cells") == "rich")}
 	if q.Get("cells") == "rich" {
 		rows := make([]map[string]any, len(stars))
 		for i, st := range stars {
@@ -147,12 +215,8 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 // demoAnswer writes the list as JSON, or patches it into the requested signal.
 func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
-		select {
-		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
-		case <-r.Context().Done():
-			return
-		}
+	if !demoWait(r) {
+		return
 	}
 	// Datastar's own requests accept JSON too: they always get the patch.
 	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -169,7 +233,15 @@ func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSigna
 		http.Error(w, "into must be a signal name", http.StatusBadRequest)
 		return
 	}
-	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{into: patch})
+	js, err := json.Marshal(map[string]any{into: patch})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	// Through lith's sse, which compresses: the edge leaves text/event-stream to it.
+	if stream, err := sse.Open(w, r, sse.Options{}); err == nil {
+		stream.CloseWith(sse.PatchSignals(js, false))
+	}
 }
 ```
 
@@ -276,8 +348,8 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	now := time.Now()
-	if !s.exportLimit.allow(sessionID(r), 1, now) || !s.exportLimitIP.allow(clientIP(r), 1, now) {
-		http.Error(w, "exporting too often", http.StatusTooManyRequests)
+	if !s.exportLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.exportLimit.Allow(edge.SessionID(r.Context()), 1, now) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	// A download holds a read connection until it ends: slow ones must not
@@ -287,10 +359,11 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-s.exports }()
 	default:
 		w.Header().Set("Retry-After", "5")
-		http.Error(w, "too many downloads at once", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	setWriteDeadline(w, r, time.Now().Add(time.Minute))
+	rc := http.NewResponseController(w)
+	rc.SetWriteDeadline(time.Now().Add(time.Minute))
 
 	h := w.Header()
 	h.Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
@@ -343,7 +416,7 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 	err := s.q.View(r.Context(), func(rd *queries.Reader) error {
 		return rd.EachDemoStar(r.Context(), key, dir == "desc", ids, func(st demo.Star) error {
 			if n++; n%1000 == 0 {
-				setWriteDeadline(w, r, time.Now().Add(time.Minute))
+				rc.SetWriteDeadline(time.Now().Add(time.Minute))
 			}
 			return write(st)
 		})
@@ -391,6 +464,7 @@ It reads the stars from a cursor in the same order as the windows, so the file h
 func (r *Reader) EachDemoStar(ctx context.Context, sort string, desc bool, ids []int, fn func(demo.Star) error) error {
 	where, args := "", make([]any, len(ids))
 	if len(ids) > 0 {
+		ctx = sqlite.Uncached(ctx) // a text per length of the list
 		where = ` WHERE id IN (?` + strings.Repeat(", ?", len(ids)-1) + `)`
 		for i, id := range ids {
 			args[i] = id
@@ -419,13 +493,13 @@ A real server should also neutralise text cells that start with `=`, `+`, `-` or
 
 ## With commands
 
-Give it a `name` and a `selection`, and it emits `sb-change` with `{ name, value }` (an array of row keys) when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` matches, and `revert()` goes back to the server's selection when a command is rejected. See [Commands and components](/contribute#commands-and-components).
+Give it a `name` and a `selection`, and it emits `sb-change` with `{ name, value }` (an array of row keys) when the selection changes: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `selected` matches, and `revert()` goes back to the server's selection when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components).
 
-A new `selected` from the server always wins, and `selected="[]"` clears it. Markup re-sent with the same `selected` leaves the user's selection alone. The order (`sort`) is not part of the value: it only ever comes from the server. Neither is `hidden-columns`: it is view state with its own event (`sb-columns`), never pending, and `revert()` leaves it as it is.
+A new `selected` from the server always wins, and `selected="[]"` clears it. Markup re-sent with the same `selected` leaves the user's selection alone. The order (`sort`) is not part of the value: it only ever comes from the server. Neither are `hidden-columns` and `widths`: they are view state with their own events (`sb-columns`, `sb-column-widths`), never pending, and `revert()` leaves them as they are.
 
 ## Columns and rows
 
-- `columns`: `[{key, label?, width?, align?, sortable?}]`. `width` is a CSS grid track (`"8rem"`, `"minmax(4rem, 2fr)"`, a number for px; default `minmax(6rem, 1fr)`). Widths whose minimum is a length keep the columns steady while rows come and go; a table wider than its box scrolls sideways. `align` is `start`, `center` or `end`.
+- `columns`: `[{key, label?, width?, align?, sortable?, resizable?, min?, fit?}]`. `width` is a CSS grid track (`"8rem"`, `"minmax(4rem, 2fr)"`, a number for px; default `minmax(6rem, 1fr)`). Widths whose minimum is a length keep the columns steady while rows come and go; a table wider than its box scrolls sideways. The header and every row are grids of their own, so `ch` and `em` resolve in each row's font: give header text its font, size or weight through `::part(column)`, never `::part(header)`, or the header's columns drift away from the rows'. `align` is `start`, `center` or `end`.
 - `rows`: objects keyed by column. Numbers show in the reader's format (`4,242.5`), everything else as text. The field named by `row-key` (default `id`) identifies a row.
 - A value can also be a cell object, `{value, text?, suffix?, href?, tone?}`:
   - `value` is the raw value: the sort key, what `sb-cell-activate` reports, and the text when there is no `text` (formatted like a plain value).
@@ -438,6 +512,8 @@ A new `selected` from the server always wins, and `selected="[]"` clears it. Mar
 - Sorting: a table that holds every row (`offset` 0, and no `total` or one no larger than the rows given) sorts them itself when a sortable header is clicked. Numbers sort by value, text in the reader's order (with numbers inside it by value, so "Io 2" comes before "Io 10"), and missing values last. A cell object sorts by its `value`, else its `text`. It still emits `sb-sort`, a new `sort` from the server wins, and rows the server sends in are sorted the same way, so their order doesn't jump. A table that holds only a window asks, and the server sends the rows in the new order.
 - `row-height` is fixed (default `36` px), and `buffer` (default `4000` px of rows) is how much the table keeps ready above and below the view.
 - A server that sends fewer rows than asked for (a cap) still fills the view: the table then asks for windows that fit the cap.
+- Resizing (`resizable`, see [above](#columns-the-user-resizes)): per column, `resizable: false`, `min` (px, default `40`) and `fit` (px). A fit is never narrower than the header nor wider than 2000 px.
+- A cell too narrow for its text ends in an ellipsis. Pointed at or focused, it shows the whole text over its neighbours, without changing the row's height or the table's scroll size; a cell in the last column grows toward the start. Only clipped cells do this.
 - Browsers cap how tall an element can be, Firefox at about 17.9 million px (Chrome and Safari at about 33.5 million). Keep rows × `row-height` under that: 100,000 rows of 36 px are 3.6 million px.
 
 ## Forms
@@ -450,16 +526,18 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** it fills the width it is given and is at most `24rem` tall; set `block-size` or `max-block-size` on the element to change that. Rows are `row-height` tall. Set `font-size` on the element (default `0.875rem`) to scale the text.
 - **Fonts:** the header and the cells use your page's font.
-- **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, and placeholders are sb-virtual-scroll's `--sb-surface-hover` bars. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1.
+- **Colours:** the table is `--sb-surface-card` with a `--sb-border` frame, rows are separated by `--sb-border-subtle` lines, and placeholders are sb-virtual-scroll's `--sb-surface-hover` bars. The header is `--sb-surface-raised` with `--sb-text-2` labels; cells are `--sb-text-1`. A row turns `--sb-surface-hover` on hover; a selected row is `--sb-brand-subtle` with a `--sb-brand` edge. The focus ring and the sort arrow are `--sb-brand-light`. Corners are `--sb-radius`, or pixel notches while `--sb-notch` is 1, which also makes the sort arrow a stepped pixel one (a plain triangle at 0).
 - **Shadow:** `--sb-shadow-overlay` sets the column picker's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 - **Toolbar:** it shows above the table with `column-picker`, or while a control you put in its slot shows (one with `hidden`, or hidden by `data-show`, doesn't count). The Columns button and its menu are `--sb-surface-raised` with a `--sb-border` frame and `--sb-text-2` text; checkboxes take `--sb-brand`. A `<button>` you put in the slot looks like the Columns button until your page styles it.
+- **Resize grips:** a `--sb-border` line, dashed while `--sb-notch` is 1, and a wider `--sb-brand-light` one while pointed at, dragged or focused (`CanvasText` and `Highlight` in forced colours).
+- **Peeks:** on `--sb-surface-hover`, with an edge shadow from `--sb-text-1` (an outline in forced colours).
 - **Rich cells:** links are `--sb-brand-light` and underlined, suffixes `--sb-text-muted`. Badges take their tone from `--sb-info`, `--sb-ok`, `--sb-warn` and `--sb-danger` (`neutral` from `--sb-text-muted`), with a tinted background and border.
-- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. In rows with cell objects, a cell holds a `text` (also `link` for a link, `badge` for a badge, so `::part(text badge)` styles only badges) and a `suffix`. Above the table: `toolbar`, `columns-button`, `columns-menu` (the popover) and `column-option` (a label with its checkbox). Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `grid` (the sb-virtual-scroll that scrolls), `header` (the header row; its font sizes the `ch` and `em` of column widths, so set fonts on `column`), `column` (a header cell), `row` and `cell`. Selected rows are also `selected`, so `::part(row selected)` styles only those. In rows with cell objects, a cell holds a `text` (also `link` for a link, `badge` for a badge, so `::part(text badge)` styles only badges) and a `suffix`. Above the table: `toolbar`, `columns-button`, `columns-menu` (the popover), `column-option` (a label with its checkbox) and `reset-widths` (the menu's reset item). In a header, `column-grip` is the resize grip. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview
 <style>
   .my-table { --sb-brand: var(--sb-accent); }
-  .my-table::part(header) { text-transform: uppercase; font-size: 0.75rem; }
+  .my-table::part(column) { text-transform: uppercase; font-size: 0.75rem; }
   .my-table::part(row selected) { font-weight: 700; }
 </style>
 <sb-data-table class="my-table" label="Planets" selection="single" selected='["earth"]' row-height="40"
@@ -475,5 +553,6 @@ It follows the WAI-ARIA grid pattern:
 - **Focus:** one cell at a time is in the tab order: the first header, then the cell focused last, or the header again once that cell's row is gone. Sortable headers are buttons.
 - **Keys:** the arrows move between cells, Home and End to the first and last cell of the row, Ctrl+Home to the first header, Ctrl+End to the last cell of the last row, Page Up and Page Down by a view. Moving past the rendered rows scrolls there, and the focus lands when the rows arrive. Space selects or unselects the row, Enter emits `sb-row-activate` (so does a double click, which selects only once). On a sortable header, Enter or Space sorts.
 - **Links in cells:** a link is not a tab stop of its own; the cell is, and Enter on it follows the link (after `sb-cell-activate`). Space still selects the row.
+- **Resizing:** the grips are no tab stops. Alt+ArrowRight or Alt+ArrowLeft on a header moves to its separator (named by the column, with `aria-valuenow`, `-valuemin`, `-valuemax` and `-valuetext` in px), where the arrows change the width by 8 px (32 with Shift; mirrored right to left), Home goes to the minimum and End fits. Enter, Tab and Escape go back to the header; Escape also restores the width. Headers are named by their titles, so a separator's value never joins a header's name.
 - **Column menu:** the Columns button has `aria-haspopup="dialog"` and `aria-expanded`, and opens a dialog named by `columns-label` with a native checkbox per column. The focus goes to the first checkbox; Tab and Shift+Tab cycle through them, Space toggles one (the focus stays on it), and Escape closes only the menu, also inside a drawer, and returns the focus to the button.
 - **Badges:** a tone is colour only, so the badge's text has to carry the meaning ("Failed", not a red dot). In forced colours, links use the system's link colour and badges keep a border.

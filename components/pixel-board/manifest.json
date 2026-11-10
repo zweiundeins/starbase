@@ -65,7 +65,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells echoes them."
+        "description": "Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells answers them, or the page calls revert()."
       }
     },
     {

@@ -6,10 +6,12 @@ import (
 )
 
 // Module specifiers in static imports (`import x from '…'`, `import '…'`),
-// re-exports (`export … from '…'`) and dynamic imports (`import('…')`).
+// re-exports (`export … from '…'`) and dynamic imports (`import('…')`). A
+// statement may follow a comment directly, as in minified code after a
+// /*! licence */.
 var importRes = []*regexp.Regexp{
-	regexp.MustCompile(`(?m)(?:^|[;\s}])import\s*(?:[\w$*{}\s,]+?\s*from\s*)?(['"])([^'"\n]+)(['"])`),
-	regexp.MustCompile(`(?m)(?:^|[;\s}])export\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}]*\})\s*from\s*(['"])([^'"\n]+)(['"])`),
+	regexp.MustCompile(`(?m)(?:^|[;\s}/])import\s*(?:[\w$*{}\s,]+?\s*from\s*)?(['"])([^'"\n]+)(['"])`),
+	regexp.MustCompile(`(?m)(?:^|[;\s}/])export\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}]*\})\s*from\s*(['"])([^'"\n]+)(['"])`),
 	regexp.MustCompile(`\bimport\s*\(\s*(['"])([^'"\n]+)(['"])\s*\)`),
 }
 

@@ -69,7 +69,7 @@ templ ThemesPage(v ThemesView) {
 					checked={ boolString(!v.Smooth) }
 					data-on:change="@post('/cmd/theme-style/' + (el.checked ? 'pixel' : 'smooth'))"
 				></sb-toggle>
-				<span class="muted">Pixel corners, notched frames and the pixel display font. Turn them off with <code>data-sb-style="smooth"</code>, or set only <code>--sb-notch: 0</code> to keep everything but the corners.</span>
+				<span class="muted">Pixel corners, notched frames, stepped motion and the pixel display font in capitals. Turn them off with <code>data-sb-style="smooth"</code>, or set only <code>--sb-notch: 0</code> to keep everything but the corners.</span>
 			</div>
 			<section class="theme-stage" data-sb-theme={ v.Theme } data-sb-style={ styleAttr(v.Smooth) } aria-label="Live preview">
 				for _, p := range v.Previews {
@@ -84,7 +84,7 @@ templ ThemesPage(v ThemesView) {
 			<section class="prose">
 				<h2>Use it</h2>
 				<p>Scope a theme to any element with <code>data-sb-theme</code>, or copy the overrides into your own stylesheet. Components only ever read <code>--sb-*</code> semantic tokens.</p>
-				<p>The 8-bit details are tokens too: <code>data-sb-style="smooth"</code> on any element sets <code>--sb-notch: 0</code> (plain corners with a normal radius), <code>--sb-frame-step: 1px</code> (hairline frames) and the UI font for display text. It combines with every theme.</p>
+				<p>The 8-bit details are tokens too: <code>data-sb-style="smooth"</code> on any element sets <code>--sb-notch: 0</code> (plain corners with a normal radius), <code>--sb-frame-step: 1px</code> (hairline frames), the UI font for display text and <code>--sb-display-case: none</code> (display text as written, not in capitals). At <code>--sb-notch: 0</code> stepped arrows become triangles, stepped motion runs smoothly, and pixel charts draw at the screen's resolution. It combines with every theme.</p>
 				<div class="code-block">
 					<sb-copy-button class="code-copy" value={ v.CSS }></sb-copy-button>
 					@templ.Raw(v.CSSHTML)
@@ -132,8 +132,8 @@ templ MissionControl() {
 		aria-labelledby="mission-title"
 		data-ignore-morph
 		data-signals="{_tm: {t: -8, stage: 'PAD', alt: 0, vel: 0, fuel: 100, temp: 18, pitch: 90}}"
-		data-init="@get('/demo/telemetry')"
 	>
+		<div id={ TelemetryID } hidden data-init={ telemetryInit }></div>
 		<header class="mission__head">
 			<h2 id="mission-title" class="section-title">Mission Control</h2>
 			<span class="mission__stage" data-text="$_tm.stage" data-attr:data-stage="$_tm.stage">PAD</span>
@@ -161,7 +161,7 @@ templ MissionControl() {
 			<div class="howto__body">
 				<p>The dashboard is built only from community components: <code>sb-starfield</code>, <code>sb-voxel</code>, <code>sb-gauge</code>, <code>sb-sparkline</code> and <code>sb-meter</code>. It contains no custom JavaScript. The server pushes data, signals carry it, and each component watches its attributes.</p>
 				<h3>1. The server streams signals</h3>
-				<p>The section opens one long-lived request with <code>{ "@get('/demo/telemetry')" }</code>. Four times a second the server sends a <code>datastar-patch-signals</code> event that merges fresh numbers into a single signal, <code>$_tm</code>. The data is a pure function of the clock over a 90-second mission, so the server keeps no state and every viewer watches the same flight. In CQRS terms this is a query stream: nothing is written, and hidden tabs close it and reopen it when they come back.</p>
+				<p>A hidden element in the section opens one long-lived request with <code>{ "@get('/demo/telemetry')" }</code>. Four times a second the server sends a <code>datastar-patch-signals</code> event that merges fresh numbers into a single signal, <code>$_tm</code>. The data is a pure function of the clock over a 90-second mission, so the server keeps no state and every viewer watches the same flight. In CQRS terms this is a query stream: nothing is written, and hidden tabs close it and reopen it when they come back. When the server restarts for a deploy, its last event replaces that element by a copy, which opens the request again, and <code>retry: 'error'</code> keeps asking until the new process answers.</p>
 				@templ.Raw(telemetryGo)
 				<h3>2. Signals drive attributes</h3>
 				<p>Each component is wired with <code>data-attr</code>. When <code>$_tm</code> changes, Datastar updates exactly the attributes that depend on it. Expressions can reshape the data on the way: the starfield's speed is derived from velocity, and warp switches on above 5 km/s.</p>
@@ -211,12 +211,14 @@ type CodePlaygroundView struct {
 	Component     string // slug, when opened from a component page
 	ComponentName string
 	Preview       string // component name, when opened as a pull request preview
+	PreviewRef    string // its <commit>/<slug>
 	Base          string // folder relative imports resolve against (vendored files)
 	Loaded        string // snippet id from ?s=
 	Author        string // snippet author (GitHub login), if any
 	Share         string // snippet id to offer as a link
 	ShareTS       bool   // that snippet is TypeScript, which can't be submitted yet
 	ShareURL      string
+	ShareRefusal  string // why the tab's last save was refused
 }
 
 // sizeText is a text of $_size for the first render ("–" when the initial
@@ -248,14 +250,19 @@ const moduleExpr = "name: 'component.ts' in evt.detail.files ? 'component.ts' : 
 // checkExpr type-checks the module on every run: each carries the files as
 // they are, and a newer request cancels the one in flight. The answer is
 // $_diag, the playground's diagnostics as JSON (web/playground_check.go).
-func checkExpr(component string) string {
-	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", " + moduleExpr + "}})"
+func checkExpr(component, preview string) string {
+	return "@post('/playground/check', {payload: {component: " + jsString(component) + ", preview: " + jsString(preview) + ", " + moduleExpr + "}})"
 }
 
 func shareExpr(component string) string {
-	return "el.classList.add('is-pending'); @post('/cmd/snippet', {payload: {tabid: $tabid, component: " + jsString(component) +
-		", files: document.querySelector('sb-code-playground').files}})"
+	return "$_shareErr = ''; el.classList.add('is-pending'); " + command("'share'", "/cmd/snippet", "payload: {tabid: $tabid, component: "+jsString(component)+
+		", files: document.querySelector('sb-code-playground').files}")
 }
+
+// shareFailed ends the button's pending state when the save never reached
+// the tab's state (sbCommand's sb-op-failed). A refusal comes as a frame,
+// which resets the button.
+const shareFailed = `el.classList.remove('is-pending'); $_shareErr = evt.detail.reason === 'retries-failed' ? 'The connection is down. Try again once it is back.' : 'That did not save. Try again in a moment.'`
 
 templ CodePlaygroundPage(v CodePlaygroundView) {
 	<div class="wrap code-page">
@@ -290,13 +297,13 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 				data-signals:_diag="'{}'"
 				data-attr:diagnostics="$_diag"
 				data-on:sb-change__debounce.400ms={ sizeExpr(v.Component) }
-				data-on:sb-run={ checkExpr(v.Component) }
+				data-on:sb-run={ checkExpr(v.Component, v.PreviewRef) }
 			>
 				@PlaygroundSize(v.Size)
 			</sb-code-playground>
 		</div>
-		<div class="code-page__actions">
-			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) }>
+		<div class="code-page__actions" data-signals="{_shareErr: ''}">
+			<button type="button" class="btn btn--primary btn--sm" data-on:click={ shareExpr(v.Component) } data-on:sb-op-failed={ shareFailed }>
 				@Icon("rocket")
 				Save &amp; share
 			</button>
@@ -320,6 +327,10 @@ templ CodePlaygroundPage(v CodePlaygroundView) {
 			} else {
 				<span class="muted">Saving creates a permanent link anyone can open. Then you can submit it as a component.</span>
 			}
+			if v.ShareRefusal != "" {
+				<p class="code-page__refusal" role="alert">{ v.ShareRefusal }</p>
+			}
+			<p class="code-page__refusal" role="alert" data-show="$_shareErr" data-text="$_shareErr"></p>
 		</div>
 	</div>
 }
@@ -335,35 +346,47 @@ type BoardView struct {
 // requests to the same URL by default), or fast strokes would lose pixels.
 const paintExpr = "@post('/cmd/paint', {payload: {color: evt.detail.color, cells: evt.detail.cells}, requestCancellation: 'disabled'})"
 
-templ Showcase(board BoardView, flight model.FlightPlan) {
+// paintFailed drops the pixels in flight when a paint never reached the
+// board: an error status (the rate limit's 429) or no answer.
+const paintFailed = "evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()"
+
+// Showcase lays out the Showcase's sections. board is the board's
+// changing part (Board), or in the tab's stream the hole its view fills.
+templ Showcase(board templ.Component, flight model.FlightPlan) {
 	@MissionControl()
 	@PixelBoard(board)
 	@FlightDemo(flight)
 }
 
-// flightCommand posts a control's sb-change as a command. On a rejection
-// (an error fetch event from this control), it goes back to the server's
-// value and says so.
-const flightCommand = `$_flightErr = ''; @post('/cmd/flight', {payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'})`
-const flightRejected = `evt.detail.el === el && evt.detail.type === 'error' && (el.revert(), $_flightErr = 'The server rejected that ' + el.getAttribute('name') + ': it is back to the server\'s value.')`
+// flightCommand posts a control's sb-change as an op of its field. The
+// tab's frame answers: the stored value, the refusal when the server refused
+// it, and the op's ack, on which sbCommand puts a control the server didn't
+// follow back.
+var flightCommand = `$_flightErr = ''; ` + command(`'flight:' + evt.detail.name`, "/cmd/flight", "payload: {tabid: $tabid, name: evt.detail.name, value: evt.detail.value}, requestCancellation: 'disabled'")
+
+// flightFailed says why a control went back when its command never reached
+// the flight plan (sbCommand's sb-op-failed, after it reverted it).
+const flightFailed = `$_flightErr = (evt.detail.reason === 'retries-failed' ? 'The connection is down' : 'That did not go through') + ', so ' + el.getAttribute('name') + ' is back at the stored value. Try again in a moment.'`
 
 // FlightDemo shows the command loop with components: each control's value
-// is a command; the server validates, stores (tab state) and re-renders, and
-// the new attribute confirms the control (:state(pending) until then).
+// is an op; the server validates, stores (tab state) and re-renders, and
+// the new attribute confirms the control (:state(pending) until then). A
+// refusal is stored too: the old value, the reason, and the op's ack, which
+// puts the control back.
 templ FlightDemo(f model.FlightPlan) {
 	<section class="flight-section" aria-labelledby="flight-title" data-signals="{_flightErr: ''}">
 		<header class="mission__head">
 			<h2 id="flight-title" class="section-title">Commands and components</h2>
 		</header>
-		<p class="flight__lede">Every control here sends a command. The server validates it, stores it and re-renders the page; until the new value comes back, the control is <em>pending</em> (dashed). The server upper-cases call signs, and it rejects thrust above 90%: the slider goes back.</p>
+		<p class="flight__lede">Every control here sends a command. The server validates it, stores it and re-renders the page; until the new value comes back, the control is <em>pending</em> (dashed). The server upper-cases call signs, and it refuses thrust above 90%: the slider goes back, and the page says why.</p>
 		<div class="flight">
 			<div class="flight__controls">
 				<sb-slider name="thrust" label="Thrust" unit="%" max="100" confirm value={ strconv.Itoa(f.Thrust) }
-					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-slider>
+					data-on:sb-change={ flightCommand } data-on:sb-op-failed={ flightFailed }></sb-slider>
 				<sb-toggle name="shields" label="Shields" confirm checked={ strconv.FormatBool(f.Shields) }
-					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-toggle>
-				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } rev={ strconv.Itoa(f.CallsignRev) } hint="Letters, digits and dashes; press Enter or leave the field."
-					data-on:sb-change={ flightCommand } data-on:datastar-fetch={ flightRejected }></sb-input>
+					data-on:sb-change={ flightCommand } data-on:sb-op-failed={ flightFailed }></sb-toggle>
+				<sb-input name="callsign" label="Call sign" confirm value={ f.Callsign } hint="Letters, digits and dashes; press Enter or leave the field."
+					data-on:sb-change={ flightCommand } data-on:sb-op-failed={ flightFailed }></sb-input>
 			</div>
 			<dl class="flight__state" aria-label="The server's state">
 				<div><dt>Thrust</dt><dd>{ strconv.Itoa(f.Thrust) }%</dd></div>
@@ -371,45 +394,61 @@ templ FlightDemo(f model.FlightPlan) {
 				<div><dt>Call sign</dt><dd>{ f.Callsign }</dd></div>
 			</dl>
 		</div>
+		if f.Refusal != "" {
+			<p class="flight__error" role="alert">{ f.Refusal }</p>
+		}
 		<p class="flight__error" role="alert" data-show="$_flightErr" data-text="$_flightErr"></p>
 	</section>
 }
 
-// PixelBoard is server-owned: every frame of the page's render stream brings
-// the latest cells; painting is a command.
-templ PixelBoard(v BoardView) {
+// PixelBoard is the Showcase's board section around board, its changing
+// part: painting is a command, and the board's view brings the outcome.
+templ PixelBoard(board templ.Component) {
 	<section class="board-section" aria-labelledby="board-title">
-		<header class="mission__head">
-			<h2 id="board-title" class="section-title">Pixel Board</h2>
-			<span class="board-stats" aria-live="polite">
-				<span class="board-stats__dot" aria-hidden="true"></span>
-				{ itoa(v.Viewers) } watching · { itoa(int(v.Pixels)) } pixels painted
-			</span>
-		</header>
-		<div class="board-section__grid">
-			<sb-pixel-board id="board" size={ itoa(v.Size) } cells={ v.Cells } data-on:sb-paint={ paintExpr }></sb-pixel-board>
-			<div class="board-section__about">
-				<p><strong>Paint together.</strong> Everyone on this page shares one 48×48 board. Pick a colour and drag.</p>
-				<p class="muted">Faded pixels are still in flight. About 20 pixels per second each, so everybody gets a turn.</p>
-			</div>
-		</div>
+		@board
 		<details class="howto" data-preserve-attr="open">
 			<summary>How it works</summary>
 			<div class="howto__body">
-				<p>This is the "one billion checkboxes" idea from Anders Murphy's hyperlith, done the way this whole site works: CQRS over one SQLite database, and the server re-rendering the entire page for every change.</p>
+				<p>This is the "one billion checkboxes" idea from Anders Murphy's hyperlith, done the way this whole site works: CQRS over one SQLite database, and the server rendering again whatever a change touched.</p>
 				<h3>1. The board is one attribute</h3>
-				<p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded.</p>
+				<p>The state of all 2,304 pixels is one string on the element: <code>cells</code>, a hex digit (palette index) per pixel, row by row. The server renders it like any other markup. When a new frame morphs in, the attribute changes and the component repaints its canvas. The component never owns the board. It only draws what the server says, plus your own pixels in flight, drawn faded until a frame brings them. A paint that never gets through (too fast for the rate limit, or the connection is down) ends in <code>revert()</code>, which the page calls on the request's error: the faded pixels go, and nothing waits on a timer.</p>
 				@templ.Raw(boardHTML)
 				<h3>2. Painting is a command</h3>
 				<p>A stroke emits <code>sb-paint</code> every 80 ms, with the cells it crossed; fast drags are interpolated so there are no gaps. Each batch is a short <code>POST</code> that answers <code>204 No Content</code> and returns no HTML. <code>requestCancellation: 'disabled'</code> matters here: by default Datastar cancels an in-flight request when a new one goes to the same URL, which would drop pixels mid-stroke. A per-session token bucket (20 pixels per second, bursts up to 60) keeps any one painter from flooding the board.</p>
 				@templ.Raw(boardGo)
 				<p>A single writer goroutine drains the command queue. Everyone's strokes that arrive together are applied in one SQLite transaction, each in its own savepoint, and committed once.</p>
-				<h3>3. Every tab re-renders the whole page</h3>
-				<p>After the commit, the hub wakes every open render stream. Each re-renders its page from a fresh read snapshot and sends the entire page again. The encoded board is cached per version, so a thousand viewers cost one query. Pages whose output didn't change send nothing.</p>
-				<p>Sending the whole page sounds wasteful until you look at the wire. The stream is compressed with Brotli, and the compressor keeps its window across frames. A full frame of this page is <strong>about 9.7 KB</strong>; the first one compresses to about 3.4 KB, and after a paint each complete re-render costs <strong>about 17 bytes</strong>. There is no diffing code anywhere: Datastar morphs the DOM, and compression takes care of the network.</p>
+				<h3>3. One render for every viewer</h3>
+				<p>After the commit, the writer tells the render loop what the batch touched, and a paint touches only the board. The board (the header above and the canvas) is a view of its own that everyone on this page shares. In its next tick (at most one every 50 ms, however many strokes came in) the loop renders it once, from a fresh read snapshot, and sends the same frame to every viewer. The encoded board is cached per version, so the cells are read once after each paint, however many people load the page. No one's page renders. The rest of this page is your tab's own view, which renders when something of yours changes, such as the flight plan below. Its frames carry the board as the board's view last sent it, so the morph leaves the board alone.</p>
+				<p>Sending the whole board after every paint sounds wasteful until you look at the wire. The stream is compressed with zstd (Brotli in browsers without it), and the compressor keeps its window across frames. The board's frame is <strong>about 3 KB</strong>, and after a paint it costs <strong>about 40 bytes</strong> on the wire (about 20 with Brotli). There is no diffing code anywhere: Datastar morphs the DOM, and compression takes care of the network.</p>
 				<h3>4. Presence</h3>
-				<p>"Watching" counts the open render streams on this page. The hub wakes the other viewers when someone joins or leaves, so the number is live too.</p>
+				<p>"Watching" counts the open render streams on this page. The number is part of the board's view: when someone joins or leaves, the render loop renders the board again, once, and sends it to every viewer.</p>
 			</div>
 		</details>
 	</section>
+}
+
+// Board is what changes on the pixel board: who is watching, the pixels
+// painted and the cells. The board's view renders it once for every
+// viewer, and every frame brings the latest cells.
+templ Board(v BoardView) {
+	<header id="board-head" class="mission__head">
+		<h2 id="board-title" class="section-title">Pixel Board</h2>
+		<span class="board-stats" aria-live="polite">
+			<span class="board-stats__dot" aria-hidden="true"></span>
+			@BoardViewers(v.Viewers)
+			{ "watching · " + itoa(int(v.Pixels)) + " pixels painted" }
+		</span>
+	</header>
+	<div id="board-grid" class="board-section__grid">
+		<sb-pixel-board id="board" size={ itoa(v.Size) } cells={ v.Cells } data-on:sb-paint={ paintExpr } data-on:datastar-fetch={ paintFailed }></sb-pixel-board>
+		<div class="board-section__about">
+			<p><strong>Paint together.</strong> Everyone on this page shares one 48×48 board. Pick a colour and drag.</p>
+			<p class="muted">Faded pixels are still in flight. About 20 pixels per second each, so everybody gets a turn.</p>
+		</div>
+	</div>
+}
+
+// BoardViewers is the Showcase's viewer count.
+templ BoardViewers(n int) {
+	<span id="board-viewers">{ itoa(n) }</span>
 }

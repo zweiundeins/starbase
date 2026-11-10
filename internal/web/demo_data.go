@@ -2,6 +2,7 @@ package web
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -14,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/zweiundeins/lith/edge"
+	"github.com/zweiundeins/lith/sse"
 
 	"starbase/internal/demo"
 	"starbase/internal/queries"
@@ -32,7 +34,8 @@ import (
 // as a list, children as {"<parent>": [...]} (patches merge, so a lazy tree's
 // branches accumulate), rows as {rows, offset, total, sort: {key, dir}}.
 // Other clients sending Accept: application/json get the list (or the
-// window) as JSON.
+// window) as JSON. Children with &tree=<sb-tree id> come as markup instead,
+// a list patched into the parent's <li> (see demoTreeMarkup).
 // &delay=<ms> (up to 1500) makes loading states visible in demos.
 //
 // Items: {id, value, label, description, icon, kind, lazy}: value is the id
@@ -67,14 +70,18 @@ func demoItems(bodies []queries.DemoBody) []demoItem {
 }
 
 // demoChildren answers with the children of ?parent= (the top level without one).
+// With &tree=<id>, as markup for the sb-tree with that id (demoTreeMarkup).
 func (s *Server) demoChildren(w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get("parent")
-	var bodies []queries.DemoBody
-	if err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
-		bodies, err = rd.DemoChildren(r.Context(), parent)
-		return
-	}); err != nil {
+	bodies, err := s.q.ViewValue(r.Context(), func(rd *queries.Reader) ([]queries.DemoBody, error) {
+		return rd.DemoChildren(r.Context(), parent)
+	})
+	if err != nil {
 		s.fail(w, r, err)
+		return
+	}
+	if tree := r.URL.Query().Get("tree"); tree != "" {
+		s.demoTreeMarkup(w, r, tree, parent, bodies)
 		return
 	}
 	items := demoItems(bodies)
@@ -99,11 +106,10 @@ func (s *Server) demoSearch(w http.ResponseWriter, r *http.Request) {
 			kinds = append(kinds, k)
 		}
 	}
-	var bodies []queries.DemoBody
-	if err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
-		bodies, err = rd.DemoSearch(r.Context(), q.Get("q"), kinds, limit)
-		return
-	}); err != nil {
+	bodies, err := s.q.ViewValue(r.Context(), func(rd *queries.Reader) ([]queries.DemoBody, error) {
+		return rd.DemoSearch(r.Context(), q.Get("q"), kinds, limit)
+	})
+	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -114,7 +120,8 @@ func (s *Server) demoSearch(w http.ResponseWriter, r *http.Request) {
 // demoRows answers a table's window and sort requests (sb-data-table's
 // sb-window and sb-sort) with ?count= stars from ?offset= (at most 500) in the
 // order asked for (?key=, ?dir=), and says which order it used. With
-// &cells=rich, the rows hold cell objects (demoStarCells).
+// &cells=rich, the rows hold cell objects (demoStarCells). fit is each
+// column's width for the whole catalog (demoStarFit).
 func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	offset, _ := strconv.Atoi(q.Get("offset"))
@@ -138,7 +145,7 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}}
+	window := map[string]any{"rows": stars, "offset": offset, "total": total, "sort": map[string]string{"key": key, "dir": dir}, "fit": s.demoStarFit(r.Context(), total, q.Get("cells") == "rich")}
 	if q.Get("cells") == "rich" {
 		rows := make([]map[string]any, len(stars))
 		for i, st := range stars {
@@ -147,6 +154,56 @@ func (s *Server) demoRows(w http.ResponseWriter, r *http.Request) {
 		window["rows"] = rows
 	}
 	s.demoAnswer(w, r, "_rows", window, window)
+}
+
+// demoStarFit is demoStarFits for a catalog of total stars. The longest values
+// are scanned again only when its size changes (a scan of 100,000 stars takes
+// tens of milliseconds); after a failed scan the answer has no fit.
+func (s *Server) demoStarFit(ctx context.Context, total int, rich bool) map[string]int {
+	s.starsMu.Lock()
+	defer s.starsMu.Unlock()
+	if s.starsTotal != total || total == 0 {
+		l, err := s.q.ViewValue(ctx, func(rd *queries.Reader) (queries.DemoStarLongest, error) { return rd.DemoStarLongest(ctx) })
+		if err != nil {
+			if ctx.Err() == nil {
+				s.log.Error("demo star fit", "err", err)
+			}
+			return nil
+		}
+		s.starsLongest, s.starsTotal = l, total
+	}
+	return demoStarFits(s.starsLongest, rich)
+}
+
+// demoStarFits are sb-data-table's fit widths for the catalog's columns, in
+// px: the most characters a column's values take as the table formats them
+// (numbers with grouping and up to three decimals), at 8.4 px each, plus the
+// cell's padding. The site's table text is JetBrains Mono at 14 px, whose
+// every character is 0.6 em wide, so this is exact there and an estimate in
+// other fonts. Rich cells add the distance's unit and the magnitude's badge.
+func demoStarFits(l queries.DemoStarLongest, rich bool) map[string]int {
+	const char, em, pad = 8.4, 14.0, 24 + 1
+	width := func(chars int, extra float64) int { return int(math.Ceil(float64(chars)*char+extra)) + pad }
+	number := func(v float64) int { // "-12,345.678"
+		n := len(strconv.Itoa(int(math.Abs(v))))
+		n += (n-1)/3 + 4
+		if v < 0 {
+			n++
+		}
+		return n
+	}
+	unit, badge := 0.0, 0.0
+	if rich {
+		unit, badge = 2*char+0.35*em, 0.8*em+2 // "ly" after a 0.35em margin; a badge's padding and border
+	}
+	return map[string]int{
+		"name":          width(l.Name, 0),
+		"class":         width(l.Class, 0),
+		"constellation": width(l.Constellation, 0),
+		"distance":      width(number(l.Distance), unit),
+		"magnitude":     width(max(number(l.MagnitudeMin), number(l.MagnitudeMax)), badge),
+		"planets":       width(len(strconv.Itoa(l.Planets)), 0),
+	}
 }
 
 // demoStarCells is a star as sb-data-table's cell objects: the name links to
@@ -246,8 +303,8 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	now := time.Now()
-	if !s.exportLimit.allow(sessionID(r), 1, now) || !s.exportLimitIP.allow(clientIP(r), 1, now) {
-		http.Error(w, "exporting too often", http.StatusTooManyRequests)
+	if !s.exportLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.exportLimit.Allow(edge.SessionID(r.Context()), 1, now) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	// A download holds a read connection until it ends: slow ones must not
@@ -257,10 +314,11 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-s.exports }()
 	default:
 		w.Header().Set("Retry-After", "5")
-		http.Error(w, "too many downloads at once", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	setWriteDeadline(w, r, time.Now().Add(time.Minute))
+	rc := http.NewResponseController(w)
+	rc.SetWriteDeadline(time.Now().Add(time.Minute))
 
 	h := w.Header()
 	h.Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
@@ -313,7 +371,7 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 	err := s.q.View(r.Context(), func(rd *queries.Reader) error {
 		return rd.EachDemoStar(r.Context(), key, dir == "desc", ids, func(st demo.Star) error {
 			if n++; n%1000 == 0 {
-				setWriteDeadline(w, r, time.Now().Add(time.Minute))
+				rc.SetWriteDeadline(time.Now().Add(time.Minute))
 			}
 			return write(st)
 		})
@@ -333,12 +391,8 @@ func (s *Server) demoRowsExport(w http.ResponseWriter, r *http.Request) {
 // demoAnswer writes the list as JSON, or patches it into the requested signal.
 func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSignal string, list, patch any) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	if ms, _ := strconv.Atoi(r.URL.Query().Get("delay")); ms > 0 {
-		select {
-		case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
-		case <-r.Context().Done():
-			return
-		}
+	if !demoWait(r) {
+		return
 	}
 	// Datastar's own requests accept JSON too: they always get the patch.
 	if r.Header.Get("Datastar-Request") == "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -355,7 +409,83 @@ func (s *Server) demoAnswer(w http.ResponseWriter, r *http.Request, defaultSigna
 		http.Error(w, "into must be a signal name", http.StatusBadRequest)
 		return
 	}
-	datastar.NewSSE(w, r).MarshalAndPatchSignals(map[string]any{into: patch})
+	js, err := json.Marshal(map[string]any{into: patch})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	// Through lith's sse, which compresses: the edge leaves text/event-stream to it.
+	if stream, err := sse.Open(w, r, sse.Options{}); err == nil {
+		stream.CloseWith(sse.PatchSignals(js, false))
+	}
+}
+
+// demoWait holds the answer for &delay= milliseconds (at most 1500); false
+// when the request went away meanwhile.
+func demoWait(r *http.Request) bool {
+	ms, _ := strconv.Atoi(r.URL.Query().Get("delay"))
+	if ms <= 0 {
+		return true
+	}
+	select {
+	case <-time.After(time.Duration(min(ms, 1500)) * time.Millisecond):
+		return true
+	case <-r.Context().Done():
+		return false
+	}
+}
+
+var demoParentRe = regexp.MustCompile(`^[A-Za-z0-9_-]{0,64}$`)
+
+// demoTreeMarkup answers sb-tree's sb-load with the children as a list,
+// appended to the parent's <li> (for the top level, the tree's whole list).
+// Bodies with children of their own are lazy, and show how many they have.
+func (s *Server) demoTreeMarkup(w http.ResponseWriter, r *http.Request, tree, parent string, bodies []queries.DemoBody) {
+	if !elementIDRe.MatchString(tree) || !demoParentRe.MatchString(parent) {
+		http.Error(w, "tree must be an element id, parent an item id", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
+	if !demoWait(r) {
+		return
+	}
+	var b strings.Builder
+	b.WriteString("<ul>")
+	for _, body := range bodies {
+		fmt.Fprintf(&b, `<li data-id="%s"`, html.EscapeString(body.ID))
+		if body.Children > 0 {
+			b.WriteString(" data-lazy")
+		}
+		fmt.Fprintf(&b, `>%s %s`, demoIcon(body.Kind), html.EscapeString(body.Name))
+		if body.Children > 0 {
+			fmt.Fprintf(&b, ` <span data-meta>%d</span>`, body.Children)
+		}
+		b.WriteString("</li>")
+	}
+	b.WriteString("</ul>")
+	p := sse.Patch{Selector: "#" + tree, Mode: sse.Inner}
+	if parent != "" {
+		p = sse.Patch{Selector: fmt.Sprintf(`#%s li[data-id="%s"]`, tree, parent), Mode: sse.Append}
+	}
+	if stream, err := sse.Open(w, r, sse.Options{}); err == nil {
+		stream.CloseWith(sse.PatchElements([]byte(b.String()), p))
+	}
+}
+
+// demoIcons are pixel icons per kind of body, 16 by 16, in the text colour.
+var demoIcons = map[string]string{
+	"galaxy":        "M7 7h2v2H7zM3 4h5v1h1v1H3zM8 10h5v1h-1v1H8zM2 6h1v3H2zM13 7h1v3h-1z",
+	"group":         "M1 3h5v1h1v1h8v8H1z",
+	"constellation": "M2 11h2v2H2zM7 6h2v2H7zM12 2h2v2h-2zM4 10h1v1H4zM5 9h1v1H5zM6 8h1v1H6zM9 5h1v1H9zM10 4h2v1h-2z",
+	"system":        "M6 5h4v1h1v4h-1v1H6v-1H5V6h1zM7 1h2v2H7zM7 13h2v2H7zM1 7h2v2H1zM13 7h2v2h-2z",
+	"star":          "M7 2h2v4h1v1h4v2h-4v1H9v4H7v-4H6V9H2V7h4V6h1z",
+	"planet":        "M6 4h4v1h1v1h1v1h3v2h-3v1h-1v1h-1v1H6v-1H5v-1H4V9H1V7h3V6h1V5h1z",
+	"dwarf":         "M6 6h4v1h1v2h-1v1H6V9H5V7h1z",
+	"moon":          "M6 2h4v1H8v1H7v2H6v4h1v2h1v1h2v1H6v-1H5v-1H4v-1H3V6h1V5h1V4h1z",
+}
+
+func demoIcon(kind string) string {
+	return `<svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="` + demoIcons[kind] + `"/></svg>`
 }
 
 var elementIDRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}$`)
@@ -405,8 +535,9 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</sb-virtual-scroll>`)
 
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli(datastar.WithBrotliLevel(5)), datastar.WithGzip()))
-	sse.PatchElements(b.String())
+	if stream, err := sse.Open(w, r, sse.Options{}); err == nil {
+		stream.CloseWith(sse.PatchElements([]byte(b.String())))
+	}
 }
 
 // demoListItem is item i: a line of the star catalog, or with cols > 0 a pixel

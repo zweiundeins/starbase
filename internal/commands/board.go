@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/zweiundeins/lith/writer"
 
 	"starbase/internal/pixelart"
 )
@@ -16,9 +16,8 @@ const (
 	MaxPaint  = 64 // cells per command
 )
 
-// PaintPixels paints cells of the shared board. Not Scoped: every viewer's
-// stream re-renders (pages without the board produce identical frames,
-// which the stream skips).
+// PaintPixels paints cells of the shared board. It touches TopicBoard: the
+// board's view renders again, and no page does.
 type PaintPixels struct {
 	Board string
 	Color int
@@ -43,17 +42,18 @@ func (c PaintPixels) Validate() error {
 	return nil
 }
 
-func (c PaintPixels) Apply(ctx context.Context, tx *sql.Tx) error {
+func (c PaintPixels) Apply(tx *writer.Tx) error {
+	tx.Touch(TopicBoard)
 	now := time.Now().Unix()
 	for _, i := range c.Cells {
-		if _, err := tx.ExecContext(ctx, `
+		if _, err := tx.Exec(`
 			INSERT INTO board_cells (board, idx, color, painted_at) VALUES (?, ?, ?, ?)
 			ON CONFLICT (board, idx) DO UPDATE SET color = excluded.color, painted_at = excluded.painted_at`,
 			c.Board, i, c.Color, now); err != nil {
 			return err
 		}
 	}
-	_, err := tx.ExecContext(ctx, `
+	_, err := tx.Exec(`
 		INSERT INTO boards (board, version, pixels) VALUES (?, 1, ?)
 		ON CONFLICT (board) DO UPDATE SET version = version + 1, pixels = pixels + excluded.pixels`,
 		c.Board, len(c.Cells))
@@ -61,17 +61,16 @@ func (c PaintPixels) Apply(ctx context.Context, tx *sql.Tx) error {
 }
 
 // SeedBoard paints a pixel rocket and a few stars onto an empty board, so
-// the first visitor doesn't face a blank void. A no-op once the board exists.
+// the first visitor doesn't face a blank void. A no-op once the board
+// exists. It runs at startup, before anyone watches: it touches no topic.
 type SeedBoard struct{}
-
-func (SeedBoard) Scope() string { return "" } // nobody is watching yet
 
 // palette indices of sb-pixel-board for the sprite's colour keys
 var seedColors = map[rune]int{'D': 1, 'W': 5, 'G': 4, 'S': 3, 'R': 15, 'r': 15, 'P': 6, 'B': 9, 'b': 10, 'Y': 13, 'O': 14, 'F': 15}
 
-func (SeedBoard) Apply(ctx context.Context, tx *sql.Tx) error {
+func (SeedBoard) Apply(tx *writer.Tx) error {
 	var n int
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM boards WHERE board = ?`, BoardName).Scan(&n); err != nil || n > 0 {
+	if err := tx.QueryRow(`SELECT count(*) FROM boards WHERE board = ?`, BoardName).Scan(&n); err != nil || n > 0 {
 		return err
 	}
 	cells := map[int]int{}
@@ -89,10 +88,10 @@ func (SeedBoard) Apply(ctx context.Context, tx *sql.Tx) error {
 	}
 	now := time.Now().Unix()
 	for i, c := range cells {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO board_cells (board, idx, color, painted_at) VALUES (?, ?, ?, ?)`, BoardName, i, c, now); err != nil {
+		if _, err := tx.Exec(`INSERT INTO board_cells (board, idx, color, painted_at) VALUES (?, ?, ?, ?)`, BoardName, i, c, now); err != nil {
 			return err
 		}
 	}
-	_, err := tx.ExecContext(ctx, `INSERT INTO boards (board, version, pixels) VALUES (?, 1, 0)`, BoardName)
+	_, err := tx.Exec(`INSERT INTO boards (board, version, pixels) VALUES (?, 1, 0)`, BoardName)
 	return err
 }

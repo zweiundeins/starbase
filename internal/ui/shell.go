@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -58,6 +60,11 @@ type Shell struct {
 	Canonical   string // absolute URL of the page, without query
 	SocialImage string // absolute URL of the Open Graph image
 	JSONLD      string // schema.org JSON-LD
+	// Heartbeat is how often the render stream patches $_ping (Watchdog).
+	Heartbeat time.Duration
+	// Acks is the tab's acked ops as JSON ({key: op id}), which
+	// static/js/commands.js reads from #ops after every frame.
+	Acks string
 }
 
 type navItem struct{ Key, Label, Href string }
@@ -81,11 +88,50 @@ func importMap(a Assets) string {
 	return string(b)
 }
 
+// StreamID is the element that opens the tab's render stream, and the
+// stream's live.Spec.Reconnect: on a deploy, the stream's last event copies
+// the element, and the copy's data-init opens the stream on the next process.
+const StreamID = "stream"
+
+// OpsID is the hidden element in #app whose data-acks every frame renders.
+const OpsID = "ops"
+
 // streamInit opens this tab's render stream: a long-lived POST to the page's
-// own URL. retry 'always' reconnects even when the stream ends cleanly (a
-// server restart or deploy closes it without an error); hidden tabs release
-// the connection and re-open (with a fresh render) when visible again.
-const streamInit = `@post(location.pathname + location.search, {retry: 'always', retryMaxCount: Infinity, retryInterval: 400, retryMaxWait: 4000, openWhenHidden: false})`
+// own URL. retry 'error' keeps asking through a restart's 502s and 503s, and
+// a stream the server ends stays closed; hidden tabs release the connection
+// and re-open (with a fresh render) when visible again. Accepting only an
+// event stream marks the request, so a refusal for good can answer it with
+// 204, which 'error' does not repeat (it repeats every 4xx).
+const streamInit = `@post(location.pathname + location.search, {retry: 'error', retryMaxCount: Infinity, retryInterval: 400, retryMaxWait: 4000, openWhenHidden: false, headers: {Accept: 'text/event-stream'}})`
+
+// streamRetrying holds the watchdog off while Datastar retries the stream,
+// as it does for a tab the budget refuses: re-creating #stream would restart the backoff.
+const streamRetrying = `evt.detail.el === el && evt.detail.type === 'retrying' && ($_quiet = 0)`
+
+// PingSignal is the signal the render stream's heartbeat patches
+// (live.Options.HeartbeatSignal), with a number that grows.
+const PingSignal = "_ping"
+
+// QuietSignal counts the watchdog's ticks without a new ping; a stream's
+// first write resets it, since its first ping comes a heartbeat later.
+const QuietSignal = "_quiet"
+
+// watchdogTick runs once a heartbeat and re-creates #stream, as sse.Reconnect
+// does, after 3 to 4 heartbeats without a ping (a hidden tab's stream is closed on purpose).
+const watchdogTick = `$_quiet = document.hidden || $_ping !== $_seen ? 0 : $_quiet + 1; $_seen = $_ping; ` +
+	`$_quiet > 2 && ($_quiet = 0, document.getElementById('` + StreamID + `').replaceWith(document.getElementById('` + StreamID + `').cloneNode(true)))`
+
+// watchdogInterval is the data-on-interval attribute that ticks once a heartbeat.
+func watchdogInterval(heartbeat time.Duration) string {
+	return "data-on-interval__duration." + strconv.FormatInt(heartbeat.Milliseconds(), 10) + "ms"
+}
+
+// TelemetryID is the element that opens /demo/telemetry: the stream names it
+// in its last event when the server stops, like StreamID.
+const TelemetryID = "telemetry"
+
+// telemetryInit opens Mission Control's telemetry, like the docs examples.
+const telemetryInit = `@get('/demo/telemetry', {retry: 'error', retryMaxCount: Infinity, retryInterval: 400, retryMaxWait: 4000})`
 
 // searchFromAnywhere sends typing on non-gallery pages to the gallery.
 const searchFromAnywhere = `el.value.trim() && (window.location.href = '/?q=' + encodeURIComponent(el.value.trim()))`
@@ -153,11 +199,24 @@ func siteThemes() string {
 // Art inlines a pixel art illustration: decorative, with the given classes.
 // It keeps its proportions, standing on the bottom of its box.
 func Art(a Assets, name, class string) templ.Component {
-	svg := a.ArtSVG(name)
-	svg = strings.Replace(svg, `<svg xmlns="http://www.w3.org/2000/svg" class="px-art"`,
+	src := a.ArtSVG(name)
+	key := artKey{name, class}
+	if e, ok := inlineArt.Load(key); ok && e.(artEntry).src == src {
+		return templ.Raw(e.(artEntry).svg)
+	}
+	svg := strings.Replace(src, `<svg xmlns="http://www.w3.org/2000/svg" class="px-art"`,
 		`<svg xmlns="http://www.w3.org/2000/svg" class="px-art `+class+`" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMax meet"`, 1)
+	inlineArt.Store(key, artEntry{src, svg})
 	return templ.Raw(svg)
 }
+
+// inlineArt keeps Art's markup per illustration and classes (a handful of
+// call sites), checked against the source it was made from.
+var inlineArt sync.Map // artKey → artEntry
+
+type artKey struct{ name, class string }
+
+type artEntry struct{ src, svg string }
 
 func onOff(b bool) string {
 	if b {
@@ -165,3 +224,17 @@ func onOff(b bool) string {
 	}
 	return "off"
 }
+
+// command posts a command to path as an op of key (a JavaScript expression,
+// the command's key in TabState.Ops) through sbCommand
+// (static/js/commands.js): the op id goes in the Op-Id header, and opts
+// (JavaScript object members, or "") are the rest of @post's options.
+func command(key, path, opts string) string {
+	if opts != "" {
+		opts = ", " + opts
+	}
+	return "sbCommand(el, " + key + ", (op) => @post('" + path + "', {headers: {'Op-Id': op}" + opts + "}))"
+}
+
+// browseCommand posts the gallery's search and category.
+var browseCommand = command("'browse'", "/cmd/browse", "")

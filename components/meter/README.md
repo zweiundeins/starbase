@@ -48,23 +48,38 @@ The whole bar changes colour at the `warn` and `danger` thresholds, given in val
 ### Live from the server
 
 ```html preview
-<div data-signals="{_tm: {fuel: 100}}" data-init="@get('/demo/telemetry')" style="inline-size: min(100%, 22rem)">
+<div data-signals="{_tm: {fuel: 100}}" style="inline-size: min(100%, 22rem)">
+  <div id="telemetry" hidden data-init="@get('/demo/telemetry', {retry: 'error', retryMaxCount: Infinity, retryInterval: 400, retryMaxWait: 4000})"></div>
   <sb-meter label="Fuel" unit="%" warn="30" danger="15" segments="20" data-attr:value="Math.round($_tm.fuel)" data-preserve-attr="value"></sb-meter>
 </div>
 ```
 
-The endpoint is Go with the [Datastar SDK](https://data-star.dev/reference/sdks); any SDK works the same way. `TelemetryAt` computes the sample from the clock, so every viewer watches the same flight:
+The endpoint is Go with the `sse` package of lith, Starbase's runtime; any [Datastar SDK](https://data-star.dev/reference/sdks) works the same way. `TelemetryAt` computes the sample from the clock, so every viewer watches the same flight. When the server stops for a deploy, its last event replaces the hidden element by a copy, which opens the stream again, and `retry: 'error'` keeps asking until the next process answers:
 
 ```go source=internal/web/demo.go#Server.demoTelemetry
 // demoTelemetry streams the demo mission as signal patches ($_tm): a pure
-// query stream, no commands, no database.
+// query stream, no commands, no database. When the server stops (a deploy),
+// the last event asks the page to open it again from #telemetry.
 func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // public; used from the playground sandbox
-	sse := datastar.NewSSE(w, r)
+	if s.ctx.Err() != nil {
+		// Stopping: the page retries the 503 until the next process answers.
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	// Uncompressed: an event is 130 bytes, where an encoder would hold 430 KiB
+	// or more for as long as a page shows the telemetry.
+	stream, err := sse.Open(w, r, sse.Options{NoCompression: true})
+	if err != nil {
+		return
+	}
+	var last [][]byte
+	defer func() { stream.CloseWith(last...) }()
 	tick := time.NewTicker(250 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		if err := sse.MarshalAndPatchSignals(map[string]any{"_tm": TelemetryAt(time.Now())}); err != nil {
+		tm, _ := json.Marshal(map[string]any{"_tm": TelemetryAt(time.Now())})
+		if err := stream.Write(sse.PatchSignals(tm, false)); err != nil {
 			return
 		}
 		select {
@@ -72,6 +87,7 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case <-s.ctx.Done():
+			last = append(last, sse.Reconnect(ui.TelemetryID))
 			return
 		}
 	}
@@ -85,6 +101,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** `--sb-meter-width` (default `22rem`) is the widest it gets, `--sb-meter-height` (default `12px`) the height of the blocks; `segments` sets how many there are.
 - **Fonts:** the label and the value use your page's font.
 - **Colours:** lit blocks are `--sb-ok`, `--sb-warn` past the `warn` threshold and `--sb-danger` past `danger`. The track is `--sb-surface-inset` with a `--sb-border` edge, and unlit blocks are a tint of that border. The label is `--sb-text-2`, the value `--sb-text-1`.
+- **Motion:** a block lights up in two steps; `--sb-notch: 0` fades it in smoothly instead.
 - **Parts:** `label`, `value` and `bar`, and `segment` for every block; the lit ones are also `lit`: `::part(segment lit)`. Your page's `::part()` rules win over the component's own, without `!important`.
 - **States:** the host has `:state(ok)`, `:state(warn)` or `:state(danger)`, so the tone can restyle any part: `sb-meter:state(danger)::part(label)`.
 

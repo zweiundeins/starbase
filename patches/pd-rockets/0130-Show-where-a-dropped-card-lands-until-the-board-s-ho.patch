@@ -1,0 +1,420 @@
+From 2affd1d6af36fdfc8c8367800676528adc9b7519 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Thu, 8 Oct 2026 07:35:39 +0000
+Subject: [PATCH 130/132] Show where a dropped card lands until the board's
+ host confirms the move
+
+On a slow connection a dropped card stays in its old lane until the server's answer arrives. A board with data-kanban-landing now shows a marker the size of the card where the person dropped it, and opens room for it in the target lane, while the card itself stays where the server put it. The marker lives in <body>, out of reach of the morphs that patch the lanes, and follows its slot until the card arrives there (it then animates from the marker), until the page calls the host's releaseLanding() for a refused move, or until data-kanban-landing-timeout (ten seconds by default) runs out. Each ending emits pd-kanban-landing-end. Keyboard moves get the same marker. The marker is a copy of the card marked data-landing-marker, aria-hidden and inert, and takes its look from --pd-landing-opacity and --pd-landing-outline, which default to a Highlight outline in forced colours.
+---
+ contracts/kanban.ts      |   8 ++
+ rocket/kanban/client.ts  |  39 +++++-
+ rocket/kanban/landing.ts | 283 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 328 insertions(+), 2 deletions(-)
+ create mode 100644 rocket/kanban/landing.ts
+
+diff --git a/contracts/kanban.ts b/contracts/kanban.ts
+index 590ba99..6aa388d 100644
+--- a/contracts/kanban.ts
++++ b/contracts/kanban.ts
+@@ -13,6 +13,11 @@ export const kanbanContract = {
+     move: "pd-kanban-move",
+     select: "pd-kanban-select",
+     laneMove: "pd-kanban-lane-move",
++    landingEnd: "pd-kanban-landing-end",
++  },
++  attributes: {
++    landing: "data-kanban-landing",
++    landingTimeout: "data-kanban-landing-timeout",
+   },
+ } as const;
+ 
+@@ -27,6 +32,9 @@ export type KanbanSelectDetail = { cardId: string };
+ /** A lane moved: col is its data-col, before the data-col of the lane it now precedes, or "" for the end. */
+ export type KanbanLaneMoveDetail = { col: number; before: string };
+ 
++/** A landing marker went away: the move arrived, the page released it, or it timed out. A lane's has no cardId. */
++export type KanbanLandingEndDetail = { cardId?: string; col: number; reason: "arrived" | "released" | "timeout" };
++
+ export type KanbanKeySlot =
+   | "selectNext"
+   | "selectPrevious"
+diff --git a/rocket/kanban/client.ts b/rocket/kanban/client.ts
+index 66254ca..54ef3f1 100644
+--- a/rocket/kanban/client.ts
++++ b/rocket/kanban/client.ts
+@@ -11,9 +11,11 @@ import { installTargetIndicator } from "../../core/visual-outlets";
+ import {
+   kanbanContract,
+   defaultKanbanKeyboard,
++  type KanbanLandingEndDetail,
+   type KanbanLaneMoveDetail,
+   type KanbanMoveDetail,
+ } from "../../contracts/kanban";
++import { cardLanding, installLandings } from "./landing";
+ import { installLaneMoves, laneBefore } from "./lane-moves";
+ 
+ type Target = { col: number; before: string; lane: HTMLElement };
+@@ -88,6 +90,19 @@ rocket(kanbanContract.tag, {
+       itemId: (card) => (owns(card) ? (card.dataset.kanbanCard ?? null) : null),
+     });
+     const indicator = installTargetIndicator(host);
++    const landings = installLandings({
++      host,
++      onEnd: (detail) =>
++        host.dispatchEvent(
++          new CustomEvent<KanbanLandingEndDetail>(kanbanContract.events.landingEnd, {
++            bubbles: true,
++            composed: true,
++            detail,
++          }),
++        ),
++    });
++    const landingTimeout = () => Number(host.getAttribute(kanbanContract.attributes.landingTimeout)) || 10000;
++    Object.assign(host, { releaseLanding: (match?: { cardId?: string; col?: number }) => landings.release(match) });
+     const clearMarks = () => {
+       indicator.clear();
+       cards().forEach((card) => card.removeAttribute("data-drop-before"));
+@@ -173,6 +188,16 @@ rocket(kanbanContract.tag, {
+         }),
+       );
+     };
++    // Opt-in: a move the host hasn't confirmed shows where it lands, while the card stays where the server put it.
++    const land = (itemId: string, target: Target, origin?: { left: number; top: number }): void => {
++      const card = cards().find((candidate) => candidate.dataset.kanbanCard === itemId);
++      if (!card || !host.hasAttribute(kanbanContract.attributes.landing)) return;
++      const geometry = { lanes, cards, cardsIn };
++      const prepare = (id: string, rect: { left: number; top: number }) => flip.prepare({ itemId: id, rect });
++      const spec = cardLanding(geometry, card, target, origin ?? card.getBoundingClientRect(), prepare, flip);
++      if (spec) landings.add(spec, landingTimeout());
++    };
++    let dropOrigin: { left: number; top: number } | undefined;
+     const staging = installKeyboardStaging<{ itemId: string; target: Target }>({
+       host,
+       owns,
+@@ -190,6 +215,7 @@ rocket(kanbanContract.tag, {
+           });
+         flip.prepare();
+         emitMove(itemId, target);
++        land(itemId, target);
+       },
+     });
+     const pointerDispose = installPointerDrag({
+@@ -200,8 +226,15 @@ rocket(kanbanContract.tag, {
+       targetAt,
+       sameTarget: (a, b) => a?.lane === b?.lane && a?.before === b?.before,
+       mark: markTarget,
+-      beforeCommit: (id, rect) => flip.prepare({ itemId: id, rect }),
+-      commit: emitMove,
++      beforeCommit: (id, rect) => {
++        flip.prepare({ itemId: id, rect });
++        dropOrigin = rect;
++      },
++      commit: (itemId, target) => {
++        emitMove(itemId, target);
++        land(itemId, target, dropOrigin);
++        dropOrigin = undefined;
++      },
+     });
+     const laneFlip = installFlip({
+       host,
+@@ -372,6 +405,8 @@ rocket(kanbanContract.tag, {
+       laneStaging.dispose();
+       laneMoves.dispose();
+       laneFlip.dispose();
++      landings.dispose();
++      Reflect.deleteProperty(host, "releaseLanding");
+       host.removeEventListener("keydown", onKeyDown);
+       host.removeEventListener("pointerdown", onPointerDown);
+       host.removeEventListener("focusin", onFocusIn);
+diff --git a/rocket/kanban/landing.ts b/rocket/kanban/landing.ts
+new file mode 100644
+index 0000000..d68de01
+--- /dev/null
++++ b/rocket/kanban/landing.ts
+@@ -0,0 +1,283 @@
++import { kanbanContract, type KanbanLandingEndDetail } from "../../contracts/kanban";
++
++type Rect = { left: number; top: number; width: number; height: number };
++
++/** Where a pending landing's marker goes now, the room it opens there, and the element whose scrolling clips it. */
++export type LandingPlace = {
++  rect: Rect;
++  gap: { element: HTMLElement; side: "top" | "bottom"; size: number } | null;
++  clip: HTMLElement;
++};
++
++/** A move the host hasn't confirmed: the marker shows the person's drop until the move arrives or is released. */
++export type LandingSpec = {
++  key: string;
++  detail: { cardId?: string; col: number };
++  marker: HTMLElement;
++  origin: { left: number; top: number };
++  place: () => LandingPlace | null;
++  arrived: () => boolean;
++  /** Arms the move's animation with the marker as its starting point; `group` is the animation it arms. */
++  prepare: (rect: Rect) => void;
++  group: object;
++};
++
++type Pending = {
++  spec: LandingSpec;
++  timer: ReturnType<typeof setTimeout>;
++  placed: boolean;
++  gap: { element: HTMLElement; side: "top" | "bottom"; size: number; animation: Animation } | null;
++};
++
++const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
++const easing = "cubic-bezier(.2, 0, 0, 1)";
++
++/** The marker: positioned inline, its look from custom properties a page can set, with a forced-colours default. */
++export function landingMarker(from: HTMLElement | null, kind: "card" | "lane"): HTMLElement {
++  const marker = from ? (from.cloneNode(true) as HTMLElement) : document.createElement("div");
++  marker.removeAttribute("id");
++  marker.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
++  for (const name of ["tabindex", "data-dragging", "data-drop-before", "data-lane-dragging", "data-lane-drop-target"])
++    marker.removeAttribute(name);
++  marker.setAttribute("data-landing-marker", kind);
++  marker.setAttribute("aria-hidden", "true");
++  marker.inert = true;
++  marker.style.position = "fixed";
++  marker.style.boxSizing = "border-box";
++  marker.style.margin = "0";
++  marker.style.pointerEvents = "none";
++  const forced = matchMedia("(forced-colors: active)").matches;
++  marker.style.setProperty("opacity", `var(--pd-landing-opacity, ${forced ? 1 : 0.5})`);
++  marker.style.setProperty("outline", `var(--pd-landing-outline, 2px dashed ${forced ? "Highlight" : "currentColor"})`);
++  marker.style.setProperty("outline-offset", "-2px");
++  return marker;
++}
++
++/** The part of `element` its scrolling ancestors leave visible. */
++function visibleArea(element: HTMLElement): Rect {
++  let { left, top, right, bottom } = element.getBoundingClientRect();
++  for (let current = element.parentElement; current && current !== document.documentElement;) {
++    const style = getComputedStyle(current);
++    if (style.overflowX !== "visible" || style.overflowY !== "visible") {
++      const rect = current.getBoundingClientRect();
++      left = Math.max(left, rect.left);
++      top = Math.max(top, rect.top);
++      right = Math.min(right, rect.right);
++      bottom = Math.min(bottom, rect.bottom);
++    }
++    current = current.parentElement;
++  }
++  return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
++}
++
++/** Pending landings: each marker lives in <body>, out of reach of the morphs that patch the board. */
++export function installLandings(options: { host: HTMLElement; onEnd: (detail: KanbanLandingEndDetail) => void }) {
++  const pending = new Map<string, Pending>();
++  let frame: number | null = null;
++
++  const setGap = (entry: Pending, want: LandingPlace["gap"]): void => {
++    const current = entry.gap;
++    if (current && want && current.element === want.element && current.side === want.side && current.size === want.size)
++      return;
++    current?.animation.cancel();
++    entry.gap = null;
++    if (!want) return;
++    const property = want.side === "top" ? "marginTop" : "marginBottom";
++    const base = parseFloat(getComputedStyle(want.element)[property]) || 0;
++    const animation = want.element.animate([{ [property]: `${base}px` }, { [property]: `${base + want.size}px` }], {
++      duration: current || reducedMotion() ? 0 : 150,
++      easing,
++      fill: "forwards",
++    });
++    entry.gap = { ...want, animation };
++  };
++  const closeGap = (entry: Pending, smooth: boolean): void => {
++    const animation = entry.gap?.animation;
++    entry.gap = null;
++    if (!animation) return;
++    if (!smooth || reducedMotion()) {
++      animation.cancel();
++      return;
++    }
++    animation.reverse();
++    animation.finished.then(() => animation.cancel()).catch(() => {});
++  };
++  const end = (entry: Pending, reason: KanbanLandingEndDetail["reason"], notify = true): void => {
++    if (pending.get(entry.spec.key) !== entry) return;
++    pending.delete(entry.spec.key);
++    clearTimeout(entry.timer);
++    entry.spec.marker.remove();
++    closeGap(entry, reason !== "arrived");
++    if (notify) options.onEnd({ ...entry.spec.detail, reason });
++  };
++  const place = (entry: Pending, where: LandingPlace): void => {
++    const { marker } = entry.spec;
++    // A morph of the whole page removes it with everything else the server didn't render: put it back.
++    if (!marker.isConnected) document.body.append(marker);
++    const { rect } = where;
++    marker.style.left = `${rect.left}px`;
++    marker.style.top = `${rect.top}px`;
++    marker.style.width = `${rect.width}px`;
++    marker.style.height = `${rect.height}px`;
++    const view = visibleArea(where.clip);
++    const clip = {
++      top: Math.max(0, view.top - rect.top),
++      right: Math.max(0, rect.left + rect.width - (view.left + view.width)),
++      bottom: Math.max(0, rect.top + rect.height - (view.top + view.height)),
++      left: Math.max(0, view.left - rect.left),
++    };
++    marker.style.clipPath =
++      clip.top || clip.right || clip.bottom || clip.left
++        ? `inset(${clip.top}px ${clip.right}px ${clip.bottom}px ${clip.left}px)`
++        : "";
++    marker.style.visibility = "";
++    if (entry.placed) return;
++    entry.placed = true;
++    const dx = entry.spec.origin.left - rect.left;
++    const dy = entry.spec.origin.top - rect.top;
++    if (!reducedMotion() && (Math.abs(dx) >= 1 || Math.abs(dy) >= 1))
++      marker.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 150, easing });
++  };
++  // Each frame: a move that arrived ends its landing, and the others follow their slot through morphs, scrolling and
++  // resizing. Arming the move's animation every frame lets it start from the marker when the server's answer lands.
++  const tick = (): void => {
++    frame = null;
++    const armed = new Set<object>();
++    for (const entry of [...pending.values()]) {
++      if (entry.spec.arrived()) {
++        end(entry, "arrived");
++        continue;
++      }
++      const where = entry.spec.place();
++      setGap(entry, where?.gap ?? null);
++      if (!where) {
++        entry.spec.marker.style.visibility = "hidden";
++        continue;
++      }
++      place(entry, where);
++      if (armed.has(entry.spec.group)) continue;
++      armed.add(entry.spec.group);
++      entry.spec.prepare(where.rect);
++    }
++    if (pending.size) frame = requestAnimationFrame(tick);
++  };
++
++  return {
++    add(spec: LandingSpec, timeout: number): void {
++      const previous = pending.get(spec.key);
++      if (previous) end(previous, "released");
++      spec.marker.style.visibility = "hidden";
++      document.body.append(spec.marker);
++      const entry: Pending = {
++        spec,
++        placed: false,
++        gap: null,
++        timer: setTimeout(() => end(entry, "timeout"), timeout),
++      };
++      pending.set(spec.key, entry);
++      if (frame === null) frame = requestAnimationFrame(tick);
++    },
++    /** Ends landings early: the one of a card ({ cardId }), of a lane ({ col }), or all; true when one was pending. */
++    release(match?: { cardId?: string; col?: number }): boolean {
++      const ended = [...pending.values()].filter(({ spec: { detail } }) =>
++        match?.cardId !== undefined
++          ? detail.cardId === match.cardId
++          : match?.col !== undefined
++            ? detail.cardId === undefined && detail.col === match.col
++            : true,
++      );
++      ended.forEach((entry) => end(entry, "released"));
++      return ended.length > 0;
++    },
++    dispose(): void {
++      if (frame !== null) cancelAnimationFrame(frame);
++      frame = null;
++      [...pending.values()].forEach((entry) => end(entry, "released", false));
++    },
++  };
++}
++
++type Geometry = {
++  lanes: () => HTMLElement[];
++  cards: () => HTMLElement[];
++  cardsIn: (lane: HTMLElement) => HTMLElement[];
++};
++
++const cardId = (card: HTMLElement | undefined) => card?.dataset.kanbanCard ?? "";
++
++/** The landing of a card dropped into lane `col` before card `before` ("" for the end); null for a drop in place. */
++export function cardLanding(
++  geometry: Geometry,
++  card: HTMLElement,
++  target: { col: number; before: string },
++  origin: { left: number; top: number },
++  prepare: (id: string, rect: Rect) => void,
++  group: object,
++): LandingSpec | null {
++  const id = cardId(card);
++  const col = String(target.col);
++  const lane = card.closest<HTMLElement>(kanbanContract.selectors.lane);
++  const siblings = lane ? geometry.cardsIn(lane) : [];
++  const from = { col: lane?.dataset.col, next: cardId(siblings[siblings.indexOf(card) + 1]) };
++  if (from.col === col && from.next === target.before) return null;
++  const height = card.getBoundingClientRect().height;
++  return {
++    key: `card:${id}`,
++    detail: { cardId: id, col: target.col },
++    marker: landingMarker(card, "card"),
++    origin,
++    place: () => {
++      const lane = geometry.lanes().find((candidate) => candidate.dataset.col === col);
++      if (!lane) return null;
++      const list = lane.querySelector<HTMLElement>("[data-kanban-lane-cards]") ?? lane;
++      const inLane = geometry.cardsIn(lane);
++      const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
++      const before = target.before ? inLane.find((other) => cardId(other) === target.before) : undefined;
++      if (before) {
++        const previous = inLane[inLane.indexOf(before) - 1];
++        const rect = before.getBoundingClientRect();
++        const top = previous ? previous.getBoundingClientRect().bottom + gap : contentTop(list);
++        return {
++          rect: { left: rect.left, top, width: rect.width, height },
++          gap: { element: before, side: "top", size: height + gap },
++          clip: list,
++        };
++      }
++      const last = inLane.filter((other) => cardId(other) !== id).at(-1);
++      if (last) {
++        const rect = last.getBoundingClientRect();
++        return {
++          rect: { left: rect.left, top: rect.bottom + gap, width: rect.width, height },
++          gap: { element: last, side: "bottom", size: height + gap },
++          clip: list,
++        };
++      }
++      const box = contentBox(list);
++      return { rect: { ...box, height }, gap: null, clip: list };
++    },
++    arrived: () => {
++      const now = geometry.cards().find((other) => cardId(other) === id);
++      const lane = now?.closest<HTMLElement>(kanbanContract.selectors.lane);
++      if (!now || lane?.dataset.col !== col) return false;
++      const inLane = geometry.cardsIn(lane);
++      return from.col !== col || cardId(inLane[inLane.indexOf(now) + 1]) !== from.next;
++    },
++    prepare: (rect) => prepare(id, rect),
++    group,
++  };
++}
++
++function contentBox(element: HTMLElement): Rect {
++  const rect = element.getBoundingClientRect();
++  const style = getComputedStyle(element);
++  const left = rect.left + (parseFloat(style.borderLeftWidth) || 0) + (parseFloat(style.paddingLeft) || 0);
++  const right = rect.right - (parseFloat(style.borderRightWidth) || 0) - (parseFloat(style.paddingRight) || 0);
++  return { left, top: contentTop(element), width: Math.max(0, right - left), height: 0 };
++}
++
++function contentTop(element: HTMLElement): number {
++  const style = getComputedStyle(element);
++  return (
++    element.getBoundingClientRect().top + (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.paddingTop) || 0)
++  );
++}
+-- 
+2.55.0
+

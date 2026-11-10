@@ -1,0 +1,82 @@
+From 85c55e8d935f8ca2d22ff634feef4c694ca9ce24 Mon Sep 17 00:00:00 2001
+From: PD rockets contributor <contributor@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 22:07:58 +0000
+Subject: [PATCH 21/22] Let the drag group's arrow keys reach past and into
+ empty lists
+
+ArrowLeft and ArrowRight stopped at an empty list, so no list beyond it could be reached. They now skip an empty list, or focus it when it has a tabindex, and a focused list passes them on to its neighbors.
+---
+ rocket/drag-group/client.ts | 31 +++++++++++++++++++++++++------
+ 1 file changed, 25 insertions(+), 6 deletions(-)
+
+diff --git a/rocket/drag-group/client.ts b/rocket/drag-group/client.ts
+index d02874f..6ba2c8e 100644
+--- a/rocket/drag-group/client.ts
++++ b/rocket/drag-group/client.ts
+@@ -27,6 +27,16 @@ rocket(dragGroupContract.tag, {
+       [...list.querySelectorAll<HTMLElement>(itemSelector)].filter(
+         (item) => owns(item) && item.closest(listSelector) === list,
+       );
++    /** The item at `index` in the nearest list that way with items, or an empty list on the way that takes focus. */
++    const across = (list: HTMLElement, direction: number, index: number): HTMLElement | undefined => {
++      const all = lists();
++      for (let at = all.indexOf(list) + direction; direction && at >= 0 && at < all.length; at += direction) {
++        const items = itemsIn(all[at]!);
++        if (items.length) return items[Math.min(index, items.length - 1)];
++        if (all[at]!.hasAttribute("tabindex")) return all[at];
++      }
++      return undefined;
++    };
+     const flip = installFlip({ host, itemSelector, itemId });
+     const indicator = installTargetIndicator(host);
+ 
+@@ -90,10 +100,23 @@ rocket(dragGroupContract.tag, {
+         emitMove(id, target);
+       },
+     });
++    const onListKeyDown = (event: KeyboardEvent) => {
++      const list = event.target;
++      if (event.defaultPrevented || !(list instanceof HTMLElement) || !list.matches(listSelector) || !owns(list))
++        return;
++      const next = across(list, keyboard.direction(event, "focus").x, 0);
++      if (next) {
++        event.preventDefault();
++        next.focus();
++      }
++    };
+     const onKeyDown = (event: KeyboardEvent) => {
+       const item = keyboardItem(event, itemSelector, owns);
+       const id = item && itemId(item);
+-      if (!item || !id) return;
++      if (!item || !id) {
++        onListKeyDown(event);
++        return;
++      }
+       if (keyboard.matches("cancel", event)) {
+         if (staging.current) {
+           event.preventDefault();
+@@ -109,12 +132,8 @@ rocket(dragGroupContract.tag, {
+         keyboard.matches("focusLast", event)
+       ) {
+         const source = item.closest<HTMLElement>(listSelector);
+-        const groupLists = lists();
+         const siblings = source ? itemsIn(source) : [];
+         const index = siblings.indexOf(item);
+-        const listIndex = source ? groupLists.indexOf(source) : -1;
+-        const nextList = focusDirection.x ? groupLists[listIndex + focusDirection.x] : null;
+-        const neighbors = nextList ? itemsIn(nextList) : [];
+         const next =
+           focusDirection.y < 0
+             ? siblings[index - 1]
+@@ -124,7 +143,7 @@ rocket(dragGroupContract.tag, {
+                 ? siblings[0]
+                 : keyboard.matches("focusLast", event)
+                   ? siblings.at(-1)
+-                  : neighbors[Math.min(index, neighbors.length - 1)];
++                  : source && across(source, focusDirection.x, index);
+         if (next) {
+           event.preventDefault();
+           next.focus();
+-- 
+2.55.0
+

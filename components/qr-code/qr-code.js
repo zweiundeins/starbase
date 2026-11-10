@@ -1,6 +1,17 @@
-import { rocket } from 'datastar'
+import { rocket, startPeeking, stopPeeking } from 'datastar'
 // uqr (MIT), vendored unmodified from npm; see vendor.json.
 import { encode } from './vendor/uqr.mjs'
+
+// observeProps callbacks run inside the effect that set the attribute (a
+// data-attr binding): reads in them must not subscribe it.
+const peek = (fn) => {
+	startPeeking()
+	try {
+		return fn()
+	} finally {
+		stopPeeking()
+	}
+}
 
 // paths draws the dark modules as horizontal runs: [modules, corners]. With
 // accent, the finder squares (uqr type 2, "Position") go to the second path.
@@ -64,7 +75,7 @@ rocket('sb-qr-code', {
 			;[$$.mods, $$.eyes] = paths(qr, accent)
 		}
 		build()
-		observeProps(build)
+		observeProps(() => peek(build))
 	},
 	render: ({ html }) => html`
 		<svg part="svg" role="img" shape-rendering="crispEdges"

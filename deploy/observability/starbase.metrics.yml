@@ -1,0 +1,12 @@
+# Starbase's metrics listener for the host's Prometheus, installed as
+# /etc/prometheus/apps/starbase.yml, which the host's `apps` job reads. The
+# port is starbase-metrics.socket's ListenStream and starbase.env's
+# METRICS_ADDR: change the three together (TestMetricsPort).
+#
+# What it serves (cmd/starbase/metrics.go):
+#   starbase_writer_*      batches, commands, failures, queue, commit p99 (lith/prom)
+#   starbase_live_*        ticks, overruns, renders, frames sent and dropped, streams (lith/prom)
+#   starbase_sse_budget_*  limit, reserved, streams by setting, refused (lith/prom)
+#   go_*, process_*        the Go runtime and the process
+- targets: ['127.0.0.1:8198']
+  labels: { app: starbase, slot: prod }

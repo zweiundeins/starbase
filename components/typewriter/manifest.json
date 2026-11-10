@@ -1,0 +1,91 @@
+{
+  "tag": "sb-typewriter",
+  "props": [
+    {
+      "name": "phrases",
+      "attribute": "phrases",
+      "type": "json",
+      "default": [],
+      "required": false,
+      "docs": {
+        "description": "Phrases to type in turn, each erased before the next, as a JSON array of strings. Without it, the element's own text is typed once."
+      }
+    },
+    {
+      "name": "loop",
+      "attribute": "loop",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "With phrases: start over after the last one, for as long as the element is on screen."
+      }
+    },
+    {
+      "name": "prompt",
+      "attribute": "prompt",
+      "type": "string",
+      "default": "",
+      "required": false,
+      "docs": {
+        "description": "Text in front of the typed text that is there from the start, e.g. \"$ \"."
+      }
+    },
+    {
+      "name": "cursor",
+      "attribute": "cursor",
+      "type": "oneOf",
+      "default": "block",
+      "required": false,
+      "values": [
+        "block",
+        "bar",
+        "underscore",
+        "none"
+      ],
+      "docs": {
+        "description": "The cursor's shape. It blinks while it waits."
+      }
+    },
+    {
+      "name": "interval",
+      "attribute": "interval",
+      "type": "number",
+      "default": 45,
+      "required": false,
+      "docs": {
+        "description": "Average milliseconds between two characters: lower types faster. Each varies a little, like a person typing; erasing takes half as long."
+      }
+    },
+    {
+      "name": "delay",
+      "attribute": "delay",
+      "type": "number",
+      "default": 400,
+      "required": false,
+      "docs": {
+        "description": "Milliseconds before the first character, counted from when the element comes into view."
+      }
+    },
+    {
+      "name": "hold",
+      "attribute": "hold",
+      "type": "number",
+      "default": 1800,
+      "required": false,
+      "docs": {
+        "description": "With phrases: milliseconds a typed phrase stays before it is erased."
+      }
+    }
+  ],
+  "slots": [],
+  "events": [
+    {
+      "kind": "custom-event",
+      "name": "sb-typed",
+      "bubbles": true,
+      "composed": true,
+      "description": "When a phrase is fully typed. detail: { text, index }."
+    }
+  ]
+}

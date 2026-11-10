@@ -12,25 +12,32 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/zweiundeins/lith/sqlite"
+
 	"starbase/internal/model"
 )
 
-type Queries struct{ db *sql.DB }
+type Queries struct{ db *sqlite.DB }
 
-func New(db *sql.DB) *Queries { return &Queries{db: db} }
+func New(db *sqlite.DB) *Queries { return &Queries{db: db} }
 
 // Reader runs queries against one snapshot.
 type Reader struct{ tx *sql.Tx }
 
-// View runs fn inside a read transaction.
+// View runs fn inside a read transaction of its own.
 func (q *Queries) View(ctx context.Context, fn func(*Reader) error) error {
-	tx, err := q.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	return fn(&Reader{tx: tx})
+	return q.db.View(ctx, func(tx *sql.Tx) error { return fn(Read(tx)) })
 }
+
+// ViewValue runs fn like View and returns what it returned, or the zero
+// value and the error.
+func (q *Queries) ViewValue[T any](ctx context.Context, fn func(*Reader) (T, error)) (T, error) {
+	return q.db.ViewValue(ctx, func(tx *sql.Tx) (T, error) { return fn(Read(tx)) })
+}
+
+// Read runs queries in a read transaction that is already open: a render
+// worker's, which every view it renders in a tick shares.
+func Read(tx *sql.Tx) *Reader { return &Reader{tx: tx} }
 
 // SessionUser returns the user bound to sid, or nil.
 func (r *Reader) SessionUser(ctx context.Context, sid string) (*model.User, error) {
@@ -283,7 +290,9 @@ func (r *Reader) BoardCells(ctx context.Context, board string, size int) (string
 
 // ComponentFile is one published file of a component version.
 func (r *Reader) ComponentFile(ctx context.Context, slug, hash, path string) (body []byte, integrity string, ok bool, err error) {
-	err = r.tx.QueryRowContext(ctx, `SELECT body, integrity FROM component_files WHERE slug = ? AND hash = ? AND path = ?`,
+	err = r.tx.QueryRowContext(ctx, `
+		SELECT b.body, f.integrity FROM component_files f JOIN file_bodies b ON b.integrity = f.integrity
+		WHERE f.slug = ? AND f.hash = ? AND f.path = ?`,
 		slug, hash, path).Scan(&body, &integrity)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, "", false, nil

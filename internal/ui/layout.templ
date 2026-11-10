@@ -45,6 +45,7 @@ templ Document(s Shell, body templ.Component) {
 			<link rel="preload" href={ s.Assets.Static("fonts/jetbrains-mono.woff2") } as="font" type="font/woff2" crossorigin/>
 			<link rel="stylesheet" href={ s.Assets.SiteCSS() }/>
 			@templ.Raw(`<script type="importmap" nonce="` + s.Nonce + `">` + importMap(s.Assets) + `</script>`)
+			<script src={ s.Assets.Static("js/commands.js") } data-stream={ StreamID } data-ops={ OpsID }></script>
 			<script type="module" src={ s.Assets.Datastar() }></script>
 			if s.Dev && len(s.ManifestTags) > 0 {
 				// Dev pages publish the manifests, from the readable modules: the
@@ -61,7 +62,9 @@ templ Document(s Shell, body templ.Component) {
 				<script type="module" src={ s.Assets.Components() }></script>
 			}
 		</head>
-		<body data-signals={ s.Signals } data-init={ streamInit }>
+		<body data-signals={ s.Signals }>
+			<div id={ StreamID } hidden data-init={ streamInit } data-on:datastar-fetch={ streamRetrying }></div>
+			<div hidden data-signals="{_ping: 0, _seen: 0, _quiet: 0}" { templ.Attributes{watchdogInterval(s.Heartbeat): watchdogTick}... }></div>
 			@App(s, body)
 		</body>
 	</html>
@@ -75,6 +78,7 @@ templ App(s Shell, body templ.Component) {
 			@body
 		</main>
 		@Footer(s)
+		<div hidden id={ OpsID } data-acks={ s.Acks }></div>
 		if s.URL != "" {
 			<div hidden id="url-sync" data-init={ "window.history.replaceState(null, '', " + jsString(s.URL) + ")" }></div>
 		}
@@ -130,7 +134,7 @@ templ SearchBox(s Shell) {
 		action="/"
 		method="get"
 		if s.SearchLive {
-			data-on:submit__prevent="@post('/cmd/browse')"
+			data-on:submit__prevent={ browseCommand }
 		}
 	>
 		@Icon("search")
@@ -147,7 +151,7 @@ templ SearchBox(s Shell) {
 			data-on:keydown__window="(evt.ctrlKey || evt.metaKey) && evt.key === 'k' && (evt.preventDefault(), el.focus(), el.select())"
 			if s.SearchLive {
 				data-bind:q
-				data-on:input__debounce.80ms="@post('/cmd/browse')"
+				data-on:input__debounce.80ms={ browseCommand }
 				if s.Search != "" {
 					data-init="el.focus({preventScroll: true}); el.setSelectionRange(el.value.length, el.value.length)"
 				}
@@ -186,9 +190,10 @@ templ Footer(s Shell) {
 			<span class="made-with">
 				Built with Go, templ, SQLite and
 				<a href="https://data-star.dev">Datastar</a>.
+				Maintained by <a href="https://zweiundeins.gmbh">zwei und eins gmbh</a>.
 			</span>
 			<span>
-				Components are MIT licensed by their authors ·
+				Components are MIT licensed unless their page names another licence ·
 				<a href={ safe(s.RepoURL) }>Source</a> ·
 				<a href={ safe(s.RepoURL + "/blob/main/CHANGELOG.md") }>{ s.Version }</a>
 			</span>

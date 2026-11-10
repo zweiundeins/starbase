@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/zweiundeins/lith/edge"
+
 	"starbase/internal/catalog"
 	"starbase/internal/commands"
 )
@@ -25,29 +27,20 @@ func (s *Server) playgroundTranspile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad body", http.StatusBadRequest)
 		return
 	}
-	if !s.transpileLimit.allow(clientIP(r), 1, time.Now()) {
-		http.Error(w, "transpiling too often", http.StatusTooManyRequests)
+	if !s.transpileLimit.Allow(edge.ClientKey(r), 1, time.Now()) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
-	key := sha256.Sum256(src)
-	s.transpileMu.Lock()
-	out, ok := s.transpiled[key]
-	s.transpileMu.Unlock()
-	if !ok {
+	out := s.transpiled.Get(sha256.Sum256(src), func() []byte {
 		t, err := catalog.Transpile(string(src))
 		var te *catalog.TranspileError
 		if errors.As(err, &te) {
-			out, _ = json.Marshal(te)
-		} else {
-			out, _ = json.Marshal(t)
+			out, _ := json.Marshal(te)
+			return out
 		}
-		s.transpileMu.Lock()
-		if len(s.transpiled) >= 256 {
-			clear(s.transpiled)
-		}
-		s.transpiled[key] = out
-		s.transpileMu.Unlock()
-	}
+		out, _ := json.Marshal(t)
+		return out
+	})
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write(out)

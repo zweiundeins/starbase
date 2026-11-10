@@ -10,12 +10,14 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
+	"github.com/zweiundeins/lith/edge"
 
 	"starbase/internal/commands"
 	"starbase/internal/queries"
@@ -299,8 +301,9 @@ rocket('sb-your-name', {
 const starterHTML = `<sb-your-name label="Hello, Starbase"></sb-your-name>
 `
 
-// componentDeps maps every catalog tag to its module URL, so previews can
-// use any component. Tags defined by the edited code are skipped client-side.
+// componentDeps maps every catalog tag to its one-file bundle, so previews
+// can use any component. Tags defined by the edited code are skipped
+// client-side.
 func (s *Server) componentDeps() string {
 	m := map[string]string{}
 	for _, c := range s.catalog.Components {
@@ -312,7 +315,7 @@ func (s *Server) componentDeps() string {
 
 func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 	files := map[string]string{"component.js": starterJS, "index.html": starterHTML}
-	v := ui.CodePlaygroundView{Deps: s.componentDeps(), Share: rc.tab.PlaygroundShare}
+	v := ui.CodePlaygroundView{Deps: s.cache.deps(), Share: rc.tab.PlaygroundShare, ShareRefusal: rc.tab.ShareRefusal}
 	q := rc.req.URL.Query()
 	if id := q.Get("s"); id != "" {
 		sn, err := rc.r.Snippet(rc.ctx, id)
@@ -336,18 +339,18 @@ func (s *Server) codePlaygroundPage(rc *renderCtx) (view, error) {
 			return view{}, err
 		}
 		files = p.Files
-		v.Preview = cmp.Or(p.Name, "This component")
+		v.Preview, v.PreviewRef = cmp.Or(p.Name, "This component"), ref
 		v.Base = "/playground/preview/" + ref + "/"
 	} else if slug := q.Get("component"); slug != "" {
 		comp, ok := s.catalog.Get(slug)
 		if !ok {
 			return view{}, errNotFound
 		}
-		src, err := fs.ReadFile(s.catalog.FS, comp.Script)
+		src, err := fs.ReadFile(s.catalog.FS, comp.SourceFile)
 		if err != nil {
 			return view{}, err
 		}
-		files = map[string]string{"component.js": string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
+		files = map[string]string{"component" + path.Ext(comp.SourceFile): string(src), "index.html": strings.Join(comp.Examples, "\n\n") + "\n"}
 		v.Component, v.ComponentName = comp.Slug, comp.Name
 		v.Base = "/c/" + comp.Slug + "@" + comp.Hash + "/"
 	}
@@ -407,43 +410,45 @@ func (s *Server) cmdSnippet(w http.ResponseWriter, r *http.Request) {
 		Files     map[string]string `json:"files"`
 		Component string            `json:"component"`
 	}
-	if err := datastar.ReadSignals(r, &p); err != nil {
+	if err := datastar.ReadSignals(r, &p); edge.TooLarge(err) {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return
+	} else if err != nil {
 		http.Error(w, "bad payload", http.StatusBadRequest)
 		return
 	}
+	if !s.tabOpen(w, r, p.TabID) {
+		return
+	}
 	now := time.Now()
-	if !s.saveLimit.allow(sessionID(r), 1, now) || !s.saveLimitIP.allow(clientIP(r), 1, now) {
-		http.Error(w, "saving too often, try again in a minute", http.StatusTooManyRequests)
+	if !s.saveLimitIP.Allow(edge.ClientKey(r), 1, now) || !s.saveLimit.Allow(edge.SessionID(r.Context()), 1, now) {
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	var uid int64
 	var stored int64
 	s.q.View(r.Context(), func(rd *queries.Reader) error {
-		if u, _ := rd.SessionUser(r.Context(), sessionID(r)); u != nil {
+		if u, _ := rd.SessionUser(r.Context(), edge.SessionID(r.Context())); u != nil {
 			uid = u.ID
 		}
 		stored, _ = rd.SnippetBytes(r.Context())
 		return nil
 	})
 	if stored+commands.MaxSnippetBytes > commands.MaxSnippetStore {
-		s.log.Warn("snippet storage is full", "bytes", stored)
-		http.Error(w, commands.ErrSnippetStoreFull.Error(), http.StatusInsufficientStorage)
-		return
+		s.log.Warn("snippet storage is full", "bytes", stored) // SaveSnippet refuses the save in the tab's row
 	}
 	if _, ok := s.catalog.Get(p.Component); !ok {
 		p.Component = ""
 	}
-	s.send(w, r, commands.SaveSnippet{SID: sessionID(r), TabID: p.TabID, ID: snippetID(), Files: p.Files, Component: p.Component, UserID: uid})
+	s.send(w, r, commands.SaveSnippet{SID: edge.SessionID(r.Context()), TabID: p.TabID, Op: r.Header.Get("Op-Id"), ID: snippetID(), Files: p.Files, Component: p.Component, UserID: uid})
 }
 
 // snippetJSON is the public, read-only form of a snippet (used by the
 // submission bot to import playground links).
 func (s *Server) snippetJSON(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	var sn *queries.Snippet
-	err := s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
-		sn, err = rd.Snippet(r.Context(), id)
-		return
+	sn, err := s.q.ViewValue(r.Context(), func(rd *queries.Reader) (*queries.Snippet, error) {
+		return rd.Snippet(r.Context(), id)
 	})
 	if err != nil {
 		s.fail(w, r, err)
@@ -468,10 +473,8 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	form := strings.TrimSuffix(s.cfg.RepoURL, "/") + "/issues/new"
 	q := url.Values{"template": {"new-component.yml"}}
 	if id := r.URL.Query().Get("s"); commands.SnippetIDRe.MatchString(id) {
-		var sn *queries.Snippet
-		s.q.View(r.Context(), func(rd *queries.Reader) (err error) {
-			sn, err = rd.Snippet(r.Context(), id)
-			return
+		sn, _ := s.q.ViewValue(r.Context(), func(rd *queries.Reader) (*queries.Snippet, error) {
+			return rd.Snippet(r.Context(), id)
 		})
 		if sn != nil {
 			q.Set("source", strings.TrimSuffix(s.cfg.BaseURL, "/")+"/playground?s="+id)

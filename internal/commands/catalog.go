@@ -1,14 +1,14 @@
 // Package commands contains every state change the application can make.
-// Each command is a plain struct; HTTP handlers build one, the cqrs.Bus
-// applies it inside the single writer transaction.
+// Each command is a plain struct; HTTP handlers build one, and lith's writer
+// applies it inside its batch's transaction, in a savepoint of its own.
 package commands
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"strings"
 	"time"
+
+	"github.com/zweiundeins/lith/writer"
 
 	"starbase/internal/catalog"
 )
@@ -20,17 +20,18 @@ type SyncCatalog struct {
 	Datastar []byte // the patched Datastar + Rocket build, kept for good like a component version
 }
 
-func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
+func (c SyncCatalog) Apply(tx *writer.Tx) error {
+	tx.Touch(TopicAll)
 	now := time.Now().Unix()
-	if _, err := tx.ExecContext(ctx, `UPDATE components SET active = 0`); err != nil {
+	if _, err := tx.Exec(`UPDATE components SET active = 0`); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM components_fts`); err != nil {
+	if _, err := tx.Exec(`DELETE FROM components_fts`); err != nil {
 		return err
 	}
 	for _, comp := range c.Catalog.Components {
 		tags, _ := json.Marshal(comp.Tags)
-		_, err := tx.ExecContext(ctx, `
+		_, err := tx.Exec(`
 			INSERT INTO components (slug, tag, name, category, summary, author, tags, since, content_hash, active, listed, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
 			ON CONFLICT (slug) DO UPDATE SET
@@ -44,7 +45,7 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 			return err
 		}
 		if !comp.Unlisted { // out of the gallery means out of its search too
-			_, err = tx.ExecContext(ctx, `INSERT INTO components_fts (slug, name, summary, tags) VALUES (?, ?, ?, ?)`,
+			_, err = tx.Exec(`INSERT INTO components_fts (slug, name, summary, tags) VALUES (?, ?, ?, ?)`,
 				comp.Slug, comp.Name, comp.Summary, strings.Join(comp.Tags, " ")+" "+comp.Category+" "+comp.Tag)
 			if err != nil {
 				return err
@@ -52,7 +53,7 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 		}
 		// Keep this version's public files for good (pinned URLs). The
 		// minified ones too: stored once, their bytes never change even if a
-		// later esbuild would minify differently (INSERT OR IGNORE).
+		// later esbuild would minify differently.
 		files, err := c.Catalog.ModuleFiles(comp)
 		if err != nil {
 			return err
@@ -65,42 +66,56 @@ func (c SyncCatalog) Apply(ctx context.Context, tx *sql.Tx) error {
 			files[p] = body
 		}
 		for p, body := range files {
-			_, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-				comp.Slug, comp.Hash, p, body, catalog.SRI(body), now)
-			if err != nil {
+			if err := storeFile(tx, comp.Slug, comp.Hash, p, body, now); err != nil {
 				return err
 			}
 		}
 	}
 	if len(c.Datastar) > 0 {
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO component_files (slug, hash, path, body, integrity, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			catalog.DatastarSlug, catalog.VersionHash(c.Datastar), catalog.DatastarFile, c.Datastar, catalog.SRI(c.Datastar), now); err != nil {
+		if err := storeFile(tx, catalog.DatastarSlug, catalog.VersionHash(c.Datastar), catalog.DatastarFile, c.Datastar, now); err != nil {
 			return err
 		}
 	}
 	// And the snapshot of the whole catalog, with its frozen autoloader.
 	auto := catalog.AutoloaderJS(c.Catalog, "../")
-	res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO catalog_snapshots (hash, autoloader, integrity, created_at) VALUES (?, ?, ?, ?)`,
+	res, err := tx.Exec(`INSERT OR IGNORE INTO catalog_snapshots (hash, autoloader, integrity, created_at) VALUES (?, ?, ?, ?)`,
 		c.Catalog.Hash, auto, catalog.SRI([]byte(auto)), now)
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
 		for _, comp := range c.Catalog.Components {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
+			if _, err := tx.Exec(`INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
 				c.Catalog.Hash, comp.Slug, comp.Hash); err != nil {
 				return err
 			}
 		}
 		// A new snapshot also pins the Datastar build it was published with.
 		if len(c.Datastar) > 0 {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
+			if _, err := tx.Exec(`INSERT INTO catalog_snapshot_components (snapshot, slug, hash) VALUES (?, ?, ?)`,
 				c.Catalog.Hash, catalog.DatastarSlug, catalog.VersionHash(c.Datastar)); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// storeFile keeps one file of a version for good. The first bytes stored for
+// it stay (INSERT OR IGNORE), and its body is stored once for every version
+// that has the same bytes (file_bodies, migration 010).
+func storeFile(tx *writer.Tx, slug, hash, path string, body []byte, now int64) error {
+	sri := catalog.SRI(body)
+	res, err := tx.Exec(`INSERT OR IGNORE INTO component_files (slug, hash, path, integrity, created_at) VALUES (?, ?, ?, ?, ?)`,
+		slug, hash, path, sri, now)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil || n == 0 {
+		return err
+	}
+	_, err = tx.Exec(`INSERT OR IGNORE INTO file_bodies (integrity, body) VALUES (?, ?)`, sri, body)
+	return err
 }
 
 func boolInt(b bool) int {

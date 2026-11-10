@@ -145,11 +145,11 @@ Only one thing is not native: `group`. `<details name="…">` groups exclusively
 
 ## Styling
 
-Parts: `details` (the `<details>` box), `summary`, `icon`, `label`, `marker` (the pixel triangle, mirrored in right-to-left text) and `content` (the body inside the panel). The animated box itself is the browser's `::details-content`, which no part can name; its speed is `--sb-details-duration`.
+Parts: `details` (the `<details>` box), `summary`, `icon`, `label`, `marker` (the triangle, mirrored in right-to-left text) and `content` (the body inside the panel). The animated box itself is the browser's `::details-content`, which no part can name; its speed is `--sb-details-duration`.
 
 The open panel is `sb-details::part(details):open`. Not `sb-details[open]`: the host's `open` attribute is the server's word, not the live state.
 
-It styles against the semantic tokens (`--sb-surface-card`, `--sb-surface-hover`, `--sb-border`, `--sb-text-1`, `--sb-text-2`, `--sb-text-muted`, `--sb-brand-light`, `--sb-radius`) and notches its corners by `--sb-notch` (at `0` the radius takes over). `--sb-details-duration` (220 ms) sets the animation, and `prefers-reduced-motion: reduce` turns it off, opening and closing at once.
+It styles against the semantic tokens (`--sb-surface-card`, `--sb-surface-hover`, `--sb-border`, `--sb-text-1`, `--sb-text-2`, `--sb-text-muted`, `--sb-brand-light`, `--sb-radius`) and notches its corners by `--sb-notch` (at `0` the radius takes over, and the stepped marker becomes a plain triangle that turns smoothly). `--sb-details-duration` (220 ms) sets the animation, and `prefers-reduced-motion: reduce` turns it off, opening and closing at once.
 
 ```html preview
 <div style="display: grid; gap: 8px; inline-size: min(100%, 26rem)">

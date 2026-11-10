@@ -77,12 +77,12 @@ The live value is the `value` property, so `data-bind` works with the `__prop` a
 
 ## With commands
 
-Give it a `name`, and it emits `sb-change` with `{ name, value }` when the user commits a choice: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` attribute matches, and `revert()` goes back to the server's value when a command is rejected.
+Give it a `name`, and it emits `sb-change` with `{ name, value }` when the user commits a choice: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered `value` attribute matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`).
 
 ```html
 <sb-radio-group name="drive" confirm value="impulse" label="Drive mode"
   data-on:sb-change="@post('/cmd/drive', {payload: {tabid: $tabid, ...evt.detail}})"
-  data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && el.revert()">
+  data-on:datastar-fetch="evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && el.revert()">
   <sb-radio value="impulse">Impulse</sb-radio>
   <sb-radio value="warp">Warp</sb-radio>
 </sb-radio-group>
