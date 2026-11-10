@@ -43,19 +43,26 @@ const until = async (f, ms) => {
 	return ''
 }
 const thrust = () => [...document.querySelectorAll('.flight__state dd')].map((d) => d.textContent).find((t) => t.endsWith('%')) ?? ''
-const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 10000)
-let conflicts = 0
-document.addEventListener('datastar-fetch', (e) => e.detail.el === slider && e.detail.type === 'error' && e.detail.argsRaw.status === '409' && conflicts++)
-// Until Datastar has wired the page, a commit goes nowhere: commit until one meets the 409.
-for (let i = 0; i < 40 && !conflicts; i++) {
-	slider.value = 70
-	slider.shadowRoot.querySelector('input').dispatchEvent(new Event('change'))
-	await until(() => conflicts, 250)
+let out
+try {
+	// The first test of a run starts the app cold: give the page time.
+	const slider = await until(() => document.querySelector('sb-slider[name="thrust"]'), 60000)
+	if (!slider) throw new Error('no slider')
+	let conflicts = 0
+	document.addEventListener('datastar-fetch', (e) => e.detail.el === slider && e.detail.type === 'error' && e.detail.argsRaw.status === '409' && conflicts++)
+	// Until Datastar has wired the page, a commit goes nowhere: commit until one meets the 409.
+	for (const end = Date.now() + 60000; !conflicts && Date.now() < end; ) {
+		slider.value = 70
+		slider.shadowRoot.querySelector('input').dispatchEvent(new Event('change'))
+		await until(() => conflicts, 250)
+	}
+	await fetch('/__probe/open', { method: 'POST' })
+	const shown = await until(() => thrust() === '70%' && thrust(), 30000)
+	out = [conflicts ? '409' : 'no 409', shown || thrust() || 'nothing', slider.value, slider.matches(':state(pending)') ? 'pending' : 'not pending'].join(', ')
+} catch (e) {
+	out = String(e?.stack || e)
 }
-await fetch('/__probe/open', { method: 'POST' })
-const shown = await until(() => thrust() === '70%' && thrust(), 10000)
-const out = [conflicts ? '409' : 'no 409', shown || thrust() || 'nothing', slider.value, slider.matches(':state(pending)') ? 'pending' : 'not pending']
-await fetch('/__probe/result', { method: 'POST', body: out.join(', ') })
+await fetch('/__probe/result', { method: 'POST', body: out })
 `
 
 // TestCommandLostOnReconnect: a command answered 204 that never reached the
