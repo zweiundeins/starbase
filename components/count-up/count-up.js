@@ -43,12 +43,12 @@ span span { grid-area: 1/1; }
 `
 
 rocket('sb-count-up', {
-	props: ({ bool, number, string }) => ({
+	props: ({ number, oneOf, string }) => ({
 		value: number.docs({ description: 'The number to arrive at.' }),
 		from: number.docs({ description: 'Where the count starts the first time it is seen.' }),
 		decimals: number.round.clamp(0, 7).docs({ description: 'Fixed digits after the decimal mark, kept for every frame so the width stays put.' }),
 		duration: number.min(0).default(1400).docs({ description: 'Length of the count in milliseconds.' }),
-		grouping: bool.default(true).docs({ description: 'Group thousands the way the locale does.' }),
+		grouping: oneOf(true, false).docs({ description: 'Group thousands the way the locale does. On by default: grouping="false" turns it off.' }),
 		lang: string.trim.docs({ description: "Locale for the separators (default: the page's lang, then the browser's)." }),
 	}),
 	renderOnPropChange: false,

@@ -60,11 +60,15 @@
     {
       "name": "stars",
       "attribute": "stars",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Draw twinkling stars."
+        "description": "Draw twinkling stars. On by default: stars=\"false\" turns it off."
       }
     },
     {
@@ -80,11 +84,15 @@
     {
       "name": "parallax",
       "attribute": "parallax",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Shift with the pointer."
+        "description": "Shift with the pointer. On by default: parallax=\"false\" turns it off."
       }
     },
     {

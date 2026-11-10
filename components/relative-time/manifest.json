@@ -63,11 +63,15 @@
     {
       "name": "sync",
       "attribute": "sync",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Keep the text current while the page is open."
+        "description": "Keep the text current while the page is open. On by default: sync=\"false\" turns it off."
       }
     },
     {

@@ -13,7 +13,7 @@ const pgManifest = `{"tag":"sb-widget","props":[
  {"name":"yaw","attribute":"yaw","type":"number","default":0},
  {"name":"zoom","attribute":"zoom","type":"number","default":1},
  {"name":"spin","attribute":"spin","type":"boolean","default":false},
- {"name":"showValue","attribute":"show-value","type":"boolean","default":true},
+ {"name":"showValue","attribute":"show-value","type":"oneOf","default":true,"values":[true,false]},
  {"name":"model","attribute":"model","type":"oneOf","default":"rocket","values":["rocket","planet"]},
  {"name":"label","attribute":"label","type":"string","default":""},
  {"name":"items","attribute":"items","type":"array","default":[]},
@@ -63,6 +63,9 @@ func TestPlaygroundControls(t *testing.T) {
 	}
 	if z := kinds["zoom"]; z.Step != 0.1 || z.Min != 0.5 {
 		t.Errorf("zoom = %+v", z)
+	}
+	if s := kinds["showValue"]; s.Kind != catalog.ControlBool || s.Default != true {
+		t.Errorf("showValue = %+v", s)
 	}
 	if m := kinds["model"]; m.Kind != catalog.ControlSelect || len(m.Options) != 2 || m.Initial != "planet" {
 		t.Errorf("model = %+v", m)

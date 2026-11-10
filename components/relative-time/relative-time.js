@@ -119,13 +119,13 @@ const relative = (then, now, fmt, tz) => {
 }
 
 rocket('sb-relative-time', {
-	props: ({ bool, number, oneOf, string }) => ({
+	props: ({ number, oneOf, string }) => ({
 		datetime: string.trim.docs({ description: 'The moment: ISO 8601 (2026-09-22T08:00:00Z) or Unix time (seconds or ms).' }),
 		numeric: oneOf('auto', 'always').default('auto').docs({ description: '"auto" allows words like "yesterday"; "always" says "1 day ago".' }),
 		format: oneOf('long', 'short', 'narrow').default('long').docs({ description: 'Length of the units ("3 minutes" / "3 min." / "3m").' }),
 		lang: string.trim.docs({ description: 'Locale (default: the page\'s lang, then the browser\'s).' }),
 		threshold: number.min(0).docs({ description: 'After this many days, show the date instead (0: always relative).' }),
-		sync: bool.default(true).docs({ description: 'Keep the text current while the page is open.' }),
+		sync: oneOf(true, false).docs({ description: 'Keep the text current while the page is open. On by default: sync="false" turns it off.' }),
 		timeZone: string.trim.docs({ description: 'IANA time zone (Europe/Zurich) of the date on hover, the threshold date and the day count (default, and for a zone the browser can\'t read: the browser\'s).' }),
 		titleLang: string.trim.docs({ description: 'Locale of the date on hover (default: the text\'s; "auto": the browser\'s).' }),
 		titleStyle: oneOf('full', 'numeric').default('full').docs({ description: '"full" spells out the weekday and month; "numeric" shows what toLocaleString() does, seconds included.' }),

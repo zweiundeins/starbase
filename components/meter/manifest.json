@@ -84,11 +84,15 @@
     {
       "name": "showValue",
       "attribute": "show-value",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Show the value."
+        "description": "Show the value. On by default: show-value=\"false\" turns it off."
       }
     },
     {

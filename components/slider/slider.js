@@ -100,14 +100,14 @@ input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px
 `
 
 rocket('sb-slider', {
-	props: ({ bool, number, string }) => ({
+	props: ({ bool, number, oneOf, string }) => ({
 		value: number.docs({ description: 'The value. A new value from the server replaces it; the live value is the value property.' }),
 		min: number.docs({ description: 'Minimum.' }),
 		max: number.default(100).docs({ description: 'Maximum.' }),
 		step: number.min(0).default(1).docs({ description: 'Step size (0 for continuous).' }),
 		label: string.trim.docs({ description: 'Visible label.' }),
 		unit: string.docs({ description: 'Suffix after the shown value, e.g. "°" or "%".' }),
-		showValue: bool.default(true).docs({ description: 'Show the current value next to the label.' }),
+		showValue: oneOf(true, false).docs({ description: 'Show the current value next to the label. On by default: show-value="false" turns it off.' }),
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),

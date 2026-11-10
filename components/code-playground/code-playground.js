@@ -91,10 +91,10 @@ iframe { inline-size: 100%; block-size: 100%; border: 0; background: var(--sb-bg
 `
 
 rocket('sb-code-playground', {
-	props: ({ array, bool, json, number, string }) => ({
+	props: ({ array, bool, json, number, oneOf, string }) => ({
 		runner: string.trim.default('/playground/run').docs({ description: 'URL of the sandbox runner page (see the protocol in the docs).' }),
 		deps: json.default(() => ({})).docs({ description: 'Other components to load in the preview, as JSON {"sb-tag": "module URL"}. Tags defined by the edited code are skipped.' }),
-		autoRun: bool.default(true).docs({ description: 'Re-run shortly after every edit.' }),
+		autoRun: oneOf(true, false).docs({ description: 'Re-run shortly after every edit. On by default: auto-run="false" turns it off.' }),
 		theme: string.trim.default('deep-space').docs({ description: 'Initial preview theme (data-sb-theme).' }),
 		themes: array(string.trim).default(() => ['deep-space', 'nebula', 'terminal', 'daylight']).docs({ description: 'Themes offered in the picker.' }),
 		delay: number.clamp(100, 5000).default(600).docs({ description: 'Auto-run debounce, in ms.' }),

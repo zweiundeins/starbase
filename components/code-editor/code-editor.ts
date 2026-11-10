@@ -151,7 +151,7 @@ rocket('sb-code-editor', {
 	props: ({ bool, json, number, oneOf, string }) => ({
 		language: oneOf('js', 'ts', 'html', 'css').default('js').docs({ description: 'Syntax to highlight.' }),
 		value: string.docs({ description: 'The code (or a child <script type="text/plain">). A new value from the server replaces it; the live code is the value property.' }),
-		lineNumbers: bool.default(true).docs({ description: 'Show a line-number gutter.' }),
+		lineNumbers: oneOf(true, false).docs({ description: 'Show a line-number gutter. On by default: line-numbers="false" turns it off.' }),
 		tabSize: number.clamp(1, 8).default(2).docs({ description: 'Visual width of a tab.' }),
 		readonly: bool.docs({ description: 'Make the code read-only (a form still submits it).' }),
 		disabled: bool.docs({ description: 'Disable editing; a form doesn\'t submit it, like a disabled <textarea>.' }),

@@ -112,10 +112,10 @@ const styles = /* css */ `
 `
 
 rocket('sb-odometer', {
-	props: ({ bool, number, string }) => ({
+	props: ({ bool, number, oneOf, string }) => ({
 		value: number.docs({ description: 'The number to show. Change it and the digits roll to the new value.' }),
 		decimals: number.round.clamp(0, 7).docs({ description: 'Fixed digits after the decimal mark, so a whole-number step still shows ".0" and the layout does not jump.' }),
-		grouping: bool.default(true).docs({ description: 'Group thousands the way the locale does (221’180, 221,180, 221 180).' }),
+		grouping: oneOf(true, false).docs({ description: 'Group thousands the way the locale does (221’180, 221,180, 221 180). On by default: grouping="false" turns it off.' }),
 		lang: string.trim.docs({ description: "Locale for the separators (default: the page's lang, then the browser's)." }),
 		drum: bool.docs({ description: 'Draw each wheel as a 3D drum: digits curve away above and below, and foreshorten as they roll.' }),
 	}),

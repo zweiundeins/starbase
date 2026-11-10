@@ -112,6 +112,11 @@ func (c *Component) Playground() *Playground {
 		case "boolean":
 			ctl.Kind = ControlBool
 		case "oneOf":
+			if slices.Equal(p.Values, []any{true, false}) {
+				// A flag that is on by default (an enumerated true/false attribute).
+				ctl.Kind = ControlBool
+				break
+			}
 			ctl.Kind = ControlSelect
 			for _, v := range p.Values {
 				if s, ok := v.(string); ok {

@@ -34,11 +34,15 @@
     {
       "name": "closable",
       "attribute": "closable",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Show the close button (not on inline panels)."
+        "description": "Show the close button (not on inline panels). On by default: closable=\"false\" turns it off."
       }
     }
   ],

@@ -17,9 +17,6 @@ func TestBoolDefaults(t *testing.T) {
 	}
 }
 
-// knownBoolDefaults still declare one, until they move to oneOf(true, false).
-var knownBoolDefaults = map[string]bool{"alert": true, "code-editor": true, "code-playground": true, "count-up": true, "drawer": true, "meter": true, "modal": true, "nebula": true, "odometer": true, "range": true, "relative-time": true, "slider": true}
-
 // No component declares `bool.default(…)`: official Rocket throws on it when
 // the component is defined, and every component queued after it stays undefined.
 func TestNoBoolDefaults(t *testing.T) {
@@ -41,9 +38,6 @@ func TestNoBoolDefaults(t *testing.T) {
 			return err
 		}
 		for _, l := range catalog.BoolDefaults(string(b)) {
-			if knownBoolDefaults[path.Dir(p)] {
-				continue
-			}
 			t.Errorf("%s:%d declares bool.default(…); a flag that is on by default is oneOf(true, false)", p, l)
 		}
 		return nil

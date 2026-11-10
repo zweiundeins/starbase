@@ -30,11 +30,15 @@
     {
       "name": "lineNumbers",
       "attribute": "line-numbers",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Show a line-number gutter."
+        "description": "Show a line-number gutter. On by default: line-numbers=\"false\" turns it off."
       }
     },
     {

@@ -24,11 +24,15 @@
     {
       "name": "grouping",
       "attribute": "grouping",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Group thousands the way the locale does (221’180, 221,180, 221 180)."
+        "description": "Group thousands the way the locale does (221’180, 221,180, 221 180). On by default: grouping=\"false\" turns it off."
       }
     },
     {

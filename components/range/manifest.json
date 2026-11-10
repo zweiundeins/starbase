@@ -64,11 +64,15 @@
     {
       "name": "showValue",
       "attribute": "show-value",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
-        "description": "Show the current range next to the label."
+        "description": "Show the current range next to the label. On by default: show-value=\"false\" turns it off."
       }
     },
     {

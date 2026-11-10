@@ -78,7 +78,7 @@ rocket('sb-alert', {
 		variant: oneOf('info', 'success', 'warning', 'danger').docs({ description: 'Tone of the message.' }),
 		heading: string.trim.docs({ description: 'Bold first line.' }),
 		closable: bool.docs({ description: 'Show a dismiss button.' }),
-		open: bool.default(true).docs({
+		open: oneOf(true, false).docs({
 			description: 'Shown. Any change the server makes to the attribute wins, over a dismissal too: open="false" hides it, open or no attribute shows it. Unchanged markup keeps a dismissal. From script: host.open, show(), hide().',
 		}),
 	}),

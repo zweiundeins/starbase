@@ -40,9 +40,13 @@
     {
       "name": "open",
       "attribute": "open",
-      "type": "boolean",
+      "type": "oneOf",
       "default": true,
       "required": false,
+      "values": [
+        true,
+        false
+      ],
       "docs": {
         "description": "Shown. Any change the server makes to the attribute wins, over a dismissal too: open=\"false\" hides it, open or no attribute shows it. Unchanged markup keeps a dismissal. From script: host.open, show(), hide()."
       }

@@ -54,7 +54,7 @@ const styles = /* css */ `
 `
 
 rocket('sb-meter', {
-	props: ({ bool, number, string }) => ({
+	props: ({ number, oneOf, string }) => ({
 		value: number.docs({ description: 'Current value.' }),
 		min: number.docs({ description: 'Minimum.' }),
 		max: number.default(100).docs({ description: 'Maximum.' }),
@@ -63,7 +63,7 @@ rocket('sb-meter', {
 		danger: number.default(90).docs({ description: 'Danger threshold, in value units. Unset, it sits at 90% of the range (90 on 0–100).' }),
 		label: string.trim.docs({ description: 'Caption, and the accessible name.' }),
 		unit: string.docs({ description: 'Unit after the value.' }),
-		showValue: bool.default(true).docs({ description: 'Show the value.' }),
+		showValue: oneOf(true, false).docs({ description: 'Show the value. On by default: show-value="false" turns it off.' }),
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals shown.' }),
 	}),
 	setup: ({ adoptStyles, host }) => adoptStyles(host, styles),

@@ -48,11 +48,11 @@ footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.875re
 `
 
 rocket('sb-modal', {
-	props: ({ bool, string }) => ({
+	props: ({ bool, oneOf, string }) => ({
 		heading: string.trim.default('Dialog').docs({ description: 'Title of the dialog.' }),
 		open: bool.docs({ description: 'The server\'s word: a changed attribute wins (open="false" closes it, also after show()); a removed one is ignored. Emits no sb-open or sb-close. The property returns this word; isOpen tells whether it is showing.' }),
 		inline: bool.docs({ description: 'Render in place, always visible, without an overlay or close button (previews, docs).' }),
-		closable: bool.default(true).docs({ description: 'Show the close button (not on inline panels).' }),
+		closable: oneOf(true, false).docs({ description: 'Show the close button (not on inline panels). On by default: closable="false" turns it off.' }),
 	}),
 	manifest: {
 		slots: [

@@ -106,15 +106,15 @@ canvas { display: block; inline-size: 100%; block-size: 100%; image-rendering: p
 `
 
 rocket('sb-nebula', {
-	props: ({ bool, number, oneOf, string }) => ({
+	props: ({ number, oneOf, string }) => ({
 		speed: number.clamp(0, 5).default(1).docs({ description: 'Drift speed (0 is still).' }),
 		density: number.clamp(0, 1).default(0.5).docs({ description: 'How much of the sky the gas covers, 0 to 1.' }),
 		palette: oneOf('violet', 'aurora', 'ember', 'mono').default('violet').docs({ description: 'Colour scheme (from theme tokens).' }),
 		pixel: number.clamp(1, 16).default(4).docs({ description: 'Size of one pixel, in CSS pixels.' }),
 		levels: number.clamp(0, 16).default(6).docs({ description: 'Colour levels per channel, dithered (0 for smooth).' }),
-		stars: bool.default(true).docs({ description: 'Draw twinkling stars.' }),
+		stars: oneOf(true, false).docs({ description: 'Draw twinkling stars. On by default: stars="false" turns it off.' }),
 		seed: number.docs({ description: 'Picks a different nebula.' }),
-		parallax: bool.default(true).docs({ description: 'Shift with the pointer.' }),
+		parallax: oneOf(true, false).docs({ description: 'Shift with the pointer. On by default: parallax="false" turns it off.' }),
 		label: string.default('Animated nebula').docs({ description: 'Accessible label.' }),
 	}),
 	renderOnPropChange: false,
