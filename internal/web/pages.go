@@ -222,6 +222,13 @@ func (s *Server) document(fn pageFunc) http.HandlerFunc {
 	}
 }
 
+// MaxStreamsPerClient is how many render streams one client (edge.ClientKey:
+// an IPv4 address, an IPv6 /64) may hold open (app.HubOptions), so that no
+// one takes all of the hub's. A browser closes the stream of a hidden tab, so
+// a person needs one per window; 24 leaves room for the people behind a
+// shared address (carrier-grade NAT, an office, conference Wi-Fi).
+const MaxStreamsPerClient = 24
+
 // stream is the read side of CQRS for one tab: a view of its own in the
 // render loop (lith/live), rendered again in the next tick after a commit
 // touches the tab's session, the tab, or everything. Every frame is the
@@ -257,21 +264,16 @@ func (s *Server) stream(fn pageFunc, regions []*region) http.HandlerFunc {
 				return s.frame(ctx, queries.Read(tx), req, sig.TabID, fn)
 			},
 		}
-		spec := live.Spec{ID: sig.TabID, Views: []live.View{tab}, Reconnect: ui.StreamID}
+		spec := live.Spec{Client: edge.ClientKey(r), ID: sig.TabID, Views: []live.View{tab}, Reconnect: ui.StreamID}
 		for _, rg := range regions {
 			spec.Views = append(spec.Views, rg.view)
 		}
 		spec.WriteTick = resetWatchdog(fillHoles(tab.Key, regions))
-		client := edge.ClientKey(r)
-		if !s.streamCap.acquire(client) {
-			// retry 'error' asks again, as it does after the hub's 503.
-			http.Error(w, "too many streams from this client", http.StatusTooManyRequests)
-			s.capWarn.warn(s.log, "render stream refused: a client at its cap", "client", client, "cap", maxStreamsPerClient)
-			return
-		}
-		defer s.streamCap.release(client)
 		err := s.hub.Serve(w, r, spec)
 		switch {
+		case errors.Is(err, live.ErrClientFull):
+			// The hub answered 429, which retry 'error' asks again, as after its 503.
+			s.capWarn.warn(s.log, "render stream refused: a client at its cap", "client", spec.Client, "cap", MaxStreamsPerClient)
 		case errors.Is(err, sse.ErrNoRoom):
 			st := s.hub.Budget().Stats()
 			s.roomWarn.warn(s.log, "render stream refused: the streams' budget is full", "path", r.URL.Path,

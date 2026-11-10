@@ -49,9 +49,10 @@ const streamBudget = 120 << 20
 // that holds its frame, and live's MaxStreams (2000) is only a backstop.
 // Each stream gets the smallest window that holds its largest frame, up to
 // 2^19. Every heartbeat patches $_ping, which the page's watchdog
-// (ui.Watchdog) waits for. Each call has a budget of its own.
+// (ui.Watchdog) waits for. A client holds at most web.MaxStreamsPerClient
+// streams. Each call has a budget of its own.
 func HubOptions(read *sql.DB, log *slog.Logger, heartbeat time.Duration) live.Options {
-	return live.Options{Read: read, Log: log, Heartbeat: heartbeat, HeartbeatSignal: ui.PingSignal, SSE: sse.Options{
+	return live.Options{Read: read, Log: log, Heartbeat: heartbeat, HeartbeatSignal: ui.PingSignal, MaxStreamsPerClient: web.MaxStreamsPerClient, SSE: sse.Options{
 		ZstdLevel: zstd.SpeedFastest, ZstdWindow: 19, ZstdLowMemory: true,
 		BrotliWindow: 19,
 		Budget:       sse.NewBudget(sse.BudgetOptions{Limit: streamBudget, Refuse: true}),

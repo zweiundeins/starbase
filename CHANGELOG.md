@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - lith v0.5.4. Test databases run without fsync (`Synchronous: "OFF"`, only under `testing.Testing()`).
+- The render streams' cap per client is lith's (`Spec.Client`, `Options.MaxStreamsPerClient`, still 24) instead of Starbase's own counter.
 - The component bundle's budget is 104 kB (brotli), up from 100 kB: the bundle had reached 102.5 kB, and pages would have gone back to the autoloader.
 - No more Windows builds: releases and CI build for Linux and macOS.
 - Dependencies: lith v0.4.1, minify v2.24.22.

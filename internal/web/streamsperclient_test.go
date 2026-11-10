@@ -10,7 +10,7 @@ import (
 )
 
 // TestStreamsPerClientAreCapped: one client holds at most 24 render streams
-// (maxStreamsPerClient), the next gets 429 while another client still gets
+// (MaxStreamsPerClient), the next gets 429 while another client still gets
 // its own, and a closed stream makes room again. IPv6 addresses count per
 // /64.
 func TestStreamsPerClientAreCapped(t *testing.T) {

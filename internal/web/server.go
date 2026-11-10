@@ -67,10 +67,9 @@ type Server struct {
 	starsLongest queries.DemoStarLongest // the star catalog's longest values (starLongest), for starsTotal stars
 	starsTotal   int
 
-	streamCap *streamCap // render streams per client
-	capWarn   quietWarn  // clients at their cap
-	roomWarn  quietWarn  // the streams' budget full: memory caps the streams
-	fullWarn  quietWarn  // the hub at MaxStreams, a backstop
+	capWarn  quietWarn // clients at MaxStreamsPerClient
+	roomWarn quietWarn // the streams' budget full: memory caps the streams
+	fullWarn quietWarn // the hub at MaxStreams, a backstop
 }
 
 type Deps struct {
@@ -120,7 +119,6 @@ func New(ctx context.Context, d Deps) *Server {
 		exportLimit:   newLimiter(0.2, 3), // a download every five seconds, three in a row
 		exportLimitIP: newLimiter(1, 10),
 		exports:       make(chan struct{}, 2), // the read pool has at least four
-		streamCap:     newStreamCap(maxStreamsPerClient),
 	}
 	s.oauth = newOAuth(d.Config)
 	s.cache = newRenderCache(s)
