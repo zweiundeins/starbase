@@ -3,22 +3,22 @@ module starbase
 go 1.27.4
 
 require (
-	github.com/a-h/templ v0.3.1070
+	github.com/a-h/templ v0.3.1100
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/andybalholm/brotli v1.2.6
+	github.com/andybalholm/brotli v1.3.0
 	github.com/benbjohnson/hashfs v0.2.2
 	github.com/evanw/esbuild v0.28.2
-	github.com/klauspost/compress v1.20.3
+	github.com/klauspost/compress v1.20.4
 	github.com/prometheus/client_golang v1.25.0
 	github.com/starfederation/datastar-go v1.2.2
-	github.com/tdewolff/minify/v2 v2.24.22
-	github.com/yuin/goldmark v1.8.6
+	github.com/tdewolff/minify/v2 v2.24.25
+	github.com/yuin/goldmark v1.8.7
 	github.com/zweiundeins/lith v0.5.6
 	github.com/zweiundeins/lith/prom v0.5.6
 	go.abhg.dev/goldmark/frontmatter v0.3.0
-	golang.org/x/oauth2 v0.37.0
-	golang.org/x/sys v0.49.0
-	golang.org/x/text v0.43.0
+	golang.org/x/oauth2 v0.38.0
+	golang.org/x/sys v0.50.0
+	golang.org/x/text v0.44.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -138,7 +138,7 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.9.0 // indirect
 	github.com/stretchr/objx v0.8.0 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
-	github.com/tdewolff/parse/v2 v2.8.19 // indirect
+	github.com/tdewolff/parse/v2 v2.8.20 // indirect
 	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
@@ -159,7 +159,7 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
@@ -169,10 +169,10 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
-	modernc.org/libc v1.78.0 // indirect
+	modernc.org/libc v1.80.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.60.1 // indirect
+	modernc.org/sqlite v1.62.0 // indirect
 	mvdan.cc/sh/v3 v3.14.1 // indirect
 	mvdan.cc/sh/x v0.0.0-20261020101326-c2cf6f25a6ea // indirect
 )

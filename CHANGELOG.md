@@ -42,6 +42,7 @@ All notable changes to this project are documented here. The format follows
 - Dependencies: lith v0.4.1, minify v2.24.22.
 - The data table's docs list the server code behind its fit widths again, so its page needs a 512 KiB compression window per tab: 120 MiB of stream memory now holds about 105 of its tabs with zstd and 65 in browsers without zstd (the largest page; smaller pages hold more).
 - Go 1.27.4, which fixes a crash in `net/http` when a `MaxBytesReader` races the response headers (GO-2026-6859).
+- Dependencies: templ v0.3.1100 (it sanitizes URL attributes by html/template's rules, `data-*` ones included; a test renders every page and fails on a sanitized value), modernc.org/sqlite v1.62.0 (SQLite 3.54.1), brotli v1.3.0, klauspost/compress v1.20.4, minify v2.24.25, goldmark v1.8.7, x/oauth2 v0.38.0, x/sys v0.50.0, x/text v0.44.0.
 
 ### Deprecated
 
