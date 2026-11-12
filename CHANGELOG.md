@@ -51,6 +51,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `sb-image-compare` reads `expanded="false"` from the attribute, so it closes full screen on the official Datastar too, and on Starbase's build without patch 0001.
 - The pinned snapshot names the Datastar build the site runs: a new build with the same components now makes a new snapshot (`/c/@<hash>/`). It kept the snapshot that pinned the old build, so the "Pinned snapshot" install tab handed out Datastar 1.0.4 with the site on 1.0.5.
 - The Unix socket is `0660` in a `0750` directory, for the proxy in the service's group: at `0666`, any local user could connect and name any client in the proxy headers, past the rate limits and the stream cap. Startup logs whom the proxy headers are trusted from.
 - `sb-tree` cuts a long label with an ellipsis in a narrow container instead of pushing its rows out of it; the meta stays in view. Markup and JSON alike.

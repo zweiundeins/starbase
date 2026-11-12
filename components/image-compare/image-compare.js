@@ -319,9 +319,9 @@ rocket('sb-image-compare', {
 		const states = internalsOf(host).states
 		// Full screen from the page or the server: keep.full is its last word,
 		// so only a changed attribute wins and a removed one is ignored (morphs
-		// also strip reflected attributes), as with sb-popover's open. It
-		// survives a move, so a re-insert doesn't reopen what the reader closed.
-		// cause says who asked for the next toggle.
+		// also strip reflected attributes). It survives a move, so a re-insert
+		// doesn't reopen what the reader closed. cause says who asked for the
+		// next toggle.
 		const keep = kept.get(host)
 		let cause = null
 		const expand = (on, why) => {
@@ -332,8 +332,10 @@ rocket('sb-image-compare', {
 		const serve = () =>
 			peek(() => {
 				if (!host.hasAttribute('expanded')) return void (keep.full = null)
-				if (props.expanded === keep.full) return
-				keep.full = props.expanded
+				// "false" says closed, since a removal is no word; Rocket's bool reads it as true.
+				const said = host.getAttribute('expanded') !== 'false'
+				if (said === keep.full) return
+				keep.full = said
 				expand(keep.full, 'server')
 			})
 		const watchExpanded = new MutationObserver(serve)

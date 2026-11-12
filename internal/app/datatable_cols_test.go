@@ -223,9 +223,9 @@ test('resize by pointer', async () => {
 	await frame()
 	check('a synthetic drag', [widthAt(el, 0), got.at(-1).widths.a], [w0 + 40, w0 + 40])
 
-	el.setAttribute('resizable', 'false')
+	el.removeAttribute('resizable')
 	await frame()
-	check('resizable="false": no grips', $$(el, '.grip').map((x) => getComputedStyle(x).display), ['none', 'none', 'none'])
+	check('resizable removed: no grips', $$(el, '.grip').map((x) => getComputedStyle(x).display), ['none', 'none', 'none'])
 	el.remove()
 
 	const fixed = await make({ resizable: '', columns: [{ key: 'a', resizable: false }, { key: 'b' }], rows: rows3 })
