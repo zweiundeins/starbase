@@ -192,6 +192,18 @@ The tree keeps reading the list, so a morph or a patch can change any of it. Whi
 
 When the element holds a list and also has `items`, the list wins.
 
+### Before JavaScript
+
+Until the module loads, the browser shows the plain list with every branch open. To show only the open ones, put this rule in your page's stylesheet:
+
+```css
+sb-tree:not(:defined) li:not([data-open]):not(:has(> :is(ul, ol) [aria-current]:not([aria-current="false"]))) > :is(ul, ol) {
+  display: none;
+}
+```
+
+It matches how the tree opens branches when it upgrades: those with `data-open`, and those above the `aria-current` item (that item's own children stay closed). A branch opened only by `expanded`, or by the user before a reload, is closed until then: mark it `data-open` to show it. Once the element is defined, the rule no longer applies, and the list is not shown anyway. The links inside closed branches stay in the page for crawlers, but a visitor without JavaScript can't reach them, so leave the rule out where the tree must also work without it.
+
 ### Loaded branches in a shared view
 
 A page that renders one tree for every visitor or tab can't send each one's loaded branches back. So a lazy item keeps the children it received: when a morph brings its `<li>` back with `data-lazy` and no list, the tree goes on showing them, open if they were, without a new `sb-load`. The server's word still wins when it sends one:
@@ -307,4 +319,5 @@ It follows the WAI-ARIA tree pattern, and for links its navigation tree variant:
 - **Structure:** `tree` and `treeitem` roles, with level, position and expanded state. A link row is a link with the `treeitem` role; the current page has `aria-current`.
 - **Focus:** one item at a time is in the tab order. Tab lands on the selected item, else the current page (the first one visible), otherwise on the item focused last, or the first.
 - **Keys:** Up and Down move, Right opens (or moves to the first child), Left closes (or moves to the parent), Home and End jump. Enter or Space selects a plain item and follows a link. Keys with Alt, Ctrl or Cmd are the browser's (Alt+Left goes back).
-- **Loading:** a branch that is loading is marked `aria-busy`.
+- **Names:** a row's accessible name is its label alone; a `data-meta` text is its description (`aria-describedby`): the name is "Guide" and the description "3", not one name "Guide 3".
+- **Loading:** a branch that is loading is marked `aria-busy` (its "Loading" text is not part of the name).

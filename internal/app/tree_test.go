@@ -1,8 +1,11 @@
 package app_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -16,8 +19,26 @@ import (
 // their children when a morph sends them again without one; long labels are
 // cut in a narrow tree; value and
 // expanded are server-wins; the JSON form still works, and a list wins over it.
+//
+// It also checks the README's rule for closed branches before JavaScript (and
+// that the site's stylesheet carries it), and each row's accessible name and
+// description in Chrome's accessibility tree.
 func TestTreeMarkup(t *testing.T) {
-	copyRows(t, probeCDP(t, "/", pdPrelude+morphJS+treeMarkupJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
+	readme, err := os.ReadFile("../../components/tree/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile("(?s)### Before JavaScript.*?```css\n(.*?)```").FindSubmatch(readme)
+	if m == nil {
+		t.Fatal("README: no css block under Before JavaScript")
+	}
+	rule := string(m[1])
+	selector := strings.TrimSpace(strings.SplitN(rule, "{", 2)[0])
+	if site, _ := os.ReadFile("../../static/css/base.css"); !strings.Contains(string(site), selector+" {") {
+		t.Errorf("static/css/base.css lacks the README's rule %q", selector)
+	}
+	js, _ := json.Marshal(rule)
+	copyRows(t, probeCDP(t, "/", pdPrelude+morphJS+"const PREJS_RULE = "+string(js)+"\n"+treeMarkupJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
 }
 
 const treeMarkupJS = `
@@ -109,6 +130,30 @@ await group('before JavaScript', async () => {
 	f.remove()
 })
 
+await group('before JavaScript, with the README\'s rule', async () => {
+	const shown = async (html) => {
+		const f = document.createElement('iframe')
+		f.setAttribute('sandbox', 'allow-same-origin')
+		f.style.cssText = 'inline-size: 400px; block-size: 400px'
+		f.srcdoc = '<!doctype html><style>' + PREJS_RULE + '</style>' + html
+		const loaded = new Promise((r) => (f.onload = r))
+		document.body.append(f)
+		await loaded
+		const out = [...f.contentDocument.querySelectorAll('sb-tree a, sb-tree span:not([data-meta])')].filter((a) => a.getClientRects().length).map((a) => a.getAttribute('href') ?? a.textContent)
+		f.remove()
+		return out
+	}
+	check('pre-JS rule: the branch above the current page shows, closed ones don\'t', await shown(nav()),
+		['/__nav/guide', '/__nav/start', '/__nav/install', 'Ideas', '/__nav/ref', '/__nav/faq'])
+	check('pre-JS rule: data-open shows a branch', await shown(nav({ refOpen: true })),
+		['/__nav/guide', '/__nav/start', '/__nav/install', 'Ideas', '/__nav/ref', '/__nav/api', '/__nav/faq'])
+	check('pre-JS rule: the current page moves', await shown(nav({ current: 'api' })),
+		['/__nav/guide', '/__nav/ref', '/__nav/api', '/__nav/faq'])
+	check('pre-JS rule: the current item\'s own children and aria-current="false" stay closed',
+		await shown('<sb-tree><ul><li><a href="/x" aria-current="page">X</a><ul><li><a href="/y">Y</a></li></ul></li><li><a href="/z">Z</a><ul><li><a href="/w" aria-current="false">W</a></li></ul></li></ul></sb-tree>'),
+		['/x', '/z'])
+})
+
 let tree
 await group('after the upgrade', async () => {
 	tree = await make(nav())
@@ -127,6 +172,32 @@ await group('after the upgrade', async () => {
 	const w = art?.getBoundingClientRect().width
 	check('the icon is a copy of the SVG, at the icon size', [!!art?.querySelector('path'), w > 12 && w < 24, rowOf(tree, 'FAQ').querySelector('.art').children.length], [true, true, 0])
 	check('a page stylesheet is not needed: the rows are styled', getComputedStyle(cur).display + ' ' + getComputedStyle(cur).textDecorationLine, 'flex none')
+})
+
+await group('names and descriptions in the accessibility tree', async () => {
+	// The treeitems of the tree named label, in order.
+	const ax = async (label) => {
+		const [{ nodes }] = await cdp({ method: 'Accessibility.getFullAXTree', params: {} })
+		const byId = new Map(nodes.map((n) => [n.nodeId, n]))
+		const items = []
+		const walk = (n) => {
+			if (!n.ignored && n.role?.value === 'treeitem') items.push([n.name?.value ?? '', n.description?.value ?? ''])
+			n.childIds?.forEach((id) => byId.has(id) && walk(byId.get(id)))
+		}
+		nodes.filter((n) => n.role?.value === 'tree' && n.name?.value === label).forEach(walk)
+		return items
+	}
+	check('markup: the name is the label, the meta the description', await ax('Docs'),
+		[['Guide', '3'], ['Getting started', ''], ['Install', ''], ['Ideas', 'draft'], ['Reference', ''], ['FAQ', '']])
+	const style = document.createElement('style')
+	style.textContent = PREJS_RULE
+	document.head.append(style)
+	const again = await make(nav())
+	check('the README\'s rule leaves the upgraded tree alone', labels(again), ['Guide', 'Getting started', 'Install', 'Ideas', 'Reference', 'FAQ'])
+	style.remove()
+	const js = await make('<sb-tree label="J" expanded="p" items=\'[{"id":"p","label":"Parent","icon":"★","children":[{"id":"c","label":"Child"}]}]\'></sb-tree>')
+	check('JSON: the label alone', await ax('J'), [['Parent', ''], ['Child', '']])
+	tree = await make(nav())
 })
 
 await group('link rows are the browser\'s', async () => {

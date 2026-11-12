@@ -462,8 +462,9 @@ rocket('sb-tree', {
 			data-attr:aria-multiselectable="$$mode === 'multiple' && 'true'"
 			data-on:keydown="@key()" data-on:focusin="@focusin()" data-on:focusout="@focusout()">
 			<!-- r?.: when the list shrinks, data-for can re-evaluate a removed row once with r undefined.
-			     Every row is an <a>: a link with an href, a plain item without. -->
-			<template data-for="r in $$rows">
+			     Every row is an <a>: a link with an href, a plain item without.
+			     Its name is the label alone, the meta its description. -->
+			<template data-for="r, k in $$rows">
 				<a role="treeitem" class="row"
 					data-attr:part="['item', $$mode !== 'none' && !r?.href && $$selected.includes(r?.id) && 'selected', r?.current && 'current'].filter(Boolean).join(' ')"
 					data-attr:href="r?.href || null"
@@ -478,15 +479,17 @@ rocket('sb-tree', {
 					data-attr:aria-expanded="r?.branch && String(r?.open)"
 					data-attr:aria-selected="$$mode !== 'none' && !r?.href && String($$selected.includes(r?.id))"
 					data-attr:aria-busy="r?.loading && 'true'"
+					data-attr:aria-labelledby="'label-' + k"
+					data-attr:aria-describedby="(r?.meta && 'meta-' + k) || null"
 					data-attr:tabindex="r?.id === $$focus ? 0 : -1"
 					data-style:--depth="r?.depth"
 					data-on:click="@click(r?.id)">
 					<span class="caret" part="caret" aria-hidden="true"></span>
 					<span class="icon" part="icon" aria-hidden="true" data-show="r?.icon" data-text="r?.icon"></span>
 					<span class="icon art" part="icon" aria-hidden="true" data-show="r?.art"></span>
-					<span class="label" part="label" data-text="r?.label"></span>
+					<span class="label" part="label" data-attr:id="'label-' + k" data-text="r?.label"></span>
 					<span class="busy" data-show="r?.loading">Loading</span>
-					<span class="meta" part="meta" data-show="r?.meta" data-text="r?.meta"></span>
+					<span class="meta" part="meta" data-attr:id="'meta-' + k" data-show="r?.meta" data-text="r?.meta"></span>
 				</a>
 			</template>
 		</div>

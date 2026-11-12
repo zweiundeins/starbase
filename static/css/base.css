@@ -91,6 +91,11 @@
 		visibility: hidden;
 	}
 
+	/* sb-tree's closed branches take no room before it upgrades (its README). */
+	sb-tree:not(:defined) li:not([data-open]):not(:has(> :is(ul, ol) [aria-current]:not([aria-current="false"]))) > :is(ul, ol) {
+		display: none;
+	}
+
 	[hidden] {
 		display: none !important;
 	}
