@@ -94,7 +94,7 @@ func Installation(v InstallView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">Starbase's patches</a>. The components also run on the official v1.0.4 and v1.0.5.</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">Starbase's patch</a>. The components also run on the official v1.0.4 and v1.0.5.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

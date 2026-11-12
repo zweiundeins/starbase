@@ -48,6 +48,7 @@ All notable changes to this project are documented here. The format follows
 ### Removed
 
 - The `="false"` spelling of `checked`, `open` and `busy` on those nine components. Any value is present, so `open="false"` now means open, as in HTML and on the official Datastar. Leave the attribute out instead.
+- `patches/rocket/0001`, which read a boolean's `"false"` and `"0"` as false: Starbase's Datastar build is v1.0.5 with 0002 alone, and has a new hash (`/c/datastar@<hash>/`). Snapshots pinned before keep their build.
 
 ### Fixed
 

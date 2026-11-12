@@ -79,9 +79,9 @@ Every component page's Installation section has this snippet with the current ca
 | `/c/<slug>@<hash>/<slug>.bundle.min.js` | one version of a component as one file (see below) |
 | `/c/@<catalog>/autoloader.js` | the autoloader of one catalog snapshot, loading exactly its component versions (their bundles; a snapshot from before the bundles keeps loading the module files) |
 | `/c/@<catalog>/importmap.json` | `integrity` (SHA-384) for every file that snapshot can load, Datastar's included |
-| `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.5 release with Starbase's patches (`patches/rocket`) |
+| `/c/datastar@<build>/datastar-rocket.js` | one build of Datastar + Rocket: the v1.0.5 release with Starbase's patch (`patches/rocket`) |
 
-The components also run on the official v1.0.4 and v1.0.5 releases. A boolean attribute is a word by presence, as in HTML: any value is present, `open="false"` too. The patches and the reasons for them are in `patches/rocket/README.md`.
+The components also run on the official v1.0.4 and v1.0.5 releases. A boolean attribute is a word by presence, as in HTML: any value is present, `open="false"` too. The patch and the reason for it are in `patches/rocket/README.md`.
 
 With integrity in place, a changed file is refused instead of run. The autoloader reports it (`[starbase] could not load <sb-…>`), and the other components keep working. Every version the site has ever served is kept in its database. To withdraw one (a component that turned out to be malicious), delete its rows from `component_files`, then the bodies no row refers to any more: `DELETE FROM file_bodies WHERE integrity NOT IN (SELECT integrity FROM component_files)` (each distinct body is stored once, shared by the versions that have it).
 
