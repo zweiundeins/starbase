@@ -193,7 +193,7 @@ A new `value` from the server always wins. A removed `value` attribute changes n
 
 With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), with `time-zone` an instant with the zone's offset (`2026-10-14T09:30+02:00`), and with `mode="range"` both as `{ start, end }`. It is sent once per Apply, Enter in the time row or typed value, never for a day picked in the calendar or a change in the time row. The server may send a zone picker any RFC 3339 instant (`2026-10-14T07:30:00Z`) and gets back the offset form, which parses to the same instant. A new `time` attribute from the server, or with `time` a new `step` or `time-zone`, reads its `value` again in the new format, and that value replaces the local one.
 
-`open` and `month` are view state, not part of the value: never pending, and not touched by `revert()`. The server may set them, and a changed attribute wins: adding `open` opens the calendar, removing it closes it (`open="false"` still reads as closed, with a console warning: that spelling is deprecated). The picker reports the user's changes with `sb-toggle` (`{ name, open }`) and `sb-month`, never for a change the server made.
+`open` and `month` are view state, not part of the value: never pending, and not touched by `revert()`. The server may set them, and a changed attribute wins: adding `open` opens the calendar, removing it closes it (any value means open, `open="false"` too, as in HTML). The picker reports the user's changes with `sb-toggle` (`{ name, open }`) and `sb-month`, never for a change the server made.
 
 ## Forms
 

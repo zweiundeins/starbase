@@ -16,17 +16,6 @@ const peek = (fn) => {
 // (:state(pending)) are styleable from the page and morph-proof.
 const internals = new WeakMap();
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host);
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet();
-const boolWord = (host, attr) => {
-    const v = host.getAttribute(attr);
-    if (v === 'false' && !warned.has(host)) {
-        warned.add(host);
-        console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host);
-    }
-    return v !== null && v !== 'false';
-};
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`;
@@ -290,7 +279,7 @@ rocket('sb-date-picker', {
         max: string.docs({ description: 'Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time, with time-zone with or without an offset.' }),
         disabledDates: json.default(() => []).docs({ description: 'Server data: dates that can\'t be picked, as a JSON array of ISO dates (e.g. booked days). They can still be focused and read.' }),
         month: string.docs({ description: 'The month shown, YYYY-MM (view state). A changed attribute from the server moves the calendar there; the user paging months emits sb-month.' }),
-        open: bool.docs({ description: 'The calendar popover is open when present. View state: the server adding or removing the attribute opens or closes it, identical markup keeps the local state; local toggling never reflects it. open="false" reads as closed but is deprecated: leave the attribute out.' }),
+        open: bool.docs({ description: 'The calendar popover is open when present. View state: the server adding or removing the attribute opens or closes it, identical markup keeps the local state; local toggling never reflects it.' }),
         inline: bool.docs({ description: 'Show the calendar on the page, always visible, without the text field.' }),
         label: string.trim.docs({ description: 'Visible label, and the accessible name of the calendar.' }),
         placeholder: string.docs({ description: 'Placeholder text (default: the locale\'s date pattern, e.g. dd.mm.yyyy, or with time dd.mm.yyyy, hh:mm).' }),
@@ -847,11 +836,11 @@ rocket('sb-date-picker', {
         };
         for (const k of ['value', 'month'])
             heard(k);
-        let openWord = boolWord(host, 'open');
+        let openWord = host.hasAttribute('open');
         const watch = new MutationObserver(() => peek(() => {
             if (heard('value'))
                 set(norm(props.value));
-            const o = boolWord(host, 'open');
+            const o = host.hasAttribute('open');
             if (o !== openWord)
                 $$.open = (openWord = o) && !props.inline && !props.disabled;
             if (!heard('month') || mon(props.month) == null)
@@ -1033,6 +1022,6 @@ rocket('sb-date-picker', {
         }));
         // A calendar the server rendered open shows (the data-effect), now that the
         // actions its toggle events call are there.
-        $$.open = boolWord(host, 'open') && !props.inline && !props.disabled;
+        $$.open = host.hasAttribute('open') && !props.inline && !props.disabled;
     },
 });

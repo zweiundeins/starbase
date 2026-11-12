@@ -38,18 +38,6 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 // - Forced colors drop backgrounds and box-shadows, which is all this draws:
 //   the dots and the fill become CanvasText, the bar and the blocks get an
 //   outline (inset, or the clip-path cuts it off).
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet()
-const boolWord = (host, attr) => {
-	const v = host.getAttribute(attr)
-	if (v === 'false' && !warned.has(host)) {
-		warned.add(host)
-		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
-	}
-	return v !== null && v !== 'false'
-}
-
 const styles = /* css */ `
 :host {
 	--_fill: var(--sb-brand, #8C6BFF);
@@ -153,7 +141,7 @@ const styles = /* css */ `
 
 rocket('sb-busy', {
 	props: ({ bool, number, oneOf, string }) => ({
-		busy: bool.docs({ description: 'The server forces the indicator on. It wins: while the attribute is present the indicator stays up whatever the watched requests do; leave it out to clear it (busy="false" reads as absent but is deprecated).' }),
+		busy: bool.docs({ description: 'The server forces the indicator on. It wins: while the attribute is present the indicator stays up whatever the watched requests do; leave it out to clear it.' }),
 		variant: oneOf('spinner', 'bar', 'skeleton').default('spinner').docs({ description: 'Shape: a spinner, a progress bar or skeleton lines. Set it as an attribute (it also picks the host display).' }),
 		value: string.trim.docs({ description: 'Bar only: 0-100 for a determinate bar. Empty means indeterminate.' }),
 		lines: number.clamp(1, 20).step(1).default(3).docs({ description: 'Skeleton only: how many placeholder lines.' }),
@@ -204,7 +192,7 @@ rocket('sb-busy', {
 		let bailed = false // the last watched request failed: drop it without waiting for min
 		let ready = false
 		$$.on = on
-		const wanted = () => boolWord(host, 'busy') || flight.size > 0
+		const wanted = () => host.hasAttribute('busy') || flight.size > 0
 		const paint = (v) => {
 			if (on === v) return
 			$$.on = on = v
@@ -238,7 +226,6 @@ rocket('sb-busy', {
 			paint(false)
 		}
 		observeProps(() => peek(settle), 'delay', 'min')
-		// busy on the attribute: on official Rocket, busy="false" after busy decodes the same.
 		const watch = new MutationObserver(() => peek(settle))
 		watch.observe(host, { attributeFilter: ['busy'] })
 		cleanup(() => watch.disconnect())

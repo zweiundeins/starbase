@@ -17,18 +17,6 @@ const peek = <T>(fn: () => T): T => {
 const internals = new WeakMap<HTMLElement, ElementInternals>()
 const internalsOf = (host: HTMLElement) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)!
 
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet<HTMLElement>()
-const boolWord = (host: HTMLElement, attr: string) => {
-	const v = host.getAttribute(attr)
-	if (v === 'false' && !warned.has(host)) {
-		warned.add(host)
-		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
-	}
-	return v !== null && v !== 'false'
-}
-
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p: string) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -260,7 +248,7 @@ rocket('sb-dropdown', {
 		type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:"radio" on that item instead. The group reaches into its submenus, and a dropdown holds one group.' }),
 		value: string.docs({ description: 'Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots ("date.newest"). A new value from the server wins (value="" clears it); the live value is the value property.' }),
 		confirm: bool.docs({ description: 'Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server\'s value attribute (see revert()).' }),
-		open: bool.docs({ description: 'Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client. open="false" reads as closed but is deprecated: leave the attribute out.' }),
+		open: bool.docs({ description: 'Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client.' }),
 		disabled: bool.docs({ description: 'Disable the trigger (and close the menu).' }),
 		name: string.trim.docs({ description: 'Name reported in sb-select and sb-change (e.g. the field of a command).' }),
 	}),
@@ -285,7 +273,7 @@ rocket('sb-dropdown', {
 		// Open/closed, which submenus are open, the focused row and the
 		// type-ahead buffer are local: none of it is ever written to an
 		// attribute, which a morph would reset anyway.
-		let isOpen = boolWord(host, 'open') // plain too: cleanup runs after the signals are cleared
+		let isOpen = host.hasAttribute('open') // plain too: cleanup runs after the signals are cleared
 		$$.open = isOpen
 		// Where the keyboard focus is: plain, since nothing renders it.
 		let focusLevel = 0 // level with the keyboard focus
@@ -657,9 +645,9 @@ rocket('sb-dropdown', {
 			publish()
 			sync()
 		}
-		let served = boolWord(host, 'open')
+		let served = host.hasAttribute('open')
 		const serverOpen = () => {
-			const now = boolWord(host, 'open')
+			const now = host.hasAttribute('open')
 			if (now === served) return
 			setOpen((served = now), { reason: 'server', defer: true })
 		}

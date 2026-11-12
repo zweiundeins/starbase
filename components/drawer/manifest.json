@@ -48,7 +48,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Open when present: the server's word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing. open=\"false\" reads as closed but is deprecated: leave the attribute out."
+        "description": "Open when present: the server's word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing."
       }
     },
     {

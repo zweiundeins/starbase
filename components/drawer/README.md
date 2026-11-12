@@ -132,7 +132,7 @@ The command clears the flag, and the next render leaves `open` out.
 - `open` on the first render opens the drawer on the first paint.
 - A **changed** `open` wins: adding it opens the drawer, removing it closes it, also one opened with `show()`. Neither sends `sb-open` or `sb-close`: the server already knows.
 - The **same** markup again changes nothing. A morph never reopens a drawer the user closed.
-- `open="false"` still reads as closed, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out.
+- Any value of `open` means open, `open="false"` too, as in HTML: leave the attribute out to close.
 
 `show()` and `hide()` (or `close()`, its name on `sb-modal`) never write the attribute, so the element's `open` property stays the server's word; `isOpen` tells whether the drawer is showing.
 

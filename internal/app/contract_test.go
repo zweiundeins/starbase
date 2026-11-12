@@ -18,9 +18,8 @@ import (
 //
 // A boolean (checked, open, busy) is a word by presence, sent through
 // Datastar's morph as a server frame would: adding it wins, removing it wins,
-// identical markup keeps a local edit, and "false" reads as absent (with one
-// console warning per element) while that spelling lasts. With
-// STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
+// identical markup keeps a local edit, and any value reads as present, "false"
+// too, as in HTML. With STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
 func TestServerWinsContract(t *testing.T) {
 	body := probeBundle(t, "/", morphJS+contractJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler})
 	var rows []struct {
@@ -182,9 +181,6 @@ const bools = [
 	{ tag: 'sb-drawer', attr: 'open', get: shown, set: show, dialog: true },
 	{ tag: 'sb-drawer', name: 'sb-drawer modal="false"', attr: 'open', attrs: { modal: 'false' }, get: shown, set: show, dialog: true },
 ]
-const warnings = []
-const warn = console.warn
-console.warn = (...args) => (String(args[0]).includes('is deprecated') && warnings.push(args[1]), warn(...args))
 const markup = (c, word) => {
 	const a = { id: 'bool-case', ...c.attrs }
 	if (word != null) a[c.attr] = word
@@ -220,13 +216,11 @@ for (const c of bools) {
 			rows.push({ tag: name, step: 'removed: the dialog is closed', got: JSON.stringify(dialogOf(el).open), want: 'false' })
 			rows.push({ tag: name, step: 'removed: no modal dialog (no backdrop)', got: JSON.stringify(dialogOf(el).matches(':modal')), want: 'false' })
 		}
-		await server('')
 		await server('false')
-		row('the attribute becomes "false": it reads as absent (deprecated)', false)
-		await local(true)
-		await server(null)
-		row('"false" to no attribute is no new word: a local edit stays', true)
-		rows.push({ tag: name, step: 'one deprecation warning for the element', got: JSON.stringify(warnings.filter((w) => w === el).length), want: '1' })
+		row('the server adds the attribute as "false": present, so true, as in HTML', true)
+		await local(false)
+		await server('')
+		row('"false" to "" is no new word: a local edit stays', false)
 	} catch (e) {
 		rows.push({ tag: name, error: String(e?.stack || e) })
 	}
@@ -249,14 +243,12 @@ for (const c of bools) {
 		row('the server adds busy: busy', true)
 		await server(null)
 		row('the server removes busy: idle', false)
-		await server('')
 		await server('false')
-		row('busy="false" reads as absent (deprecated)', false)
+		row('busy="false" is present: busy, as in HTML', true)
 	} catch (e) {
 		rows.push({ tag: c.tag, error: String(e?.stack || e) })
 	}
 	box.replaceChildren()
 }
-console.warn = warn
 await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
 `

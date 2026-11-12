@@ -80,7 +80,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client. open=\"false\" reads as closed but is deprecated: leave the attribute out."
+        "description": "Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client."
       }
     },
     {

@@ -32,18 +32,6 @@ const groups = new Map()
 // keeps its state when moved, and so does this.
 const states = new WeakMap()
 
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet()
-const boolWord = (host, attr) => {
-	const v = host.getAttribute(attr)
-	if (v === 'false' && !warned.has(host)) {
-		warned.add(host)
-		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
-	}
-	return v !== null && v !== 'false'
-}
-
 const styles = /* css */ `
 :host {
 	--_bg: var(--sb-surface-card, #141D32);
@@ -145,7 +133,7 @@ details[open]::details-content { block-size: auto; }
 rocket('sb-details', {
 	props: ({ bool, string }) => ({
 		summary: string.trim.default('Details').docs({ description: 'The heading on the summary row. The server can morph it; the summary slot overrides it.' }),
-		open: bool.docs({ description: 'Open when present. View state, not a value: the server adding or removing the attribute wins, identical markup keeps the local state. Local toggling never reflects it. open="false" reads as closed but is deprecated: leave the attribute out.' }),
+		open: bool.docs({ description: 'Open when present. View state, not a value: the server adding or removing the attribute wins, identical markup keeps the local state. Local toggling never reflects it.' }),
 		icon: string.trim.docs({ description: 'Short text or emoji before the summary (decorative).' }),
 		disabled: bool.docs({ description: 'Block toggling. The server can still open or close it.' }),
 		group: string.trim.docs({ description: 'Accordion group: opening one sb-details with this group name closes the others, and each of them emits its own sb-toggle.' }),
@@ -179,7 +167,7 @@ rocket('sb-details', {
 		// before any style is computed, and CSS transitions don't run on an
 		// element's first style.
 		let st = states.get(host)
-		if (!st) states.set(host, (st = { open: boolWord(host, 'open'), served: boolWord(host, 'open') }))
+		if (!st) states.set(host, (st = { open: host.hasAttribute('open'), served: host.hasAttribute('open') }))
 
 		// The one place the open state changes, whoever asked: the native
 		// element's own toggle, host.open, show()/hide(), a sibling, the server.
@@ -245,13 +233,12 @@ rocket('sb-details', {
 		// closed, however often the attribute is written.
 		const serverSays = () =>
 			peek(() => {
-				const now = boolWord(host, 'open')
+				const now = host.hasAttribute('open')
 				if (now === st.served) return
 				set((st.served = now), false)
 			})
-		// Not observeProps: the patched build decodes open="false" onto an
-		// element without the attribute to the same false. The callback is a
-		// microtask, after Rocket has decoded it and outside the morph's effect.
+		// The callback is a microtask, after Rocket has decoded the attribute and
+		// outside the morph's effect.
 		const watch = new MutationObserver(serverSays)
 		watch.observe(host, { attributes: true, attributeFilter: ['open'] })
 		cleanup(() => watch.disconnect())

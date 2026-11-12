@@ -17,18 +17,6 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet()
-const boolWord = (host, attr) => {
-	const v = host.getAttribute(attr)
-	if (v === 'false' && !warned.has(host)) {
-		warned.add(host)
-		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
-	}
-	return v !== null && v !== 'false'
-}
-
 // Pixel corners: a polygon that notches every corner by one "pixel"
 // (times --sb-notch; 0 leaves the rectangle, rounded by border-radius).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
@@ -85,7 +73,7 @@ button:focus-visible { outline: 2px solid var(--_focus); outline-offset: 3px; cl
 
 rocket('sb-toggle', {
 	props: ({ bool, oneOf, string }) => ({
-		checked: bool.docs({ description: 'On when present. The server\'s word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property. checked="false" reads as off but is deprecated: leave the attribute out.' }),
+		checked: bool.docs({ description: 'On when present. The server\'s word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		label: string.trim.docs({ description: 'Visible label next to the switch.' }),
 		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Size of the switch.' }),
@@ -105,21 +93,20 @@ rocket('sb-toggle', {
 		// state, served: the server's last word }.
 		const keep = internalsOf(host)
 		// Interaction state lives in a local signal, never reflected.
-		$$.on = keep.on ?? boolWord(host, 'checked')
+		$$.on = keep.on ?? host.hasAttribute('checked')
 		// Commands: the attribute is the server's value, $$.on the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = keep.states
-		const sync = () => peek(() => (props.confirm && $$.on !== boolWord(host, 'checked') ? states.add('pending') : states.delete('pending')))
+		const sync = () => peek(() => (props.confirm && $$.on !== host.hasAttribute('checked') ? states.add('pending') : states.delete('pending')))
 		// A change of the checked attribute wins over a local edit: added says on,
 		// removed says off. Re-sending the same markup changes nothing, so edits
-		// survive re-renders. Not observeProps: the patched build decodes
-		// checked="false" onto an element without it to the same false. The same
-		// observer hands the host's aria-label to the switch.
+		// survive re-renders. The same observer hands the host's aria-label to
+		// the switch.
 		const attrs = () =>
 			peek(() => {
 				$$.aria = host.getAttribute('aria-label') || 'Toggle'
-				const now = boolWord(host, 'checked')
+				const now = host.hasAttribute('checked')
 				if (now !== keep.served) $$.on = keep.served = now
 				sync()
 			})
@@ -131,7 +118,7 @@ rocket('sb-toggle', {
 		// Rocket's disconnect wipes $$ (re-running this) before a move re-attaches.
 		effect(() => ((keep.on = $$.on ?? keep.on), sync()))
 		observeProps(sync)
-		const revert = () => peek(() => (($$.on = boolWord(host, 'checked')), sync()))
+		const revert = () => peek(() => (($$.on = host.hasAttribute('checked')), sync()))
 		defineHostProp('revert', { value: revert })
 		action('toggle', () => {
 			if (props.disabled) return

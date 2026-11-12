@@ -8,7 +8,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Checked when present. The server's word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property. checked=\"false\" reads as not checked but is deprecated: leave the attribute out."
+        "description": "Checked when present. The server's word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property."
       }
     },
     {

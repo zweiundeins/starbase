@@ -148,7 +148,7 @@ await group('morphs', async () => {
 	await morph('<sb-dropdown id="' + el.id + '" items=\'["Alpha","Beta","Gamma","Delta"]\'></sb-dropdown>')
 	check('a morph with new items leaves it open', [state(el), el.shadowRoot.querySelectorAll('.lvl0 [data-idx]').length], [OPEN, 4])
 	await morph('<sb-dropdown id="' + el.id + '" open="false" items=\'["Alpha"]\'></sb-dropdown>')
-	check('open="false" reads as absent: no new word, the local state stays', state(el), OPEN)
+	check('open="false" is present: open, as in HTML', state(el), OPEN)
 	await morph('<sb-dropdown id="' + el.id + '" open items=\'["Alpha"]\'></sb-dropdown>')
 	check('a morph with open keeps it open', state(el), OPEN)
 	await morph('<sb-dropdown id="' + el.id + '" items=\'["Alpha"]\'></sb-dropdown>')

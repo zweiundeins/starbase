@@ -81,7 +81,7 @@ The command clears the flag, and the next render leaves `open` out. Without it t
 | `open` added | It wins: the dialog opens, also over one the user closed. No `sb-open`: the server already knows |
 | `open` removed | It wins: the dialog closes, also one opened with `show()`, and the focus goes back where it was. No `sb-close` |
 | the **same** markup again | Nothing. A morph never reopens a dialog the user dismissed |
-| `open="false"` | Closed, like no attribute, with a console warning: this spelling is deprecated and goes in a later release |
+| `open="false"` | Open: any value is present, as in HTML. Leave the attribute out to close |
 
 `show()` and `close()` never write the attribute, so the element's `open` property is the server's word (false after `show()`); `isOpen` tells whether the dialog is showing. A server that rendered no `open` can't close a dialog opened with `show()` by sending no `open` again: that is the same markup, so it changes its word first or the page calls `close()`.
 

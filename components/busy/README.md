@@ -23,7 +23,7 @@ One loading indicator in three shapes, and it knows when the page is waiting. `s
 
 Two things decide whether it is up, and they are kept strictly apart:
 
-- **The server owns `busy`.** A long job the server knows about sets `busy` on the element, and it wins: the indicator stays up until the server takes the attribute away (`busy="false"` still reads as absent, with a console warning: that spelling is deprecated and goes in a later release).
+- **The server owns `busy`.** A long job the server knows about sets `busy` on the element, and it wins: the indicator stays up until the server takes the attribute away. Any value counts as busy, `busy="false"` too, as in HTML.
 - **The component owns the rest locally.** Which watched requests are in flight, the `delay`/`min` timers and the animation state live in `$$` signals and closure variables, never in attributes: a morph resets attributes, and the indicator must not blink every time the server re-renders the page.
 
 The visible state is `busy` **or** a watched request in flight, put through `delay` and `min`. Every flip emits `sb-busy-change` with `{ busy }`.

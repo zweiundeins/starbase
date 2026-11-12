@@ -49,7 +49,7 @@ Bind the `checked` property with `data-bind` and the `__prop` and `__event` modi
 
 Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value is committed: ready to post as a command. With `confirm`, it sets `:state(pending)` until the server's re-rendered attribute matches, and `revert()` goes back to the server's value when a command never reaches the server (an error status, or `retries-failed`). See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
-The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it switches the toggle on and removing it switches it off, also after the user flipped it, while the same markup again leaves the user's switch alone. In templ that is `checked?={ on }`. `checked="false"` still reads as off, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out.
+The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it switches the toggle on and removing it switches it off, also after the user flipped it, while the same markup again leaves the user's switch alone. In templ that is `checked?={ on }`. Any value means on, `checked="false"` too, as in HTML: leave the attribute out for off.
 
 ## Forms
 

@@ -34,18 +34,6 @@ const GAP = 8
 // flip); place() does the same in JS elsewhere.
 const anchors = CSS.supports('container-type: anchored')
 
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet()
-const boolWord = (host, attr) => {
-	const v = host.getAttribute(attr)
-	if (v === 'false' && !warned.has(host)) {
-		warned.add(host)
-		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
-	}
-	return v !== null && v !== 'false'
-}
-
 // The open popovers, innermost last: Escape closes only the top one.
 const layers = []
 
@@ -184,7 +172,7 @@ rocket('sb-popover', {
 		mode: oneOf('click', 'hover').default('click').docs({ description: 'click: a dialog that opens on click and closes on an outside click or Escape. hover: a hover card that opens after a short delay on hover or keyboard focus and describes the trigger.' }),
 		placement: oneOf('bottom', 'bottom-start', 'bottom-end', 'top', 'top-start', 'top-end', 'start', 'start-start', 'start-end', 'end', 'end-start', 'end-end').default('bottom').docs({ description: 'Side of the trigger, and the alignment along it. start and end are logical, so they mirror in right-to-left text. The panel flips and shifts to stay on screen.' }),
 		arrow: bool.docs({ description: 'Draw an arrow that points at the middle of the trigger.' }),
-		open: bool.docs({ description: 'Open when present. View state the server may own: adding or removing the attribute wins, identical markup keeps the local state. Never reflected: use the open property, show() and hide() from the client. open="false" reads as closed but is deprecated: leave the attribute out.' }),
+		open: bool.docs({ description: 'Open when present. View state the server may own: adding or removing the attribute wins, identical markup keeps the local state. Never reflected: use the open property, show() and hide() from the client.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-open and sb-close (e.g. the field of a command).' }),
 	}),
 	manifest: {
@@ -322,7 +310,7 @@ rocket('sb-popover', {
 				}),
 			)
 
-		let isOpen = boolWord(host, 'open') // plain too: cleanup runs after the signals are cleared
+		let isOpen = host.hasAttribute('open') // plain too: cleanup runs after the signals are cleared
 		let timer = 0
 		const setOpen = (next, reason, focus) => {
 			clearTimeout(timer)
@@ -378,10 +366,10 @@ rocket('sb-popover', {
 
 		// served is the server's last word on open, the attribute's presence:
 		// only a changed one wins (added opens, removed closes).
-		let served = boolWord(host, 'open')
+		let served = host.hasAttribute('open')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				const now = boolWord(host, 'open')
+				const now = host.hasAttribute('open')
 				if (now !== served) setOpen((served = now), 'server')
 				sync(props)
 				aria()

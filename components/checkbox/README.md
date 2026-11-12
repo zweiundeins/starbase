@@ -63,7 +63,7 @@ Style the wait from the page:
 sb-checkbox:state(pending) { opacity: 0.7; }
 ```
 
-The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it checks the box and removing it clears it, also after the user's click, while the same markup again leaves that click alone. In templ that is `checked?={ on }`. `checked="false"` still reads as not checked, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out. `indeterminate` is the server's too: a new one wins, a removed one clears the dash, and `revert()` brings back both. The live state before the echo and the pending state live in local signals and are never reflected to attributes. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
+The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it checks the box and removing it clears it, also after the user's click, while the same markup again leaves that click alone. In templ that is `checked?={ on }`. Any value means checked, `checked="false"` too, as in HTML: leave the attribute out for not checked. `indeterminate` is the server's too: a new one wins, a removed one clears the dash, and `revert()` brings back both. The live state before the echo and the pending state live in local signals and are never reflected to attributes. See [Commands and components](/contribute#commands-and-components) and the [Showcase](/showcase).
 
 ## Forms
 

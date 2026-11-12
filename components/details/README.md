@@ -102,11 +102,11 @@ A value is what the user *decides*; view state is what they *look at*. `sb-detai
 | a **changed** `open` attribute | It wins, whatever the user had done. No `sb-toggle` is emitted: the server already knows |
 | the **same** markup again | Nothing. A morph can never re-open a panel the user just closed |
 | **no** `open` attribute any more | Closed, whatever the user had done. This is how the server closes a panel |
-| `open="false"` | Closed, like no attribute, with a console warning: this spelling is deprecated and goes in a later release |
+| `open="false"` | Open: any value is present, as in HTML. Leave the attribute out to close |
 
 Local toggling never writes the attribute back, which is what makes the table above consistent. A panel that app code moves (a sortable list, a portal, `moveBefore`) keeps its open state, like a native `<details>`, and an `open` attribute changed while it was detached still wins when it comes back.
 
-One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host) and reads it by presence itself, not through the decoded prop: while `open="false"` still reads as closed, Starbase's patched Datastar and the official release decode it differently.
+One implementation note, since other components may want to copy this: `sb-details` watches the `open` **attribute** (a `MutationObserver` on the host) and reads it by presence itself, as HTML does, not through the decoded prop.
 
 ## A native `<details>` in the shadow root
 

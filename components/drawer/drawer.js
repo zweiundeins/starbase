@@ -10,18 +10,6 @@ const peek = (fn) => {
 	}
 }
 
-// The server's word on a boolean is its attribute's presence. "false" still
-// reads as absent until that spelling goes (deprecated, one warning per element).
-const warned = new WeakSet()
-const boolWord = (host, attr) => {
-	const v = host.getAttribute(attr)
-	if (v === 'false' && !warned.has(host)) {
-		warned.add(host)
-		console.warn(`${host.localName}: ${attr}="false" is deprecated; leave the attribute out.`, host)
-	}
-	return v !== null && v !== 'false'
-}
-
 const styles = /* css */ `
 :host {
 	--_shadow: var(--sb-shadow-overlay, 0 0 48px -16px rgb(0 0 0 / 0.7));
@@ -108,7 +96,7 @@ rocket('sb-drawer', {
 		heading: string.trim.default('Drawer').docs({ description: 'Title of the drawer (the header slot replaces it).' }),
 		side: oneOf('end', 'start', 'top', 'bottom').docs({ description: 'The edge it slides in from. start and end follow the text direction.' }),
 		modal: oneOf(true, false).docs({ description: 'Inert page, backdrop and trapped focus. modal="false" leaves the page usable.' }),
-		open: bool.docs({ description: 'Open when present: the server\'s word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing. open="false" reads as closed but is deprecated: leave the attribute out.' }),
+		open: bool.docs({ description: 'Open when present: the server\'s word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing.' }),
 		inline: bool.docs({ description: 'Render in place, always visible, without an overlay or close button (previews, docs).' }),
 		closable: oneOf(true, false).docs({ description: 'Show the close button (not on inline panels). On by default: closable="false" turns it off.' }),
 	}),
@@ -125,13 +113,13 @@ rocket('sb-drawer', {
 	},
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, props }) => {
 		adoptStyles(host, styles)
-		$$.open = boolWord(host, 'open')
+		$$.open = host.hasAttribute('open')
 		$$.footer = false
 		// The server's last word on open, the attribute's presence, as in
 		// sb-modal: only a changed word wins (added opens, removed closes).
-		let served = boolWord(host, 'open')
+		let served = host.hasAttribute('open')
 		const watch = new MutationObserver(() => {
-			const now = boolWord(host, 'open')
+			const now = host.hasAttribute('open')
 			if (now !== served) $$.open = served = now
 		})
 		watch.observe(host, { attributeFilter: ['open'] })

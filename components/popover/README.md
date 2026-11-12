@@ -120,7 +120,7 @@ Opening and closing is local. Clicks, the pointer, the keyboard, an outside clic
 - The first `open` sets the initial state: `<sb-popover open>` is open on the first paint, without the fade-in.
 - A **changed** attribute wins over the local state: adding `open` opens the panel, removing it closes it.
 - Re-sent identical markup changes nothing.
-- `open="false"` still reads as closed, with a console warning: that spelling is deprecated and goes in a later release, so leave the attribute out.
+- Any value of `open` means open, `open="false"` too, as in HTML: leave the attribute out to close.
 
 From the client, use the property and the methods, which never touch the attribute:
 
