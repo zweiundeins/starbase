@@ -254,7 +254,7 @@ rocket('sb-image-compare', {
 		afterLabel: string.trim.docs({ description: 'Tag over the after side (slot "after", on the end side of the divider).' }),
 		label: string.trim.docs({ description: 'Accessible name of the divider, and of the full screen view. Without it, the element\'s aria-label, else "Comparison".' }),
 		expandable: bool.docs({ description: 'Show a button that opens the comparison full screen (Escape closes it).' }),
-		expanded: bool.docs({ description: 'Full screen, as view state: a changed attribute from the page or the server opens or closes it, a removed one is ignored. The reader\'s own opening and closing never touch it; sb-expand reports them.' }),
+		expanded: bool.docs({ description: 'Full screen when present: the page\'s or the server\'s word. Adding the attribute opens it, removing it closes it; identical markup keeps the reader\'s state. The reader\'s own opening and closing never touch it; sb-expand reports them.' }),
 		expandLabel: string.default('Full screen').docs({ description: 'Accessible name of the full screen button.' }),
 		closeLabel: string.default('Exit full screen').docs({ description: 'Accessible name of the button while full screen.' }),
 	}),
@@ -318,10 +318,9 @@ rocket('sb-image-compare', {
 	onFirstRender: ({ $$, action, cleanup, emit, host, overrideProp, props, refs: { frame, stage, input, button } }) => {
 		const states = internalsOf(host).states
 		// Full screen from the page or the server: keep.full is its last word,
-		// so only a changed attribute wins and a removed one is ignored (morphs
-		// also strip reflected attributes). It survives a move, so a re-insert
-		// doesn't reopen what the reader closed. cause says who asked for the
-		// next toggle.
+		// the attribute's presence, so only a changed word wins (added opens,
+		// removed closes). It survives a move, so a re-insert doesn't reopen
+		// what the reader closed. cause says who asked for the next toggle.
 		const keep = kept.get(host)
 		let cause = null
 		const expand = (on, why) => {
@@ -331,17 +330,15 @@ rocket('sb-image-compare', {
 		}
 		const serve = () =>
 			peek(() => {
-				if (!host.hasAttribute('expanded')) return void (keep.full = null)
-				// "false" says closed, since a removal is no word; Rocket's bool reads it as true.
-				const said = host.getAttribute('expanded') !== 'false'
-				if (said === keep.full) return
-				keep.full = said
-				expand(keep.full, 'server')
+				const now = host.hasAttribute('expanded')
+				if (now === keep.full) return
+				keep.full = now
+				expand(now, 'server')
 			})
 		const watchExpanded = new MutationObserver(serve)
 		watchExpanded.observe(host, { attributeFilter: ['expanded'] })
 		cleanup(() => watchExpanded.disconnect())
-		overrideProp('expanded', () => peek(() => $$.open), (v) => peek(() => expand(!!v && v !== 'false', 'api')))
+		overrideProp('expanded', () => peek(() => $$.open), (v) => peek(() => expand(!!v, 'api')))
 		const report = () => emit('sb-position', { position: peek(() => Math.round($$.pos * 10) / 10) })
 		const at = (x) => {
 			const r = stage.getBoundingClientRect()

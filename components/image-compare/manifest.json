@@ -58,7 +58,7 @@
       "default": false,
       "required": false,
       "docs": {
-        "description": "Full screen, as view state: a changed attribute from the page or the server opens or closes it, a removed one is ignored. The reader's own opening and closing never touch it; sb-expand reports them."
+        "description": "Full screen when present: the page's or the server's word. Adding the attribute opens it, removing it closes it; identical markup keeps the reader's state. The reader's own opening and closing never touch it; sb-expand reports them."
       }
     },
     {
