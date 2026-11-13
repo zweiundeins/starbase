@@ -697,7 +697,7 @@ rocket('sb-dropdown', {
         overrideProp('value', () => peek(() => $$.value), (v) => peek(() => (($$.value = String(v ?? '')), publish(), sync())));
         defineHostProp('revert', { value: () => peek(() => (($$.value = servedV), publish(), sync())) });
         // host.open / show() / hide(): the live state, never an attribute.
-        overrideProp('open', () => peek(() => $$.open), (v) => peek(() => setOpen(!!v && v !== 'false', { focus: v ? 'first' : null })));
+        overrideProp('open', () => peek(() => $$.open), (v) => peek(() => setOpen(!!v, { focus: v ? 'first' : null })));
         defineHostProp('show', { value: () => peek(() => setOpen(true, { focus: 'first' })) });
         defineHostProp('hide', { value: () => peek(() => close('api', false)) });
         cleanup(() => {

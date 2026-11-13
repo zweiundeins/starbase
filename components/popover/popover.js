@@ -385,7 +385,7 @@ rocket('sb-popover', {
 			}),
 		)
 
-		overrideProp('open', () => isOpen, (v) => peek(() => setOpen(!!v && v !== 'false', 'api', true)))
+		overrideProp('open', () => isOpen, (v) => peek(() => setOpen(!!v, 'api', true)))
 		defineHostProp('show', { value: () => peek(() => setOpen(true, 'api', true)) })
 		defineHostProp('hide', { value: () => peek(() => setOpen(false, 'api')) })
 
