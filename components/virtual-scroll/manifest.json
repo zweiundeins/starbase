@@ -8,7 +8,7 @@
       "default": 0,
       "required": false,
       "docs": {
-        "description": "Server data: how many items the whole list has."
+        "description": "Server data: how many items the whole list has, or -1 while the server does not know (more may follow)."
       }
     },
     {
@@ -24,11 +24,11 @@
     {
       "name": "itemSize",
       "attribute": "item-size",
-      "type": "number",
-      "default": 32,
+      "type": "string",
+      "default": "32",
       "required": false,
       "docs": {
-        "description": "Row height in px. Every item is exactly one row high."
+        "description": "Row height: a number of px, or a CSS length (2.5rem, calc(1lh + 1rem), var(--row)) measured in whole px. Every item is exactly one row high."
       }
     },
     {
@@ -49,6 +49,16 @@
       "required": false,
       "docs": {
         "description": "How far a window reaches past the viewport, above and below, in px."
+      }
+    },
+    {
+      "name": "step",
+      "attribute": "step",
+      "type": "number",
+      "default": 1,
+      "required": false,
+      "docs": {
+        "description": "Windows start and end at a multiple of step items, so viewers ask for the same windows (1: no rounding)."
       }
     },
     {

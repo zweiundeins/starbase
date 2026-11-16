@@ -4,7 +4,7 @@ tag: sb-virtual-scroll
 category: layout
 summary: A list of any length that holds only the rows in view, rendered by the server.
 author: zweiundeins
-tags: [virtual, list, infinite scroll, windowing, large data, grid, hyperlith]
+tags: [virtual, list, infinite scroll, windowing, large data, grid, feed, hyperlith]
 since: 2026-09-29
 preview: |
   <sb-virtual-scroll label="Stars" item-size="24" total="40" style="block-size: 8rem; inline-size: 13rem"><div role="listitem">Mornis · K3V</div><div role="listitem">Gararin · G0V</div><div role="listitem">Nebanox · M4IV</div><div role="listitem">Dabalis · G3IV</div></sb-virtual-scroll>
@@ -14,9 +14,8 @@ usage: |
 playground:
   content: <div role="listitem">Sirius</div><div role="listitem">Canopus</div><div role="listitem">Arcturus</div><div role="listitem">Vega</div><div role="listitem">Capella</div><div role="listitem">Rigel</div><div role="listitem">Procyon</div><div role="listitem">Achernar</div><div role="listitem">Betelgeuse</div><div role="listitem">Hadar</div><div role="listitem">Altair</div><div role="listitem">Acrux</div>
   attrs: {total: "12"}
-  exclude: [offset, total]
+  exclude: [offset, total, step]
   props:
-    itemSize: {min: 12, max: 64}
     columns: {min: 1, max: 6}
     buffer: {min: 0, max: 8000, step: 100}
   values: {label: Bright stars}
@@ -90,6 +89,21 @@ The header is part of the host's markup, so the server sends it with every windo
   data-on:sb-window="@get('/demo/data/list?id=nebula&kind=pixels&columns=48&offset=' + evt.detail.offset + '&count=' + evt.detail.count)"></sb-virtual-scroll>
 ```
 
+### A feed of unknown length
+
+An activity log in the ARIA feed pattern: `role="feed"` on the host, one `<article>` per entry. Click an entry and press Page Down or Page Up: the focus moves to the next or the previous article, also to one whose window is still on its way. Ctrl+End and Ctrl+Home leave the feed. The server counts no further than the windows it reads, so it sends `total="-1"` until a window reaches the end: the scrollbar grows as you scroll, and stops at the 2,000th entry. Rows are `2.25rem` high and follow the page's font size, and windows start and end at a multiple of 25 entries.
+
+```html preview
+<style>
+  #feed { block-size: 16rem; }
+  #feed > article { display: flex; gap: 1.5ch; align-items: center; padding-inline: 0.75rem; font-size: 0.8125rem; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; border-block-end: 1px solid var(--sb-border-subtle); }
+  #feed > article:focus-visible { outline: 2px solid var(--sb-brand-light); outline-offset: -2px; }
+  #feed b { color: var(--sb-text-1); }
+</style>
+<sb-virtual-scroll id="feed" role="feed" aria-label="Star log" item-size="2.25rem" step="25" data-ignore-morph
+  data-on:sb-window="@get('/demo/data/list?id=feed&kind=feed&unknown&total=2000&offset=' + evt.detail.offset + '&count=' + evt.detail.count)"></sb-virtual-scroll>
+```
+
 ## Server side
 
 The handler behind these examples is Go with the `sse` package of lith, Starbase's runtime; any [Datastar SDK](https://data-star.dev/reference/sdks) works the same way. `PatchElements` morphs the element with the id in the markup, and `demoListItem` renders a star's line or a pixel:
@@ -99,12 +113,14 @@ The handler behind these examples is Go with the `sse` package of lith, Starbase
 // page, so it sends only offset, total and the items, and the morph keeps these
 // as the page has them. data-ignore-morph keeps the page's own frames, which
 // know nothing of the window, away from the list.
-const demoListKeep = "item-size columns buffer label role style class data-ignore-morph data-on:sb-window"
+const demoListKeep = "item-size columns buffer step label role aria-label style class data-ignore-morph data-on:sb-window"
 
 // demoList answers an sb-virtual-scroll's sb-window with ?count= items from
 // ?offset= (at most 5000), patched into the host with the id ?id=. The list is
 // the star catalog: its million stars, or the first ?total=. &header adds the
-// column headings; &kind=pixels&columns=<n> sends pixels of a nebula n wide.
+// column headings; &kind=pixels&columns=<n> sends pixels of a nebula n wide,
+// &kind=feed articles that take the focus. With &unknown the total is -1 until
+// a window reaches the end of the list.
 func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	id := q.Get("id")
@@ -120,10 +136,19 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	count, _ := strconv.Atoi(q.Get("count"))
 	offset = min(max(offset, 0), total)
 	count = min(max(count, 0), 5000, total-offset)
-	cols := 0
+	cols, tag, role := 0, "div", ` role="listitem"`
+	if q.Get("kind") == "feed" {
+		tag, role = "article", ` tabindex="-1"`
+	}
 	if q.Get("kind") == "pixels" {
 		cols, _ = strconv.Atoi(q.Get("columns"))
 		cols = max(cols, 1)
+	}
+
+	// A server that reads a window without counting the whole list learns the
+	// total only at its end: until then it says -1, "more may follow".
+	if q.Has("unknown") && offset+count < total {
+		total = -1
 	}
 
 	// The whole host: the morph patches it like any other markup.
@@ -135,7 +160,7 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	for i := offset; i < offset+count; i++ {
 		// aria-posinset and aria-setsize: the item's place in the whole list.
 		attrs, content := demoListItem(i, cols)
-		fmt.Fprintf(&b, `<div role="listitem" aria-posinset="%d" aria-setsize="%d"%s>%s</div>`, i+1, total, attrs, content)
+		fmt.Fprintf(&b, `<%s%s aria-posinset="%d" aria-setsize="%d"%s>%s</%[1]s>`, tag, role, i+1, total, attrs, content)
 	}
 	b.WriteString(`</sb-virtual-scroll>`)
 
@@ -153,7 +178,9 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 
 - **What the component asks for:** `sb-window` carries `offset` (the first item, a multiple of `columns`) and `count` (enough rows to fill the viewport and the buffer on both sides). It asks once on connect, again when the viewport passes half the buffer on either side, and after a resize that needs more or fewer rows. Never on every scroll event, one request at a time, and never the window it asked for last: the same request would bring the same answer.
 - **What the server sends:** the host with `offset` (the index of its first child, from 0), `total` and the items as its children, in order. It may send fewer items than asked for (a cap): the list then asks for windows that fit the cap, with the viewport in the middle, so the rows in view still come. An empty list is `total="0"` and asks for nothing; a host without `total` asks for its first window again, as on connect.
-- **Items:** every item is one row of `item-size` px (or one cell of a row, with `columns`).
+- **Steps:** with `step`, a window starts at a multiple of `step` items (rounded down) and ends at one (rounded up), so it still covers the rows in view and the buffer. Two readers scrolled to about the same place then ask for the same window, and a server that renders per window (a view per window in lith) renders it once for both. With `columns`, windows round to a multiple of both. Rounding adds up to `step` minus one item on each side, so a window is up to `2 × (step − 1)` items longer than the buffer alone asks for. With a cap, the buffer shrinks until the rounded window fits the cap: keep `step` well under half the cap, or the rows in view may not fit.
+- **Unknown length:** a server that doesn't know the length yet (it reads a window without counting the whole list) sends `total="-1"`. The scrollbar then reaches one window past the furthest item the server has sent, and grows with every window, and `sb-window` asks past the known end. Once a window reaches the end, the server sends the real `total` with it (a window short of the request with `total="-1"` counts as a cap, not the end). The demo endpoint above does this with `&unknown`: it says `-1` until the window holds the list's last item. Give the items `aria-setsize="-1"` while the total is unknown.
+- **Items:** every item is one row of `item-size` (or one cell of a row, with `columns`). `item-size` is a number of px or any CSS length: `2.25rem`, `calc(1lh + 1rem)`, `var(--row-height)`. A length is measured in a hidden element in the list's shadow root and rounded to whole px, again whenever it changes (the page's font size, the custom property): the geometry follows, and the row at the top of the view stays there.
 - **Keys:** an item may carry a key, a `data-key` or an `id`, that stays with it when items move. Without keys the morph patches the items by position and the list holds its scroll position, so an item inserted before the window moves the reader down a row. With keys, the item in the top row of the view keeps its place after a morph that moves it (a feed whose newest entries come first), unless the list is at the top and idle, with neither the focus nor the pointer in it: then the new items show at the top. A new list (a filter) that still holds that item keeps it in place too. On an item with both, `data-key` is its key. `data-key` is the safe choice: an `id` makes the morph move the elements, and Datastar v1.0.4 crashes on moved elements that contain a Rocket component.
 - **Placeholders:** the rows outside the current window show bars until their window arrives. The list never shows an item the server hasn't sent.
 - **Length:** browsers cap how tall an element can be, Firefox at about 17.9 million px (Chrome and Safari at about 33.5 million). Keep rows × `item-size` under that: a million rows of 17px fit everywhere; for more, use `columns`.
@@ -162,13 +189,13 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 
 `scrollToIndex(index, { block })` scrolls to the item at `index` (from 0). `block` is `'start'` (the default: the item at the top), `'end'`, or `'nearest'` (only as far as needed to show it, for keyboard navigation). When the item is outside the current window, the scroll asks for its window.
 
-The list's own actions are `scroll`, `trackFocus` and `leaveFocus`. Rocket looks up an `@name()` on the host, an item or the header among them first, so a component that renders the list must not give its own actions these names. Datastar's actions, such as `@get` and `@post`, are unaffected.
+The list's own actions are `scroll`, `trackFocus`, `leaveFocus` and `keyFirst`. Rocket looks up an `@name()` on the host, an item or the header among them first, so a component that renders the list must not give its own actions these names. Datastar's actions, such as `@get` and `@post`, are unaffected.
 
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
 
-- **Size:** `block-size` is `20rem` by default; set it on the element (the list needs a height of its own to scroll). It fills the width it is given. Rows are exactly `item-size` px high, and `columns` share the width.
+- **Size:** `block-size` is `20rem` by default; set it on the element (the list needs a height of its own to scroll). It fills the width it is given. Rows are exactly `item-size` high, and `columns` share the width.
 - **Items:** they are your markup, styled by your page's CSS (`#stars > div`). Rows wider than the list make it scroll sideways.
 - **Fonts:** the component draws no text.
 - **Colours:** the placeholder bars are `--sb-surface-hover`; the focus ring is `--sb-brand-light`. The header has no background of its own: give your header element one, or rows show through it.
@@ -191,6 +218,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Roles:** the scroller is a `list`, named by `label`. The items are the server's markup, so the server renders their role: `role="listitem"`, with `aria-posinset` (the position, from 1) and `aria-setsize` (the total), so screen readers know where an item sits in the whole list, not only in the window. The component never changes the items: a morph would strip a role it added, and it would override the role of an item that is a link or a button.
 - **Other structures:** a `role` on the host hands the semantics to the page, and the scroller drops its `list` role: a feed (`role="feed"` with `role="article"` items), or a grid (`role="grid"`, rows with `aria-rowindex`). Name the host with `aria-label` then.
 - **Keyboard:** when no item has anything to focus, the scroller takes the focus itself, so the arrow keys, Page Up and Down, Home and End scroll it. Otherwise Tab goes to the items' links, buttons, fields and elements with a `tabindex`.
+- **Feeds:** with `role="feed"` on the host, the keys of the [ARIA feed pattern](https://www.w3.org/WAI/ARIA/apg/patterns/feed/) work: Page Down and Page Up move the focus to the next and the previous article, from the article that has it, or from the one at the top of the view when the scroller has it. An article outside the window takes the focus once its window arrives; until then the focus stays where it was, and further presses count on from the article they asked for. Ctrl+End moves the focus to the first element after the feed that Tab stops at, Ctrl+Home to the last one before it. The articles are the server's: give them `tabindex="-1"` so they take the focus themselves (otherwise their first link or button does), and `aria-posinset` and `aria-setsize` (`-1` while the total is unknown).
 - **Busy:** while a window is on its way the list is `aria-busy="true"`, set through its `ElementInternals`, so a morph never strips it. An `aria-busy` attribute on the host wins over it (`sb-data-table` sets one while its rows load).
 - **Focus across windows:** the morph patches the items by position, so a window can fill the focused element with another item or remove it. With keys, the list puts the focus back on the same element of the item with the same key as soon as the window lands. Without keys, or once that item is gone, it puts it on the item that now has its index, a frame after the window or at once when Tab is pressed before that, without scrolling, and Tab and Shift+Tab walk the items one at a time across any number of windows. It finds the element by its place among the item's links, buttons, fields and elements with a `tabindex`, counting those in a component's open shadow root too (the box of an `sb-checkbox`); in a row with a `tabindex` of its own, the link in it keeps the focus, not the row. When the element at that place is missing, disabled or hidden, the nearest one before it takes the focus, or else the nearest one after it. A component control that drops its `tabindex` while disabled (the box of a disabled `sb-checkbox`) leaves the count, so the elements after it move up one place. A page that moves the focus itself, like `sb-data-table` with its roving cell, has done so by then.
 - **A new list:** when the server sends a list that ends before the focused item, its new last item takes the focus. An item with nothing that takes the focus, and an empty list, give it to the scroller, also when the morph left the focused element showing another item.

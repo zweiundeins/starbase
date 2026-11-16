@@ -56,6 +56,7 @@ const styles = /* css */ `
 .scroller:focus-visible { outline: 2px solid var(--_focus); outline-offset: -2px; }
 .header { position: sticky; inset-block-start: 0; z-index: 1; }
 .spacer { position: relative; }
+.probe { position: absolute; inline-size: 0; visibility: hidden; }
 .window {
 	position: absolute;
 	inset-block-start: 0;
@@ -81,11 +82,12 @@ const styles = /* css */ `
 
 rocket('sb-virtual-scroll', {
 	props: ({ number, string }) => ({
-		total: number.min(0).docs({ description: 'Server data: how many items the whole list has.' }),
+		total: number.min(-1).docs({ description: 'Server data: how many items the whole list has, or -1 while the server does not know (more may follow).' }),
 		offset: number.min(0).docs({ description: 'Server data: the index of the first child in the whole list (from 0, a multiple of columns).' }),
-		itemSize: number.min(1).default(32).docs({ description: 'Row height in px. Every item is exactly one row high.' }),
+		itemSize: string.trim.default('32').docs({ description: 'Row height: a number of px, or a CSS length (2.5rem, calc(1lh + 1rem), var(--row)) measured in whole px. Every item is exactly one row high.' }),
 		columns: number.clamp(1, 1000).step(1).default(1).docs({ description: 'Items per row: more than 1 lays them out as a grid.' }),
 		buffer: number.min(0).default(4000).docs({ description: 'How far a window reaches past the viewport, above and below, in px.' }),
+		step: number.min(1).step(1).default(1).docs({ description: 'Windows start and end at a multiple of step items, so viewers ask for the same windows (1: no rounding).' }),
 		label: string.trim.docs({ description: 'Accessible name of the list.' }),
 	}),
 	manifest: {
@@ -107,26 +109,50 @@ rocket('sb-virtual-scroll', {
 			<div class="header" part="header" data-ref:header><slot name="header"></slot></div>
 			<div class="spacer" data-style:block-size="$$height + 'px'" data-style:--_y="$$y + 'px'"
 				data-style:--_h="$$win + 'px'" data-style:--_size="$$size + 'px'" data-style:--_cols="$$cols">
+				<div class="probe" data-ref:probe></div>
 				<div class="window" part="window"><slot data-ref:items></slot></div>
 			</div>
 		</div>
 	`,
 	onFirstRender: ({ $$, action, adoptStyles, cleanup, defineHostProp, emit, host, props, refs }) => {
-		const { scroller, header, items } = refs as { scroller: HTMLElement; header: HTMLElement; items: HTMLSlotElement }
+		const { scroller, header, items, probe } = refs as { scroller: HTMLElement; header: HTMLElement; items: HTMLSlotElement; probe: HTMLElement }
 		adoptStyles(host, styles)
 		const internals = internalsOf(host), states = internals.states
 		const loading = (on: boolean) => (on ? states.add('loading') : states.delete('loading'), (internals.ariaBusy = on ? 'true' : null))
 		// view: the height the rows get (the scroller minus the header). have: the
 		// items in the window. last: the last request (on its way while wait), sent
-		// at `sent`. cap: the most items the server sends at once, once it sent
-		// fewer than asked for before the end of the list (0: no cap seen).
-		let view = 0, have = 0, last = '', lastCount = 0, sent = 0, wait = false, timer = 0, cap = 0
+		// at `sent`, of lastCount items before the rounding to steps and sentCount
+		// after. cap: the most items the server sends at once, once it sent fewer
+		// than asked for before the end of the list (0: no cap seen). px: the row
+		// height. reach: how far the windows went while the total is unknown.
+		let view = 0, have = 0, last = '', lastCount = 0, sentCount = 0, sent = 0, wait = false, timer = 0, cap = 0, px = 32, reach = 0
 		const rows = (n: number) => Math.ceil(n / props.columns)
+		// Windows start and end at a multiple of this many items: of step and of columns.
+		const unit = () => {
+			let a = props.step, b = props.columns
+			while (b) [a, b] = [b, a % b]
+			return (props.step * props.columns) / a
+		}
 		// Buffer rows on each side of v rows in view: with a cap, as many as fit
-		// in it around the view, so a window still covers the view.
+		// in it around the view and the rounding to steps, so a window still covers the view.
 		const buffer = (v: number) => {
-			const b = Math.ceil(props.buffer / props.itemSize)
-			return cap ? Math.min(b, Math.max(0, Math.floor((rows(cap) - v) / 2))) : b
+			const b = Math.ceil(props.buffer / px)
+			return cap ? Math.min(b, Math.max(0, Math.floor((rows(cap - 2 * (unit() - props.columns)) - v) / 2))) : b
+		}
+		const known = () => host.hasAttribute('total') && props.total >= 0
+		const more = () => props.total < 0 || props.offset + have < props.total
+		// What the list spans: the total, or while it is unknown, the items seen and a window more.
+		const extent = () => {
+			const v = Math.ceil(view / px) + 1
+			return props.total < 0 ? reach + (v + 2 * buffer(v)) * props.columns : props.total
+		}
+		// item-size in px: a number as it is, a CSS length as the probe's height.
+		const measure = () => {
+			const v = props.itemSize
+			if (+v > 0) return void (px = +v)
+			probe.style.blockSize = ''
+			probe.style.blockSize = v
+			px = Math.round(probe.getBoundingClientRect().height) || px
 		}
 
 		// at: the index of the item with the focus (-1: none), focusKey: its key, place: the focused element
@@ -139,7 +165,7 @@ rocket('sb-virtual-scroll', {
 		// The keyed item in the top row of the view: its index, and how far the view is scrolled into it.
 		let anchor: { key: string; index: number; delta: number } | null = null
 		const remember = () => {
-			const size = props.itemSize, top = scroller.scrollTop, r = Math.floor(top / size), i = r * props.columns
+			const size = px, top = scroller.scrollTop, r = Math.floor(top / size), i = r * props.columns
 			const el = kids()[i - props.offset], key = el ? keyOf(el) : ''
 			anchor = key ? { key, index: i, delta: top - r * size } : null
 		}
@@ -149,7 +175,7 @@ rocket('sb-virtual-scroll', {
 			const j = find(anchor.key), cols = props.columns
 			if (j < 0) return
 			const r = Math.floor((props.offset + j) / cols)
-			if (r !== Math.floor(anchor.index / cols)) scroller.scrollTop = r * props.itemSize + anchor.delta
+			if (r !== Math.floor(anchor.index / cols)) scroller.scrollTop = r * px + anchor.delta
 		}
 		// In order, also those in components' open shadow roots (sb-checkbox's box).
 		const focusables = (el: Element, out: Element[] = []) => {
@@ -165,46 +191,52 @@ rocket('sb-virtual-scroll', {
 
 		$$.head = 0
 		const sync = () => {
-			const size = props.itemSize
+			const old = px, top = scroller.scrollTop
+			measure()
 			have = kids().length
-			$$.size = size
+			reach = props.total < 0 ? Math.max(reach, props.offset + have) : 0
+			$$.size = px
 			$$.cols = props.columns
-			$$.height = rows(props.total) * size
-			$$.y = Math.floor(props.offset / props.columns) * size
-			$$.win = rows(have) * size
+			$$.height = rows(extent()) * px
+			$$.y = Math.floor(props.offset / props.columns) * px
+			$$.win = rows(have) * px
 			// A role on the host hands the semantics to the page (a grid, a feed).
 			$$.role = !host.hasAttribute('role') && 'list'
 			$$.label = props.label
 			$$.tab = tab()
+			// A new row height keeps the reader on the same row.
+			if (px !== old) scroller.scrollTop = (top / old) * px
 		}
 
 		// The window for the scroll position: the visible rows plus the buffer on
-		// both sides, clamped to the list.
-		const want = (): [number, number] => {
-			const size = props.itemSize, v = Math.ceil(view / size) + 1, b = buffer(v)
-			const r = Math.max(0, Math.min(Math.round(scroller.scrollTop / size) - b, rows(props.total) - v - 2 * b))
-			return [r * props.columns, (v + 2 * b) * props.columns]
+		// both sides, clamped to the list and rounded out to steps; and its count before the rounding.
+		const want = (): [number, number, number] => {
+			const v = Math.ceil(view / px) + 1, b = buffer(v), u = unit(), cols = props.columns
+			const r = Math.max(0, Math.min(Math.round(scroller.scrollTop / px) - b, rows(extent()) - v - 2 * b))
+			const o = Math.floor((r * cols) / u) * u
+			return [o, Math.ceil(((r + v + 2 * b) * cols) / u) * u - o, (v + 2 * b) * cols]
 		}
 		// The viewport went past half the buffer, on a side where the list goes on.
 		const outside = () => {
-			const top = scroller.scrollTop, y = $$.y, half = (buffer(Math.ceil(view / props.itemSize) + 1) * props.itemSize) / 2
-			return (props.offset > 0 && top < y + half) || (props.offset + have < props.total && top > y + $$.win - view - half)
+			const top = scroller.scrollTop, y = $$.y, half = (buffer(Math.ceil(view / px) + 1) * px) / 2
+			return (props.offset > 0 && top < y + half) || (more() && top > y + $$.win - view - half)
 		}
 		const ask = () => {
 			if (!view) return
-			const [offset, n] = want()
+			const [offset, n, raw] = want()
 			// A new count (connect, resize, new geometry) or no total yet (a morph
 			// emptied the host) asks without a threshold.
-			if (n === lastCount && host.hasAttribute('total') && !outside()) return
+			if (raw === lastCount && host.hasAttribute('total') && !outside()) return
 			// The window we want is in the one we have (total="0": an empty list).
-			const end = offset + (host.hasAttribute('total') ? Math.min(n, props.total - offset) : n)
+			const end = offset + (known() ? Math.min(n, props.total - offset) : n)
 			if (offset >= props.offset && end <= props.offset + have) return
 			// One request at a time, unless it got lost, and a window only once:
 			// the same one again would bring the same answer.
 			const key = offset + ' ' + n
 			if (key === last || (wait && performance.now() - sent < 1000)) return
 			last = key
-			lastCount = n
+			lastCount = raw
+			sentCount = n
 			wait = true
 			sent = performance.now()
 			loading(true)
@@ -223,7 +255,7 @@ rocket('sb-virtual-scroll', {
 			const j = find(focusKey)
 			if (j >= 0) at = props.offset + j
 			// A list that ends before the item: its neighbour, the new last item; an empty list: the scroller.
-			if (host.hasAttribute('total')) at = Math.min(at, props.total - 1)
+			if (known()) at = Math.min(at, props.total - 1)
 			if (at < 0) return holds() || park()
 			const item = kids()[at - props.offset]
 			if (!item) return park()
@@ -251,8 +283,50 @@ rocket('sb-virtual-scroll', {
 			const all = focusables(item)
 			place = all.indexOf(path.find((el) => all.includes(el as Element)) as Element)
 		})
-		// Tab between a window and its refocus would move on from an element now showing another item.
-		action('keyFirst', ({ evt }) => (evt as KeyboardEvent).key === 'Tab' && frame && refocus())
+		// Scrolls item i into view, which asks for its window.
+		const go = (i: number, block = 'start') => {
+			const y = Math.floor(i / props.columns) * px, top = scroller.scrollTop, end = y + px - view
+			scroller.scrollTo({ top: block === 'end' ? end : block !== 'nearest' || y < top ? y : Math.max(top, end) })
+			remember()
+			ask()
+		}
+		// The elements outside the host that Tab stops at, in the flat tree's order:
+		// those after it, or those before it from the nearest.
+		const beyond = (after: boolean) => {
+			const out: HTMLElement[][] = [[], []]
+			let side = 0
+			const walk = (n: Element) => {
+				for (const c of n instanceof HTMLSlotElement && n.assignedElements().length ? n.assignedElements() : (n.shadowRoot ?? n).children) {
+					if (c === host) side = 1
+					else {
+						if (c.matches(FOCUSABLE) && (c as HTMLElement).tabIndex >= 0) out[side].push(c as HTMLElement)
+						walk(c)
+					}
+				}
+			}
+			walk(document.body)
+			return after ? out[1] : out[0].reverse()
+		}
+		action('keyFirst', ({ evt }) => {
+			const e = evt as KeyboardEvent, k = e.key, fwd = k === 'PageDown' || k === 'End'
+			// Tab between a window and its refocus would move on from an element now showing another item.
+			if (k === 'Tab') return void (frame && refocus())
+			// A feed's keys: Page Down and Up to the next and the previous article,
+			// Ctrl+End and Ctrl+Home out of the feed, to the next and the previous Tab stop.
+			if (host.getAttribute('role') !== 'feed' || e.altKey || e.metaKey || e.shiftKey) return
+			if (e.ctrlKey ? k !== 'End' && k !== 'Home' : k !== 'PageDown' && k !== 'PageUp') return
+			if (e.ctrlKey) return void (beyond(fwd).some((el) => (el.focus(), (el.getRootNode() as Document | ShadowRoot).activeElement === el)) && e.preventDefault())
+			// From the scroller: the article at the top of the view, or the one before it.
+			const i = at >= 0 ? at + (fwd ? 1 : -1) : Math.floor(scroller.scrollTop / px) * props.columns - (fwd ? 0 : 1)
+			if (i < 0 || (props.total >= 0 && i >= props.total)) return
+			// The article takes the focus as soon as a window has it.
+			at = i
+			place = 0
+			focusKey = ''
+			e.preventDefault()
+			go(i, 'nearest')
+			if (kids()[i - props.offset]) refocus()
+		})
 		action('leaveFocus', ({ evt }) => {
 			const t = evt!.target as Element, to = (evt as FocusEvent).relatedTarget as Node | null
 			const unpark = () => parked && host.shadowRoot!.activeElement !== scroller && ((parked = false), ($$.tab = tab()))
@@ -269,7 +343,7 @@ rocket('sb-virtual-scroll', {
 			sync()
 			// Short of the request before the end of the list: the server's cap.
 			// Without a total the host holds a new list, asked for afresh.
-			if (have < lastCount && props.offset + have < props.total) cap = have
+			if (have < sentCount && more()) cap = have
 			if (!host.hasAttribute('total')) last = ''
 			keep()
 			ask()
@@ -280,7 +354,7 @@ rocket('sb-virtual-scroll', {
 			if (focusKey && kids().some((el) => el.contains(a) && keyOf(el) !== focusKey)) refocus()
 		}
 		const watch = new MutationObserver(morphed)
-		watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'label', 'role'], childList: true })
+		watch.observe(host, { attributeFilter: ['offset', 'total', 'item-size', 'columns', 'buffer', 'step', 'label', 'role'], childList: true })
 		// A morph that patches keyed items by position may change nothing but their keys.
 		const keys = new MutationObserver((records) => records.some((r) => (r.target as Element).parentElement === host) && morphed())
 		keys.observe(host, { attributeFilter: ['id', 'data-key'], subtree: true })
@@ -295,22 +369,24 @@ rocket('sb-virtual-scroll', {
 		})
 		resize.observe(scroller)
 		resize.observe(header)
+		// A CSS length follows the page: its font size, its custom properties.
+		const remeasure = new ResizeObserver(() => {
+			const old = px
+			sync()
+			if (px !== old) remember(), ask()
+		})
+		remeasure.observe(probe)
 		cleanup(() => {
 			watch.disconnect()
 			keys.disconnect()
 			resize.disconnect()
+			remeasure.disconnect()
 			clearTimeout(timer)
 			cancelAnimationFrame(frame)
 		})
 
 		defineHostProp('scrollToIndex', {
-			value: (i: number, { block = 'start' }: ScrollOptions = {}) =>
-				peek(() => {
-					const size = props.itemSize, y = Math.floor(i / props.columns) * size, top = scroller.scrollTop, end = y + size - view
-					scroller.scrollTo({ top: block === 'end' ? end : block !== 'nearest' || y < top ? y : Math.max(top, end) })
-					remember()
-					ask()
-				}),
+			value: (i: number, { block }: ScrollOptions = {}) => peek(() => go(i, block)),
 		})
 	},
 })
