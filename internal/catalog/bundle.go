@@ -49,6 +49,7 @@ setTimeout(uncloak, 3000)
 `, tj)
 	src := entry.String()
 	res := api.Build(api.BuildOptions{
+		Banner:            map[string]string{"js": cat.bundleBanner()},
 		Stdin:             &api.StdinOptions{Contents: src, Sourcefile: "bundle-entry.js", Loader: api.LoaderJS},
 		Bundle:            true,
 		Format:            api.FormatESModule,
@@ -66,6 +67,25 @@ setTimeout(uncloak, 3000)
 		return nil, fmt.Errorf("esbuild: %s", res.Errors[0].Text)
 	}
 	return res.OutputFiles[0].Contents, nil
+}
+
+// bundleBanner names the licences in the bundle: Starbase's, and every
+// component's own or vendored one that differs.
+func (cat *Catalog) bundleBanner() string {
+	var other []string
+	for _, c := range cat.Components {
+		if id := c.LicenseID(); id != "MIT" {
+			other = append(other, fmt.Sprintf("%s %s, (c) %s", c.Tag, id, c.Author))
+		}
+		for _, v := range c.Vendored {
+			other = append(other, c.Tag+" vendors "+v)
+		}
+	}
+	s := "/*! Starbase components. MIT, (c) zwei und eins gmbh."
+	if len(other) > 0 {
+		s += " Also: " + strings.Join(other, "; ") + "."
+	}
+	return s + " */"
 }
 
 // fsPlugin resolves and loads component files from the catalog's FS.

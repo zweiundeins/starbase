@@ -107,6 +107,10 @@ func TestBundle(t *testing.T) {
 	if strings.Contains(s, "Apache ECharts") || len(b) > 600_000 {
 		t.Errorf("a lazily imported library was inlined (%d bytes)", len(b))
 	}
+	banner, _, _ := strings.Cut(s, "*/")
+	if !strings.HasPrefix(s, "/*! Starbase components. MIT, (c) zwei und eins gmbh.") || !strings.Contains(banner, "sb-kanban-board Beerware") {
+		t.Errorf("the bundle's licence banner: %s", banner)
+	}
 }
 
 // A tag a comment mentions is not a dependency: gauge, sparkline and
