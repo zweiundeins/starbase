@@ -78,6 +78,7 @@ rocket('sb-alert', {
 		variant: oneOf('info', 'success', 'warning', 'danger').docs({ description: 'Tone of the message.' }),
 		heading: string.trim.docs({ description: 'Bold first line.' }),
 		closable: bool.docs({ description: 'Show a dismiss button.' }),
+		dismissLabel: string.default('Dismiss').docs({ description: 'Accessible name of the dismiss button.' }),
 		open: oneOf(true, false).docs({
 			description: 'Shown. Any change the server makes to the attribute wins, over a dismissal too: open="false" hides it, open or no attribute shows it. Unchanged markup keeps a dismissal. From script: host.open, show(), hide().',
 		}),
@@ -116,14 +117,14 @@ rocket('sb-alert', {
 		})
 	},
 	// The close icon's paths are bare lines, so there is nothing to fill.
-	render: ({ html, props: { variant, heading, closable } }) => html`
+	render: ({ html, props: { variant, heading, closable, dismissLabel } }) => html`
 		<div class="alert ${variant}" part="alert" role="${variant === 'danger' || variant === 'warning' ? 'alert' : 'status'}">
 			<slot name="icon"><span class="light" aria-hidden="true"></span></slot>
 			<div>
 				${heading ? html`<strong class="heading" part="heading">${heading}</strong>` : null}
 				<div class="msg" part="message"><slot></slot></div>
 			</div>
-			${closable ? html`<button class="close" type="button" aria-label="Dismiss" data-on:click="@close()"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
+			${closable ? html`<button class="close" type="button" aria-label="${dismissLabel}" data-on:click="@close()"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
 		</div>
 	`,
 })

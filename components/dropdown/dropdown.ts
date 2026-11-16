@@ -244,6 +244,7 @@ rocket('sb-dropdown', {
 	props: ({ bool, json, oneOf, string }) => ({
 		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?}, {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not.' }),
 		label: string.trim.default('Actions').docs({ description: 'Text of the default trigger, and the accessible name of trigger and menu.' }),
+		emptyLabel: string.default('Nothing here').docs({ description: 'Shown in a menu or submenu that has no items.' }),
 		placement: oneOf('bottom-start', 'bottom', 'bottom-end', 'top-start', 'top', 'top-end').default('bottom-start').docs({ description: 'Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start.' }),
 		type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:"radio" on that item instead. The group reaches into its submenus, and a dropdown holds one group.' }),
 		value: string.docs({ description: 'Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots ("date.newest"). A new value from the server wins (value="" clears it); the live value is the value property.' }),
@@ -408,6 +409,7 @@ rocket('sb-dropdown', {
 				if (rows.some((r) => r.icon)) icons = true
 			}
 			$$.icons = icons
+			$$.empty = props.emptyLabel
 			// A radio menu says what it is and what is chosen; a page that sets
 			// label still owns the first half, and an actions menu is untouched.
 			$$.trigger = [props.label, chosenLabel()].filter(Boolean).join(': ')
@@ -918,7 +920,7 @@ rocket('sb-dropdown', {
 						<span class="more" aria-hidden="true" data-show="r?.parent"></span>
 					</a>
 				</template>
-				<div class="empty" aria-disabled="true" data-attr:role="${k} < $$depth && !$$rows${k}.length ? 'menuitem' : null" data-show="${k} < $$depth && !$$rows${k}.length">Nothing here</div>
+				<div class="empty" aria-disabled="true" data-attr:role="${k} < $$depth && !$$rows${k}.length ? 'menuitem' : null" data-show="${k} < $$depth && !$$rows${k}.length" data-text="$$empty"></div>
 			</div>
 		</div>`,
 		)}

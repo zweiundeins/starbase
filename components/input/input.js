@@ -107,6 +107,7 @@ rocket('sb-input', {
 		hint: string.docs({ description: 'Help text below the field.' }),
 		error: string.docs({ description: 'Message shown when invalid (defaults to the browser message).' }),
 		action: bool.docs({ description: 'Show a submit arrow button.' }),
+		submitLabel: string.default('Submit').docs({ description: 'Accessible name of the submit arrow button.' }),
 		disabled: bool.docs({ description: 'Disable the field (and the arrow). A form leaves it out.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 	}),
@@ -210,7 +211,7 @@ rocket('sb-input', {
 	},
 	// The label names the input, the hint (or the error) describes it. The
 	// error is a polite live region: it can change on every keystroke.
-	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action, disabled } }) => html`
+	render: ({ html, host, props: { label, placeholder, type, required, minlength, pattern, hint, action, disabled, submitLabel } }) => html`
 		<div class="field">
 			${label ? html`<label part="label" for="i">${label}</label>` : null}
 			<span class="control" data-class:invalid="$$invalid">
@@ -231,7 +232,7 @@ rocket('sb-input', {
 					data-on:change="@commit()"
 					data-on:keydown="evt.keyCode == 13 && !evt.isComposing && @submit()"
 				/>
-				${action ? html`<button type="button" part="button" aria-label="Submit" disabled="${disabled}" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
+				${action ? html`<button type="button" part="button" aria-label="${submitLabel}" disabled="${disabled}" data-on:click="@submit()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>` : null}
 			</span>
 			<span class="error" id="e" aria-live="polite" data-text="$$message"></span>
 			${hint ? html`<span class="hint" id="h" data-show="!$$invalid">${hint}</span>` : null}

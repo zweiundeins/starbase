@@ -67,6 +67,16 @@
       }
     },
     {
+      "name": "loadingLabel",
+      "attribute": "loading-label",
+      "type": "string",
+      "default": "Loading",
+      "required": false,
+      "docs": {
+        "description": "Shown after an item while its children load (dots follow it)."
+      }
+    },
+    {
       "name": "confirm",
       "attribute": "confirm",
       "type": "boolean",

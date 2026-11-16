@@ -175,6 +175,7 @@ rocket('sb-toast', {
 		max: number.clamp(1, 10).default(3).docs({ description: 'How many toasts are shown at once. Older ones wait and appear as newer ones go; only shown toasts count down.' }),
 		duration: number.clamp(0, 600000).default(5000).docs({ description: 'Default time before a toast dismisses itself, in ms. 0 makes them sticky; a toast may carry its own duration.' }),
 		label: string.trim.default('Notifications').docs({ description: 'Accessible name of the region.' }),
+		dismissLabel: string.default('Dismiss: {message}').docs({ description: 'Accessible name of a toast\'s close button: {message} becomes the toast\'s title and text.' }),
 	}),
 	manifest: {
 		events: [
@@ -279,6 +280,7 @@ rocket('sb-toast', {
 					...t,
 					leaving: going,
 					alt: gen,
+					close: props.dismissLabel.replaceAll('{message}', () => t.msg),
 					// Only a toast with a timer has a bar (dismiss() drops a fading toast's).
 					dur: s && `${s.total}ms`,
 					bd: `-${Math.round(spent)}ms`,
@@ -402,7 +404,7 @@ rocket('sb-toast', {
 						<div class="text" part="text" data-text="r?.text"></div>
 					</div>
 					<!-- The button says which toast it closes. -->
-					<button class="close" part="close" type="button" data-attr:aria-label="r && 'Dismiss: ' + r.msg" data-attr:tabindex="r?.leaving && -1" data-on:click="@dismiss(r?.id)">
+					<button class="close" part="close" type="button" data-attr:aria-label="r?.close" data-attr:tabindex="r?.leaving && -1" data-on:click="@dismiss(r?.id)">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
 					</button>
 					<div class="bar" part="bar" aria-hidden="true" data-show="r?.dur"></div>

@@ -190,6 +190,10 @@ rocket('sb-select', {
 		selectAllLabel: string.default('Select all').docs({ description: 'Actions: the text of "Select all".' }),
 		matchesLabel: string.default('Select the match|Select the {count} matches').docs({ description: 'Actions: the text of "Select the N matches" while a search filters the list. Text before a | is for one match.' }),
 		clearLabel: string.default('Clear').docs({ description: 'Actions: the text of "Clear", also the clear button\'s accessible name.' }),
+		removeLabel: string.default('Remove {label}').docs({ description: 'Multiple: accessible name of a chip\'s remove button: {label} becomes the choice\'s label.' }),
+		hintLabel: string.default('Type to search').docs({ description: 'Remote: shown in the open list while the query is shorter than min-chars.' }),
+		searchingLabel: string.default('Searching…').docs({ description: 'Shown in the open list while results are on their way and there are none yet.' }),
+		emptyLabel: string.default('No results').docs({ description: 'Shown in the open list when nothing matches.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 	}),
 	manifest: {
@@ -226,6 +230,8 @@ rocket('sb-select', {
 			for (const o of options) labels.set(o.value, o.label)
 			for (const k of ['label', 'placeholder', 'multiple', 'loading', 'clearable', 'disabled', 'clearLabel'] as const) $$[k] = props[k]
 			$$.typing = props.searchable || props.remote
+			// Without label and placeholder: the host's aria-label names the field.
+			$$.aria = host.getAttribute('aria-label') || ''
 		}
 		learn()
 
@@ -270,10 +276,13 @@ rocket('sb-select', {
 			$$.acts = acts
 			$$.base = acts.length
 			if ($$.active >= acts.length + view.length) $$.active = view.length ? acts.length : -1
-			$$.note = short ? 'Type to search' : view.length ? '' : props.loading || $$.pending ? 'Searching…' : 'No results'
+			$$.note = short ? props.hintLabel : view.length ? '' : props.loading || $$.pending ? props.searchingLabel : props.emptyLabel
 			// The closed control: chips up to max-chips (none with only a summary),
 			// then the summary or a "+K" chip.
-			const chips = $$.selected.map((v: string) => ({ value: v, label: labels.get(v) ?? v }))
+			const chips = $$.selected.map((v: string) => {
+				const label = labels.get(v) ?? v
+				return { value: v, label, aria: props.removeLabel.replaceAll('{label}', () => label) }
+			})
 			const max = !props.multiple ? Infinity : props.maxChips >= 0 ? props.maxChips : props.summary ? 0 : Infinity
 			const more = Math.max(0, chips.length - max)
 			const total = props.total >= 0 ? props.total : props.remote ? labels.size : options.length
@@ -530,7 +539,7 @@ rocket('sb-select', {
 				<template data-for="c in $$shown">
 					<span class="chip" part="chip" data-show="$$multiple">
 						<span data-text="c?.label"></span>
-						<button type="button" tabindex="-1" data-attr:aria-label="'Remove ' + c?.label" data-on:mousedown="evt.preventDefault()" data-on:click="@remove(c?.value)">×</button>
+						<button type="button" tabindex="-1" data-attr:aria-label="c?.aria" data-on:mousedown="evt.preventDefault()" data-on:click="@remove(c?.value)">×</button>
 					</span>
 				</template>
 				<span class="chip more" part="more" data-show="$$more" data-text="$$more" data-attr:title="$$hidden"></span>
@@ -539,7 +548,7 @@ rocket('sb-select', {
 				<input id="input" part="input" role="combobox" autocomplete="off" spellcheck="false"
 					aria-controls="list"
 					data-attr:aria-autocomplete="$$typing && 'list'"
-					data-attr:aria-label="$$label ? null : ($$placeholder || 'Select')"
+					data-attr:aria-label="$$label ? null : $$placeholder || $$aria || 'Select'"
 					data-attr:aria-expanded="String($$open)"
 					data-attr:aria-describedby="$$picked ? 'picked' : null"
 					data-attr:aria-activedescendant="$$current || null"
@@ -560,7 +569,7 @@ rocket('sb-select', {
 			</div>
 			<div id="list" part="listbox" popover="manual" role="listbox"
 				data-attr:aria-multiselectable="$$multiple ? 'true' : null"
-				data-attr:aria-label="$$label || $$placeholder || 'Options'">
+				data-attr:aria-label="$$label || $$placeholder || $$aria || 'Options'">
 				<div class="acts" role="group" data-show="$$acts?.length"><template data-for="a, k in $$acts">
 					<div role="option" class="act"
 						data-attr:id="a?.id"

@@ -91,6 +91,13 @@ Any element in the dialog with `data-sb-close` closes it and reports `data-sb-cl
 
 A `<form>` in the body can't close the dialog with `method="dialog"`: the `<dialog>` is in the component's shadow root. Give a submit button in the footer `form="…"` (the form's `id`), and close the dialog from the form's submit handler or let the server close it.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `heading`: "Dialog", the title.
+- `close-label`: "Close", the close button's name.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

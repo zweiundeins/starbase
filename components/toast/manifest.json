@@ -59,6 +59,16 @@
       "docs": {
         "description": "Accessible name of the region."
       }
+    },
+    {
+      "name": "dismissLabel",
+      "attribute": "dismiss-label",
+      "type": "string",
+      "default": "Dismiss: {message}",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of a toast's close button: {message} becomes the toast's title and text."
+      }
     }
   ],
   "slots": [],

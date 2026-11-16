@@ -282,6 +282,13 @@ Links are followed, not selected: a tree of links marks the page with `aria-curr
 
 `sb-tree` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Tree", the tree's name.
+- `loading-label`: "Loading", shown after a branch while its children load.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

@@ -105,6 +105,13 @@ Only the newest `max` toasts are rendered, and only rendered toasts count down. 
 - `dismiss(id)`: dismiss one toast, exactly as the button does (including `sb-dismiss`).
 - `clear()`: dismiss every toast, including those waiting behind `max` (each one emits `sb-dismiss`).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Notifications", the name of the region.
+- `dismiss-label`: "Dismiss: {message}", the name of each toast's close button; {message} is the toast's title and text.
+
 ## Styling
 
 Every part is styleable from the page: `::part(region)`, `::part(toast)`, `::part(title)`, `::part(text)`, `::part(close)` and `::part(bar)` (the remaining-time bar). Tones come from `--sb-info`, `--sb-ok`, `--sb-warn` and `--sb-danger`, the surface from `--sb-surface-raised`, and the stack sits at `--sb-z-toast`. Two component variables tune the geometry:

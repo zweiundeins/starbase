@@ -130,6 +130,16 @@
       }
     },
     {
+      "name": "submitLabel",
+      "attribute": "submit-label",
+      "type": "string",
+      "default": "Submit",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the submit arrow button."
+      }
+    },
+    {
       "name": "disabled",
       "attribute": "disabled",
       "type": "boolean",

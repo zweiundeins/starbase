@@ -136,6 +136,13 @@ The command clears the flag, and the next render leaves `open` out.
 
 `show()` and `hide()` (or `close()`, its name on `sb-modal`) never write the attribute, so the element's `open` property stays the server's word; `isOpen` tells whether the drawer is showing.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `heading`: "Drawer", the title.
+- `close-label`: "Close", the close button's name.
+
 ## Styling
 
 Style it from your page's CSS, no need to change the component or import anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

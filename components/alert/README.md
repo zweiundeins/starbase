@@ -60,6 +60,13 @@ The `open` attribute is the server's:
 
 So a new message needs a new element: give each message its own `id` (as above), or patch it in with mode `replace`. A dismissal stays in the browser: `sb-close` (a plain event, no detail) fires for the close button only, not for `hide()`, `host.open` or the server, so listen to it if the server should know.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `heading`: no default.
+- `dismiss-label`: "Dismiss", the dismiss button's name (with `closable`).
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

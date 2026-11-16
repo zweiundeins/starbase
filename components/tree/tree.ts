@@ -189,6 +189,7 @@ rocket('sb-tree', {
 		value: string.docs({ description: 'Selection: an id, or ids separated by spaces (multiple). A new value from the server replaces it; the live value is the value property.' }),
 		expanded: string.docs({ description: 'Open items: ids separated by spaces. A new list from the server replaces it; lazy items in it load their children.' }),
 		label: string.trim.default('Tree').docs({ description: 'Accessible name.' }),
+		loadingLabel: string.default('Loading').docs({ description: 'Shown after an item while its children load (dots follow it).' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
@@ -206,6 +207,7 @@ rocket('sb-tree', {
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		$$.label = props.label
+		$$.loading = props.loadingLabel
 		$$.mode = props.selection
 		const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : String(v ?? '').split(/\s+/).filter(Boolean))
 		$$.selected = ids(props.value)
@@ -320,6 +322,7 @@ rocket('sb-tree', {
 		observeProps(() =>
 			peek(() => {
 				$$.label = props.label
+				$$.loading = props.loadingLabel
 				$$.mode = props.selection
 				read()
 				rebuild()
@@ -494,7 +497,7 @@ rocket('sb-tree', {
 					<span class="icon" part="icon" aria-hidden="true" data-show="r?.icon" data-text="r?.icon"></span>
 					<span class="icon art" part="icon" aria-hidden="true" data-show="r?.art"></span>
 					<span class="label" part="label" data-attr:id="'label-' + k" data-text="r?.label"></span>
-					<span class="busy" data-show="r?.loading">Loading</span>
+					<span class="busy" data-show="r?.loading" data-text="$$loading"></span>
 					<span class="meta" part="meta" data-attr:id="'meta-' + k" data-show="r?.meta" data-text="r?.meta"></span>
 				</a>
 			</template>

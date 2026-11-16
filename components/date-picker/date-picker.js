@@ -284,6 +284,11 @@ rocket('sb-date-picker', {
         label: string.trim.docs({ description: 'Visible label, and the accessible name of the calendar.' }),
         placeholder: string.docs({ description: 'Placeholder text (default: the locale\'s date pattern, e.g. dd.mm.yyyy, or with time dd.mm.yyyy, hh:mm).' }),
         applyLabel: string.default('Apply').docs({ description: 'With time: the text of the button that commits the calendar\'s date and time.' }),
+        chooseLabel: string.default('Choose date').docs({ description: 'Accessible name of the button that opens the calendar, and of the calendar without a label.' }),
+        previousYearLabel: string.default('Previous year').docs({ description: 'Accessible name of the calendar\'s button that goes a year back.' }),
+        previousMonthLabel: string.default('Previous month').docs({ description: 'Accessible name of the calendar\'s button that goes a month back.' }),
+        nextMonthLabel: string.default('Next month').docs({ description: 'Accessible name of the calendar\'s button that goes a month forward.' }),
+        nextYearLabel: string.default('Next year').docs({ description: 'Accessible name of the calendar\'s button that goes a year forward.' }),
         error: string.docs({ description: 'Message shown when the typed text is not a date that can be picked.' }),
         lang: string.trim.docs({ description: 'Locale for month and weekday names, the first day of the week and the typed format (default: the page\'s lang, then the browser\'s).' }),
         disabled: bool.docs({ description: 'Disable the field and the calendar. A form leaves it out.' }),
@@ -334,7 +339,7 @@ rocket('sb-date-picker', {
 					data-bind:text
 					data-on:input="evt.stopPropagation()"
 					data-on:change="@typed()"/>
-				<button type="button" part="button" data-ref:button popovertarget="cal" aria-label="Choose date" aria-haspopup="dialog" aria-controls="cal"
+				<button type="button" part="button" data-ref:button popovertarget="cal" data-attr:aria-label="$$chooseLabel" aria-haspopup="dialog" aria-controls="cal"
 					data-attr:aria-expanded="String(!!$$open)"
 					data-attr:disabled="$$disabled"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M2 3h12v11H2zM3 7h10v6H3zM4 1h2v2H4zm6 0h2v2h-2zM5 9h2v2H5z"/></svg></button>
 			</div>
@@ -343,18 +348,18 @@ rocket('sb-date-picker', {
 				data-attr:popover="$$inline ? null : 'auto'"
 				data-attr:role="$$inline ? 'group' : 'dialog'"
 				data-attr:aria-modal="$$inline ? null : 'true'"
-				data-attr:aria-label="$$label || 'Choose date'"
+				data-attr:aria-label="$$label || $$chooseLabel"
 				data-effect="el.popover && el.togglePopover(!!$$open)"
 				data-on:beforetoggle="@before()"
 				data-on:toggle="@toggled()"
 				data-on:keydown="@key()">
 				<div class="cal" part="calendar">
 					<div class="head">
-						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" aria-label="Previous year" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-12)"><i></i><i></i></button>
-						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" aria-label="Previous month" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-1)"><i></i></button>
+						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" data-attr:aria-label="$$previousYearLabel" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-12)"><i></i><i></i></button>
+						<button type="button" class="back" part="nav" data-attr:disabled="$$disabled" data-attr:aria-label="$$previousMonthLabel" data-attr:aria-disabled="$$back ? null : 'true'" data-on:click="@page(-1)"><i></i></button>
 						<div class="title" part="title" id="t" aria-live="polite" data-text="$$title"></div>
-						<button type="button" part="nav" data-attr:disabled="$$disabled" aria-label="Next month" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(1)"><i></i></button>
-						<button type="button" part="nav" data-attr:disabled="$$disabled" aria-label="Next year" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(12)"><i></i><i></i></button>
+						<button type="button" part="nav" data-attr:disabled="$$disabled" data-attr:aria-label="$$nextMonthLabel" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(1)"><i></i></button>
+						<button type="button" part="nav" data-attr:disabled="$$disabled" data-attr:aria-label="$$nextYearLabel" data-attr:aria-disabled="$$on ? null : 'true'" data-on:click="@page(12)"><i></i><i></i></button>
 					</div>
 					<table role="grid" part="grid" aria-labelledby="t" data-class:picking="$$picking">
 						<thead><tr>${seven.map((d) => html `<th scope="col" data-attr:abbr="$$w${d}.l" data-text="$$w${d}.s"></th>`)}</tr></thead>
@@ -522,7 +527,7 @@ rocket('sb-date-picker', {
         };
         // The other props the template reads.
         const mirror = () => {
-            for (const k of ['label', 'error', 'inline', 'disabled', 'time', 'applyLabel'])
+            for (const k of ['label', 'error', 'inline', 'disabled', 'time', 'applyLabel', 'chooseLabel', 'previousYearLabel', 'previousMonthLabel', 'nextMonthLabel', 'nextYearLabel'])
                 $$[k] = props[k];
             $$.range = range();
             $$.aria = host.getAttribute('aria-label') || 'Date';

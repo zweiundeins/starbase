@@ -77,6 +77,13 @@ Inside a `<form>`, `sb-input` submits its value under its `name` (`name=…`, al
 
 It is not a form-associated element yet (Rocket can't declare one), so the form's own validation (`checkValidity()`, `:invalid`) doesn't see `required`, `minlength` or `pattern`, Enter emits `sb-submit` instead of submitting the form, and `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`, `placeholder`, `hint`, `error`: no defaults. Without `error`, an invalid value shows the browser's own message, in the browser's language.
+- `submit-label`: "Submit", the arrow button's name (with `action`).
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

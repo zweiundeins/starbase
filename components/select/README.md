@@ -230,6 +230,17 @@ A new `value` from the server always wins. A removed `value` attribute changes n
 
 Inside a `<form>`, `sb-select` submits its value under its `name` (`name=value`; with `multiple`, one entry per picked value and none when nothing is picked, like `<select multiple>`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears a typed search. A `disabled` select submits nothing. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`, `placeholder`: no defaults. Without either, the host's `aria-label` names the field (else "Select").
+- `remove-label`: "Remove {label}", the name of a chip's remove button.
+- `clear-label`: "Clear", the clear button and the Clear action.
+- `select-all-label`: "Select all"; `matches-label`: "Select the match|Select the {count} matches" (one match before the `|`).
+- `empty-label`: "No results", `searching-label`: "Searching…", `hint-label`: "Type to search" (remote, under min-chars), in the open list.
+- `summary`: no default, e.g. "{count} of {total} sources".
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

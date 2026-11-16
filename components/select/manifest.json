@@ -212,6 +212,46 @@
       }
     },
     {
+      "name": "removeLabel",
+      "attribute": "remove-label",
+      "type": "string",
+      "default": "Remove {label}",
+      "required": false,
+      "docs": {
+        "description": "Multiple: accessible name of a chip's remove button: {label} becomes the choice's label."
+      }
+    },
+    {
+      "name": "hintLabel",
+      "attribute": "hint-label",
+      "type": "string",
+      "default": "Type to search",
+      "required": false,
+      "docs": {
+        "description": "Remote: shown in the open list while the query is shorter than min-chars."
+      }
+    },
+    {
+      "name": "searchingLabel",
+      "attribute": "searching-label",
+      "type": "string",
+      "default": "Searching…",
+      "required": false,
+      "docs": {
+        "description": "Shown in the open list while results are on their way and there are none yet."
+      }
+    },
+    {
+      "name": "emptyLabel",
+      "attribute": "empty-label",
+      "type": "string",
+      "default": "No results",
+      "required": false,
+      "docs": {
+        "description": "Shown in the open list when nothing matches."
+      }
+    },
+    {
       "name": "confirm",
       "attribute": "confirm",
       "type": "boolean",

@@ -199,6 +199,15 @@ With `time`, `sb-change` carries a local date-time (`2026-10-14T09:30`), with `t
 
 Inside a `<form>`, `sb-date-picker` submits its value under its `name`: the ISO date (`launch=2026-10-14`), with `mode="range"` the JSON of its `value` attribute, and an empty string when there is no date, like `<input type="date">`. With `time` it submits what `<input type="datetime-local">` submits for the same value (`launch=2026-10-14T09:30`, seconds only when they aren't zero), and with `time-zone` the instant with its offset (`launch=2026-10-14T09:30+02:00`). A `disabled` picker submits nothing. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears invalid typed text. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `choose-label`: "Choose date", the calendar button, and the calendar without a `label`.
+- `previous-year-label`, `previous-month-label`, `next-month-label`, `next-year-label`: "Previous year", "Previous month", "Next month", "Next year".
+- `apply-label`: "Apply" (with time); `error`, `placeholder`: no defaults (the placeholder is the locale's date pattern).
+- Month and weekday names, the first day of the week, the typed format and the time fields' names come from `Intl` in the element's language: the nearest `lang` attribute (inside another component, the page's), else the browser's (or `lang` on the element).
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

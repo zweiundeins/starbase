@@ -22,6 +22,16 @@
       }
     },
     {
+      "name": "emptyLabel",
+      "attribute": "empty-label",
+      "type": "string",
+      "default": "Nothing here",
+      "required": false,
+      "docs": {
+        "description": "Shown in a menu or submenu that has no items."
+      }
+    },
+    {
       "name": "placement",
       "attribute": "placement",
       "type": "oneOf",

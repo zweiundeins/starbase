@@ -74,6 +74,16 @@
       "docs": {
         "description": "Show the close button (not on inline panels). On by default: closable=\"false\" turns it off."
       }
+    },
+    {
+      "name": "closeLabel",
+      "attribute": "close-label",
+      "type": "string",
+      "default": "Close",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the close button."
+      }
     }
   ],
   "slots": [

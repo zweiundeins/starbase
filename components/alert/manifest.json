@@ -38,6 +38,16 @@
       }
     },
     {
+      "name": "dismissLabel",
+      "attribute": "dismiss-label",
+      "type": "string",
+      "default": "Dismiss",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the dismiss button."
+      }
+    },
+    {
       "name": "open",
       "attribute": "open",
       "type": "oneOf",

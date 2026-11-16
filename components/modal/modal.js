@@ -53,6 +53,7 @@ rocket('sb-modal', {
 		open: bool.docs({ description: 'Open when present: the server\'s word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing.' }),
 		inline: bool.docs({ description: 'Render in place, always visible, without an overlay or close button (previews, docs).' }),
 		closable: oneOf(true, false).docs({ description: 'Show the close button (not on inline panels). On by default: closable="false" turns it off.' }),
+		closeLabel: string.default('Close').docs({ description: 'Accessible name of the close button.' }),
 	}),
 	manifest: {
 		slots: [
@@ -105,11 +106,11 @@ rocket('sb-modal', {
 	// No ids in here: toggling inline swaps <section> and <dialog> around the
 	// same markup, and the morph can't move an id'd element into a parent of
 	// another type. aria-label names the panel instead.
-	render: ({ html, props: { heading, inline, closable } }) => {
+	render: ({ html, props: { heading, inline, closable, closeLabel } }) => {
 		const inner = html`
 			<header>
 				<h2 part="heading">${heading}</h2>
-				${closable && !inline ? html`<button class="close" part="close" type="button" aria-label="Close" data-on:click="@close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
+				${closable && !inline ? html`<button class="close" part="close" type="button" aria-label="${closeLabel}" data-on:click="@close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>` : null}
 			</header>
 			<div class="body" part="body"><slot></slot></div>
 			<footer part="footer" data-show="$$footer" data-init="$$footer = !!el.firstChild.assignedElements().length" data-on:slotchange="$$footer = !!el.firstChild.assignedElements().length"><slot name="footer"></slot></footer>

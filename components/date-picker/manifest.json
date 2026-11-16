@@ -146,6 +146,56 @@
       }
     },
     {
+      "name": "chooseLabel",
+      "attribute": "choose-label",
+      "type": "string",
+      "default": "Choose date",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the button that opens the calendar, and of the calendar without a label."
+      }
+    },
+    {
+      "name": "previousYearLabel",
+      "attribute": "previous-year-label",
+      "type": "string",
+      "default": "Previous year",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the calendar's button that goes a year back."
+      }
+    },
+    {
+      "name": "previousMonthLabel",
+      "attribute": "previous-month-label",
+      "type": "string",
+      "default": "Previous month",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the calendar's button that goes a month back."
+      }
+    },
+    {
+      "name": "nextMonthLabel",
+      "attribute": "next-month-label",
+      "type": "string",
+      "default": "Next month",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the calendar's button that goes a month forward."
+      }
+    },
+    {
+      "name": "nextYearLabel",
+      "attribute": "next-year-label",
+      "type": "string",
+      "default": "Next year",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the calendar's button that goes a year forward."
+      }
+    },
+    {
       "name": "error",
       "attribute": "error",
       "type": "string",

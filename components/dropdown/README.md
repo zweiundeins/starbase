@@ -302,6 +302,13 @@ el.hide()        // close, and leave the focus where it is
 </div>
 ```
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Actions", the default trigger's text and the menu's name.
+- `empty-label`: "Nothing here", shown in a menu or submenu without items.
+
 ## Styling
 
 Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`, and turns the stepped caret and submenu arrows into plain triangles, the caret turning smoothly. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
