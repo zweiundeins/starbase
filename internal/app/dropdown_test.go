@@ -551,3 +551,180 @@ await group('slotted links', async () => {
 check('no errors', errors, [])
 await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
 `
+
+// TestDropdownGroups checks sb-dropdown's group headings in Chrome, as markup and as JSON: a heading
+// is a label row nobody can focus, click or choose; the keys and the type-ahead skip it; the
+// accessibility tree shows each group named by its heading with its rows inside; a radio menu keeps
+// one value across groups; a submenu holds groups too; and a morph that changes the groups updates
+// the rows. With STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
+func TestDropdownGroups(t *testing.T) {
+	copyRows(t, probeCDP(t, "/", pdPrelude+morphJS+dropdownGroupsJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
+}
+
+const dropdownGroupsJS = `
+const cdp = async (...cmds) => {
+	const r = await fetch('/__probe/cdp', { method: 'POST', body: JSON.stringify(cmds) })
+	if (!r.ok) throw new Error('cdp: ' + (await r.text()))
+	return r.json()
+}
+const group = async (name, fn) => {
+	try {
+		await fn()
+	} catch (e) {
+		rows.push({ step: name, error: String(e?.stack || e) })
+	}
+}
+const box = document.createElement('div')
+document.body.prepend(box)
+const changes = [], selects = []
+document.addEventListener('sb-change', (e) => changes.push(e.detail))
+document.addEventListener('sb-select', (e) => selects.push(e.detail.value))
+await customElements.whenDefined('sb-dropdown')
+
+// The open menu named name as the accessibility tree has it: [role, name, checked] per row and
+// [role, name, rows] per group; ignored and generic nodes are looked through.
+const ax = async (name) => {
+	const [{ nodes }] = await cdp({ method: 'Accessibility.getFullAXTree', params: {} })
+	const by = new Map(nodes.map((n) => [n.nodeId, n]))
+	const role = (n) => n.role?.value ?? ''
+	const walk = (n) =>
+		(n.childIds ?? []).flatMap((id) => {
+			const c = by.get(id)
+			if (!c) return []
+			if (c.ignored || ['generic', 'none', 'presentation'].includes(role(c))) return walk(c)
+			if (role(c) === 'group') return [[role(c), c.name?.value ?? '', walk(c)]]
+			if (role(c).startsWith('menuitem')) return [[role(c), c.name?.value ?? '', c.properties?.find((p) => p.name === 'checked')?.value?.value ?? null]]
+			if (role(c) === 'separator') return [['separator']]
+			return []
+		})
+	const menu = nodes.find((n) => !n.ignored && role(n) === 'menu' && n.name?.value === name)
+	return menu ? walk(menu) : null
+}
+
+const STATUS = [['group', 'Move to'], ['todo', 'To do'], ['doing', 'In progress'], ['review', 'In review'], ['group', 'Other'], ['blocked', 'Blocked'], ['wontdo', 'Won’t do'], ['-'], ['archive', 'Archive']]
+const markup = (value, items = STATUS) =>
+	'<sb-dropdown id="gd" type="radio" name="status" label="Status" value="' + value + '">' +
+	items.map(([v, l]) => (v === '-' ? '<hr slot="item">' : v === 'group' ? '<div slot="item" data-group>' + l + '</div>' : '<button slot="item" value="' + v + '">' + l + '</button>')).join('') +
+	'</sb-dropdown>'
+box.innerHTML = markup('doing')
+await settle()
+const el = document.getElementById('gd')
+const $ = (s, e = el) => e.shadowRoot.querySelector(s)
+const $$ = (s, e = el) => [...e.shadowRoot.querySelectorAll(s)]
+// The rows of a level as the user sees them: "# " and a heading's text, or an item's label.
+const seen = (k = 0, e = el) => $$('.lvl' + k + ' .menu > a', e).filter((a) => a.checkVisibility() && a.getAttribute('role') !== 'separator').map((a) => (a.getAttribute('part') === 'group-label' ? '# ' + a.textContent.trim() : a.querySelector('.label').textContent))
+const focused = (e = el) => e.shadowRoot.activeElement?.querySelector('.label')?.textContent ?? null
+const key = async (k, e = el) => (press(e.shadowRoot.activeElement ?? $('.trigger', e), k), await settle())
+
+await group('headings', async () => {
+	el.show()
+	await settle()
+	check('rows in order, headings among them', seen(), ['# Move to', 'To do', 'In progress', 'In review', '# Other', 'Blocked', 'Won’t do', 'Archive'])
+	const heads = $$('.lvl0 [part="group-label"]')
+	check('a heading is a group, with no tabindex, row index or href', heads.map((h) => [h.getAttribute('role'), h.hasAttribute('tabindex'), h.hasAttribute('data-idx'), h.hasAttribute('href')]), [['group', false, false, false], ['group', false, false, false]])
+	check('named by its own text, owning the rows up to the next heading or divider', heads.map((h) => [el.shadowRoot.getElementById(h.getAttribute('aria-labelledby'))?.textContent, h.getAttribute('aria-owns').split(' ').map((id) => el.shadowRoot.getElementById(id).querySelector('.label').textContent)]), [['Move to', ['To do', 'In progress', 'In review']], ['Other', ['Blocked', 'Won’t do']]])
+	const cs = getComputedStyle(heads[0]), item = getComputedStyle($('.lvl0 [data-idx="1"]'))
+	check('muted small text', [cs.color !== item.color, parseFloat(cs.fontSize) < parseFloat(item.fontSize), cs.cursor], [true, true, 'default'])
+	heads[0].focus()
+	check('a heading takes no focus', el.shadowRoot.activeElement === heads[0], false)
+	check('the accessibility tree: menu, groups named by their headings, rows inside', await ax('Status'), [
+		['group', 'Move to', [['menuitemradio', 'To do', 'false'], ['menuitemradio', 'In progress', 'true'], ['menuitemradio', 'In review', 'false']]],
+		['group', 'Other', [['menuitemradio', 'Blocked', 'false'], ['menuitemradio', 'Won’t do', 'false']]],
+		['separator'],
+		['menuitemradio', 'Archive', 'false'],
+	])
+	heads[0].click()
+	await settle()
+	check('a click on a heading chooses nothing and keeps the menu open', [changes.length, el.open, el.value], [0, true, 'doing'])
+	el.hide()
+	await settle()
+})
+
+await group('keys', async () => {
+	$('.trigger').focus()
+	await key('ArrowDown')
+	check('ArrowDown opens at the first item, not the heading', focused(), 'To do')
+	await key('ArrowUp')
+	check('ArrowUp wraps past the heading to the last item', focused(), 'Archive')
+	await key('Home')
+	check('Home skips the heading', focused(), 'To do')
+	await key('ArrowDown')
+	await key('ArrowDown')
+	await key('ArrowDown')
+	check('ArrowDown steps over the next heading', focused(), 'Blocked')
+	await key('ArrowUp')
+	check('ArrowUp steps back over it', focused(), 'In review')
+	await key('End')
+	check('End', focused(), 'Archive')
+	await key('o')
+	check('the type-ahead never lands on a heading ("Other")', focused(), 'Archive')
+	await settle(800)
+	await key('m')
+	check('nor on "Move to"', focused(), 'Archive')
+	await settle(800)
+	await key('b')
+	check('it finds an item in another group', focused(), 'Blocked')
+	const head = $('.lvl0 [part="group-label"]')
+	head.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, composed: true, pointerType: 'mouse' }))
+	await settle()
+	check('the pointer over a heading leaves the focus where it is', focused(), 'Blocked')
+	await key('Enter')
+	check('Enter picks it: one value across groups', [changes.at(-1), el.value, el.open], [{ name: 'status', value: 'blocked' }, 'blocked', false])
+	el.show()
+	await settle()
+	check('one check, in the other group', $$('.lvl0 [role="menuitemradio"]').filter((r) => r.getAttribute('aria-checked') === 'true').map((r) => r.querySelector('.label').textContent), ['Blocked'])
+	check('the trigger names the pick', $('.trigger').getAttribute('aria-label'), 'Status: Blocked')
+	el.hide()
+	await settle()
+})
+
+await group('a morph that changes the groups', async () => {
+	el.show()
+	await settle()
+	await morph(markup('review', [['group', 'Next'], ['review', 'In review'], ['done', 'Done'], ['group', 'Back'], ['todo', 'To do'], ['-'], ['archive', 'Archive'], ['group', 'Danger zone'], ['delete', 'Delete']]))
+	check('the rows follow, the menu stays open', [seen(), el.open], [['# Next', 'In review', 'Done', '# Back', 'To do', 'Archive', '# Danger zone', 'Delete'], true])
+	check('and the tree, with the server value checked', await ax('Status'), [
+		['group', 'Next', [['menuitemradio', 'In review', 'true'], ['menuitemradio', 'Done', 'false']]],
+		['group', 'Back', [['menuitemradio', 'To do', 'false']]],
+		['separator'],
+		['menuitemradio', 'Archive', 'false'],
+		['group', 'Danger zone', [['menuitemradio', 'Delete', 'false']]],
+	])
+	await morph(markup('review', [['review', 'In review'], ['done', 'Done']]))
+	check('headings removed', [seen(), $$('.lvl0 [aria-owns]').length], [['In review', 'Done'], 0])
+	el.hide()
+	await settle()
+})
+
+await group('JSON, and groups in a submenu', async () => {
+	const js = document.createElement('sb-dropdown')
+	js.setAttribute('label', 'Issue')
+	js.setAttribute('items', JSON.stringify([
+		{ label: 'Move', children: [{ group: 'Now' }, 'Start', 'Review', { group: '<b>Later</b>' }, 'Park'] },
+		{ group: 'Edit' },
+		'Rename',
+		'Copy',
+	]))
+	box.append(js)
+	await settle()
+	$('.trigger', js).focus()
+	await key('ArrowDown', js)
+	check('JSON: the root, a heading after the submenu parent', seen(0, js), ['Move', '# Edit', 'Rename', 'Copy'])
+	check('JSON tree', await ax('Issue'), [['menuitem', 'Move', null], ['group', 'Edit', [['menuitem', 'Rename', null], ['menuitem', 'Copy', null]]]])
+	await key('ArrowDown', js)
+	check('ArrowDown from the parent skips the heading', focused(js), 'Rename')
+	await key('Home', js)
+	await key('ArrowRight', js)
+	check('the submenu opens at its first item', [seen(1, js), focused(js)], [['# Now', 'Start', 'Review', '# <b>Later</b>', 'Park'], 'Start'])
+	check('the submenu tree; a heading is text', await ax('Move'), [['group', 'Now', [['menuitem', 'Start', null], ['menuitem', 'Review', null]]], ['group', '<b>Later</b>', [['menuitem', 'Park', null]]]])
+	await key('ArrowDown', js)
+	await key('ArrowDown', js)
+	check('ArrowDown across the submenu heading', focused(js), 'Park')
+	await key('Enter', js)
+	check('sb-select from a grouped item', [selects.at(-1), js.open], ['Park', false])
+	js.remove()
+})
+
+check('no errors', errors, [])
+await report()
+`

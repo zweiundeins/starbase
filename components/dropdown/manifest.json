@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?} (icon is text, such as an emoji: rich icons and content are the markup form's), {\"divider\":true} (\"-\" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not."
+        "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?} (icon is text, such as an emoji: rich icons and content are the markup form's), {\"divider\":true} (\"-\" works too), a group heading {\"group\":\"Move to\"} (the items after it, up to the next heading or divider, are its group), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not."
       }
     },
     {
@@ -121,7 +121,7 @@
     },
     {
       "name": "item",
-      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, <a slot=\"item\" href=\"/x\">Label</a> for a link, or <hr slot=\"item\"> for a divider. A submenu is data-children='[…]' (the same JSON as items). They are read as data; items wins when it is not empty. Rich items: an element marked data-icon inside the item (an inline <svg>, an <img>) is copied into the row's icon place, and other elements in it (a lozenge) are copied into the row in place of the text, which stays the row's accessible name; a radio trigger shows the chosen item the same way. Copies keep their attributes, so part=\"…\" and an inline style reach them from the page."
+      "description": "Menu items as markup instead of items: <button slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger>Label</button>, <a slot=\"item\" href=\"/x\">Label</a> for a link, or <hr slot=\"item\"> for a divider. <div slot=\"item\" data-group>Move to</div> is a group heading: the items after it, up to the next heading or divider, are its group (text only). A submenu is data-children='[…]' (the same JSON as items). They are read as data; items wins when it is not empty. Rich items: an element marked data-icon inside the item (an inline <svg>, an <img>) is copied into the row's icon place, and other elements in it (a lozenge) are copied into the row in place of the text, which stays the row's accessible name; a radio trigger shows the chosen item the same way. Copies keep their attributes, so part=\"…\" and an inline style reach them from the page."
     }
   ],
   "events": [
