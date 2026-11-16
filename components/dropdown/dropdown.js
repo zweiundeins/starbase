@@ -1011,7 +1011,7 @@ rocket('sb-dropdown', {
 						<span class="icon art" part="icon" aria-hidden="true" data-show="r?.art"></span>
 						<span aria-hidden="true" data-show="r?.head" data-attr:id="!r?.head ? null : 'g${k}-' + i" data-text="r?.group"></span>
 						<span class="body" data-show="!r?.divider && !r?.head">
-							<span class="label" data-class:sr="r?.rich" data-text="r?.label"></span>
+							<span class="label" part="label" data-class:sr="r?.rich" data-text="r?.label"></span>
 							<span class="rich" aria-hidden="true" data-show="r?.rich"></span>
 							<span class="desc" data-show="r?.description" data-text="r?.description"></span>
 						</span>
