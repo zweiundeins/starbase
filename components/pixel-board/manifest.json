@@ -87,6 +87,46 @@
       "docs": {
         "description": "Show faint cell lines."
       }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Pixel board",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the board."
+      }
+    },
+    {
+      "name": "cellLabel",
+      "attribute": "cell-label",
+      "type": "string",
+      "default": "{label}, cell {x},{y}, colour {color}; painting colour {painting}",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the board while a cell has the keyboard cursor: {label} becomes the label, {x} and {y} the cell's column and row, {color} its colour's number, {painting} the number of the colour that paints."
+      }
+    },
+    {
+      "name": "paletteLabel",
+      "attribute": "palette-label",
+      "type": "string",
+      "default": "Colour",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the palette."
+      }
+    },
+    {
+      "name": "swatchLabel",
+      "attribute": "swatch-label",
+      "type": "string",
+      "default": "Colour {n}",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of a palette colour: {n} becomes its number."
+      }
     }
   ],
   "slots": [],

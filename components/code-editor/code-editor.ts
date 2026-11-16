@@ -155,7 +155,8 @@ rocket('sb-code-editor', {
 		tabSize: number.clamp(1, 8).default(2).docs({ description: 'Visual width of a tab.' }),
 		readonly: bool.docs({ description: 'Make the code read-only (a form still submits it).' }),
 		disabled: bool.docs({ description: 'Disable editing; a form doesn\'t submit it, like a disabled <textarea>.' }),
-		label: string.trim.docs({ description: 'Visible label; also the accessible name.' }),
+		label: string.trim.docs({ description: 'Visible label; also the accessible name (without it, the host\'s aria-label, else "Code").' }),
+		problemLabel: string.default('Line {line}: {message}').docs({ description: 'The status line under the code for a problem from diagnostics: {line} becomes its line, {message} its message. With several, "2/5 · " goes before it.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command).' }),
 		diagnostics: json.default(() => []).docs({ description: 'Problems to underline, as JSON [{line, col, length, message, text}]: line and col 1-based, col and length in UTF-16 code units (a JS string index). With text, a problem shows only while the code there still reads text, so a list about an older version fades as the code changes.' }),
@@ -195,7 +196,7 @@ rocket('sb-code-editor', {
 		$$.caret = 0
 		const take = () => peek(() => ((diags = Array.isArray(props.diagnostics) ? props.diagnostics : []), $$.dv++))
 		take()
-		observeProps(take, 'diagnostics')
+		observeProps(take, 'diagnostics', 'problemLabel')
 		// The problems still where they were found, as offsets, in order, without overlaps.
 		const found = (code: string) => {
 			if (!diags.length) return []
@@ -223,7 +224,8 @@ rocket('sb-code-editor', {
 			$$.dv
 			const all = found($$.code ?? '')
 			const i = Math.max(0, all.findIndex((d) => d.at <= $$.caret && $$.caret <= d.end))
-			return all[i] ? `${all.length > 1 ? `${i + 1}/${all.length} · ` : ''}Line ${all[i].line}: ${all[i].message}` : ''
+			const say = all[i] && { line: String(all[i].line), message: all[i].message }
+			return say ? (all.length > 1 ? `${i + 1}/${all.length} · ` : '') + props.problemLabel.replace(/\{(\w+)\}/g, (m, k) => say[k as 'line'] ?? m) : ''
 		}
 		// F8 (Shift+F8) and a click on the status line select the next (previous) problem.
 		const go = (area: HTMLTextAreaElement, dir: number) => {

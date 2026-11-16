@@ -67,6 +67,12 @@ When the user has turned the model, `sb-orbit` reports the effective angles: onc
 
 It only paints when something changes: a prop, a drag, or each frame while `spin` is set. Offscreen instances pause, and with `prefers-reduced-motion` the model doesn't spin.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Voxel {model}, yaw {yaw}°, pitch {pitch}°", the name; `spinning-label`: "Voxel {model}, spinning", the name while it spins.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

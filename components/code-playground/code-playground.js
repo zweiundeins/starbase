@@ -18,6 +18,9 @@ const dedent = (text) => {
 	const indent = Math.min(...lines.filter((l) => l.trim()).map((l) => l.match(/^[ \t]*/)[0].length))
 	return lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0)).join('\n')
 }
+// Fills {name} placeholders; an invalid tag (en_US, a typo) would make Intl throw.
+const fill = (s, o) => s.replace(/\{(\w+)\}/g, (m, k) => o[k] ?? m)
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 const TAGS_RE = /rocket\(\s*['"](sb-[a-z0-9-]+)['"]/g
 
 // The files outlive a re-attach (setup reruns): a moved playground keeps its edits.
@@ -84,7 +87,7 @@ const styles = /* css */ `
 iframe { inline-size: 100%; block-size: 100%; border: 0; background: var(--sb-bg, #080D1D); }
 .console { display: flex; flex-direction: column-reverse; overflow: auto; padding: 0.5rem 0.75rem; border-block-start: 1px solid var(--_border); background: var(--_inset); color: var(--_text-2); font: 0.75rem/1.5 var(--sb-font-ui, ui-monospace, monospace); }
 .console > div { margin-block-end: auto; }
-.console > div:not(:has(div))::before { content: "Console"; color: var(--_muted); }
+.console > div:not(:has(div))::before { content: attr(data-label); color: var(--_muted); }
 .console .error { color: var(--_danger); }
 .console .warn { color: var(--_warn); }
 .status { color: var(--_muted); font-size: 0.75rem; }
@@ -102,6 +105,18 @@ rocket('sb-code-playground', {
 		initial: json.default(() => ({})).docs({ description: 'Initial files as JSON {"component.js": "…"}, merged over the child scripts (a file here wins); handy for server-rendered pages.' }),
 		typescript: bool.docs({ description: 'Offer a TypeScript switch, which renames component.js to component.ts (the runner must accept it). Initial files with component.ts switch it on.' }),
 		diagnostics: json.default(() => ({})).docs({ description: 'Problems per file, as JSON {"component.js": [{line, col, length, message, text}]}, for that file\'s editor (see sb-code-editor\'s diagnostics).' }),
+		filesLabel: string.default('Files').docs({ description: 'Accessible name of the file tabs.' }),
+		autoLabel: string.default('Auto').docs({ description: 'Text of the auto-run switch.' }),
+		themeLabel: string.default('Preview theme').docs({ description: 'Accessible name of the theme picker.' }),
+		runLabel: string.default('Run').docs({ description: 'Text of the run button.' }),
+		runHint: string.default('Run (Ctrl+Enter)').docs({ description: 'The run button\'s tooltip.' }),
+		previewLabel: string.default('Preview').docs({ description: 'Title of the preview frame.' }),
+		consoleLabel: string.default('Console').docs({ description: 'Accessible name of the console, and its text while empty.' }),
+		runningLabel: string.default('Running…').docs({ description: 'The status while a run starts.' }),
+		ranLabel: string.default('Ran in {ms} ms').docs({ description: 'The status after a run: {ms} becomes how long it took, formatted for the page\'s language.' }),
+		noAnswerLabel: string.default('No answer after 5 s: an endless loop?').docs({ description: 'Logged when the code started but the run did not finish within 5 seconds.' }),
+		noRunnerLabel: string.default('The runner did not answer').docs({ description: 'Logged when the runner page did not start the code within 5 seconds.' }),
+		errorLabel: string.default('{message} (line {line})').docs({ description: 'Logged for an error with a line: {message} becomes the error, {line} its line.' }),
 	}),
 	manifest: {
 		slots: [
@@ -131,6 +146,10 @@ rocket('sb-code-playground', {
 		$$.auto = props.autoRun
 		$$.theme = props.theme
 		$$.status = ''
+		// The texts the template shows (it is rendered once).
+		const texts = () => peek(() => ($$.t = { files: props.filesLabel, auto: props.autoLabel, theme: props.themeLabel, run: props.runLabel, hint: props.runHint, preview: props.previewLabel, console: props.consoleLabel }))
+		texts()
+		observeProps(texts)
 		$$.lines = [] // console output
 		$$.ts = files.has('component.ts')
 		if (props.typescript || $$.ts) typed.add(host)
@@ -149,7 +168,7 @@ rocket('sb-code-playground', {
 			clearTimeout(timer)
 			buf = []
 			$$.lines = []
-			$$.status = 'Running…'
+			$$.status = props.runningLabel
 			done = started = 0
 			// Skip stock modules for tags the edited code defines.
 			const own = new Set()
@@ -164,7 +183,7 @@ rocket('sb-code-playground', {
 			// stops whatever it still runs (in Chrome, even an endless loop).
 			const f = old.cloneNode()
 			f.src = props.runner
-			f.onload = () => setTimeout(() => f.isConnected && !done && log('warn', started ? 'No answer after 5 s: an endless loop?' : 'The runner did not answer'), 5e3)
+			f.onload = () => setTimeout(() => f.isConnected && !done && log('warn', started ? props.noAnswerLabel : props.noRunnerLabel), 5e3)
 			old.replaceWith(f)
 			emit('sb-run', { files: all() })
 		}
@@ -181,8 +200,8 @@ rocket('sb-code-playground', {
 			if (source !== frame().contentWindow || m?.source !== 'sb-runner') return
 			if (m.type === 'ready') started = performance.now(), source.postMessage(pending, '*')
 			else if (m.type === 'console') log(m.level, m.args.join(' '))
-			else if (m.type === 'error') log('error', m.message + (m.line ? ` (line ${m.line})` : ''))
-			else if (m.type === 'done') done = 1, $$.status = `Ran in ${Math.round(performance.now() - started)} ms`
+			else if (m.type === 'error') log('error', m.line ? fill(props.errorLabel, { message: m.message, line: m.line }) : m.message)
+			else if (m.type === 'done') done = 1, $$.status = fill(props.ranLabel, { ms: new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang)).format(Math.round(performance.now() - started)) })
 		}
 		addEventListener('message', onMessage)
 
@@ -230,7 +249,7 @@ rocket('sb-code-playground', {
 		return html`
 			<div class="pg" part="playground">
 				<div class="bar">
-					<div role="tablist" aria-label="Files" data-on:keydown="@key()">
+					<div role="tablist" data-attr:aria-label="$$t.files" data-on:keydown="@key()">
 						${names.map((n, i) => html`
 							<button type="button" role="tab"
 								data-attr:aria-selected="String($$active === ${i})"
@@ -240,11 +259,11 @@ rocket('sb-code-playground', {
 					<slot name="bar"></slot>
 					<span class="status" data-text="$$status"></span>
 					${typed.has(host) ? html`<label class="check"><input type="checkbox" data-bind:ts data-on:change="@lang()"> TypeScript</label>` : null}
-					<label class="check"><input type="checkbox" data-bind:auto> Auto</label>
-					<select aria-label="Preview theme" data-bind:theme data-on:change="$$theme = el.value; @run()">
+					<label class="check"><input type="checkbox" data-bind:auto> <span data-text="$$t.auto"></span></label>
+					<select data-attr:aria-label="$$t.theme" data-bind:theme data-on:change="$$theme = el.value; @run()">
 						${themes.map((t) => html`<option value="${t}">${t}</option>`)}
 					</select>
-					<button type="button" class="run" part="run" title="Run (Ctrl+Enter)" data-on:click="@run()">Run</button>
+					<button type="button" class="run" part="run" data-attr:title="$$t.hint" data-on:click="@run()" data-text="$$t.run"></button>
 				</div>
 				<div class="panes">
 					<div class="editors" data-on:change__stop="0" data-on:sb-change__stop="0">
@@ -257,8 +276,8 @@ rocket('sb-code-playground', {
 								data-on:sb-run__stop="@run()"></sb-code-editor>`)}
 					</div>
 					<div class="preview">
-						<iframe part="preview" title="Preview" loading="lazy" sandbox="allow-scripts allow-modals"></iframe>
-						<div class="console" part="console" role="log" aria-label="Console"><div>
+						<iframe part="preview" data-attr:title="$$t.preview" loading="lazy" sandbox="allow-scripts allow-modals"></iframe>
+						<div class="console" part="console" role="log" data-attr:aria-label="$$t.console"><div data-attr:data-label="$$t.console">
 							<template data-for="line in $$lines">
 								<div data-attr:class="line?.level" data-text="line?.text"></div>
 							</template>

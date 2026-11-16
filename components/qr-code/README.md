@@ -6,6 +6,7 @@ summary: Pixel-perfect QR codes for any text or URL, with optional brand-coloure
 author: zweiundeins
 tags: [qr, code, share, url, svg]
 since: 2026-09-22
+vendored: [uqr 0.1.3 (MIT)]
 preview: |
   <sb-qr-code value="https://data-star.dev" accent style="inline-size: 7rem"></sb-qr-code>
 usage: |
@@ -62,6 +63,13 @@ A code holds up to 2,953 bytes at `ecc="L"` (1,273 at `H`). A longer value shows
 ## From the server
 
 Server-rendered values work as they are: `<sb-qr-code value="https://example.com/invite/X7Q2">`. When a stream re-renders the attribute, the code follows.
+
+## Text and language
+
+Its texts are props with English defaults, or slots.
+
+- `label`: no default. Without it, the name is "QR code: " and the value; set `label` to name it in another language.
+- The `error` slot replaces "Too much data for a QR code".
 
 ## Styling
 

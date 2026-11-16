@@ -86,6 +86,10 @@ rocket('sb-pixel-board', {
 		local: bool.docs({ description: 'Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells answers them, or the page calls revert().' }),
 		readonly: bool.docs({ description: 'Watch only: no painting, no palette.' }),
 		grid: bool.docs({ description: 'Show faint cell lines.' }),
+		label: string.default('Pixel board').docs({ description: 'Accessible name of the board.' }),
+		cellLabel: string.default('{label}, cell {x},{y}, colour {color}; painting colour {painting}').docs({ description: 'Accessible name of the board while a cell has the keyboard cursor: {label} becomes the label, {x} and {y} the cell\'s column and row, {color} its colour\'s number, {painting} the number of the colour that paints.' }),
+		paletteLabel: string.default('Colour').docs({ description: 'Accessible name of the palette.' }),
+		swatchLabel: string.default('Colour {n}').docs({ description: 'Accessible name of a palette colour: {n} becomes its number.' }),
 	}),
 	manifest: {
 		events: [
@@ -181,9 +185,9 @@ rocket('sb-pixel-board', {
 			return x < 0 || y < 0 || x >= size || y >= size ? -1 : y * size + x
 		}
 		const describe = (i) => {
-			if (i < 0) return 'Pixel board'
-			const size = n()
-			return `Pixel board, cell ${(i % size) + 1},${((i / size) | 0) + 1}, colour ${buf[i] + 1}; painting colour ${$$.color + 1}`
+			if (i < 0) return props.label
+			const size = n(), say = { label: props.label, x: (i % size) + 1, y: ((i / size) | 0) + 1, color: buf[i] + 1, painting: $$.color + 1 }
+			return props.cellLabel.replace(/\{(\w+)\}/g, (m, k) => say[k] ?? m)
 		}
 
 		// One gesture: the primary button of one pointer, while the canvas holds its capture (until up or cancel).
@@ -229,6 +233,9 @@ rocket('sb-pixel-board', {
 		observeProps(() => peek(() => (decode(), redraw())), 'cells', 'size')
 		observeProps(() => peek(() => (($$.palette = props.palette), redraw())), 'palette')
 		observeProps(() => peek(() => ($$.color = props.color)), 'color')
+		const texts = () => peek(() => (($$.paletteLabel = props.paletteLabel), ($$.swatch = props.swatchLabel), $$.v++))
+		texts()
+		observeProps(texts, 'label', 'cellLabel', 'paletteLabel', 'swatchLabel')
 		if (from !== props.cells || buf?.length !== n() * n()) decode()
 		$$.label = () => ($$.v, describe($$.cur))
 		redraw()
@@ -251,10 +258,10 @@ rocket('sb-pixel-board', {
 				${grid ? html`<div class="grid" aria-hidden="true"></div>` : null}
 			</div>
 			${readonly ? null : html`
-				<div class="palette" part="palette" role="radiogroup" aria-label="Colour">
+				<div class="palette" part="palette" role="radiogroup" data-attr:aria-label="$$paletteLabel">
 					<template data-for="c, i in $$palette">
 						<input type="radio" name="c"
-							data-attr:aria-label="'Colour ' + (i + 1)"
+							data-attr:aria-label="$$swatch.replace('{n}', i + 1)"
 							data-style:background="c"
 							data-effect="el.checked = $$color === i"
 							data-on:change="$$color = i">

@@ -94,6 +94,15 @@ The runner should import the edited `component.js` (for example from a `blob:` U
 
 "Ran in … ms" is the time from `ready` to `done`. If a run has not sent `done` 5 s after its runner page loaded, the console says so: "No answer after 5 s: an endless loop?", or "The runner did not answer" when not even `ready` came. The next run replaces the frame, which stops it. This site's runner stops endless loops itself: every `while` and `for (…; …; …)` in `component.js` checks the time, and a task that spends a second in loops throws "Endless loop? Stopped after 1 s" (with the loop's line).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `files-label`: "Files", `auto-label`: "Auto", `theme-label`: "Preview theme", `run-label`: "Run", `run-hint`: "Run (Ctrl+Enter)", `preview-label`: "Preview", `console-label`: "Console": the top bar, the preview and the console.
+- `running-label`: "Running…" and `ran-label`: "Ran in {ms} ms", the run status.
+- `no-answer-label`: "No answer after 5 s: an endless loop?", `no-runner-label`: "The runner did not answer" and `error-label`: "{message} (line {line})", in the console.
+- The editors inside keep sb-code-editor's English `problem-label`.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

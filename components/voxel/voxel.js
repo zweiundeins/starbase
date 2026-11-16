@@ -228,13 +228,15 @@ canvas:focus-visible { outline: 2px solid var(--_focus); outline-offset: 4px; bo
 const rad = (d) => (d * Math.PI) / 180
 
 rocket('sb-voxel', {
-	props: ({ number, oneOf }) => ({
+	props: ({ number, oneOf, string }) => ({
 		model: oneOf('rocket', 'satellite', 'planet').default('rocket').docs({ description: 'Which voxel model to show.' }),
 		yaw: number.clamp(-180, 180).default(30).docs({ description: 'Rotation around the vertical axis, in degrees.' }),
 		pitch: number.clamp(-89, 89).default(15).docs({ description: 'Tilt toward the viewer, in degrees.' }),
 		zoom: number.clamp(0.25, 4).default(1).docs({ description: 'Scale factor.' }),
 		spin: number.clamp(-360, 360).docs({ description: 'Auto-rotation speed, in degrees per second.' }),
 		light: number.default(45).docs({ description: 'Light direction around the model, in degrees.' }),
+		label: string.default('Voxel {model}, yaw {yaw}°, pitch {pitch}°').docs({ description: 'Accessible name: {model} becomes the model, {yaw} and {pitch} the angles in whole degrees.' }),
+		spinningLabel: string.default('Voxel {model}, spinning').docs({ description: 'Accessible name while it spins: {model} becomes the model.' }),
 	}),
 	manifest: {
 		events: [
@@ -262,7 +264,8 @@ rocket('sb-voxel', {
 			draw(img, zbuf, props.model, rad(a.yaw), rad(a.pitch), props.zoom, rad(props.light))
 			ctx.putImageData(img, 0, 0)
 			// While it spins, the name says so rather than changing every frame.
-			const label = `Voxel ${props.model}, ${last ? 'spinning' : `yaw ${Math.round(a.yaw)}°, pitch ${Math.round(a.pitch)}°`}`
+			const say = { model: props.model, yaw: Math.round(a.yaw), pitch: Math.round(a.pitch) }
+			const label = (last ? props.spinningLabel : props.label).replace(/\{(\w+)\}/g, (m, k) => say[k] ?? m)
 			if (canvas.ariaLabel !== label) canvas.ariaLabel = label
 		}
 		// Each frame paints; while spinning (and visible) it asks for the next one.

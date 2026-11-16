@@ -128,6 +128,14 @@ func (c PaintPixels) Apply(tx *writer.Tx) error {
 
 Only the primary button of one pointer paints: a right click doesn't, and a second finger doesn't join the stroke. On touch screens, two fingers zoom the page. A `readonly` board leaves touches to the page, which scrolls over it, and doesn't highlight the cell under the pointer.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Pixel board", the board's name.
+- `cell-label`: "{label}, cell {x},{y}, colour {color}; painting colour {painting}", its name while a cell has the keyboard cursor.
+- `palette-label`: "Colour", the palette's name; `swatch-label`: "Colour {n}", each colour's.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

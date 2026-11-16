@@ -65,6 +65,26 @@
       "docs": {
         "description": "Light direction around the model, in degrees."
       }
+    },
+    {
+      "name": "label",
+      "attribute": "label",
+      "type": "string",
+      "default": "Voxel {model}, yaw {yaw}°, pitch {pitch}°",
+      "required": false,
+      "docs": {
+        "description": "Accessible name: {model} becomes the model, {yaw} and {pitch} the angles in whole degrees."
+      }
+    },
+    {
+      "name": "spinningLabel",
+      "attribute": "spinning-label",
+      "type": "string",
+      "default": "Voxel {model}, spinning",
+      "required": false,
+      "docs": {
+        "description": "Accessible name while it spins: {model} becomes the model."
+      }
     }
   ],
   "slots": [],

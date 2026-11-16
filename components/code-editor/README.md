@@ -6,6 +6,7 @@ summary: A light code field with pixel-theme highlighting, smart tabs and line n
 author: zweiundeins
 tags: [code, editor, textarea, syntax, highlight]
 since: 2026-09-21
+vendored: [Prism 1.30.0 (MIT)]
 preview: |
   <sb-code-editor language="js" line-numbers style="--sb-code-editor-height: 7.5rem"><script type="text/plain">
   rocket('sb-hello', {
@@ -91,6 +92,13 @@ A new `value` from the server replaces the code; the same markup sent again leav
 ## Forms
 
 Inside a `<form>`, `sb-code-editor` submits its code under its `name` (`name=…`, like a `<textarea>`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value. `readonly` code is submitted, `disabled` code is not. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
+
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: no default. Without it, the host's `aria-label` names the editor (else "Code").
+- `problem-label`: "Line {line}: {message}", the status line for a problem from `diagnostics`.
 
 ## Styling
 

@@ -78,7 +78,17 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Visible label; also the accessible name."
+        "description": "Visible label; also the accessible name (without it, the host's aria-label, else \"Code\")."
+      }
+    },
+    {
+      "name": "problemLabel",
+      "attribute": "problem-label",
+      "type": "string",
+      "default": "Line {line}: {message}",
+      "required": false,
+      "docs": {
+        "description": "The status line under the code for a problem from diagnostics: {line} becomes its line, {message} its message. With several, \"2/5 · \" goes before it."
       }
     },
     {

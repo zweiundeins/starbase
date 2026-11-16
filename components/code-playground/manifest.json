@@ -109,6 +109,126 @@
       "docs": {
         "description": "Problems per file, as JSON {\"component.js\": [{line, col, length, message, text}]}, for that file's editor (see sb-code-editor's diagnostics)."
       }
+    },
+    {
+      "name": "filesLabel",
+      "attribute": "files-label",
+      "type": "string",
+      "default": "Files",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the file tabs."
+      }
+    },
+    {
+      "name": "autoLabel",
+      "attribute": "auto-label",
+      "type": "string",
+      "default": "Auto",
+      "required": false,
+      "docs": {
+        "description": "Text of the auto-run switch."
+      }
+    },
+    {
+      "name": "themeLabel",
+      "attribute": "theme-label",
+      "type": "string",
+      "default": "Preview theme",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the theme picker."
+      }
+    },
+    {
+      "name": "runLabel",
+      "attribute": "run-label",
+      "type": "string",
+      "default": "Run",
+      "required": false,
+      "docs": {
+        "description": "Text of the run button."
+      }
+    },
+    {
+      "name": "runHint",
+      "attribute": "run-hint",
+      "type": "string",
+      "default": "Run (Ctrl+Enter)",
+      "required": false,
+      "docs": {
+        "description": "The run button's tooltip."
+      }
+    },
+    {
+      "name": "previewLabel",
+      "attribute": "preview-label",
+      "type": "string",
+      "default": "Preview",
+      "required": false,
+      "docs": {
+        "description": "Title of the preview frame."
+      }
+    },
+    {
+      "name": "consoleLabel",
+      "attribute": "console-label",
+      "type": "string",
+      "default": "Console",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the console, and its text while empty."
+      }
+    },
+    {
+      "name": "runningLabel",
+      "attribute": "running-label",
+      "type": "string",
+      "default": "Running…",
+      "required": false,
+      "docs": {
+        "description": "The status while a run starts."
+      }
+    },
+    {
+      "name": "ranLabel",
+      "attribute": "ran-label",
+      "type": "string",
+      "default": "Ran in {ms} ms",
+      "required": false,
+      "docs": {
+        "description": "The status after a run: {ms} becomes how long it took, formatted for the page's language."
+      }
+    },
+    {
+      "name": "noAnswerLabel",
+      "attribute": "no-answer-label",
+      "type": "string",
+      "default": "No answer after 5 s: an endless loop?",
+      "required": false,
+      "docs": {
+        "description": "Logged when the code started but the run did not finish within 5 seconds."
+      }
+    },
+    {
+      "name": "noRunnerLabel",
+      "attribute": "no-runner-label",
+      "type": "string",
+      "default": "The runner did not answer",
+      "required": false,
+      "docs": {
+        "description": "Logged when the runner page did not start the code within 5 seconds."
+      }
+    },
+    {
+      "name": "errorLabel",
+      "attribute": "error-label",
+      "type": "string",
+      "default": "{message} (line {line})",
+      "required": false,
+      "docs": {
+        "description": "Logged for an error with a line: {message} becomes the error, {line} its line."
+      }
     }
   ],
   "slots": [
