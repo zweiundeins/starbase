@@ -606,7 +606,7 @@ const markup = (value, items = STATUS) =>
 	'<sb-dropdown id="gd" type="radio" name="status" label="Status" value="' + value + '">' +
 	items.map(([v, l]) => (v === '-' ? '<hr slot="item">' : v === 'group' ? '<div slot="item" data-group>' + l + '</div>' : '<button slot="item" value="' + v + '">' + l + '</button>')).join('') +
 	'</sb-dropdown>'
-box.innerHTML = markup('doing')
+box.innerHTML = '<style>#gd::part(group-label) { text-transform: uppercase }</style>' + markup('doing')
 await settle()
 const el = document.getElementById('gd')
 const $ = (s, e = el) => e.shadowRoot.querySelector(s)
@@ -622,7 +622,7 @@ await group('headings', async () => {
 	check('rows in order, headings among them', seen(), ['# Move to', 'To do', 'In progress', 'In review', '# Other', 'Blocked', 'Won’t do', 'Archive'])
 	const heads = $$('.lvl0 [part="group-label"]')
 	check('a heading is a group, with no tabindex, row index or href', heads.map((h) => [h.getAttribute('role'), h.hasAttribute('tabindex'), h.hasAttribute('data-idx'), h.hasAttribute('href')]), [['group', false, false, false], ['group', false, false, false]])
-	check('named by its own text, owning the rows up to the next heading or divider', heads.map((h) => [el.shadowRoot.getElementById(h.getAttribute('aria-labelledby'))?.textContent, h.getAttribute('aria-owns').split(' ').map((id) => el.shadowRoot.getElementById(id).querySelector('.label').textContent)]), [['Move to', ['To do', 'In progress', 'In review']], ['Other', ['Blocked', 'Won’t do']]])
+	check('named by its own text, owning the rows up to the next heading or divider', heads.map((h) => [h.getAttribute('aria-label'), h.getAttribute('aria-owns').split(' ').map((id) => el.shadowRoot.getElementById(id).querySelector('.label').textContent)]), [['Move to', ['To do', 'In progress', 'In review']], ['Other', ['Blocked', 'Won’t do']]])
 	const cs = getComputedStyle(heads[0]), item = getComputedStyle($('.lvl0 [data-idx="1"]'))
 	check('muted small text', [cs.color !== item.color, parseFloat(cs.fontSize) < parseFloat(item.fontSize), cs.cursor], [true, true, 'default'])
 	heads[0].focus()

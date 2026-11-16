@@ -971,7 +971,7 @@ rocket('sb-dropdown', {
 						data-attr:id="r?.divider || r?.head ? null : 'i${k}-' + i"
 						data-attr:data-idx="r?.divider || r?.head ? null : i"
 						data-attr:tabindex="r?.divider || r?.head ? null : -1"
-						data-attr:aria-labelledby="!r?.head ? null : 'g${k}-' + i"
+						data-attr:aria-label="r?.head ? r.group : null"
 						data-attr:aria-owns="r?.owns || null"
 						data-attr:aria-disabled="r?.disabled ? 'true' : null"
 						data-attr:aria-checked="r?.check ? String(!!r?.checked) : null"
@@ -986,7 +986,7 @@ rocket('sb-dropdown', {
 						<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider && !r?.head" data-class:on="r?.checked" data-class:path="r?.onpath"></span>
 						<span class="icon" part="icon" aria-hidden="true" data-show="$$icons && !r?.divider && !r?.head && !r?.art" data-text="r?.icon"></span>
 						<span class="icon art" part="icon" aria-hidden="true" data-show="r?.art"></span>
-						<span aria-hidden="true" data-show="r?.head" data-attr:id="!r?.head ? null : 'g${k}-' + i" data-text="r?.group"></span>
+						<span aria-hidden="true" data-show="r?.head" data-text="r?.group"></span>
 						<span class="body" data-show="!r?.divider && !r?.head">
 							<span class="label" part="label" data-class:sr="r?.rich" data-text="r?.label"></span>
 							<span class="rich" aria-hidden="true" data-show="r?.rich"></span>
