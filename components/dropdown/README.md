@@ -32,7 +32,7 @@ The menu is a native `popover` in the top layer, positioned with CSS anchor posi
 
 ### Actions
 
-`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`; one with an `href` is a [link](#links). The string `"-"` is a divider too.
+`items` is a JSON array. An item is a string, `{value, label?, description?, icon?, disabled?, danger?}`, or `{"divider": true}`; one with an `href` is a [link](#links). The string `"-"` is a divider too. Everything in `items` is text: `icon` is a glyph such as an emoji, and no string is ever rendered as HTML. SVG icons and lozenges are the markup form's, see [Rich items](#rich-items).
 
 ```html preview
 <div data-signals:_actionPick="''" style="display: grid; gap: 12px; justify-items: start">
@@ -99,7 +99,7 @@ A group inside a submenu is the same thing one level down, and the rest of the m
 </div>
 ```
 
-**The trigger shows the choice.** With a value set it reads `<label>: <chosen label>` (*Sort by: Stars*), and falls back to the plain `label` when nothing is chosen. The label stays yours: set it statically or with `data-attr` and the trigger composes from whatever it says. An actions menu is untouched by this and keeps its label as it always did.
+**The trigger shows the choice.** With a value set it reads `<label>: <chosen label>` (*Sort by: Stars*), and falls back to the plain `label` when nothing is chosen. The label stays yours: set it statically or with `data-attr` and the trigger composes from whatever it says. An actions menu is untouched by this and keeps its label as it always did. A chosen [rich item](#rich-items) shows itself instead: its icon and lozenge, with the same text as its accessible name.
 
 #### A group across submenus
 
@@ -199,7 +199,7 @@ The page's `::part()` rules win over the component's own whatever their specific
 
 ### Items as markup
 
-Instead of `items`, write the menu as light DOM. The items are read **as data** (label, `value`, `disabled`, `data-icon`, `data-description`, `data-danger`, and `<hr>` for a divider) and rendered inside the menu, so the component never writes roles or `tabindex` into your markup, where the next morph would strip them. `items` wins whenever it is not empty.
+Instead of `items`, write the menu as light DOM. The items are read **as data** (label, `value`, `disabled`, `data-icon`, `data-description`, `data-danger`, and `<hr>` for a divider; an icon or a lozenge inside the item is copied, see [Rich items](#rich-items)) and rendered inside the menu, so the component never writes roles or `tabindex` into your markup, where the next morph would strip them. `items` wins whenever it is not empty.
 
 
 ```html preview
@@ -219,6 +219,52 @@ A slotted item opens a submenu with `data-children='[…]'`, the same JSON as `i
 ```html
 <button slot="item" data-children='[{"value":"csv","label":"CSV"},{"value":"json","label":"JSON"}]'>Export</button>
 ```
+
+### Rich items
+
+A markup item can hold more than text. An element marked `data-icon` inside it (an inline `<svg>`, an `<img>`, a `<span>` with a glyph) becomes the row's icon, and any other elements, such as a lozenge with a status name, are shown in the row in place of the plain label. Here is a status menu with pixel icons and a coloured lozenge per status, as a current choice:
+
+```html preview
+<style>
+  .status-menu::part(lozenge) {
+    padding: 0.3em 0.5em;
+    background: color-mix(in srgb, var(--tone) 18%, transparent);
+    color: var(--tone);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+</style>
+<div data-signals="{_statusPick: 'doing'}" style="display: grid; gap: 12px; justify-items: start">
+  <sb-dropdown class="status-menu" name="status" label="Status" type="radio" data-preserve-attr="value"
+    data-attr:value="$_statusPick" data-on:sb-change="$_statusPick = evt.detail.value">
+    <button slot="item" value="todo">
+      <svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" style="color: var(--sb-text-muted)"><path d="M4 3h8v1H4zM3 4h1v8H3zM12 4h1v8h-1zM4 12h8v1H4z"/></svg>
+      <span part="lozenge" style="--tone: var(--sb-text-muted)">To do</span>
+    </button>
+    <button slot="item" value="doing">
+      <svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" style="color: var(--sb-info)"><path d="M4 3h8v1H4zM3 4h1v8H3zM12 4h1v8h-1zM4 12h8v1H4zM8 4h4v8H8z"/></svg>
+      <span part="lozenge" style="--tone: var(--sb-info)">In progress</span>
+    </button>
+    <button slot="item" value="review">
+      <svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" style="color: var(--sb-warn)"><path d="M4 3h8v1H4zM3 4h1v8H3zM12 4h1v8h-1zM4 12h8v1H4zM5 7h6v2H5z"/></svg>
+      <span part="lozenge" style="--tone: var(--sb-warn)">In review</span>
+    </button>
+    <button slot="item" value="done">
+      <svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" style="color: var(--sb-ok)"><path d="M2 7h2v2H2zM4 9h2v2H4zM6 11h2v2H6zM8 9h2v2H8zM10 7h2v2h-2zM12 5h2v2h-2z"/></svg>
+      <span part="lozenge" style="--tone: var(--sb-ok)">Done</span>
+    </button>
+  </sb-dropdown>
+  <code data-text="'value=' + $_statusPick"></code>
+</div>
+```
+
+- **The label** is the item's text without its icon ("In progress"). It stays the row's accessible name, the type-ahead's text and the second half of the trigger's name ("Status: In progress"), while the rich copy beside it is hidden from screen readers. Put the words a person should hear in the lozenge, and keep its marks `aria-hidden`.
+- **The rows show copies.** The item stays in your page as you wrote it; the menu draws a copy of the icon and of the other elements, with every attribute, inside its shadow root. A morph that changes the items, an attribute or a text inside them updates the copies, open or not. Leave `id`s out of rich items: the copy would repeat them.
+- **Styling the copies:** your page's class rules don't reach into the shadow root, so `.my-lozenge { … }` styles the item in the page, never its copy. Give the element a `part` and style `sb-dropdown::part(lozenge)`. For a colour per item, set a custom property inline (`style="--tone: var(--sb-ok)"`) and read it in the part rule, as above, or give the element a second part name (`part="lozenge lozenge-done"`) and style `::part(lozenge-done)`. An icon takes its colour from `fill`, `currentColor` or an inline `style`, and its box from `::part(icon)`.
+- **The trigger** of a radio menu shows the chosen item the way the row does: its icon and its copy, or its icon and its label when it has no other elements. It follows the user's pick at once, like the check, and the server's `value` and new item markup after that. A page that wants something else in the trigger fills the `trigger` slot from its own state: the server renders the current value into it on every frame, so it shows what the server holds, never a pick in flight.
+- **Actions** work the same: a rich item without `type="radio"` reports `sb-select`, and an `<a slot="item" href>` stays a link.
 
 ### Links
 
@@ -313,7 +359,7 @@ Every text it shows or reads out is a prop with an English default, so a page in
 
 Colours come from `--sb-control-bg`, `--sb-control-border`, `--sb-control-border-hover`, `--sb-surface-raised`, `--sb-surface-hover`, `--sb-brand`, `--sb-brand-light`, `--sb-text-1`, `--sb-text-muted` and `--sb-danger`; `--sb-notch: 0` rounds the pixel corners of trigger and menu, with `--sb-control-radius`, and turns the stepped caret and submenu arrows into plain triangles, the caret turning smoothly. `--sb-shadow-overlay` sets the menu's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
 
-- **Parts:** `trigger` (the button), `caret`, `menu` (the panel of every level; its popover around it casts the shadow) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `trigger` (the button), `caret`, `menu` (the panel of every level; its popover around it casts the shadow), `icon` (the icon box of a row, and of the trigger showing a rich choice) and `item`, which also carries `checked`, `onpath` (a parent the choice sits under) and `pending` in a radio group. The copies of [rich items](#rich-items) bring their own `part` names. Your page's `::part()` rules win over the component's own, without `!important`.
 - **Caret:** a block filled with its `color` (the trigger's text at 70%) and cut by a `clip-path`: a pixel staircase, or a plain triangle at `--sb-notch: 0`. It turns 180° while the menu is open. Recolour it with `color`, or replace the look with `background`, `clip-path`, `mask` or `border` on `::part(caret)`, as in [A caret to match a toolbar button](#a-caret-to-match-a-toolbar-button).
 - **States:** `:state(open)` while the menu is open, and `:state(pending)` with `confirm` (see [A current choice](#a-current-choice)). Both work from the page: `sb-dropdown:state(open)::part(trigger)`.
 
@@ -328,7 +374,7 @@ sb-dropdown::part(trigger) { font-weight: 700; }
 
 It follows the WAI-ARIA menu button pattern:
 
-- **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s (links are `<a role="menuitem" href>`), dividers are `separator`s and disabled items are `aria-disabled`.
+- **Structure:** the trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`; the menu is a `menu` named by `label`, its rows are `menuitem`s (links are `<a role="menuitem" href>`), dividers are `separator`s and disabled items are `aria-disabled`. A row's name is its label; icons, and the copy of a rich item, are `aria-hidden`.
 - **A radio group:** its rows are `menuitemradio` with `aria-checked`, and the group is named by the menu it lives in: the trigger label for a root group, the parent item for a submenu group. Every row of the group reserves the mark column, so the menu does not jump when the choice moves. A parent that only leads to the choice stays a `menuitem` with `aria-haspopup`: its faint mark is decoration (`aria-hidden`), never a checked state. The trigger names what the menu is *and* what is chosen ("Sort by: Newest first"), so the visible text and the accessible name stay the same string.
 - **Keys:** Enter, Space and Down open the menu at the first item, Up at the last one. Up and Down move, Home and End jump, typing a few letters jumps to a matching item, and the same letter again cycles through the items it starts (the buffer never leaks from one level into another). Enter and Space choose, Escape and Tab close and hand the focus back to the trigger.
 - **Submenus:** Right (Left in a right-to-left page), Enter or Space on a parent opens its submenu and moves the focus to its first item, also when hovering opened it already; Left or Escape closes it again and puts the focus back on the parent item, so the keyboard walks in and out without ever leaving the menu. Escape at the root closes the whole thing. A parent item is a `menuitem` with `aria-haspopup="menu"` and `aria-expanded`, and its submenu is a `menu` named after it.

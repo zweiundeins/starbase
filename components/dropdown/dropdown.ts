@@ -36,7 +36,9 @@ const LEVELS = [...Array(MAX_DEPTH + 1).keys()]
 // href?, disabled?, danger?, divider?, children?, type?}. An item with children is a
 // submenu: the children win, its own value is dropped and it never reports one.
 // type: "radio" on such an item makes its children the menu's radio group.
-type Entry = { divider: false; key: string; value: string; label: string; description: string; icon: string; href: string; disabled: boolean; danger: boolean; radio: boolean; children: Item[] }
+// Markup items may also carry rich content (artEl, richEl: elements, so JSON
+// can never supply them); art and rich are their markup, which keys a change.
+type Entry = { divider: false; key: string; value: string; label: string; description: string; icon: string; href: string; disabled: boolean; danger: boolean; radio: boolean; children: Item[]; art: string; rich: string; artEl: Element | null; richEl: Element | null }
 type Divider = { divider: true } & { [K in Exclude<keyof Entry, 'divider'>]?: undefined }
 type Item = Entry | Divider
 const normalize = (list: unknown, depth = 0): Item[] =>
@@ -50,6 +52,8 @@ const normalize = (list: unknown, depth = 0): Item[] =>
 			}
 			if (it.divider) return { divider: true }
 			const children = depth < MAX_DEPTH ? normalize(it.children, depth + 1) : []
+			const artEl = it.artEl instanceof Element ? it.artEl : null
+			const richEl = it.richEl instanceof Element && it.richEl.children.length ? it.richEl : null
 			return {
 				divider: false,
 				key: String(it.value ?? it.label ?? ''),
@@ -62,13 +66,17 @@ const normalize = (list: unknown, depth = 0): Item[] =>
 				danger: !!it.danger,
 				radio: it.type === 'radio',
 				children,
+				art: artEl?.outerHTML ?? '',
+				rich: richEl?.innerHTML ?? '',
+				artEl,
+				richEl,
 			}
 		})
 		.filter(Boolean) as Item[]
 
 // What a row needs to render: never the children, which would put a whole tree
 // into a signal.
-const light = (r: Item) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', href: (!r.disabled && r.href) || '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, onpath: false, pending: false })
+const light = (r: Item) => ({ divider: !!r.divider, label: r.label ?? '', description: r.description ?? '', icon: r.icon ?? '', art: !!r.art, rich: !!r.rich, href: (!r.disabled && r.href) || '', disabled: !!r.disabled, danger: !!r.danger, parent: !!r.children?.length, check: false, checked: false, onpath: false, pending: false })
 
 const styles = /* css */ `
 :host {
@@ -176,6 +184,7 @@ ${LEVELS.slice(1)
 @keyframes pop { from { opacity: 0; translate: 0 -3px; } }
 
 [role^="menuitem"] {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -207,6 +216,12 @@ a { color: inherit; text-decoration: none; }
 .pending { opacity: 0.62; }
 .pending .check.on { opacity: 0.6; }
 .icon { flex: none; inline-size: 1.15rem; text-align: center; }
+/* Copies of the markup's icon and content: the page's class rules don't reach them. */
+.art { display: grid; place-items: center; block-size: 1.15rem; }
+.art > * { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
+.rich { display: flex; align-items: center; gap: 0.4em; min-inline-size: 0; }
+/* A rich row's name: read out, not shown. */
+.sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .body { min-inline-size: 0; flex: 1; }
 .label { font-weight: 600; }
 .desc { color: var(--_muted); font-size: 0.75rem; font-weight: 400; }
@@ -242,7 +257,7 @@ slot[name="item"] { display: none; }
 
 rocket('sb-dropdown', {
 	props: ({ bool, json, oneOf, string }) => ({
-		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?}, {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not.' }),
+		items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?} (icon is text, such as an emoji: rich icons and content are the markup form\'s), {"divider":true} ("-" works too), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not.' }),
 		label: string.trim.default('Actions').docs({ description: 'Text of the default trigger, and the accessible name of trigger and menu.' }),
 		emptyLabel: string.default('Nothing here').docs({ description: 'Shown in a menu or submenu that has no items.' }),
 		placement: oneOf('bottom-start', 'bottom', 'bottom-end', 'top-start', 'top', 'top-end').default('bottom-start').docs({ description: 'Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start.' }),
@@ -256,7 +271,7 @@ rocket('sb-dropdown', {
 	manifest: {
 		slots: [
 			{ name: 'trigger', description: 'Content of the trigger button (text, an icon). The component provides the button itself, with all the ARIA on it.' },
-			{ name: 'item', description: 'Menu items as markup instead of items: <button slot="item" value="x" disabled data-icon="🛰" data-description="…" data-danger>Label</button>, <a slot="item" href="/x">Label</a> for a link, or <hr slot="item"> for a divider. A submenu is data-children=\'[…]\' (the same JSON as items). They are read as data; items wins when it is not empty.' },
+			{ name: 'item', description: 'Menu items as markup instead of items: <button slot="item" value="x" disabled data-icon="🛰" data-description="…" data-danger>Label</button>, <a slot="item" href="/x">Label</a> for a link, or <hr slot="item"> for a divider. A submenu is data-children=\'[…]\' (the same JSON as items). They are read as data; items wins when it is not empty. Rich items: an element marked data-icon inside the item (an inline <svg>, an <img>) is copied into the row\'s icon place, and other elements in it (a lozenge) are copied into the row in place of the text, which stays the row\'s accessible name; a radio trigger shows the chosen item the same way. Copies keep their attributes, so part="…" and an inline style reach them from the page.' },
 		],
 		events: [
 			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: 'A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, an item of a radio group reports sb-change instead, and a link reports nothing: the browser follows it.' },
@@ -318,19 +333,20 @@ rocket('sb-dropdown', {
 			for (const i of p) list = list[i]?.children ?? []
 			return list
 		}
-		// The label of the chosen leaf, for the trigger: the value walked back
+		// The chosen leaf and its label, for the trigger: the value walked back
 		// through the tree. An unknown value is shown as it came.
-		const chosenLabel = () => {
-			if (!group || !$$.value) return ''
+		const chosen = (): { label: string; hit?: Entry } => {
+			if (!group || !$$.value) return { label: '' }
 			let list = atPath(group)
 			let hit: Entry | undefined
 			for (const seg of $$.value.split('.')) {
 				hit = list.find((r): r is Entry => !r.divider && r.key === seg)
-				if (!hit) return $$.value
+				if (!hit) return { label: $$.value }
 				list = hit.children
 			}
-			return hit!.children.length ? $$.value : hit!.label
+			return hit!.children.length ? { label: $$.value } : { label: hit!.label, hit }
 		}
+		let pick: Entry | undefined // the chosen leaf, which the trigger copies
 		const nodes = (k: number) => {
 			let list = tree
 			for (let j = 0; j < k; j++) list = list[path[j]]?.children ?? []
@@ -363,9 +379,15 @@ rocket('sb-dropdown', {
 				try {
 					children = JSON.parse(el.getAttribute('data-children') || '[]')
 				} catch {}
+				// The icon goes to its own place; the rest is the rich content
+				// (when it holds elements) and its text the label.
+				const body = el.cloneNode(true) as Element
+				body.querySelectorAll('[data-icon]').forEach((n) => n.remove())
 				return {
 					value: el.getAttribute('value'), // normalize() falls back to the label
-					label: el.textContent!.trim(),
+					label: body.textContent!.replace(/\s+/g, ' ').trim(),
+					artEl: el.querySelector('[data-icon]'),
+					richEl: body,
 					description: el.getAttribute('data-description'),
 					icon: el.getAttribute('data-icon'),
 					href: el.localName === 'a' ? el.getAttribute('href') : null,
@@ -406,15 +428,46 @@ rocket('sb-dropdown', {
 				$$['parent' + k] = k < path.length ? path[k] : -1
 				// A submenu is named by the item that opens it.
 				$$['lbl' + k] = k === 0 ? props.label : (node(k - 1, path[k - 1])?.label ?? '')
-				if (rows.some((r) => r.icon)) icons = true
+				if (rows.some((r) => r.icon || r.art)) icons = true
 			}
 			$$.icons = icons
 			$$.empty = props.emptyLabel
 			// A radio menu says what it is and what is chosen; a page that sets
 			// label still owns the first half, and an actions menu is untouched.
-			$$.trigger = [props.label, chosenLabel()].filter(Boolean).join(': ')
+			const c = chosen()
+			$$.trigger = [props.label, c.label].filter(Boolean).join(': ')
+			// A chosen markup item with an icon or rich content shows itself in
+			// the trigger; the accessible name stays the text above.
+			pick = c.hit
+			$$.tArt = !!pick?.art
+			$$.tRich = !!pick?.rich
+			$$.tLabel = pick?.label ?? ''
 			$$.depth = $$.open ? path.length + 1 : 0
 			$$.rev = ++rev // any change to what is on screen re-runs the placement
+			paint()
+			// Inside another effect the rows render later: paint again then.
+			requestAnimationFrame(paint)
+		}
+
+		// Copies of the markup items' icons and rich content, into the rows
+		// (reused by position) and the trigger. Each box remembers what it shows.
+		const painted = new WeakMap<Element, string>()
+		const fill = (box: Element | null | undefined, key: string, src: Element | null | undefined, inner: boolean) => {
+			if (!box || painted.get(box) === key) return
+			painted.set(box, key)
+			const copy = src?.cloneNode(true) as Element | undefined
+			box.replaceChildren(...(!copy ? [] : inner ? copy.childNodes : [copy]))
+		}
+		const show = (el: Element | null | undefined, r: Item | undefined) => {
+			fill(el?.querySelector('.art'), r?.art ?? '', r?.artEl, false)
+			fill(el?.querySelector('.rich'), r?.rich ?? '', r?.richEl, true)
+		}
+		const paint = () => {
+			for (const k of LEVELS) {
+				const list = k <= path.length ? nodes(k) : []
+				menuEl(k)?.querySelectorAll('.menu > a').forEach((a, i) => show(a, list[i]))
+			}
+			show(trigger(), pick)
 		}
 
 		// Move the DOM focus back onto the focused row after a re-render, but
@@ -656,14 +709,18 @@ rocket('sb-dropdown', {
 		// Slotted items change without a slotchange when a morph only rewrites a
 		// label or a flag: no attribute form for watching that either. Both
 		// checks above are idempotent, so every batch runs them.
-		const watch = new MutationObserver(() =>
+		// Any attribute inside an item counts (a rich item's copy shows them all);
+		// on the host only the ones read here.
+		const hostAttrs = ['open', 'value', 'type', 'disabled']
+		const watch = new MutationObserver((records) => {
+			if (!records.some((m) => m.type !== 'attributes' || m.target !== host || hostAttrs.includes(m.attributeName!))) return
 			peek(() => {
 				serverOpen()
 				serverValue()
 				rebuild()
-			}),
-		)
-		watch.observe(host, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'value', 'type', 'disabled', 'aria-disabled', 'slot', 'href', 'data-icon', 'data-description', 'data-danger', 'data-divider', 'data-children'] })
+			})
+		})
+		watch.observe(host, { childList: true, subtree: true, characterData: true, attributes: true })
 
 		rebuild()
 		observeProps((p, changes) =>
@@ -882,7 +939,7 @@ rocket('sb-dropdown', {
 			data-attr:aria-label="$$trigger || null"
 			data-attr:disabled="$$disabled"
 			data-on:click="@toggle()"
-			data-on:keydown="@triggerKey()"><slot name="trigger"><span data-text="$$trigger"></span></slot><span class="caret" part="caret" aria-hidden="true"></span></button>
+			data-on:keydown="@triggerKey()"><slot name="trigger"><span class="icon art" part="icon" aria-hidden="true" data-show="$$tArt"></span><span class="rich" data-show="$$tRich"></span><span class="text" data-show="!$$tRich" data-text="$$tArt ? $$tLabel : $$trigger"></span></slot><span class="caret" part="caret" aria-hidden="true"></span></button>
 		${LEVELS.map(
 			(k) => html`
 		<div class="lvl${k}" popover="manual" data-attr:data-place="$$side${k}" data-class:anim="$$anim">
@@ -912,9 +969,11 @@ rocket('sb-dropdown', {
 						data-on:pointerenter="@enter(${k}, i)"
 						data-on:pointerleave="@leave()">
 						<span class="check" aria-hidden="true" data-show="$$checks${k} && !r?.divider" data-class:on="r?.checked" data-class:path="r?.onpath"></span>
-						<span class="icon" aria-hidden="true" data-show="$$icons && !r?.divider" data-text="r?.icon"></span>
+						<span class="icon" part="icon" aria-hidden="true" data-show="$$icons && !r?.divider && !r?.art" data-text="r?.icon"></span>
+						<span class="icon art" part="icon" aria-hidden="true" data-show="r?.art"></span>
 						<span class="body" data-show="!r?.divider">
-							<span class="label" data-text="r?.label"></span>
+							<span class="label" data-class:sr="r?.rich" data-text="r?.label"></span>
+							<span class="rich" aria-hidden="true" data-show="r?.rich"></span>
 							<span class="desc" data-show="r?.description" data-text="r?.description"></span>
 						</span>
 						<span class="more" aria-hidden="true" data-show="r?.parent"></span>

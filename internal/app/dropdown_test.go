@@ -203,6 +203,184 @@ check('no errors', errors, [])
 await report()
 `
 
+// TestDropdownRichItems checks sb-dropdown's rich markup items in Chrome: a data-icon element and
+// a lozenge are copied into the rows, the page colours each lozenge through ::part() and an inline
+// custom property, the accessible names stay the labels, the radio check, sb-change, confirm and the
+// type-ahead still work, a morph of the items updates the rows, and the trigger shows the chosen
+// item and follows a server change. JSON items stay text. With STARBASE_DATASTAR_BUNDLE=<file>, on
+// that Datastar build.
+func TestDropdownRichItems(t *testing.T) {
+	copyRows(t, probeCDP(t, "/", pdPrelude+morphJS+dropdownRichJS, map[string]http.HandlerFunc{"/__test/morph": morphHandler}))
+}
+
+const dropdownRichJS = `
+const cdp = async (...cmds) => {
+	const r = await fetch('/__probe/cdp', { method: 'POST', body: JSON.stringify(cmds) })
+	if (!r.ok) throw new Error('cdp: ' + (await r.text()))
+	return r.json()
+}
+const group = async (name, fn) => {
+	try {
+		await fn()
+	} catch (e) {
+		rows.push({ step: name, error: String(e?.stack || e) })
+	}
+}
+const style = document.createElement('style')
+style.textContent = '.rich-dd::part(lozenge) { background-color: var(--tone); color: rgb(1, 2, 3); } .rich-dd::part(lozenge-done) { color: rgb(0, 128, 0); }'
+document.head.append(style)
+const box = document.createElement('div')
+document.body.prepend(box)
+const changes = [], selects = []
+document.addEventListener('sb-change', (e) => changes.push(e.detail))
+document.addEventListener('sb-select', (e) => selects.push(e.detail.value))
+await customElements.whenDefined('sb-dropdown')
+
+const SVG = (d) => '<svg data-icon viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="' + d + '"/></svg>'
+const item = ([v, label, tone, d, part = '']) => '<button slot="item" value="' + v + '">' + SVG(d) + '<span part="lozenge' + part + '" style="--tone: ' + tone + '">' + label + '</span></button>'
+const ITEMS = [
+	['todo', 'To do', 'rgb(10, 20, 30)', 'M4 4h8v8H4z'],
+	['doing', 'In progress', 'rgb(40, 50, 60)', 'M2 2h4v4H2z'],
+	['done', 'Done', 'rgb(70, 80, 90)', 'M1 1h2v2H1z', ' lozenge-done'],
+]
+const status = (value, items = ITEMS) => '<sb-dropdown id="rd" class="rich-dd" type="radio" name="status" label="Status" confirm value="' + value + '">' + items.map(item).join('') + '</sb-dropdown>'
+box.innerHTML = status('todo')
+await settle()
+const el = document.getElementById('rd')
+const $ = (s, e = el) => e.shadowRoot.querySelector(s)
+const row = (i, e = el) => $('.lvl0 [data-idx="' + i + '"]', e)
+const look = (r) => {
+	const loz = r.querySelector('.rich [part~="lozenge"]')
+	return [r.querySelector('.art path')?.getAttribute('d') ?? '', loz?.textContent ?? '', loz ? getComputedStyle(loz).backgroundColor : '', loz ? getComputedStyle(loz).color : '']
+}
+const trig = (e = el) => {
+	const t = $('.trigger', e)
+	return { art: t.querySelector('.art path')?.getAttribute('d') ?? '', rich: t.querySelector('.rich')?.textContent ?? '', text: getComputedStyle(t.querySelector('.text')).display === 'none' ? '' : t.querySelector('.text').textContent, name: t.getAttribute('aria-label') }
+}
+// The menuitems and menuitemradios of the open menus, as [name, checked].
+const ax = async () => {
+	const [{ nodes }] = await cdp({ method: 'Accessibility.getFullAXTree', params: {} })
+	return nodes.filter((n) => !n.ignored && /^menuitem/.test(n.role?.value ?? '')).map((n) => [n.name?.value ?? '', n.properties?.find((p) => p.name === 'checked')?.value?.value ?? null])
+}
+
+await group('rows', async () => {
+	el.show()
+	await settle()
+	check('icon, lozenge and its colours per row', [0, 1, 2].map((i) => look(row(i))), [
+		['M4 4h8v8H4z', 'To do', 'rgb(10, 20, 30)', 'rgb(1, 2, 3)'],
+		['M2 2h4v4H2z', 'In progress', 'rgb(40, 50, 60)', 'rgb(1, 2, 3)'],
+		['M1 1h2v2H1z', 'Done', 'rgb(70, 80, 90)', 'rgb(0, 128, 0)'],
+	])
+	const r = row(0)
+	check('the icon has the icon size', ((w) => w > 12 && w < 24)(r.querySelector('.art svg').getBoundingClientRect().width), true)
+	check('the label is read out, not shown; the copy is hidden from it', [getComputedStyle(r.querySelector('.label')).position, r.querySelector('.label').textContent, r.querySelector('.rich').getAttribute('aria-hidden'), r.querySelector('.art').getAttribute('aria-hidden')], ['absolute', 'To do', 'true', 'true'])
+	check('radio rows, the server value checked', [0, 1, 2].map((i) => [row(i).getAttribute('role'), row(i).getAttribute('aria-checked')]), [['menuitemradio', 'true'], ['menuitemradio', 'false'], ['menuitemradio', 'false']])
+	check('accessible names are the labels', await ax(), [['To do', 'true'], ['In progress', 'false'], ['Done', 'false']])
+	const parsed = document.createElement('div')
+	parsed.innerHTML = item(ITEMS[0])
+	check('the page markup is untouched', el.querySelector('button').outerHTML, parsed.firstElementChild.outerHTML)
+	el.hide()
+	await settle()
+})
+
+await group('trigger', async () => {
+	check('shows the chosen item, named by label and choice', trig(), { art: 'M4 4h8v8H4z', rich: 'To do', text: '', name: 'Status: To do' })
+	check('the page colours its lozenge too', getComputedStyle($('.trigger [part~="lozenge"]')).backgroundColor, 'rgb(10, 20, 30)')
+})
+
+await group('a pick', async () => {
+	el.show()
+	await settle()
+	row(1).click()
+	await settle()
+	check('sb-change, the check moves and waits for the server', [changes.at(-1), row(1).getAttribute('aria-checked'), el.matches(':state(pending)'), el.value], [{ name: 'status', value: 'doing' }, 'true', true, 'doing'])
+	check('the trigger shows the pick', trig(), { art: 'M2 2h4v4H2z', rich: 'In progress', text: '', name: 'Status: In progress' })
+	await morph(status('doing'))
+	check('the server agrees: no longer pending', el.matches(':state(pending)'), false)
+})
+
+await group('keyboard', async () => {
+	$('.trigger').focus()
+	press($('.trigger'), 'ArrowDown')
+	await settle()
+	press(el.shadowRoot.activeElement, 'd')
+	await settle()
+	check('type-ahead finds the label', el.shadowRoot.activeElement === row(2), true)
+	press(el.shadowRoot.activeElement, 'Enter')
+	await settle()
+	check('Enter picks it', [changes.at(-1)?.value, el.open], ['done', false])
+	el.revert()
+	await settle()
+	check('revert() puts the server value back, in the trigger too', [el.value, trig().rich], ['doing', 'In progress'])
+})
+
+await group('a server change of the value', async () => {
+	await morph(status('done'))
+	check('the trigger follows it', trig(), { art: 'M1 1h2v2H1z', rich: 'Done', text: '', name: 'Status: Done' })
+	check('in the colours of that item', getComputedStyle($('.trigger [part~="lozenge"]')).color, 'rgb(0, 128, 0)')
+})
+
+await group('a morph of the items', async () => {
+	el.show()
+	await settle()
+	await morph(status('done', [ITEMS[0], ['review', 'In review', 'rgb(5, 5, 5)', 'M3 3h1v1H3z'], ['done', 'Shipped', 'rgb(9, 9, 9)', 'M6 6h2v2H6z', ' lozenge-done'], ITEMS[1]]))
+	check('the rows follow, the menu stays open', [[0, 1, 2, 3].map((i) => look(row(i))), el.open], [[
+		['M4 4h8v8H4z', 'To do', 'rgb(10, 20, 30)', 'rgb(1, 2, 3)'],
+		['M3 3h1v1H3z', 'In review', 'rgb(5, 5, 5)', 'rgb(1, 2, 3)'],
+		['M6 6h2v2H6z', 'Shipped', 'rgb(9, 9, 9)', 'rgb(0, 128, 0)'],
+		['M2 2h4v4H2z', 'In progress', 'rgb(40, 50, 60)', 'rgb(1, 2, 3)'],
+	], true])
+	check('names and check follow', await ax(), [['To do', 'false'], ['In review', 'false'], ['Shipped', 'true'], ['In progress', 'false']])
+	check('the trigger follows the new markup', trig(), { art: 'M6 6h2v2H6z', rich: 'Shipped', text: '', name: 'Status: Shipped' })
+	el.querySelector(':scope > [value="done"] [part~="lozenge"]').style.setProperty('--tone', 'rgb(1, 1, 1)')
+	await settle()
+	check('an attribute inside an item reaches its copy', getComputedStyle($('.lvl0 [data-idx="2"] [part~="lozenge"]')).backgroundColor, 'rgb(1, 1, 1)')
+	el.hide()
+	await settle()
+})
+
+await group('icon and text, no lozenge', async () => {
+	box.insertAdjacentHTML('beforeend', '<sb-dropdown id="pd" type="radio" name="priority" label="Priority" value="high"><button slot="item" value="high">' + SVG('M8 2h1v1H8z') + ' High</button><button slot="item" value="low">' + SVG('M8 12h1v1H8z') + ' Low</button></sb-dropdown>')
+	await settle()
+	const pd = document.getElementById('pd')
+	pd.show()
+	await settle()
+	const r = row(0, pd)
+	check('the label shows, beside the icon', [r.querySelector('.art path')?.getAttribute('d'), getComputedStyle(r.querySelector('.label')).position, r.querySelector('.label').textContent, getComputedStyle(r.querySelector('.rich')).display], ['M8 2h1v1H8z', 'static', 'High', 'none'])
+	check('the trigger: icon and label, named by both', trig(pd), { art: 'M8 2h1v1H8z', rich: '', text: 'High', name: 'Priority: High' })
+	pd.remove()
+})
+
+await group('an actions menu', async () => {
+	box.insertAdjacentHTML('beforeend', '<sb-dropdown id="ad">' + item(['x', 'Ex', 'red', 'M1 1h1v1H1z']) + '</sb-dropdown>')
+	await settle()
+	const ad = document.getElementById('ad')
+	ad.show()
+	await settle()
+	check('a rich menuitem', [row(0, ad).getAttribute('role'), row(0, ad).querySelector('.rich').textContent], ['menuitem', 'Ex'])
+	check('the trigger keeps its label', trig(ad), { art: '', rich: '', text: 'Actions', name: 'Actions' })
+	row(0, ad).click()
+	await settle()
+	check('sb-select', selects.at(-1), 'x')
+	ad.remove()
+})
+
+await group('JSON items stay text', async () => {
+	const js = document.createElement('sb-dropdown')
+	js.setAttribute('items', JSON.stringify([{ value: 'a', label: '<b>A</b>', icon: '<img src=x>', artEl: {}, richEl: '<i>no</i>' }]))
+	box.append(js)
+	await settle()
+	js.show()
+	await settle()
+	const r = row(0, js)
+	check('label and icon as text, nothing copied', [r.querySelector('.label').textContent, r.querySelector('.icon').textContent, r.querySelectorAll('.art *, .rich *').length], ['<b>A</b>', '<img src=x>', 0])
+	js.remove()
+})
+
+check('no errors', errors, [])
+await report()
+`
+
 // TestDropdownLinks checks sb-dropdown's link items in Chrome with real input: an item with an
 // href renders as a link the browser follows on a click, Enter or Space (a Ctrl+click is left to
 // the browser too), with no sb-select, and the menu closes; keyboard moves, type-ahead and submenus
