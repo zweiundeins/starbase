@@ -145,6 +145,15 @@ func TestDemoList(t *testing.T) {
 	if n := strings.Count(body, `role="listitem"`); n != 5000 {
 		t.Errorf("%d items, want the cap of 5000", n)
 	}
+	// A feed whose total is unknown until a window reaches the end.
+	_, body = get(t, c, ts.URL+"/demo/data/list?id=feed&total=100&offset=0&count=10&kind=feed&unknown")
+	if !strings.Contains(body, `total="-1"`) || !strings.Contains(body, `<article tabindex="-1" aria-posinset="10" aria-setsize="-1"><b>`) || strings.Contains(body, "listitem") {
+		t.Errorf("feed: \n%.600s", body)
+	}
+	_, body = get(t, c, ts.URL+"/demo/data/list?id=feed&total=100&offset=90&count=20&kind=feed&unknown")
+	if n := strings.Count(body, "</article>"); n != 10 || !strings.Contains(body, `total="100"`) || !strings.Contains(body, `aria-posinset="100" aria-setsize="100"`) {
+		t.Errorf("feed at its end: %d articles\n%.600s", n, body)
+	}
 	for _, bad := range []string{"", "1x", "x%22onload%3D%22y"} {
 		if r, _ := get(t, c, ts.URL+"/demo/data/list?id="+bad); r.StatusCode != 400 {
 			t.Errorf("id %q = %d, want 400", bad, r.StatusCode)

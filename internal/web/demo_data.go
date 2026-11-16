@@ -494,12 +494,14 @@ var elementIDRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}$`)
 // page, so it sends only offset, total and the items, and the morph keeps these
 // as the page has them. data-ignore-morph keeps the page's own frames, which
 // know nothing of the window, away from the list.
-const demoListKeep = "item-size columns buffer label role style class data-ignore-morph data-on:sb-window"
+const demoListKeep = "item-size columns buffer step label role aria-label style class data-ignore-morph data-on:sb-window"
 
 // demoList answers an sb-virtual-scroll's sb-window with ?count= items from
 // ?offset= (at most 5000), patched into the host with the id ?id=. The list is
 // the star catalog: its million stars, or the first ?total=. &header adds the
-// column headings; &kind=pixels&columns=<n> sends pixels of a nebula n wide.
+// column headings; &kind=pixels&columns=<n> sends pixels of a nebula n wide,
+// &kind=feed articles that take the focus. With &unknown the total is -1 until
+// a window reaches the end of the list.
 func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	id := q.Get("id")
@@ -515,10 +517,19 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	count, _ := strconv.Atoi(q.Get("count"))
 	offset = min(max(offset, 0), total)
 	count = min(max(count, 0), 5000, total-offset)
-	cols := 0
+	cols, tag, role := 0, "div", ` role="listitem"`
+	if q.Get("kind") == "feed" {
+		tag, role = "article", ` tabindex="-1"`
+	}
 	if q.Get("kind") == "pixels" {
 		cols, _ = strconv.Atoi(q.Get("columns"))
 		cols = max(cols, 1)
+	}
+
+	// A server that reads a window without counting the whole list learns the
+	// total only at its end: until then it says -1, "more may follow".
+	if q.Has("unknown") && offset+count < total {
+		total = -1
 	}
 
 	// The whole host: the morph patches it like any other markup.
@@ -530,7 +541,7 @@ func (s *Server) demoList(w http.ResponseWriter, r *http.Request) {
 	for i := offset; i < offset+count; i++ {
 		// aria-posinset and aria-setsize: the item's place in the whole list.
 		attrs, content := demoListItem(i, cols)
-		fmt.Fprintf(&b, `<div role="listitem" aria-posinset="%d" aria-setsize="%d"%s>%s</div>`, i+1, total, attrs, content)
+		fmt.Fprintf(&b, `<%s%s aria-posinset="%d" aria-setsize="%d"%s>%s</%[1]s>`, tag, role, i+1, total, attrs, content)
 	}
 	b.WriteString(`</sb-virtual-scroll>`)
 
