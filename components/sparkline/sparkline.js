@@ -6,6 +6,8 @@ import { rocket, startPeeking, stopPeeking } from 'datastar'
 const H = 24
 // Pushed points survive a move in the DOM (setup reruns on every connect).
 const kept = new WeakMap()
+// An invalid tag (en_US, a typo) would make Intl throw.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 
 const styles = /* css */ `
 :host {
@@ -44,11 +46,15 @@ rocket('sb-sparkline', {
 		unit: string.docs({ description: 'Unit after the shown value.' }),
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals of the shown value.' }),
 		label: string.trim.docs({ description: 'What the chart shows, named first in its accessible label.' }),
+		summaryLabel: string.default('Trend of {count} points: latest {latest}, low {low}, high {high}').docs({ description: 'The rest of the accessible label: {count} becomes the number of points, {latest}, {low} and {high} the formatted values.' }),
+		emptyLabel: string.default('No data yet').docs({ description: 'The rest of the accessible label while there are no points.' }),
 	}),
 	renderOnPropChange: false,
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, host, observeProps, props }) => {
 		adoptStyles(host, styles)
-		const fmt = (v) => Number(v).toFixed(props.decimals) + props.unit
+		// Numbers in the page's language (closest() stops at a shadow root), without grouping.
+		const fmt = (v) =>
+			new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { minimumFractionDigits: props.decimals, maximumFractionDigits: props.decimals, useGrouping: false }).format(v) + props.unit
 		const read = () => parseFloat(host.getAttribute('value'))
 		let raf = 0
 		const paint = () => {
@@ -116,7 +122,8 @@ rocket('sb-sparkline', {
 				const n = data.length, last = n && fmt(data.at(-1))
 				$$.show = props.showValue
 				$$.latest = last || ''
-				$$.label = (props.label && props.label + ': ') + (n ? `Trend of ${n} points: latest ${last}, low ${fmt(Math.min(...data))}, high ${fmt(Math.max(...data))}` : 'No data yet')
+				const say = { count: n, latest: last, low: n && fmt(Math.min(...data)), high: n && fmt(Math.max(...data)) }
+				$$.label = (props.label && props.label + ': ') + (n ? props.summaryLabel.replace(/\{(\w+)\}/g, (m, k) => say[k] ?? m) : props.emptyLabel)
 				raf ||= requestAnimationFrame(paint)
 			} finally {
 				stopPeeking()

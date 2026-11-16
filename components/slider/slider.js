@@ -1,5 +1,10 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 
+// An invalid tag (en_US, a typo) would make Intl throw. closest() stops at a
+// shadow root: inside another component, the page's lang.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
+const numbers = (host, places) => new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { minimumFractionDigits: places, maximumFractionDigits: places ?? 20, useGrouping: false })
+
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signal, or that effect writes the stale bound value back.
 const peek = (fn) => {
@@ -139,7 +144,7 @@ rocket('sb-slider', {
 			peek(() => {
 				const v = ($$.value = clamp($$.value))
 				$$.pct = ((v - props.min) / (props.max - props.min || 1)) * 100 + '%'
-				$$.shown = v.toFixed(Math.max(decimals(props.step || 0.01), decimals(props.min))) + props.unit
+				$$.shown = numbers(host, Math.max(decimals(props.step || 0.01), decimals(props.min))).format(v) + props.unit
 				props.confirm && v !== clamp(props.value) ? states.add('pending') : (states.delete('pending'), (sent = []))
 			})
 		// (No value: the element is being disconnected, its signals are gone.)
@@ -215,7 +220,7 @@ rocket('sb-slider', {
 					data-on:change="@commit()"
 				/>
 			</span>
-			${ticks ? html`<span class="ticks" aria-hidden="true"><span>${min}${unit}</span><span>${max}${unit}</span></span>` : null}
+			${ticks ? html`<span class="ticks" aria-hidden="true"><span>${numbers(host).format(min)}${unit}</span><span>${numbers(host).format(max)}${unit}</span></span>` : null}
 		</label>
 	`,
 })

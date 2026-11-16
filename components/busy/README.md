@@ -194,6 +194,13 @@ An `sb-busy` removed while it is up emits a last `{ busy: false }`, so whatever 
 
 The indicator never shows a *result* before the server produced one: it only says that the page is waiting. The list, the count and the message come from the server's render.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Loading", what is announced (and shown with `show-label`).
+- The bar's value is read as a percentage formatted with `Intl.NumberFormat` in the element's language: the nearest `lang` attribute (inside another component, the page's), else the browser's.
+
 ## Styling
 
 Parts: `base` (the indicator, shown while it is up), `spinner`, `bar`, `fill`, `skeleton` and `label`.

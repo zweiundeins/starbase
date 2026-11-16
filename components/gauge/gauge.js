@@ -11,6 +11,11 @@ const peek = (fn) => {
 	}
 }
 
+// An invalid tag (en_US, a typo) would make Intl throw. closest() stops at a
+// shadow root: inside another component, the page's lang.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
+const numbers = (host, places) => new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { minimumFractionDigits: places, maximumFractionDigits: places, useGrouping: false })
+
 const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
 const rgbCache = new Map()
 // Per-instance repaint, so setup's actions can reach the canvas code.
@@ -79,7 +84,7 @@ rocket('sb-gauge', {
 		max: number.default(100).docs({ description: 'Maximum.' }),
 		warn: number.default(70).docs({ description: 'Warning threshold. Below danger means low values are bad (like fuel).' }),
 		danger: number.default(90).docs({ description: 'Danger threshold.' }),
-		label: string.trim.docs({ description: 'Caption below the value.' }),
+		label: string.trim.docs({ description: 'Caption below the value, and the accessible name (without it, the host\'s aria-label, else "Gauge").' }),
 		unit: string.docs({ description: 'Unit after the value, e.g. "%" or " km/s".' }),
 		decimals: number.clamp(0, 4).docs({ description: 'Decimals shown in the readout.' }),
 	}),
@@ -93,15 +98,15 @@ rocket('sb-gauge', {
 		const sync = () => {
 			// aria-valuenow stays in range, like a <meter>; the text is the reading.
 			$$.now = Math.min(props.max, Math.max(props.min, props.value))
-			$$.shown = Number(props.value).toFixed(props.decimals) + props.unit
+			$$.shown = numbers(host, props.decimals).format(props.value) + props.unit
 		}
 		sync()
 		observeProps(() => peek(sync))
 	},
-	render: ({ html, props: { label, min, max } }) => html`
+	render: ({ html, host, props: { label, min, max } }) => html`
 		<canvas part="dial" width="${W}" height="${H}" aria-hidden="true"></canvas>
 		<i data-on:transitionend="@repaint()"></i>
-		<div class="readout" role="meter" aria-valuemin="${min}" aria-valuemax="${max}" aria-label="${label || 'Gauge'}"
+		<div class="readout" role="meter" aria-valuemin="${min}" aria-valuemax="${max}" aria-label="${label || host.getAttribute('aria-label') || 'Gauge'}"
 			data-attr:aria-valuenow="$$now" data-attr:aria-valuetext="$$shown">
 			<span class="value" part="value" data-text="$$shown"></span>
 			${label ? html`<span class="label" part="label">${label}</span>` : null}

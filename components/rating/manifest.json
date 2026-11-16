@@ -71,7 +71,17 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Visible label (also the accessible name)."
+        "description": "Visible label (also the accessible name). Without it, the host's aria-label names the control (else \"Rating\")."
+      }
+    },
+    {
+      "name": "valueLabel",
+      "attribute": "value-label",
+      "type": "string",
+      "default": "{value} of {max}",
+      "required": false,
+      "docs": {
+        "description": "What screen readers say for the value: {value} and {max} become the numbers, formatted for the page's language."
       }
     },
     {

@@ -520,6 +520,14 @@ A new `selected` from the server always wins, and `selected="[]"` clears it. Mar
 
 `sb-data-table` is not a form-associated element: a `<form>` doesn't submit its selection, and `FormData` and Datastar's `contentType: 'form'` don't see it. Send the selection as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: "Table", the table's name.
+- `columns-label`: "Columns", `reset-widths-label`: "Reset column widths", `resize-hint`: "Drag to resize, double-click to fit".
+- Numbers in cells are formatted, and the rows sorted, with `Intl` in the element's language: the nearest `lang` attribute (inside another component, the page's), else the browser's.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

@@ -31,10 +31,18 @@ type Sort = { key: string; dir: '' | 'asc' | 'desc' }
 // A row as rendered, and its index in the server's order.
 type Shown = [Row | undefined, number]
 
+// The page's language (closest() stops at a shadow root), for numbers and the
+// sort order: its formatter and collator, made once per language. An invalid
+// tag (en_US, a typo) would make Intl throw.
+const locale = (tag?: string) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
+const intls = new Map<string | undefined, [Intl.NumberFormat, Intl.Collator]>()
+const intl = (host: HTMLElement) => {
+	const l = locale(host.closest<HTMLElement>('[lang]')?.lang || document.documentElement.lang)
+	return intls.get(l) ?? intls.set(l, [new Intl.NumberFormat(l), new Intl.Collator(l, { numeric: true })]).get(l)!
+}
 // Cells: numbers in the reader's format (4,242.5), isolated so a minus sign
 // stays in front in right-to-left text; the rest as text.
-const format = new Intl.NumberFormat()
-const text = (v: unknown) => (typeof v === 'number' ? '⁨' + format.format(v) + '⁩' : String(v ?? ''))
+const text = (v: unknown, nf: Intl.NumberFormat) => (typeof v === 'number' ? '⁨' + nf.format(v) + '⁩' : String(v ?? ''))
 const isCell = (v: unknown): v is Cell => v !== null && typeof v === 'object' && !Array.isArray(v)
 const raw = (v: unknown) => (isCell(v) ? v.value : v)
 const tones = new Set<unknown>(['info', 'success', 'warning', 'danger', 'neutral'])
@@ -50,9 +58,9 @@ const link = (href: unknown) => {
 // What a rich row's template shows: t the text, s the suffix, h a checked
 // href, n the tone. Nothing here is ever parsed as markup.
 type Rich = { t: string; s?: string; h?: string | false; n?: unknown }
-const rich = (v: unknown): Rich => {
-	if (!isCell(v)) return { t: text(v) }
-	const c: Rich = { t: v.text != null ? String(v.text) : text(v.value) }
+const rich = (v: unknown, nf: Intl.NumberFormat): Rich => {
+	if (!isCell(v)) return { t: text(v, nf) }
+	const c: Rich = { t: v.text != null ? String(v.text) : text(v.value, nf) }
 	if (v.suffix != null && v.suffix !== '') c.s = String(v.suffix)
 	if (v.href) c.h = link(v.href)
 	if (tones.has(v.tone)) c.n = v.tone
@@ -60,12 +68,12 @@ const rich = (v: unknown): Rich => {
 }
 // Local sorting: numbers by value, the rest as text in the reader's order
 // (numeric: "Io 2" before "Io 10"); missing values last in both directions.
-const collator = new Intl.Collator(undefined, { numeric: true })
+
 const missing = (v: unknown) => v == null || v === ''
 const sortKey = (v: unknown) => (isCell(v) ? (v.value ?? v.text) : v)
 const keys = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : [])
 const compare =
-	({ key, dir }: Sort) =>
+	({ key, dir }: Sort, collator: Intl.Collator) =>
 	([a]: Shown, [b]: Shown) => {
 		const x = sortKey(a?.[key]), y = sortKey(b?.[key])
 		if (missing(x) || missing(y)) return Number(missing(x)) - Number(missing(y))
@@ -396,12 +404,13 @@ rocket('sb-data-table', {
 		const whole = () => off === 0 && data.length >= props.total
 		const show = () => {
 			shown = data.map((r, j): Shown => [r, off + j])
-			if (whole() && sort.key) shown.sort(compare(sort))
+			const [nf, co] = intl(host)
+			if (whole() && sort.key) shown.sort(compare(sort, co))
 			// As JSON: data-for clones plain rows fast, and a signal's rows would
 			// be proxies, which structuredClone refuses (a slow fallback).
 			// Rows with a cell object take the second loop, whose cells cost more.
 			const fancy = shown.some(([r]) => cols.some((c) => isCell(r?.[c.key])))
-			const out = JSON.stringify(shown.map(([r], j) => ({ i: off + j, k: keyAt(off + j), c: cols.map((c) => (fancy ? rich : text)(r?.[c.key])) })))
+			const out = JSON.stringify(shown.map(([r], j) => ({ i: off + j, k: keyAt(off + j), c: cols.map((c) => (fancy ? rich : text)(r?.[c.key], nf)) })))
 			if (fancy) ($$.rows = '[]'), ($$.rich = out)
 			else ($$.rich = '[]'), ($$.rows = out)
 			// Every key every time: a row's signal merges, so a missing key would keep its old value.
@@ -490,8 +499,9 @@ rocket('sb-data-table', {
 			if (!c.fit) {
 				const cell = root().querySelector<HTMLElement>('.row .cell'), s = getComputedStyle(cell ?? th ?? host)
 				const font = fontOf(s), em = parseFloat(s.fontSize), pad = cell ? pads(s) : 24
+				const [nf] = intl(host)
 				for (const r of data) {
-					const v = rich(r?.[c.key])
+					const v = rich(r?.[c.key], nf)
 					w = Math.max(w, textWidth(v.t, font) + (v.s ? textWidth(v.s, font) + 0.35 * em : 0) + (v.n ? 0.8 * em + 2 : 0) + pad)
 				}
 			}

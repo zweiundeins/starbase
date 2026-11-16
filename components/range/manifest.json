@@ -48,7 +48,27 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Visible label; the thumbs are announced as \"<label> start\" and \"<label> end\"."
+        "description": "Visible label, and {label} in start-label and end-label (without it, the host's aria-label, else \"Range\")."
+      }
+    },
+    {
+      "name": "startLabel",
+      "attribute": "start-label",
+      "type": "string",
+      "default": "{label} start",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the start thumb: {label} becomes the label."
+      }
+    },
+    {
+      "name": "endLabel",
+      "attribute": "end-label",
+      "type": "string",
+      "default": "{label} end",
+      "required": false,
+      "docs": {
+        "description": "Accessible name of the end thumb: {label} becomes the label."
       }
     },
     {

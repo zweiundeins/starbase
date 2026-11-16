@@ -1,5 +1,10 @@
 import { rocket, startPeeking, stopPeeking } from 'datastar'
 
+// An invalid tag (en_US, a typo) would make Intl throw. closest() stops at a
+// shadow root: inside another component, the page's lang.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
+const numbers = (host, places) => new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { minimumFractionDigits: places, maximumFractionDigits: places ?? 20, useGrouping: false })
+
 // Host getters must not subscribe callers (e.g. data-bind's sync effect) to
 // the internal signals, or that effect writes stale values back.
 const peek = (fn) => {
@@ -110,7 +115,9 @@ rocket('sb-range', {
 		min: number.docs({ description: 'Minimum.' }),
 		max: number.default(100).docs({ description: 'Maximum.' }),
 		step: number.min(0).default(1).docs({ description: 'Step size (0 for continuous).' }),
-		label: string.trim.docs({ description: 'Visible label; the thumbs are announced as "<label> start" and "<label> end".' }),
+		label: string.trim.docs({ description: 'Visible label, and {label} in start-label and end-label (without it, the host\'s aria-label, else "Range").' }),
+		startLabel: string.default('{label} start').docs({ description: 'Accessible name of the start thumb: {label} becomes the label.' }),
+		endLabel: string.default('{label} end').docs({ description: 'Accessible name of the end thumb: {label} becomes the label.' }),
 		unit: string.docs({ description: 'Suffix after the shown values, e.g. "°" or " kg".' }),
 		showValue: oneOf(true, false).docs({ description: 'Show the current range next to the label. On by default: show-value="false" turns it off.' }),
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
@@ -161,7 +168,8 @@ rocket('sb-range', {
 		const sync = () =>
 			peek(() => {
 				const s = norm(props.value)
-				const fmt = (n) => n.toFixed(places()) + props.unit
+				const nf = numbers(host, places())
+				const fmt = (n) => nf.format(n) + props.unit
 				mine = s.start !== $$.start || s.end !== $$.end
 				states[props.confirm && mine ? 'add' : 'delete']('pending')
 				const a = ($$.startText = fmt($$.start))
@@ -222,7 +230,10 @@ rocket('sb-range', {
 			$$.swap = false
 		})
 	},
-	render: ({ html, props: { min, max, step, label, showValue, ticks, disabled, unit } }) => html`
+	render: ({ html, host, props: { min, max, step, label, showValue, ticks, disabled, unit, startLabel, endLabel } }) => {
+		const name = (s) => s.replaceAll('{label}', () => label || host.getAttribute('aria-label') || 'Range')
+		const nf = numbers(host)
+		return html`
 		<div class="field" role="group" aria-label="${label || null}">
 			${label || showValue ? html`
 				<span class="head">
@@ -247,7 +258,7 @@ rocket('sb-range', {
 					min="${min}"
 					max="${max}"
 					step="${step || 'any'}"
-					aria-label="${label || 'Range'} start"
+					aria-label="${name(startLabel)}"
 					disabled="${disabled}"
 					data-class:top="$$start >= ${(min + max) / 2}"
 					data-attr:aria-valuetext="$$startText"
@@ -260,13 +271,14 @@ rocket('sb-range', {
 					min="${min}"
 					max="${max}"
 					step="${step || 'any'}"
-					aria-label="${label || 'Range'} end"
+					aria-label="${name(endLabel)}"
 					disabled="${disabled}"
 					data-attr:aria-valuetext="$$endText"
 					data-effect="${min}, ${max}, ${step}, el.value = $$swap ? $$start : $$end"
 				/>
 			</span>
-			${ticks ? html`<span class="ticks" aria-hidden="true"><span>${min}${unit}</span><span>${max}${unit}</span></span>` : null}
+			${ticks ? html`<span class="ticks" aria-hidden="true"><span>${nf.format(min)}${unit}</span><span>${nf.format(max)}${unit}</span></span>` : null}
 		</div>
-	`,
+	`
+	},
 })

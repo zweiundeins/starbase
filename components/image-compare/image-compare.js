@@ -24,6 +24,8 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 const kept = new WeakMap()
 
 const clamp = (v) => Math.min(100, Math.max(0, Number.isFinite(v) ? v : 50))
+// An invalid tag (en_US, a typo) would make Intl throw.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 
 // Pixel corners: notches every corner by --_n (2px times --sb-notch; at 0 the
 // border-radius takes over).
@@ -257,6 +259,7 @@ rocket('sb-image-compare', {
 		expanded: bool.docs({ description: 'Full screen when present: the page\'s or the server\'s word. Adding the attribute opens it, removing it closes it; identical markup keeps the reader\'s state. The reader\'s own opening and closing never touch it; sb-expand reports them.' }),
 		expandLabel: string.default('Full screen').docs({ description: 'Accessible name of the full screen button.' }),
 		closeLabel: string.default('Exit full screen').docs({ description: 'Accessible name of the button while full screen.' }),
+		valueLabel: string.default('{before} {start}, {after} {end}').docs({ description: 'What screen readers say for the divider\'s position: {start} and {end} become the percentages on either side, formatted for the page\'s language, {before} and {after} the before-label and after-label (else "Before" and "After").' }),
 	}),
 	manifest: {
 		slots: [
@@ -285,7 +288,17 @@ rocket('sb-image-compare', {
 				$$.name = props.label || host.ariaLabel || 'Comparison'
 				$$.expandText = props.expandLabel
 				$$.closeText = props.closeLabel
+				say()
 			})
+		// The position in words, with percentages in the page's language
+		// (closest() stops at a shadow root).
+		const say = () => {
+			const pos = $$.pos
+			if (pos == null) return
+			const nf = new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { style: 'percent' })
+			const words = { before: props.beforeLabel || 'Before', after: props.afterLabel || 'After', start: nf.format(Math.round(pos) / 100), end: nf.format(Math.round(100 - pos) / 100) }
+			$$.said = props.valueLabel.replace(/\{(\w+)\}/g, (m, k) => words[k] ?? m)
+		}
 		sync()
 		observeProps(sync)
 		$$.ratio = keep.ratio
@@ -293,6 +306,7 @@ rocket('sb-image-compare', {
 		effect(() => {
 			const pos = $$.pos
 			if (pos != null) keep.pos = pos
+			say()
 		})
 		// A position attribute from the page or the server wins when it
 		// changes; re-sending the same markup changes nothing. The attribute is
@@ -447,7 +461,7 @@ rocket('sb-image-compare', {
 				<span class="handle" part="handle"><svg viewBox="0 0 12 8" width="24" height="16" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><path d="M3 0h1v1h-1zM8 0h1v1h-1zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h3v1h-3zM8 2h3v1h-3zM0 3h4v1h-4zM8 3h4v1h-4zM0 4h4v1h-4zM8 4h4v1h-4zM1 5h3v1h-3zM8 5h3v1h-3zM2 6h2v1h-2zM8 6h2v1h-2zM3 7h1v1h-1zM8 7h1v1h-1z"/></svg></span>
 				<input type="range" min="0" max="100" step="1" data-ref:input
 					data-attr:aria-label="$$name"
-					data-attr:aria-valuetext="($$before || 'Before') + ' ' + Math.round($$pos) + '%, ' + ($$after || 'After') + ' ' + Math.round(100 - $$pos) + '%'"
+					data-attr:aria-valuetext="$$said"
 					data-effect="el.value != $$pos && (el.value = $$pos)"
 					data-on:input="$$pos = +el.value"
 					data-on:change="@commit()" />

@@ -80,6 +80,16 @@
       "docs": {
         "description": "Accessible name of the button while full screen."
       }
+    },
+    {
+      "name": "valueLabel",
+      "attribute": "value-label",
+      "type": "string",
+      "default": "{before} {start}, {after} {end}",
+      "required": false,
+      "docs": {
+        "description": "What screen readers say for the divider's position: {start} and {end} become the percentages on either side, formatted for the page's language, {before} and {after} the before-label and after-label (else \"Before\" and \"After\")."
+      }
     }
   ],
   "slots": [

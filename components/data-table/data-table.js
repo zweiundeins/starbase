@@ -18,10 +18,21 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 // Pixel corners: notches every corner by p (3px times --sb-notch; at 0 the
 // border-radius takes over).
 const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`;
+// The page's language (closest() stops at a shadow root), for numbers and the
+// sort order: its formatter and collator, made once per language. An invalid
+// tag (en_US, a typo) would make Intl throw.
+const locale = (tag) => { try {
+    return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0];
+}
+catch { } };
+const intls = new Map();
+const intl = (host) => {
+    const l = locale(host.closest('[lang]')?.lang || document.documentElement.lang);
+    return intls.get(l) ?? intls.set(l, [new Intl.NumberFormat(l), new Intl.Collator(l, { numeric: true })]).get(l);
+};
 // Cells: numbers in the reader's format (4,242.5), isolated so a minus sign
 // stays in front in right-to-left text; the rest as text.
-const format = new Intl.NumberFormat();
-const text = (v) => (typeof v === 'number' ? '⁨' + format.format(v) + '⁩' : String(v ?? ''));
+const text = (v, nf) => (typeof v === 'number' ? '⁨' + nf.format(v) + '⁩' : String(v ?? ''));
 const isCell = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const raw = (v) => (isCell(v) ? v.value : v);
 const tones = new Set(['info', 'success', 'warning', 'danger', 'neutral']);
@@ -35,10 +46,10 @@ const link = (href) => {
         return false;
     }
 };
-const rich = (v) => {
+const rich = (v, nf) => {
     if (!isCell(v))
-        return { t: text(v) };
-    const c = { t: v.text != null ? String(v.text) : text(v.value) };
+        return { t: text(v, nf) };
+    const c = { t: v.text != null ? String(v.text) : text(v.value, nf) };
     if (v.suffix != null && v.suffix !== '')
         c.s = String(v.suffix);
     if (v.href)
@@ -49,11 +60,10 @@ const rich = (v) => {
 };
 // Local sorting: numbers by value, the rest as text in the reader's order
 // (numeric: "Io 2" before "Io 10"); missing values last in both directions.
-const collator = new Intl.Collator(undefined, { numeric: true });
 const missing = (v) => v == null || v === '';
 const sortKey = (v) => (isCell(v) ? (v.value ?? v.text) : v);
 const keys = (v) => (Array.isArray(v) ? v.map(String) : []);
-const compare = ({ key, dir }) => ([a], [b]) => {
+const compare = ({ key, dir }, collator) => ([a], [b]) => {
     const x = sortKey(a?.[key]), y = sortKey(b?.[key]);
     if (missing(x) || missing(y))
         return Number(missing(x)) - Number(missing(y));
@@ -382,13 +392,14 @@ rocket('sb-data-table', {
         const whole = () => off === 0 && data.length >= props.total;
         const show = () => {
             shown = data.map((r, j) => [r, off + j]);
+            const [nf, co] = intl(host);
             if (whole() && sort.key)
-                shown.sort(compare(sort));
+                shown.sort(compare(sort, co));
             // As JSON: data-for clones plain rows fast, and a signal's rows would
             // be proxies, which structuredClone refuses (a slow fallback).
             // Rows with a cell object take the second loop, whose cells cost more.
             const fancy = shown.some(([r]) => cols.some((c) => isCell(r?.[c.key])));
-            const out = JSON.stringify(shown.map(([r], j) => ({ i: off + j, k: keyAt(off + j), c: cols.map((c) => (fancy ? rich : text)(r?.[c.key])) })));
+            const out = JSON.stringify(shown.map(([r], j) => ({ i: off + j, k: keyAt(off + j), c: cols.map((c) => (fancy ? rich : text)(r?.[c.key], nf)) })));
             if (fancy)
                 ($$.rows = '[]'), ($$.rich = out);
             else
@@ -485,8 +496,9 @@ rocket('sb-data-table', {
             if (!c.fit) {
                 const cell = root().querySelector('.row .cell'), s = getComputedStyle(cell ?? th ?? host);
                 const font = fontOf(s), em = parseFloat(s.fontSize), pad = cell ? pads(s) : 24;
+                const [nf] = intl(host);
                 for (const r of data) {
-                    const v = rich(r?.[c.key]);
+                    const v = rich(r?.[c.key], nf);
                     w = Math.max(w, textWidth(v.t, font) + (v.s ? textWidth(v.s, font) + 0.35 * em : 0) + (v.n ? 0.8 * em + 2 : 0) + pad);
                 }
             }

@@ -121,6 +121,26 @@
       "docs": {
         "description": "What the chart shows, named first in its accessible label."
       }
+    },
+    {
+      "name": "summaryLabel",
+      "attribute": "summary-label",
+      "type": "string",
+      "default": "Trend of {count} points: latest {latest}, low {low}, high {high}",
+      "required": false,
+      "docs": {
+        "description": "The rest of the accessible label: {count} becomes the number of points, {latest}, {low} and {high} the formatted values."
+      }
+    },
+    {
+      "name": "emptyLabel",
+      "attribute": "empty-label",
+      "type": "string",
+      "default": "No data yet",
+      "required": false,
+      "docs": {
+        "description": "The rest of the accessible label while there are no points."
+      }
     }
   ],
   "slots": [],

@@ -91,6 +91,13 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: no default; it names the readout. Without it, the host's `aria-label` does (else "Gauge").
+- Numbers are formatted with `Intl.NumberFormat` in the element's language: the nearest `lang` attribute (inside another component, the page's), else the browser's.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

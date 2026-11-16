@@ -23,6 +23,8 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 // counted requests are still in flight. Cleanup tells a move (the host is
 // already connected again) from a removal, which carries nothing.
 const moved = new WeakMap()
+// An invalid tag (en_US, a typo) would make Intl throw.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
 
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border radius takes over).
@@ -174,6 +176,8 @@ rocket('sb-busy', {
 		const sync = () => {
 			const raw = String(props.value ?? '').trim(), n = +raw
 			$$.v = raw && isFinite(n) ? Math.min(100, Math.max(0, n)) : false
+			// The value as a percentage in the page's language (closest() stops at a shadow root).
+			$$.vt = $$.v !== false && new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { style: 'percent', maximumFractionDigits: 2 }).format($$.v / 100)
 			$$.label = props.label
 			$$.showLabel = props.showLabel
 		}
@@ -295,7 +299,7 @@ rocket('sb-busy', {
 			${variant === 'bar'
 				? html`<div class="bar" part="bar" role="progressbar" aria-labelledby="label"
 						aria-valuemin="0" aria-valuemax="100" data-class:sweeping="$$v === false"
-						data-attr:aria-valuenow="$$v" data-attr:aria-valuetext="$$v !== false && $$v + '%'"
+						data-attr:aria-valuenow="$$v" data-attr:aria-valuetext="$$vt"
 						data-attr:style="$$v !== false && '--_p: ' + $$v + '%'">
 						<span class="fill" part="fill"></span>
 					</div>`

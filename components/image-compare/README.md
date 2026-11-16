@@ -99,6 +99,16 @@ A new `position` from the page or the server replaces the reader's, even one equ
 
 Before the module has loaded, both sides show stacked. The autoloader's `sb-cloak` class on `<html>` hides undefined components until then; without it, hide `sb-image-compare:not(:defined) [slot="before"]` yourself.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: no default. Without it, the host's `aria-label` names the divider (else "Comparison").
+- `before-label`, `after-label`: no defaults, the tags on each side.
+- `value-label`: "{before} {start}, {after} {end}", what screen readers say for the position: {start} and {end} are the percentages on either side, {before} and {after} the tags (else "Before" and "After").
+- `expand-label`: "Full screen", `close-label`: "Exit full screen", the full screen button's names.
+- The percentages are formatted with `Intl.NumberFormat` in the element's language: the nearest `lang` attribute (inside another component, the page's), else the browser's.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.

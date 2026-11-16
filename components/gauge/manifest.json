@@ -58,7 +58,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Caption below the value."
+        "description": "Caption below the value, and the accessible name (without it, the host's aria-label, else \"Gauge\")."
       }
     },
     {

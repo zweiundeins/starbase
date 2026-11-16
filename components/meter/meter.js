@@ -7,6 +7,11 @@ import { rocket } from 'datastar'
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// An invalid tag (en_US, a typo) would make Intl throw. closest() stops at a
+// shadow root: inside another component, the page's lang.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
+const numbers = (host, places) => new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang), { minimumFractionDigits: places, maximumFractionDigits: places, useGrouping: false })
+
 const styles = /* css */ `
 :host {
 	--_track: var(--sb-surface-inset, #0B1224);
@@ -82,7 +87,7 @@ rocket('sb-meter', {
 		if (!host.hasAttribute('danger')) danger = min + (max - min) * 0.9
 		const s = danger < warn ? -1 : 1
 		const tone = s * (value - danger) >= 0 ? 'danger' : s * (value - warn) >= 0 ? 'warn' : 'ok'
-		const shown = Number(value).toFixed(decimals) + unit
+		const shown = numbers(host, decimals).format(value) + unit
 		const x = internalsOf(host)
 		Object.assign(x, { role: 'meter', ariaLabel: label || 'Meter', ariaValueMin: min, ariaValueMax: max, ariaValueNow: Math.min(max, Math.max(min, value)), ariaValueText: shown })
 		x.states.clear()

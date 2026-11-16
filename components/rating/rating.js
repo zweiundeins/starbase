@@ -16,6 +16,9 @@ const peek = (fn) => {
 const internals = new WeakMap()
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
 
+// An invalid tag (en_US, a typo) would make Intl throw.
+const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0] } catch {} }
+
 // Pixel sprites, 7×7: '#' is the shape, '+' its highlight.
 const SPRITES = {
 	heart: ['.##.##.', '#+#####', '#######', '#######', '.#####.', '..###..', '...#...'],
@@ -68,7 +71,8 @@ rocket('sb-rating', {
 		precision: oneOf('1', '0.5').docs({ description: 'Step: whole or half units.' }),
 		icon: oneOf('heart', 'star').docs({ description: 'Pixel sprite.' }),
 		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Size.' }),
-		label: string.trim.docs({ description: 'Visible label (also the accessible name).' }),
+		label: string.trim.docs({ description: 'Visible label (also the accessible name). Without it, the host\'s aria-label names the control (else "Rating").' }),
+		valueLabel: string.default('{value} of {max}').docs({ description: 'What screen readers say for the value: {value} and {max} become the numbers, formatted for the page\'s language.' }),
 		readonly: bool.docs({ description: 'Show the value; no interaction.' }),
 		clearable: bool.docs({ description: 'Picking the current value again clears it to 0.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
@@ -88,6 +92,13 @@ rocket('sb-rating', {
 		const clamp = (v) => Math.min(props.max, Math.max(0, Math.round((Number(v) || 0) / step()) * step()))
 		$$.value = clamp(props.value)
 		$$.hover = -1 // preview while pointing, -1 when not
+		// Numbers in the page's language (closest() stops at a shadow root).
+		const said = () => {
+			const nf = new Intl.NumberFormat(locale(host.closest('[lang]')?.lang || document.documentElement.lang))
+			return props.valueLabel.replace(/\{(value|max)\}/g, (_, k) => nf.format(k === 'max' ? props.max : $$.value))
+		}
+		effect(() => ($$.said = said()))
+		observeProps(() => peek(() => ($$.said = said())))
 		// A value attribute sent by the server wins when it changes; a removed
 		// attribute is ignored (see sb-details). Watched as an attribute, not
 		// with observeProps: that only fires when the decoded value changes, so
@@ -178,7 +189,7 @@ rocket('sb-rating', {
 			evt.preventDefault()
 		})
 	},
-	render: ({ html, svg, props: { max, icon, size, label, readonly, disabled } }) => {
+	render: ({ html, svg, host, props: { max, icon, size, label, readonly, disabled } }) => {
 		const body = path(SPRITES[icon], '#+'), shine = path(SPRITES[icon], '+')
 		// aria-readonly and aria-disabled use a ternary, not `readonly && 'true'`:
 		// property writes aren't decoded, and el.disabled = 0 would render
@@ -191,13 +202,13 @@ rocket('sb-rating', {
 				role="slider"
 				tabindex="${readonly || disabled ? null : '0'}"
 				aria-labelledby="${label ? 'label' : null}"
-				aria-label="${label ? null : 'Rating'}"
+				aria-label="${label ? null : host.getAttribute('aria-label') || 'Rating'}"
 				aria-valuemin="0"
 				aria-valuemax="${max}"
 				aria-readonly="${readonly ? 'true' : null}"
 				aria-disabled="${disabled ? 'true' : null}"
 				data-attr:aria-valuenow="$$value"
-				data-attr:aria-valuetext="$$value + ' of ${max}'"
+				data-attr:aria-valuetext="$$said"
 				data-on:pointermove="@point()"
 				data-on:pointerleave="$$hover = -1; $$down = 0"
 				data-on:pointerdown="$$down = 1"

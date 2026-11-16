@@ -100,6 +100,15 @@ func (s *Server) demoTelemetry(w http.ResponseWriter, r *http.Request) {
 
 `el.push(n)` appends a point, and `el.data` returns a copy of the buffer. The buffer survives moving the element in the page.
 
+## Text and language
+
+Every text it shows or reads out is a prop with an English default, so a page in another language sets them all. `{name}` in a text stands for a value it fills in.
+
+- `label`: what it shows, named first ("Altitude: …").
+- `summary-label`: "Trend of {count} points: latest {latest}, low {low}, high {high}", the rest of the name.
+- `empty-label`: "No data yet", the rest of the name without points.
+- Numbers are formatted with `Intl.NumberFormat` in the element's language: the nearest `lang` attribute (inside another component, the page's), else the browser's. The shown value too.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
