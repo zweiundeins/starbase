@@ -6,6 +6,7 @@ summary: Apache ECharts driven by server-sent options, in the page's theme and l
 author: zweiundeins
 tags: [chart, charts, echarts, graph, data, visualization]
 since: 2026-09-23
+vendored: [ECharts 6.1.0 (Apache-2.0)]
 preview: |
   <sb-echarts style="block-size: 9rem" option='{"grid":{"top":8,"bottom":20,"left":30,"right":8},"xAxis":{"type":"category","data":["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]},"yAxis":{"type":"value"},"series":[{"type":"bar","data":[120,200,150,80,70,110,130]}]}'></sb-echarts>
 usage: |

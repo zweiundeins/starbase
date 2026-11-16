@@ -25,9 +25,25 @@ import (
 //
 // The bundle is one of MinFiles, so it is frozen per version like them
 // (SyncCatalog, component_files) and served at
-// /c/<slug>@<hash>/<slug>.bundle.min.js. Its banner names the tag and the
-// version, nothing else, so a version's bundle has the same bytes wherever
-// it is built (cmd/dist).
+// /c/<slug>@<hash>/<slug>.bundle.min.js. Its banner (Banner) names the tag,
+// the version and the licences, nothing that changes between builds, so a
+// version's bundle has the same bytes wherever it is built (cmd/dist).
+
+// Banner is the comment the one-file bundle starts with: the tag, the
+// version, the component's licence and those of the code vendored into it,
+// e.g. "/*! sb-qr-code, version qr-code@1a2b3c4d5e6f: its modules in one
+// file. MIT, (c) zwei und eins gmbh. Vendored: uqr 0.1.3 (MIT). */".
+func (c *Component) Banner() string {
+	holder := c.Author
+	if c.LicenseID() == "MIT" {
+		holder = "zwei und eins gmbh"
+	}
+	s := fmt.Sprintf("/*! %s, version %s@%s: its modules in one file. %s, (c) %s.", c.Tag, c.Slug, c.Hash, c.LicenseID(), holder)
+	if len(c.Vendored) > 0 {
+		s += " Vendored: " + strings.Join(c.Vendored, ", ") + "."
+	}
+	return s + " */"
+}
 
 // BundleName is a component's one-file bundle inside its folder:
 // "<slug>.bundle.min.js". No component file may take that name (Load).
@@ -152,7 +168,7 @@ func bundleOptions(c *Component) api.BuildOptions {
 		LogLevel:          api.LogLevelSilent,
 	}
 	if c != nil {
-		opts.Banner = map[string]string{"js": fmt.Sprintf("/*! %s, version %s@%s: its modules in one file */", c.Tag, c.Slug, c.Hash)}
+		opts.Banner = map[string]string{"js": c.Banner()}
 	}
 	return opts
 }

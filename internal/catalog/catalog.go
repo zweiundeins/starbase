@@ -37,6 +37,7 @@ type Meta struct {
 	Usage    string   `yaml:"usage"`    // optional: the smallest markup to paste into a page; installation snippets fall back to Preview
 	Source   string   `yaml:"source"`   // optional: upstream repository (pinned)
 	License  string   `yaml:"license"`  // optional: an SPDX id from licenses; MIT when empty
+	Vendored []string `yaml:"vendored"` // third-party code in vendor/, with its version and licence: "uqr 0.1.3 (MIT)"
 	Unlisted bool     `yaml:"unlisted"` // part of the site, not the gallery: served and documented, but not browsed
 
 	Playground PlaygroundMeta `yaml:"playground"`
@@ -185,7 +186,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 // (min.go, onefile.go), so a change to how they are made (esbuild options,
 // shrink.go, the bundle's banner) must change it: every component then gets a
 // new version, whose files are made the new way.
-const minFormat = "min3"
+const minFormat = "min4"
 
 // snapshotFormat is part of the catalog's hash, which names a snapshot
 // (/c/@<hash>/autoloader.js) whose autoloader is frozen the first time it is
@@ -281,6 +282,7 @@ func loadOne(fsys fs.FS, slug string) (*Component, error) {
 			problems = append(problems, fmt.Sprintf("%s is reserved for the one-file bundle: rename it", name))
 		}
 	}
+
 	if c.License != "" && !slices.Contains(licenses, c.License) {
 		problems = append(problems, fmt.Sprintf("front matter: license %q must be one of %s", c.License, strings.Join(licenses, ", ")))
 	}

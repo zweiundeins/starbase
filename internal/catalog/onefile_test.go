@@ -1,6 +1,7 @@
 package catalog_test
 
 import (
+	"io/fs"
 	"maps"
 	"slices"
 	"strings"
@@ -24,9 +25,17 @@ func TestComponentBundles(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		banner := "/*! " + c.Tag + ", version " + c.Slug + "@" + c.Hash + ": its modules in one file */\n"
-		if !strings.HasPrefix(string(b.Body), banner) {
-			t.Errorf("%s: the bundle should start with %q: %.120s", c.Slug, banner, b.Body)
+		banner := "/*! " + c.Tag + ", version " + c.Slug + "@" + c.Hash + ": its modules in one file. " + c.LicenseID() + ", (c) "
+		if !strings.HasPrefix(string(b.Body), banner) || !strings.HasPrefix(string(b.Body), c.Banner()+"\n") {
+			t.Errorf("%s: the bundle should start with %q: %.160s", c.Slug, banner, b.Body)
+		}
+		if _, err := fs.Stat(components.FS, c.Slug+"/vendor"); err == nil && len(c.Vendored) == 0 {
+			t.Errorf("%s: its front matter's vendored should name the code in vendor/ with its version and licence, e.g. [uqr 0.1.3 (MIT)]", c.Slug)
+		}
+		for _, v := range c.Vendored {
+			if !strings.Contains(c.Banner(), v) {
+				t.Errorf("%s: the banner doesn't name %s", c.Slug, v)
+			}
 		}
 		mins, err := cat.MinFiles(c)
 		if err != nil {
@@ -61,6 +70,17 @@ func TestComponentBundles(t *testing.T) {
 		}
 		if c.License == "Beerware" && !strings.Contains(string(b.Body), "THE BEER-WARE LICENSE") {
 			t.Errorf("%s: the bundle lost its licence notice", c.Slug)
+		}
+	}
+	for slug, want := range map[string]string{
+		"modal":        "its modules in one file. MIT, (c) zwei und eins gmbh. */",
+		"kanban-board": "its modules in one file. Beerware, (c) derekr. */",
+		"qr-code":      "MIT, (c) zwei und eins gmbh. Vendored: uqr 0.1.3 (MIT). */",
+		"echarts":      "Vendored: ECharts 6.1.0 (Apache-2.0). */",
+		"code-editor":  "Vendored: Prism 1.30.0 (MIT). */",
+	} {
+		if c, _ := cat.Get(slug); c == nil || !strings.HasSuffix(c.Banner(), want) {
+			t.Errorf("%s: the banner should end with %q", slug, want)
 		}
 	}
 	kanban, _ := cat.Get("kanban-board")
