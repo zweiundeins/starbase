@@ -23,7 +23,7 @@ Prefer git? Fork the repository and:
 
 1. `go tool task new -- my-widget --category forms` scaffolds `components/my-widget/`.
 2. Build it in `my-widget.js` and document it in `README.md`. `go tool task live` shows it at `/components/my-widget`.
-3. `go tool task manifests` generates `manifest.json` (it needs Chrome or Chromium), and `go tool task test` validates everything.
+3. `go tool task manifests` generates `manifest.json` (it needs Chrome or Chromium), `go tool task templ-wrappers` regenerates the typed templ wrappers from it (`templ/sb`: run it again whenever a prop changes, or any file of the component, since the wrappers pin its version), and `go tool task test` validates everything.
 4. Open the pull request. CI runs the same checks.
 
 There is no Go code to touch: the gallery, search, categories, docs page and Playground all come from your folder.

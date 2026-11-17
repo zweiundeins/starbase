@@ -21,6 +21,7 @@ The house rules (shadow DOM, `--sb-*` tokens with fallbacks, `$$` signals for in
 go tool task live        # dev server with live reload on :7331
 go tool task test        # go vet + tests, including validation of every component folder
 go tool task manifests   # regenerate component manifests (needs Chrome/Chromium)
+go tool task templ-wrappers  # regenerate the typed templ wrappers (templ/sb) from the manifests
 go tool task vulncheck   # govulncheck
 ```
 

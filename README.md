@@ -97,6 +97,18 @@ go run ./cmd/dist -out js kanban-board modal   # or: go tool task dist -- -out j
 
 This writes `js/kanban-board.js`, `js/modal.js`, the components they render and the files they load on first use, and prints each file's integrity. Each `<slug>.js` is byte for byte the bundle the site serves for that version; its first line names it, for example `/*! sb-kanban-board, version kanban-board@<hash>: its modules in one file */`.
 
+### In Go, with templ
+
+[`github.com/zweiundeins/starbase/templ`](templ/README.md) has a typed [templ](https://templ.guide) component per Starbase component, generated from its manifest: one field per prop, booleans by presence, `oneOf` values as constants, JSON props as Go values, content as templ children. `sb.Imports` loads them pinned with integrity hashes, and each component page has a templ tab with its usage.
+
+```templ
+@sb.Imports(sb.ImportsProps{Components: []sb.Tag{sb.TagToggle}})
+
+@sb.Toggle(sb.ToggleProps{Name: "notify", Label: "Notifications", Checked: true})
+```
+
+It is a module of its own in `templ/`, which depends on templ and the standard library only, tagged `templ/vX.Y.Z` from the commit of the Starbase release `vX.Y.Z`. After a component's props change, `go tool task templ-wrappers` regenerates it; CI fails while it is stale.
+
 ## Adding a component
 
 **No tools needed:** use the [submission form](/submit) (a GitHub issue form). Paste the code, or link the GitHub repo the component lives in, and a bot validates it, generates its manifest and opens a pull request. See `.github/workflows/component-from-issue.yml`.

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+#### Site and server
+
+- **templ wrappers:** the module `github.com/zweiundeins/starbase/templ` (package `sb`, in `templ/`, depending on templ and the standard library only) has a typed templ component for every component, generated from its manifest by `go tool task templ-wrappers` (`cmd/templgen`): `@sb.Toggle(sb.ToggleProps{Label: "Notifications", Checked: true})`. Props are fields with doc comments from the manifest, booleans by presence, flags that are on by default as `sb.Flag`, `oneOf` values as constants, numbers whose default isn't 0 and values that are the server's word as pointers, JSON props as Go types (`sb.DropdownItem`, `sb.Option`, `sb.Column`, `sb.RangeValue`, …), content as templ children, events and Datastar attributes in `Attrs`. `sb.Imports` loads Datastar and the components pinned with their integrity hashes to the versions the module was generated with. Each component page has a templ tab under Installation with its usage as wrapper calls. CI fails when the wrappers are stale, tests the module on its own, and a browser test renders every component through its wrapper, with every field set, on Starbase's Datastar build and on the official release, where each decoded prop must equal its Go value. The module is tagged `templ/vX.Y.Z` with each release.
+
 ## [0.9.0] - 2026-11-16
 
 Starbase runs on Datastar v1.0.5 and lith v0.5.8. Booleans follow HTML: present means true, and Starbase's own Datastar patch for `"false"` is gone. `sb-tree` renders from server markup with real links, `sb-dropdown` takes rich items, group headings and links, and `sb-virtual-scroll` gets feed keys, aligned windows and unknown totals. Every visible text is a prop, numbers and dates follow the page's language, and the bundles name their licences. Commands are ops that the tab's state acknowledges, Prometheus metrics come from lith, the Unix socket is closed to other local users, and Go 1.27.4 fixes two standard-library vulnerabilities.
