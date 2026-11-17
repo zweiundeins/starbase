@@ -105,9 +105,10 @@ for _, t := range rendered() {     // in order, each once, with the components t
 sb.DatastarBuild()   // the Datastar build the components were made for: Path and Integrity
 sb.Snapshot          // the catalog snapshot the pins come from
 sb.Version()         // this module's version in your build ("v0.10.0"), "" when unknown
+sb.Release           // the newest Starbase release when the wrappers were generated ("0.9.1")
 ```
 
-`Collect` composes with `Tracked`: a `Collect` around a `Tracked` sees what it rendered. A vendored copy can compare its lock with `Pin` and `DatastarBuild`.
+`Collect` composes with `Tracked`: a `Collect` around a `Tracked` sees what it rendered. A vendored copy can compare its lock with `Pin` and `DatastarBuild`, and the Starbase release its lock names with `sb.Release`, so the files and the wrappers come from the same release. `sb.Release` comes from Starbase's changelog and changes only with a release.
 
 Every component page on [the site](https://starbase.zweiundeins.gmbh) has a templ tab under Installation with its usage as wrapper calls.
 
@@ -118,7 +119,7 @@ Every props struct has `ID`, `Class` and `Attrs`, then one field per prop of the
 | Manifest type | Go type | Attribute |
 | --- | --- | --- |
 | `string` | `string` | the text; `""` leaves it out, for the component's default (the doc comment carries it, e.g. the English label) |
-| `string` holding a list | `[]string` | `sb-tree`'s `Value` and `Expanded`, `sb-toc`'s `Levels`: the items separated by spaces; `sb-select`'s `Value`: one value, or with `Multiple` a JSON array. `nil` leaves it out, an empty list writes it empty |
+| `string` holding a list | `[]string` | `sb-tree`'s `Value` and `Expanded`, `sb-toc`'s `Levels`: the items separated by spaces; `sb-select`'s `Value`: one value, or with `Multiple` a JSON array. `nil` leaves it out, an empty list writes it empty (for `sb-select` without `Multiple`, `[]string{""}` writes the same `value=""`: both mean no value) |
 | `boolean` | `bool` | `true` is the bare attribute, `false` leaves it out; never `"false"` |
 | `oneOf(true, false)`, on by default | `sb.Flag` | `sb.Default` leaves it out, `sb.Off` writes `x="false"`, `sb.On` `x="true"` |
 | `oneOf("sm", "md", "lg")` | a named type, e.g. `sb.ToggleSize` | a constant per value, the type's name and the value's (`sb.ToggleSizeLg`); `""` leaves it out; another value is a render error |
@@ -155,7 +156,7 @@ An `href` (`sb-button`, `sb-card`, a dropdown item's or a cell's) is sanitized l
 
 Each component's doc comment lists the events it sends, and its slots. Templ children render inside the element; a named slot is an element with `slot="…"`.
 
-Two helpers:
+Three helpers:
 
 ```templ
 // Attributes from several places, the later winning (names compare without case):
@@ -167,6 +168,9 @@ Two helpers:
 		<div slot={ sb.TabSlot(labels, i) }>…</div>
 	}
 }
+
+// A panel that knows only its own label: the slug, without TabSlot's de-duplication ("übersicht").
+<div slot={ sb.TabSlug(label) }>…</div>
 ```
 
 ## Contributing

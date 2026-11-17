@@ -2,8 +2,10 @@ package templgen
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 
 	"starbase/internal/catalog"
@@ -29,7 +31,15 @@ func Refresh(root string, write bool) (stale []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	files, err := Files(m, datastar, SiteURL)
+	changelog, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	if err != nil {
+		return nil, err
+	}
+	release, err := Release(changelog)
+	if err != nil {
+		return nil, err
+	}
+	files, err := Files(m, datastar, release, SiteURL)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +61,18 @@ func Refresh(root string, write bool) (stale []string, err error) {
 	slices.Sort(stale)
 	return stale, nil
 }
+
+// Release is the newest released version in a changelog: the first
+// "## [x.y.z]" heading, which skips [Unreleased].
+func Release(changelog []byte) (string, error) {
+	m := releaseHeading.FindSubmatch(changelog)
+	if m == nil {
+		return "", errors.New("CHANGELOG.md: no released version (## [x.y.z])")
+	}
+	return string(m[1]), nil
+}
+
+var releaseHeading = regexp.MustCompile(`(?m)^## \[(\d+\.\d+\.\d+)\]`)
 
 // SiteURL is where the generated docs link the components' pages.
 const SiteURL = "https://starbase.zweiundeins.gmbh"

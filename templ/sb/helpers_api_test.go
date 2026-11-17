@@ -2,6 +2,7 @@ package sb
 
 import (
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/a-h/templ"
@@ -47,5 +48,27 @@ func TestTabSlot(t *testing.T) {
 	}
 	if TabSlot([]string{"a"}, 1) != "" || TabSlot(nil, 0) != "" || TabSlot([]string{"a"}, -1) != "" {
 		t.Error("an index outside the labels")
+	}
+}
+
+// TestTabSlug: one label's slug, without the de-duplication; the browser
+// test TestTemplTabSlots checks it against the component itself.
+func TestTabSlug(t *testing.T) {
+	for in, want := range map[string]string{"Home": "home", "C#": "c", "  Hello, World!  ": "hello-world", "--": "", "": "", "Übersicht": "übersicht", "İstanbul": "i-stanbul", "ΟΔΟΣ.": "οδος", "日本語 2": "日本語-2", "a-1": "a-1"} {
+		if got := TabSlug(in); got != want {
+			t.Errorf("TabSlug(%q) = %q, want %q", in, got, want)
+		}
+	}
+	labels := []string{"Docs", "Docs"}
+	if TabSlug(labels[1]) != "docs" || TabSlot(labels, 1) != "docs-1" {
+		t.Error("TabSlug does not de-duplicate, TabSlot does")
+	}
+}
+
+// TestRelease: the release the wrappers were generated with, as the
+// changelog writes it (no "v").
+func TestRelease(t *testing.T) {
+	if !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(Release) {
+		t.Errorf("Release = %q", Release)
 	}
 }

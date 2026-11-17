@@ -3204,7 +3204,8 @@ type SelectProps struct {
 	// property. Attribute value: one value, []string{"mars"}, or with Multiple
 	// any number, written as a JSON array (more than one value without
 	// Multiple is a render error); nil leaves it out, an empty list sends no
-	// value, which wins over the user's.
+	// value, which wins over the user's; without Multiple, []string{""} writes
+	// the same value="" and means no value too.
 	Value []string
 
 	// Visible label. Attribute label.

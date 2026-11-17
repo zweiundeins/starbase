@@ -49,7 +49,7 @@ func TabSlot(labels []string, i int) string {
 	seen := map[string]bool{}
 	slot := ""
 	for j := 0; j <= i; j++ {
-		slot = tabSlug(labels[j])
+		slot = TabSlug(labels[j])
 		for seen[slot] {
 			slot += "-" + strconv.Itoa(j)
 		}
@@ -58,9 +58,12 @@ func TabSlot(labels []string, i int) string {
 	return slot
 }
 
-// tabSlug is sb-tabs' slug(): String(s).toLowerCase(), then
+// TabSlug is the slug sb-tabs makes of one label, without TabSlot's
+// de-duplication: for a panel that knows its own label only. It is the
+// panel's slot as long as no earlier label has the same slug. sb-tabs'
+// slug(): String(s).toLowerCase(), then
 // /[^\p{L}\p{N}]+/gu → "-" and one hyphen off each end.
-func tabSlug(s string) string {
+func TabSlug(s string) string {
 	var b strings.Builder
 	hyphen := false
 	for i, r := range s {

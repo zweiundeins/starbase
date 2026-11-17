@@ -2,6 +2,7 @@ package templgen
 
 import (
 	"io/fs"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,6 +29,28 @@ func TestWrappersUpToDate(t *testing.T) {
 	}
 	for _, p := range stale {
 		t.Errorf("%s is stale: run go tool task templ-wrappers", p)
+	}
+}
+
+// TestRelease: sb.Release is the first released version in the changelog,
+// never [Unreleased], and the changelog has one.
+func TestRelease(t *testing.T) {
+	for in, want := range map[string]string{
+		"# Changelog\n\n## [Unreleased]\n\n### Added\n\n## [0.9.1] - 2026-11-17\n\n## [0.9.0] - 2026-11-16\n": "0.9.1",
+		"## [Unreleased]\n## [1.10.0]\n":                "1.10.0",
+		"## [Unreleased]\n- see [0.9.0]\n### [0.8.0]\n": "",
+	} {
+		got, err := Release([]byte(in))
+		if got != want || (err == nil) != (want != "") {
+			t.Errorf("Release(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	b, err := os.ReadFile("../../CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Release(b); err != nil {
+		t.Error(err)
 	}
 }
 

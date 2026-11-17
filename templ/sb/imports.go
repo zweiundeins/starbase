@@ -191,6 +191,13 @@ func CatalogAutoloader() Asset { return Asset{"/c/@" + snapshot + "/autoloader.j
 // its autoloader and import map under /c/@<Snapshot>/.
 const Snapshot = snapshot
 
+// Release is the newest Starbase release when the wrappers were generated,
+// from its CHANGELOG ("0.9.1"). It changes only with a release, whose
+// commit regenerates the wrappers. A host that vendors Starbase's files
+// with a lock naming the release compares it with Release, so the files
+// and the wrappers come from the same one.
+const Release = release
+
 // Version is the version of this module in the program's build info: the
 // release tag ("v0.10.0"), a pseudo-version naming the commit, or "" when
 // the build doesn't know it (a replace with a directory, go test inside the

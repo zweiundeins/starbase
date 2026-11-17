@@ -334,6 +334,7 @@ func templRoundTrip(t *testing.T) {
 			names[c.Tag] = append(names[c.Tag], p.Name)
 		}
 	}
+	lj, _ := json.Marshal(slotLabels)
 	nj, _ := json.Marshal(names)
 	oj, _ := json.Marshal(flagsOn)
 	ej, _ := json.Marshal(extras)
@@ -360,8 +361,18 @@ try {
 		extras[id] = Object.fromEntries(Object.keys(props).map((n) => [n, el[n]]))
 	}
 	const slots = [...document.getElementById('templ-slots').shadowRoot.querySelectorAll('[role=tabpanel] > slot')].map((s) => s.name)
+	// Each label on its own: the slug, which sb.TabSlug names.
+	const slugs = []
+	for (const l of ` + string(lj) + `) {
+		const e = document.createElement('sb-tabs')
+		e.setAttribute('labels', JSON.stringify([l]))
+		document.body.append(e)
+		await new Promise(requestAnimationFrame)
+		slugs.push(e.shadowRoot.querySelector('[role=tabpanel] > slot')?.name ?? null)
+		e.remove()
+	}
 	const vs = document.getElementById('templ-sb-virtual-scroll')
-	out = JSON.stringify({ got, on, extras, slots, offset: [vs.getAttribute('offset'), vs.offset] })
+	out = JSON.stringify({ got, on, extras, slots, slugs, offset: [vs.getAttribute('offset'), vs.offset] })
 } catch (e) { out = JSON.stringify({ error: String(e) }) }
 await fetch('/__probe/result', { method: 'POST', body: out })`
 	res := probeBundle(t, "/__templ", script, handlers)
@@ -370,6 +381,7 @@ await fetch('/__probe/result', { method: 'POST', body: out })`
 		On     map[string]map[string]any
 		Extras map[string]map[string]any
 		Slots  []string
+		Slugs  []string
 		Offset []any
 		Error  string
 	}
@@ -411,10 +423,17 @@ await fetch('/__probe/result', { method: 'POST', body: out })`
 	if !slices.Equal(got.Slots, slots) {
 		t.Errorf("sb-tabs' slots %q, sb.TabSlot %q", got.Slots, slots)
 	}
+	var slugs []string
+	for _, l := range slotLabels {
+		slugs = append(slugs, sb.TabSlug(l))
+	}
+	if !slices.Equal(got.Slugs, slugs) {
+		t.Errorf("sb-tabs' slot for each label on its own %q, sb.TabSlug %q", got.Slugs, slugs)
+	}
 	if !reflect.DeepEqual(got.Offset, []any{"0", 0.0}) {
 		t.Errorf("sb-virtual-scroll offset: attribute and prop %v", got.Offset)
 	}
-	t.Logf("%d props of %d components compared, %d slots", n, len(want), len(slots))
+	t.Logf("%d props of %d components compared, %d slots, %d slugs", n, len(want), len(slots), len(got.Slugs))
 }
 
 func find(cat *catalog.Catalog, tag string) *catalog.Component {
