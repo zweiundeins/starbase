@@ -7,8 +7,8 @@ package sb
 const (
 	datastarPath      = "/c/datastar@dad2261a81d8/datastar-rocket.js"
 	datastarIntegrity = "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK"
-	snapshot          = "993e80ecfe09"
-	snapshotIntegrity = "sha384-bSL36EdChKsqZ55aY2W56HOc6Cl34/Xj7ZsojFVqzmTCBBMSErRQe70Ct/WlQIEh"
+	snapshot          = "691ad1aa0af5"
+	snapshotIntegrity = "sha384-AR3cbSP+5+7BjYtu7PVFHCf1M6cXXBf6qy/5GX5e9oiifSZV/ijn5SLoorsUJ8YJ"
 )
 
 var pinOrder = []Tag{TagAlert, TagAutoloader, TagBentoWorkspace, TagBusy, TagButton, TagCard, TagCheckbox, TagCheckboxGroup, TagCodeEditor, TagCodePlayground, TagContextMenu, TagCopyButton, TagCountUp, TagDataTable, TagDatePicker, TagDetails, TagDragGroup, TagDrawer, TagDropdown, TagECharts, TagGauge, TagImageCompare, TagInlineEdit, TagInput, TagKanbanBoard, TagMeter, TagModal, TagNebula, TagOdometer, TagPixelBoard, TagPopover, TagQRCode, TagRadioGroup, TagRange, TagRating, TagRelativeTime, TagSelect, TagSlider, TagSortableList, TagSortableTree, TagSparkline, TagStarfield, TagTabs, TagThemeSwitch, TagToast, TagTableOfContents, TagToggle, TagTooltip, TagTree, TagTypewriter, TagVirtualScroll, TagVoxel}
@@ -199,8 +199,8 @@ var pins = map[Tag]pin{
 		integrity: "sha384-W6kxd255Nx+kuSXffTRP3TCZG+1AbUBzYfIXBz/2xbGDWR6J5LTXxa03yHqIK3vF",
 	},
 	TagToast: {
-		bundle:    "toast@df52d970497e/toast.bundle.min.js",
-		integrity: "sha384-V0nGMNpV3vINkHaEaqU9dMogeNUK4481gz4N4OHNHTQ/5S/NEpLjf4w7cQHYQIXF",
+		bundle:    "toast@fd4d40c61e24/toast.bundle.min.js",
+		integrity: "sha384-qvpCD+oy6WbTTrYHWTrqjjAqkFcquBZ9G4yt4/jqP/1GKTBBTTuvc5yxCNn9QV/7",
 	},
 	TagTableOfContents: {
 		bundle:    "toc@143d084c3840/toc.bundle.min.js",

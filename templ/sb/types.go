@@ -220,4 +220,13 @@ type ToastMessage struct {
 	// Duration before it dismisses itself, in ms, over the element's
 	// duration; Int(0) makes it sticky.
 	Duration *int `json:"duration,omitempty"`
+	// Href makes Label a link under the message; a plain click follows it
+	// and closes the toast.
+	Href string `json:"href,omitempty"`
+	// Action makes Label a button that emits sb-toast-action {id, action}
+	// and closes the toast. Href wins when both are set.
+	Action string `json:"action,omitempty"`
+	// Label is the link's or the button's text; without it, Href and Action
+	// are ignored.
+	Label string `json:"label,omitempty"`
 }

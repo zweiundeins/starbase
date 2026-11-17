@@ -81,7 +81,7 @@ var templValues = map[string]any{
 	"sb-radio-group.options":         []sb.Option{{Value: "a"}, {Value: "b", Label: "B"}},
 	"sb-checkbox-group.options":      []sb.Option{{Value: "a"}, {Value: "b", Label: "B", Description: "Bee"}},
 	"sb-range.value":                 &sb.RangeValue{Start: 20, End: 60},
-	"sb-toast.toasts":                []sb.ToastMessage{{ID: "t", Title: "Saved", Text: "Live <&>", Variant: sb.ToastVariantOK, Duration: sb.Int(0)}},
+	"sb-toast.toasts":                []sb.ToastMessage{{ID: "t", Title: "Saved", Text: "Live <&>", Variant: sb.ToastVariantOK, Duration: sb.Int(0), Href: "/m/1?a=1&b=2", Label: "Öffnen <&>"}, {ID: "u", Text: "Hi", Action: "reply", Label: "Antworten"}},
 	"sb-tree.items":                  []sb.TreeItem{{ID: "a", Label: "A", Icon: "🪐", Children: []sb.TreeItem{{ID: "b", Label: "B"}}}, {ID: "l", Label: "Lazy", Lazy: true}},
 	"sb-tree.loaded":                 map[string][]sb.TreeItem{"l": {{ID: "l1", Label: "L1"}}},
 	"sb-tabs.labels":                 []string{"One", "Two <&>"},

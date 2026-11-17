@@ -3778,10 +3778,13 @@ const (
 //
 // Children render inside the element.
 //
-// Events, to listen to with Attrs ("data-on:sb-dismiss"):
+// Events, to listen to with Attrs ("data-on:sb-toast-action"):
 //   - sb-dismiss: A toast went away. detail: { id, reason: "user" | "timeout"
 //     }. It is already hidden locally; post a command if the server should
 //     drop it too.
+//   - sb-toast-action: A toast's action button was activated. detail: { id,
+//     action }. The toast then closes like a dismissal (sb-dismiss, reason
+//     "user").
 //
 // Docs: https://starbase.zweiundeins.gmbh/components/toast
 func Toast(p ToastProps) templ.Component {
@@ -3810,9 +3813,11 @@ type ToastProps struct {
 	Attrs templ.Attributes
 
 	// The toasts, oldest first: [{id, title?, text, variant?:
-	// info|ok|warn|danger, duration?}]. Server state: every morph brings the
-	// current list, and a toast the server drops is gone. Attribute toasts, as
-	// JSON; nil leaves it out.
+	// info|ok|warn|danger, duration?, href?, action?, label?}]. href (a link)
+	// or action (a button that emits sb-toast-action) shows label as a control
+	// in the toast; without a label neither is shown. Server state: every
+	// morph brings the current list, and a toast the server drops is gone.
+	// Attribute toasts, as JSON; nil leaves it out.
 	Toasts []ToastMessage
 
 	// Corner of the viewport the stack is pinned to. "inline" puts it in the

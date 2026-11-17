@@ -18,7 +18,8 @@ const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p
 const LEAVE = 160 // ms the fade-out runs before the toast is taken out
 const ANNOUNCE_MAX = 200 // characters handed to the live region
 
-// A toast is {id, title?, text, variant?, duration?}; strings are allowed too.
+// A toast is {id, title?, text, variant?, duration?, href?, action?, label?};
+// strings are allowed too.
 // Without an id, the message is the id ("#2", "#3"… on repeats): a position
 // would hand a dismissal on to the next toast once the server drops one.
 const normalize = (list) => {
@@ -33,8 +34,18 @@ const normalize = (list) => {
 		const variant = ['ok', 'warn', 'danger'].includes(o.variant) ? o.variant : 'info'
 		// Capped where setTimeout overflows (it takes anything longer as 0).
 		const duration = Number.isFinite(Number(o.duration)) && o.duration !== '' && o.duration !== null ? Math.min(2 ** 31 - 1, Math.max(0, Number(o.duration))) : null
-		// msg is what the live region and the dismiss button read.
-		return [{ id: String(o.id ?? (n > 1 ? `${msg}#${n}` : msg)), title, text, msg: msg.length > ANNOUNCE_MAX ? `${msg.slice(0, ANNOUNCE_MAX - 1)}…` : msg, variant, duration }]
+		// A link or an action needs the page's words for it; a javascript: URL is never one.
+		const label = String(o.label ?? '').trim()
+		let href = label && o.href ? String(o.href) : ''
+		try {
+			if (href && new URL(href, document.baseURI).protocol === 'javascript:') href = ''
+		} catch {
+			href = ''
+		}
+		const action = label && !href && o.action ? String(o.action) : ''
+		const cut = (s) => (s.length > ANNOUNCE_MAX ? `${s.slice(0, ANNOUNCE_MAX - 1)}…` : s)
+		// msg is what the dismiss button reads, say what the live region reads.
+		return [{ id: String(o.id ?? (n > 1 ? `${msg}#${n}` : msg)), title, text, msg: cut(msg), say: cut(href || action ? `${msg}${/[.!?…]$/.test(msg) ? '' : '.'} ${label}` : msg), variant, duration, href, action, label: href || action ? label : '' }]
 	})
 }
 
@@ -116,6 +127,20 @@ const styles = /* css */ `
 .title { display: block; color: var(--_tone); font-weight: 700; }
 .title + .text { margin-block-start: 0.15rem; }
 .text { font-size: 0.875rem; overflow-wrap: anywhere; }
+.act {
+	all: unset;
+	display: block;
+	inline-size: fit-content;
+	margin-block-start: 0.4rem;
+	color: var(--_tone);
+	font-size: 0.875rem;
+	font-weight: 700;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+	cursor: pointer;
+}
+.act:hover { color: var(--_text); }
+.act:focus-visible { outline: 2px solid var(--_tone); outline-offset: 2px; border-radius: 2px; }
 .close {
 	all: unset;
 	display: grid;
@@ -167,7 +192,7 @@ const styles = /* css */ `
 rocket('sb-toast', {
 	props: ({ json, number, oneOf, string }) => ({
 		toasts: json.default(() => []).docs({
-			description: 'The toasts, oldest first: [{id, title?, text, variant?: info|ok|warn|danger, duration?}]. Server state: every morph brings the current list, and a toast the server drops is gone.',
+			description: 'The toasts, oldest first: [{id, title?, text, variant?: info|ok|warn|danger, duration?, href?, action?, label?}]. href (a link) or action (a button that emits sb-toast-action) shows label as a control in the toast; without a label neither is shown. Server state: every morph brings the current list, and a toast the server drops is gone.',
 		}),
 		placement: oneOf('top-start', 'top-center', 'top-end', 'bottom-start', 'bottom-center', 'bottom-end', 'inline')
 			.default('bottom-end')
@@ -185,6 +210,13 @@ rocket('sb-toast', {
 				bubbles: true,
 				composed: true,
 				description: 'A toast went away. detail: { id, reason: "user" | "timeout" }. It is already hidden locally; post a command if the server should drop it too.',
+			},
+			{
+				name: 'sb-toast-action',
+				kind: 'custom-event',
+				bubbles: true,
+				composed: true,
+				description: 'A toast\'s action button was activated. detail: { id, action }. The toast then closes like a dismissal (sb-dismiss, reason "user").',
 			},
 		],
 	},
@@ -217,12 +249,13 @@ rocket('sb-toast', {
 
 		// Attached before setup runs (and kept when the element is moved).
 		const root = host.shadowRoot
-		const closes = () => root.querySelectorAll('.close')
+		const toasts = () => root.querySelectorAll('.toast')
 		// Keyboard focus pauses and is kept on its toast; a button focused by a
 		// click does neither, or a dismissal with the mouse would stop every other
 		// countdown and scroll an inline stack back into view as toasts go.
 		const kb = () => root.querySelector(':focus-visible')
-		const paused = () => hover || !!kb()
+		// A page in a background tab is not read: its toasts wait.
+		const paused = () => hover || !!kb() || document.visibilityState === 'hidden'
 
 		const hold = (id) => {
 			const s = timers.get(id)
@@ -251,8 +284,10 @@ rocket('sb-toast', {
 		// The visible stack, in the order it is painted.
 		const rebuild = () => {
 			// The focused row, by index: data-for reuses rows by index, so the
-			// focus has to follow its toast by hand.
-			const at = [...closes()].indexOf(kb())
+			// focus has to follow its toast by hand, to the same control if it has one.
+			const f = kb()
+			const at = [...toasts()].indexOf(f?.closest('.toast'))
+			const act = !!f?.matches('.act')
 			const had = view[at]?.id
 			const list = normalize(props.toasts)
 			// A toast that is fading out keeps its slot until the fade is over, even
@@ -298,7 +333,7 @@ rocket('sb-toast', {
 			// microtask: inside an effect, e.g. data-attr:toasts, data-for renders later).
 			const live = rows.filter((r) => !r.leaving)
 			const to = live.find((r) => r.id === had) ?? live[Math.min(at, live.length - 1)]
-			const move = () => at < 0 || (to ? closes()[rows.indexOf(to)] : from)?.focus()
+			const move = () => at < 0 || (to ? toasts()[rows.indexOf(to)]?.querySelector(act && to.href ? '.link' : act && to.action ? '.btn' : '.close') : from)?.focus()
 			move()
 			$$.rows = view = rows
 			queueMicrotask(move)
@@ -309,7 +344,7 @@ rocket('sb-toast', {
 				if (announced.has(t.id) || leaving.has(t.id)) continue
 				announced.add(t.id)
 				// Warnings and errors interrupt; everything else waits its turn.
-				fresh[t.variant === 'warn' || t.variant === 'danger' ? 'assertive' : 'polite'].push(t.msg)
+				fresh[t.variant === 'warn' || t.variant === 'danger' ? 'assertive' : 'polite'].push(t.say)
 			}
 			for (const k in fresh) {
 				const s = fresh[k].join('. ')
@@ -356,6 +391,14 @@ rocket('sb-toast', {
 		observeProps(() => peek(update))
 
 		action('dismiss', (_, id) => dismiss(id, 'user'))
+		action('act', (_, id, name) => {
+			emit('sb-toast-action', { id, action: name })
+			dismiss(id, 'user')
+		})
+		// A plain click leaves with the link, so the toast goes; one that opens it
+		// elsewhere keeps it. A task later: rows are reused by index, and this one
+		// must keep its href until the browser has followed it.
+		action('follow', (_, evt, id) => evt.button || evt.ctrlKey || evt.metaKey || evt.shiftKey || evt.altKey || setTimeout(() => dismiss(id, 'user')))
 		action('hover', (_, on) => syncPause(on))
 		action('focus', ({ el }, evt) => {
 			// Entering from outside: only the keyboard gets its focus handed back.
@@ -367,7 +410,11 @@ rocket('sb-toast', {
 		// Everything, the toasts waiting behind max included.
 		defineHostProp('clear', { value: () => peek(() => normalize(props.toasts).forEach((t) => dismiss(t.id, 'user'))) })
 
+		const onVisibility = () => syncPause(hover)
+		document.addEventListener('visibilitychange', onVisibility)
+
 		cleanup(() => {
+			document.removeEventListener('visibilitychange', onVisibility)
 			for (const id of timers.keys()) hold(id)
 			leaving.forEach(clearTimeout)
 			leaving.clear()
@@ -386,9 +433,9 @@ rocket('sb-toast', {
 			data-on:focusin="@focus(evt)"
 			data-on:focusout="@focus()"
 		>
-			<!-- No id on a repeated element (Datastar's morph is not re-entrant), and
-			     r?. everywhere: data-for can re-evaluate a removed row once with r undefined. -->
-			<template data-for="r in $$rows">
+			<!-- No id that follows a toast on a repeated element (Datastar's morph is
+			     not re-entrant; the ids below name a position, k), and r?. everywhere: data-for can re-evaluate a removed row once with r undefined. -->
+			<template data-for="r, k in $$rows">
 				<div
 					class="toast"
 					part="toast"
@@ -400,8 +447,11 @@ rocket('sb-toast', {
 				>
 					<span class="light" aria-hidden="true"></span>
 					<div>
-						<strong class="title" part="title" data-show="r?.title" data-text="r?.title"></strong>
-						<div class="text" part="text" data-text="r?.text"></div>
+						<strong class="title" part="title" data-attr:id="'h' + k" data-show="r?.title" data-text="r?.title"></strong>
+						<div class="text" part="text" data-attr:id="'t' + k" data-text="r?.text"></div>
+						<!-- In the tab order, and described by the message it belongs to. -->
+						<a class="act link" part="action" data-show="r?.href" data-attr:href="r?.href || null" data-attr:aria-describedby="'h' + k + ' t' + k" data-attr:tabindex="r?.leaving && -1" data-text="r?.label" data-on:click="@follow(evt, r?.id)"></a>
+						<button class="act btn" part="action" type="button" data-show="r?.action" data-attr:aria-describedby="'h' + k + ' t' + k" data-attr:tabindex="r?.leaving && -1" data-text="r?.label" data-on:click="@act(r?.id, r?.action)"></button>
 					</div>
 					<!-- The button says which toast it closes. -->
 					<button class="close" part="close" type="button" data-attr:aria-label="r?.close" data-attr:tabindex="r?.leaving && -1" data-on:click="@dismiss(r?.id)">

@@ -94,6 +94,7 @@ func TestTemplSnippet(t *testing.T) {
 		`<sb-select multiple value="Mars, Venus"></sb-select>`:                                   `@sb.Select(sb.SelectProps{Multiple: true, Value: []string{"Mars", "Venus"}})`,
 		`<sb-select multiple value='["a,b"]'></sb-select>`:                                       `@sb.Select(sb.SelectProps{Multiple: true, Value: []string{"a,b"}})`,
 		`<sb-toast toasts='[{"id":"a","text":"b","duration":0}]'></sb-toast>`:                    `@sb.Toast(sb.ToastProps{Toasts: []sb.ToastMessage{{ID: "a", Text: "b", Duration: sb.Int(0)}}})`,
+		`<sb-toast toasts='[{"id":"a","text":"b","href":"/m","label":"Go"}]'></sb-toast>`:        `@sb.Toast(sb.ToastProps{Toasts: []sb.ToastMessage{{ID: "a", Text: "b", Href: "/m", Label: "Go"}}})`,
 	} {
 		got, err := m.Templ(markup)
 		if err != nil {

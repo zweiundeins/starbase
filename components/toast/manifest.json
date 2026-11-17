@@ -8,7 +8,7 @@
       "default": [],
       "required": false,
       "docs": {
-        "description": "The toasts, oldest first: [{id, title?, text, variant?: info|ok|warn|danger, duration?}]. Server state: every morph brings the current list, and a toast the server drops is gone."
+        "description": "The toasts, oldest first: [{id, title?, text, variant?: info|ok|warn|danger, duration?, href?, action?, label?}]. href (a link) or action (a button that emits sb-toast-action) shows label as a control in the toast; without a label neither is shown. Server state: every morph brings the current list, and a toast the server drops is gone."
       }
     },
     {
@@ -79,6 +79,13 @@
       "bubbles": true,
       "composed": true,
       "description": "A toast went away. detail: { id, reason: \"user\" | \"timeout\" }. It is already hidden locally; post a command if the server should drop it too."
+    },
+    {
+      "kind": "custom-event",
+      "name": "sb-toast-action",
+      "bubbles": true,
+      "composed": true,
+      "description": "A toast's action button was activated. detail: { id, action }. The toast then closes like a dismissal (sb-dismiss, reason \"user\")."
     }
   ]
 }

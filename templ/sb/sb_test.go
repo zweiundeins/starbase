@@ -260,6 +260,8 @@ func TestTypesThroughJSON(t *testing.T) {
 		{`["A", 2, {"value":"b","label":"B","disabled":true}]`, &[]Option{}, &[]Option{{Value: "A"}, {Value: "2"}, {Value: "b", Label: "B", Disabled: true}}},
 		{`[{"key":"n","align":"end","resizable":false,"min":60}]`, &[]Column{}, &[]Column{{Key: "n", Align: ColumnAlignEnd, Resizable: Off, Min: 60}}},
 		{`[{"id":"a","text":"Hi","duration":0}]`, &[]ToastMessage{}, &[]ToastMessage{{ID: "a", Text: "Hi", Duration: Int(0)}}},
+		{`[{"id":"n","text":"Met","href":"/m/1","label":"Öffnen"},{"id":"m","text":"Hi","action":"reply","label":"Antworten"}]`, &[]ToastMessage{},
+			&[]ToastMessage{{ID: "n", Text: "Met", Href: "/m/1", Label: "Öffnen"}, {ID: "m", Text: "Hi", Action: "reply", Label: "Antworten"}}},
 		{`[{"label":"Sort","type":"radio","children":["a"]}]`, &[]DropdownItem{}, &[]DropdownItem{{Label: "Sort", Type: DropdownItemTypeRadio, Children: []DropdownItem{{Value: "a"}}}}},
 	} {
 		if err := json.Unmarshal([]byte(tc.in), tc.into); err != nil {
@@ -305,6 +307,10 @@ func TestIntegers(t *testing.T) {
 	b := must(json.Marshal(ToastMessage{ID: "a", Text: "b", Duration: Int(4000)}))
 	if string(b) != `{"id":"a","text":"b","duration":4000}` {
 		t.Errorf("toast: %s", b)
+	}
+	b = must(json.Marshal(ToastMessage{ID: "a", Text: "b", Href: "/x?a=1&b=2", Action: "go", Label: "Öffnen"}))
+	if string(b) != `{"id":"a","text":"b","href":"/x?a=1\u0026b=2","action":"go","label":"Öffnen"}` {
+		t.Errorf("toast with a link and an action: %s", b)
 	}
 }
 
