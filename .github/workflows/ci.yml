@@ -42,6 +42,31 @@ jobs:
         run: go test -race -timeout 25m $(go list -f '{{if ne .ImportPath "starbase/internal/app"}}{{.ImportPath}}{{end}}' ./...)
       - name: Component manifests are up to date (headless Chrome)
         run: go run -tags dev ./cmd/manifests --check
+      - name: templ wrappers are up to date
+        run: go run -tags templgen ./cmd/templgen --check
+
+  templ:
+    name: templ module
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: templ
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The oldest Go the module supports (its go directive).
+          go-version-file: templ/go.mod
+          cache-dependency-path: templ/go.sum
+      - name: Depends on templ and the standard library only (tests too)
+        run: test "$(go list -deps -test -f '{{with .Module}}{{.Path}}{{end}}' ./... | sort -u | tr '\n' ' ')" = "github.com/a-h/templ github.com/zweiundeins/starbase/templ "
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -race ./...
 
   browser:
     name: Browser tests

@@ -4,6 +4,7 @@
 FROM --platform=$BUILDPLATFORM golang:1.27.4 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
+COPY templ/go.mod templ/go.sum ./templ/
 RUN go mod download
 COPY . .
 ARG TARGETOS TARGETARCH VERSION=dev
