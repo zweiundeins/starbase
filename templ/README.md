@@ -18,7 +18,7 @@ go get github.com/zweiundeins/starbase/templ@latest
 import "github.com/zweiundeins/starbase/templ/sb"
 ```
 
-A version of the module (`templ/vX.Y.Z`) is tagged from the same commit as the Starbase release `vX.Y.Z`, and pins the components and the Datastar build of that release.
+A version of the module (`templ/vX.Y.Z`) is tagged from the same commit as the Starbase release `vX.Y.Z`, and pins the components and the Datastar build of that release. A checkout of that commit therefore carries both tags: to read the release from it, ask for the plain one (`git describe --tags --match 'v[0-9]*'`).
 
 ## A page
 
@@ -105,7 +105,7 @@ for _, t := range rendered() {     // in order, each once, with the components t
 sb.DatastarBuild()   // the Datastar build the components were made for: Path and Integrity
 sb.Snapshot          // the catalog snapshot the pins come from
 sb.Version()         // this module's version in your build ("v0.10.0"), "" when unknown
-sb.Release           // the newest Starbase release when the wrappers were generated ("0.9.1")
+sb.Release           // the newest Starbase release when the wrappers were generated ("0.10.0", the tag without its "v")
 ```
 
 `Collect` composes with `Tracked`: a `Collect` around a `Tracked` sees what it rendered. A vendored copy can compare its lock with `Pin` and `DatastarBuild`, and the Starbase release its lock names with `sb.Release`, so the files and the wrappers come from the same release. `sb.Release` comes from Starbase's changelog and changes only with a release.
