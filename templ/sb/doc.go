@@ -13,6 +13,8 @@
 //
 // Imports, once in <head>, loads Datastar and the components, pinned with
 // their integrity hashes to the versions the wrappers were generated with.
+// Tracked, around the content of <body>, loads exactly the components
+// rendered inside it.
 //
 // # Props
 //

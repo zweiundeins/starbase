@@ -7,6 +7,9 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
+
+	"starbase/internal/catalog"
+	"starbase/static"
 )
 
 // TestSelectMultiple checks sb-select's compact closed state (summary, max-chips, each alone and
@@ -41,11 +44,14 @@ func probeBundleRun(t *testing.T, path, script string, extra map[string]http.Han
 			m = map[string]http.HandlerFunc{}
 		}
 		if bundle != nil {
-			m[datastarPath(t, app)] = func(w http.ResponseWriter, r *http.Request) {
+			serve := func(w http.ResponseWriter, r *http.Request) {
 				served.Add(1)
 				w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 				w.Write(bundle)
 			}
+			// The site's path, and the pinned one that sb.Imports loads.
+			m[datastarPath(t, app)] = serve
+			m["/c/"+catalog.DatastarSlug+"@"+catalog.VersionHash(static.Datastar())+"/"+catalog.DatastarFile] = serve
 		}
 		return m
 	}

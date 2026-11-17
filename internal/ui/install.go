@@ -50,10 +50,9 @@ type InstallView struct {
 // TemplInstall is the templ tab: the typed wrappers of
 // github.com/zweiundeins/starbase/templ, generated from the manifests.
 type TemplInstall struct {
-	Get     Snippet // go get
-	Imports Snippet // @sb.Imports(…) for <head>
-	Usage   Snippet // the usage markup as wrapper calls; Raw is empty when it can't be written as templ
-	Module  string  // the module's README on GitHub
+	Get    Snippet // go get
+	Code   Snippet // the ways to load the components, then the usage as wrapper calls
+	Module string  // the module's README on GitHub
 }
 
 // SelfHostGroup is one component's files to copy (the component, then each

@@ -80,12 +80,8 @@ templ Installation(v InstallView) {
 		<div slot={ installSlot("templ") } class="install-panel">
 			<p>In Go, render it with its typed <a href="https://templ.guide">templ</a> wrapper: one field per prop, generated from the component's manifest (<a href={ safe(v.Templ.Module) }>the module's README</a> has the type rules). Add the module:</p>
 			@templ.Raw(v.Templ.Get.Block)
-			<p>Then load the components in the page's <code>{ "<head>" }</code>, once: Datastar and each component's one file, pinned with integrity hashes to the versions the module was generated with, so props and scripts always match.</p>
-			@templ.Raw(v.Templ.Imports.Block)
-			if v.Templ.Usage.Raw != "" {
-				<p>And use it:</p>
-				@templ.Raw(v.Templ.Usage.Block)
-			}
+			<p>Then load it, pinned with integrity hashes to the versions the module was generated with, and use it:</p>
+			@templ.Raw(v.Templ.Code.Block)
 		</div>
 	</sb-tabs>
 }

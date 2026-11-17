@@ -78,15 +78,20 @@ func TestInstallSnippets(t *testing.T) {
 			}
 		}
 	}
-	if n := []int{len(p["autoloader"]), len(p["this-component"]), len(p["pinned"]), len(p["self-host"]), len(p["templ"])}; !slices.Equal(n, []int{1, 2, 1, 2, 3}) {
+	if n := []int{len(p["autoloader"]), len(p["this-component"]), len(p["pinned"]), len(p["self-host"]), len(p["templ"])}; !slices.Equal(n, []int{1, 2, 1, 2, 2}) {
 		t.Fatalf("snippets per panel: %v", n)
 	}
 
-	// templ: go get, sb.Imports at this server, the usage as a wrapper call.
+	// templ: go get, then one block: the imports at this server, with the
+	// other ways as comments, and the usage as a wrapper call.
+	base := `sb.ImportsProps{Base: "` + ts.URL + `"`
 	want := []string{
 		"go get github.com/zweiundeins/starbase/templ@latest",
-		`@sb.Imports(sb.ImportsProps{Base: "` + ts.URL + `", Components: []sb.Tag{sb.TagSlider}})`,
-		"@sb.Slider(sb.SliderProps{Label: \"Volume\", Value: sb.Num(60), Unit: \"%\"})",
+		"// In <head>: the components you list, pinned,\n" +
+			"@sb.Imports(" + base + ", Components: []sb.Tag{sb.TagSlider}})\n" +
+			"// or the autoloader, which also loads tags a morph adds later: @sb.Imports(" + base + "})\n" +
+			"// or, around the content of <body>, the components it renders: @sb.Tracked(" + base + "}) { … }\n" +
+			"\n@sb.Slider(sb.SliderProps{Label: \"Volume\", Value: sb.Num(60), Unit: \"%\"})",
 	}
 	if !slices.Equal(p["templ"], want) {
 		t.Errorf("templ panel:\n%q\nwant\n%q", p["templ"], want)

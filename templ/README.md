@@ -64,7 +64,30 @@ templ Mission(thrust float64, shields bool) {
 }
 ```
 
-`sb.Imports` writes an import map for Datastar and a module script for each component (and the components it renders itself), every file pinned with its integrity hash, so the browser refuses one that changed. It takes the CSP nonce from `templ.WithNonce`. Without `Components`, it loads the catalog's autoloader instead, which loads each `<sb-*>` tag the first time it appears (also tags a morph adds later). `Base` points it at another Starbase server, `Datastar` at a Datastar build with Rocket the page loads already.
+## Loading the components
+
+Every file is pinned with its integrity hash, so the browser refuses one that changed, and the scripts take the CSP nonce from `templ.WithNonce`. Pick one of three ways:
+
+```templ
+// 1. In <head>, the components you list (and those they render themselves):
+@sb.Imports(sb.ImportsProps{Components: []sb.Tag{sb.TagSlider, sb.TagModal}})
+
+// 2. In <head>, the autoloader: it loads each <sb-*> tag the first time it
+//    appears, also one a morph adds later (an import map of about 15 kB).
+@sb.Imports(sb.ImportsProps{})
+
+// 3. Around the content of <body>: exactly the components rendered inside,
+//    written after them. It writes the import map, so the page's own module
+//    scripts (and a Datastar it loads itself) come after it.
+<body>
+	@sb.Tracked(sb.ImportsProps{}) {
+		@sb.Slider(sb.SliderProps{Label: "Thrust"})
+	}
+	<script type="module" src="/app.js"></script>
+</body>
+```
+
+The first two go in `<head>`, once per page. `Tracked` knows only what the first render holds: on a live page that morphs in components it didn't render, use the autoloader, or name those in `Components`, which `Tracked` loads too. `Base` points any of them at another Starbase server, `Datastar` at your own Datastar build with Rocket.
 
 Every component page on [the site](https://starbase.zweiundeins.gmbh) has a templ tab under Installation with its usage as wrapper calls.
 

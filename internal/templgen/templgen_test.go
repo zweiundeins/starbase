@@ -29,12 +29,12 @@ func TestWrappersUpToDate(t *testing.T) {
 	}
 }
 
-// TestTemplSnippetsParse: the templ tab of every component page is templ
-// that templ's own parser reads.
+// TestTemplSnippetsParse: the templ tab of every component page, comments
+// included, is templ that templ's own parser reads.
 func TestTemplSnippetsParse(t *testing.T) {
 	m := load(t)
 	for _, c := range m.Components {
-		snippet, err := m.Templ(c.InstallMarkup())
+		snippet, err := m.Install(c, c.InstallMarkup(), "https://example.com")
 		if err != nil {
 			t.Errorf("%s: %v", c.Slug, err)
 			continue
@@ -48,8 +48,18 @@ func TestTemplSnippetsParse(t *testing.T) {
 		if n := strings.Count(snippet, "@sb."); n == 0 || !strings.Contains(src, "@sb."+c.GoName+"(") {
 			t.Errorf("%s: no call of sb.%s in\n%s", c.Slug, c.GoName, snippet)
 		}
-		if len(f.Nodes) == 0 {
-			t.Errorf("%s: nothing parsed", c.Slug)
+		comments := 0
+		for _, n := range f.Nodes {
+			if tt, ok := n.(*templparser.HTMLTemplate); ok {
+				for _, ch := range tt.Children {
+					if _, ok := ch.(*templparser.GoComment); ok {
+						comments++
+					}
+				}
+			}
+		}
+		if comments != 3 || !strings.Contains(snippet, "@sb.Imports(sb.ImportsProps{Base: \"https://example.com\", Components: ") {
+			t.Errorf("%s: %d Go comments, want 3, in\n%s", c.Slug, comments, snippet)
 		}
 	}
 }

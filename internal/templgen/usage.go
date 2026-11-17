@@ -229,3 +229,37 @@ func (m *Model) Uses(markup string) ([]*Component, error) {
 	walk(nodes)
 	return out, nil
 }
+
+// Install is the templ tab of a component page: the ways to load the
+// components markup uses (from base, a Starbase server; "" for the default),
+// as one call and two comments, then markup as wrapper calls. usageErr is
+// why the usage couldn't be written; the snippet then has only the imports.
+func (m *Model) Install(c *Component, markup, base string) (snippet string, usageErr error) {
+	uses, err := m.Uses(markup)
+	if err != nil || len(uses) == 0 {
+		uses = []*Component{c}
+	}
+	tags := make([]string, len(uses))
+	for i, u := range uses {
+		tags[i] = "sb.Tag" + u.GoName
+	}
+	props := ""
+	if base != "" {
+		props = "Base: " + strconv.Quote(base)
+	}
+	with := func(more string) string {
+		if props != "" && more != "" {
+			return "sb.ImportsProps{" + props + ", " + more + "}"
+		}
+		return "sb.ImportsProps{" + props + more + "}"
+	}
+	snippet = "// In <head>: the components you list, pinned,\n" +
+		"@sb.Imports(" + with("Components: []sb.Tag{"+strings.Join(tags, ", ")+"}") + ")\n" +
+		"// or the autoloader, which also loads tags a morph adds later: @sb.Imports(" + with("") + ")\n" +
+		"// or, around the content of <body>, the components it renders: @sb.Tracked(" + with("") + ") { … }\n"
+	usage, err := m.Templ(markup)
+	if err != nil {
+		return snippet, err
+	}
+	return snippet + "\n" + usage, nil
+}

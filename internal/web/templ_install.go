@@ -31,8 +31,9 @@ func (s *Server) templModel() (*templgen.Model, error) {
 	return m, nil
 }
 
-// templInstall is the templ tab of c's Installation: go get, sb.Imports for
-// the components its usage renders, and the usage as wrapper calls.
+// templInstall is the templ tab of c's Installation: go get, then one
+// block with the ways to load the components its usage renders and the
+// usage as wrapper calls.
 func (s *Server) templInstall(c *catalog.Component) ui.TemplInstall {
 	t := ui.TemplInstall{
 		Get:    ui.NewSnippetIn("go get github.com/zweiundeins/starbase/templ@latest", "sh"),
@@ -43,26 +44,18 @@ func (s *Server) templInstall(c *catalog.Component) ui.TemplInstall {
 		s.log.Warn("templ wrappers", "err", err)
 		return t
 	}
-	uses, err := m.Uses(c.InstallMarkup())
-	if err != nil || len(uses) == 0 {
-		w, _ := m.Get(c.Tag)
-		uses = []*templgen.Component{w}
+	w, ok := m.Get(c.Tag)
+	if !ok {
+		return t
 	}
-	var tags []string
-	for _, u := range uses {
-		if u != nil {
-			tags = append(tags, "sb.Tag"+u.GoName)
-		}
+	base := strings.TrimSuffix(s.cfg.BaseURL, "/")
+	if base == sb.DefaultBase {
+		base = ""
 	}
-	props := "Components: []sb.Tag{" + strings.Join(tags, ", ") + "}"
-	if base := strings.TrimSuffix(s.cfg.BaseURL, "/"); base != sb.DefaultBase {
-		props = "Base: \"" + base + "\", " + props
-	}
-	t.Imports = ui.NewSnippetIn("@sb.Imports(sb.ImportsProps{"+props+"})", "templ")
-	if usage, err := m.Templ(c.InstallMarkup()); err == nil {
-		t.Usage = ui.NewSnippetIn(usage, "templ")
-	} else {
+	code, err := m.Install(w, c.InstallMarkup(), base)
+	if err != nil {
 		s.log.Warn("templ usage", "component", c.Slug, "err", err)
 	}
+	t.Code = ui.NewSnippetIn(code, "templ")
 	return t
 }

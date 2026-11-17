@@ -82,6 +82,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/alert
 func Alert(p AlertProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagAlert)
 		e := newElement("sb-alert", p.ID, p.Class, p.Attrs)
 		e.enum("variant", string(p.Variant), "info", "success", "warning", "danger")
 		e.str("heading", p.Heading)
@@ -152,6 +153,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/autoloader
 func Autoloader(p AutoloaderProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagAutoloader)
 		e := newElement("sb-autoloader", p.ID, p.Class, p.Attrs)
 		e.json("modules", p.Modules, p.Modules == nil)
 		e.str("pattern", p.Pattern)
@@ -223,6 +225,7 @@ type AutoloaderProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/bento-workspace
 func BentoWorkspace(p BentoWorkspaceProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagBentoWorkspace)
 		e := newElement("sb-bento-workspace", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -252,6 +255,7 @@ type BentoWorkspaceProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/busy
 func Busy(p BusyProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagBusy)
 		e := newElement("sb-busy", p.ID, p.Class, p.Attrs)
 		e.bool("busy", p.Busy)
 		e.enum("variant", string(p.Variant), "spinner", "bar", "skeleton")
@@ -359,6 +363,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/button
 func Button(p ButtonProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagButton)
 		e := newElement("sb-button", p.ID, p.Class, p.Attrs)
 		e.enum("variant", string(p.Variant), "primary", "outline", "ghost", "pixel", "danger")
 		e.enum("size", string(p.Size), "sm", "md", "lg")
@@ -443,6 +448,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/card
 func Card(p CardProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCard)
 		e := newElement("sb-card", p.ID, p.Class, p.Attrs)
 		e.str("heading", p.Heading)
 		e.url("href", p.Href)
@@ -499,6 +505,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/checkbox
 func Checkbox(p CheckboxProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCheckbox)
 		e := newElement("sb-checkbox", p.ID, p.Class, p.Attrs)
 		e.bool("checked", p.Checked)
 		e.bool("indeterminate", p.Indeterminate)
@@ -569,6 +576,7 @@ type CheckboxProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/checkbox-group
 func CheckboxGroup(p CheckboxGroupProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCheckboxGroup)
 		e := newElement("sb-checkbox-group", p.ID, p.Class, p.Attrs)
 		e.json("value", p.Value, p.Value == nil)
 		e.json("options", p.Options, p.Options == nil)
@@ -652,6 +660,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/code-editor
 func CodeEditor(p CodeEditorProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCodeEditor)
 		e := newElement("sb-code-editor", p.ID, p.Class, p.Attrs)
 		e.enum("language", string(p.Language), "js", "ts", "html", "css")
 		e.strPtr("value", p.Value)
@@ -762,6 +771,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/code-playground
 func CodePlayground(p CodePlaygroundProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCodePlayground)
 		e := newElement("sb-code-playground", p.ID, p.Class, p.Attrs)
 		e.str("runner", p.Runner)
 		e.json("deps", p.Deps, p.Deps == nil)
@@ -912,6 +922,7 @@ type CodePlaygroundProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/context-menu
 func ContextMenu(p ContextMenuProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagContextMenu)
 		e := newElement("sb-context-menu", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -947,6 +958,7 @@ type ContextMenuProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/copy-button
 func CopyButton(p CopyButtonProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCopyButton)
 		e := newElement("sb-copy-button", p.ID, p.Class, p.Attrs)
 		e.str("value", p.Value)
 		e.str("label", p.Label)
@@ -1005,6 +1017,7 @@ type CopyButtonProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/count-up
 func CountUp(p CountUpProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagCountUp)
 		e := newElement("sb-count-up", p.ID, p.Class, p.Attrs)
 		e.num("value", p.Value)
 		e.num("from", p.From)
@@ -1090,6 +1103,7 @@ type CountUpProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/data-table
 func DataTable(p DataTableProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagDataTable)
 		e := newElement("sb-data-table", p.ID, p.Class, p.Attrs)
 		e.json("columns", p.Columns, p.Columns == nil)
 		e.json("rows", p.Rows, p.Rows == nil)
@@ -1264,6 +1278,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/date-picker
 func DatePicker(p DatePickerProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagDatePicker)
 		e := newElement("sb-date-picker", p.ID, p.Class, p.Attrs)
 		e.strPtr("value", p.Value)
 		e.enum("mode", string(p.Mode), "single", "range")
@@ -1454,6 +1469,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/details
 func Details(p DetailsProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagDetails)
 		e := newElement("sb-details", p.ID, p.Class, p.Attrs)
 		e.str("summary", p.Summary)
 		e.bool("open", p.Open)
@@ -1517,6 +1533,7 @@ type DetailsProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/drag-group
 func DragGroup(p DragGroupProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagDragGroup)
 		e := newElement("sb-drag-group", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -1555,6 +1572,7 @@ type DragGroupProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/drawer
 func Drawer(p DrawerProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagDrawer)
 		e := newElement("sb-drawer", p.ID, p.Class, p.Attrs)
 		e.str("heading", p.Heading)
 		e.enum("side", string(p.Side), "end", "start", "top", "bottom")
@@ -1661,6 +1679,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/dropdown
 func Dropdown(p DropdownProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagDropdown)
 		e := newElement("sb-dropdown", p.ID, p.Class, p.Attrs)
 		e.json("items", p.Items, p.Items == nil)
 		e.str("label", p.Label)
@@ -1788,6 +1807,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/echarts
 func ECharts(p EChartsProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagECharts)
 		e := newElement("sb-echarts", p.ID, p.Class, p.Attrs)
 		e.json("option", p.Option, p.Option == nil)
 		e.enum("renderer", string(p.Renderer), "canvas", "svg")
@@ -1840,6 +1860,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/gauge
 func Gauge(p GaugeProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagGauge)
 		e := newElement("sb-gauge", p.ID, p.Class, p.Attrs)
 		e.num("value", p.Value)
 		e.num("min", p.Min)
@@ -1914,6 +1935,7 @@ type GaugeProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/image-compare
 func ImageCompare(p ImageCompareProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagImageCompare)
 		e := newElement("sb-image-compare", p.ID, p.Class, p.Attrs)
 		e.numPtr("position", p.Position)
 		e.str("before-label", p.BeforeLabel)
@@ -2001,6 +2023,7 @@ type ImageCompareProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/inline-edit
 func InlineEdit(p InlineEditProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagInlineEdit)
 		e := newElement("sb-inline-edit", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -2034,6 +2057,7 @@ type InlineEditProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/input
 func Input(p InputProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagInput)
 		e := newElement("sb-input", p.ID, p.Class, p.Attrs)
 		e.strPtr("value", p.Value)
 		e.strPtr("rev", p.Rev)
@@ -2160,6 +2184,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/kanban-board
 func KanbanBoard(p KanbanBoardProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagKanbanBoard)
 		e := newElement("sb-kanban-board", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -2184,6 +2209,7 @@ type KanbanBoardProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/meter
 func Meter(p MeterProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagMeter)
 		e := newElement("sb-meter", p.ID, p.Class, p.Attrs)
 		e.num("value", p.Value)
 		e.num("min", p.Min)
@@ -2265,6 +2291,7 @@ type MeterProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/modal
 func Modal(p ModalProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagModal)
 		e := newElement("sb-modal", p.ID, p.Class, p.Attrs)
 		e.str("heading", p.Heading)
 		e.bool("open", p.Open)
@@ -2318,6 +2345,7 @@ type ModalProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/nebula
 func Nebula(p NebulaProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagNebula)
 		e := newElement("sb-nebula", p.ID, p.Class, p.Attrs)
 		e.numPtr("speed", p.Speed)
 		e.numPtr("density", p.Density)
@@ -2400,6 +2428,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/odometer
 func Odometer(p OdometerProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagOdometer)
 		e := newElement("sb-odometer", p.ID, p.Class, p.Attrs)
 		e.num("value", p.Value)
 		e.num("decimals", p.Decimals)
@@ -2456,6 +2485,7 @@ type OdometerProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/pixel-board
 func PixelBoard(p PixelBoardProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagPixelBoard)
 		e := newElement("sb-pixel-board", p.ID, p.Class, p.Attrs)
 		e.numPtr("size", p.Size)
 		e.str("cells", p.Cells)
@@ -2550,6 +2580,7 @@ type PixelBoardProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/popover
 func Popover(p PopoverProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagPopover)
 		e := newElement("sb-popover", p.ID, p.Class, p.Attrs)
 		e.str("label", p.Label)
 		e.enum("mode", string(p.Mode), "click", "hover")
@@ -2647,6 +2678,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/qr-code
 func QRCode(p QRCodeProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagQRCode)
 		e := newElement("sb-qr-code", p.ID, p.Class, p.Attrs)
 		e.str("value", p.Value)
 		e.enum("ecc", string(p.ECC), "L", "M", "Q", "H")
@@ -2717,6 +2749,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/radio-group
 func RadioGroup(p RadioGroupProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagRadioGroup)
 		e := newElement("sb-radio-group", p.ID, p.Class, p.Attrs)
 		e.strPtr("value", p.Value)
 		e.json("options", p.Options, p.Options == nil)
@@ -2794,6 +2827,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/range
 func Range(p RangeProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagRange)
 		e := newElement("sb-range", p.ID, p.Class, p.Attrs)
 		e.json("value", p.Value, p.Value == nil)
 		e.num("min", p.Min)
@@ -2886,6 +2920,7 @@ type RangeProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/rating
 func Rating(p RatingProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagRating)
 		e := newElement("sb-rating", p.ID, p.Class, p.Attrs)
 		e.numPtr("value", p.Value)
 		e.numPtr("max", p.Max)
@@ -2998,6 +3033,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/relative-time
 func RelativeTime(p RelativeTimeProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagRelativeTime)
 		e := newElement("sb-relative-time", p.ID, p.Class, p.Attrs)
 		e.str("datetime", p.Datetime)
 		e.enum("numeric", string(p.Numeric), "auto", "always")
@@ -3109,6 +3145,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/select
 func Select(p SelectProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagSelect)
 		e := newElement("sb-select", p.ID, p.Class, p.Attrs)
 		e.json("options", p.Options, p.Options == nil)
 		e.json("results", p.Results, p.Results == nil)
@@ -3279,6 +3316,7 @@ type SelectProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/slider
 func Slider(p SliderProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagSlider)
 		e := newElement("sb-slider", p.ID, p.Class, p.Attrs)
 		e.numPtr("value", p.Value)
 		e.num("min", p.Min)
@@ -3361,6 +3399,7 @@ type SliderProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/sortable-list
 func SortableList(p SortableListProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagSortableList)
 		e := newElement("sb-sortable-list", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -3392,6 +3431,7 @@ type SortableListProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/sortable-tree
 func SortableTree(p SortableTreeProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagSortableTree)
 		e := newElement("sb-sortable-tree", p.ID, p.Class, p.Attrs)
 		return e.render(ctx, w)
 	})
@@ -3417,6 +3457,7 @@ type SortableTreeProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/sparkline
 func Sparkline(p SparklineProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagSparkline)
 		e := newElement("sb-sparkline", p.ID, p.Class, p.Attrs)
 		e.json("values", p.Values, p.Values == nil)
 		e.numPtr("value", p.Value)
@@ -3528,6 +3569,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/starfield
 func Starfield(p StarfieldProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagStarfield)
 		e := newElement("sb-starfield", p.ID, p.Class, p.Attrs)
 		e.numPtr("speed", p.Speed)
 		e.numPtr("density", p.Density)
@@ -3602,6 +3644,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/tabs
 func Tabs(p TabsProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagTabs)
 		e := newElement("sb-tabs", p.ID, p.Class, p.Attrs)
 		e.json("labels", p.Labels, p.Labels == nil)
 		e.numPtr("selected", p.Selected)
@@ -3655,6 +3698,7 @@ type TabsProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/theme-switch
 func ThemeSwitch(p ThemeSwitchProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagThemeSwitch)
 		e := newElement("sb-theme-switch", p.ID, p.Class, p.Attrs)
 		e.json("themes", p.Themes, p.Themes == nil)
 		e.json("labels", p.Labels, p.Labels == nil)
@@ -3738,6 +3782,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/toast
 func Toast(p ToastProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagToast)
 		e := newElement("sb-toast", p.ID, p.Class, p.Attrs)
 		e.json("toasts", p.Toasts, p.Toasts == nil)
 		e.enum("placement", string(p.Placement), "top-start", "top-center", "top-end", "bottom-start", "bottom-center", "bottom-end", "inline")
@@ -3819,6 +3864,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/toc
 func TableOfContents(p TableOfContentsProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagTableOfContents)
 		e := newElement("sb-toc", p.ID, p.Class, p.Attrs)
 		e.str("content", p.Content)
 		e.str("levels", p.Levels)
@@ -3882,6 +3928,7 @@ type TableOfContentsProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/toggle
 func Toggle(p ToggleProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagToggle)
 		e := newElement("sb-toggle", p.ID, p.Class, p.Attrs)
 		e.bool("checked", p.Checked)
 		e.bool("disabled", p.Disabled)
@@ -3947,6 +3994,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/tooltip
 func Tooltip(p TooltipProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagTooltip)
 		e := newElement("sb-tooltip", p.ID, p.Class, p.Attrs)
 		e.str("content", p.Content)
 		e.enum("placement", string(p.Placement), "top", "bottom", "left", "right")
@@ -4004,6 +4052,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/tree
 func Tree(p TreeProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagTree)
 		e := newElement("sb-tree", p.ID, p.Class, p.Attrs)
 		e.json("items", p.Items, p.Items == nil)
 		e.json("loaded", p.Loaded, p.Loaded == nil)
@@ -4095,6 +4144,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/typewriter
 func Typewriter(p TypewriterProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagTypewriter)
 		e := newElement("sb-typewriter", p.ID, p.Class, p.Attrs)
 		e.json("phrases", p.Phrases, p.Phrases == nil)
 		e.bool("loop", p.Loop)
@@ -4180,6 +4230,7 @@ const (
 // Docs: https://starbase.zweiundeins.gmbh/components/virtual-scroll
 func VirtualScroll(p VirtualScrollProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagVirtualScroll)
 		e := newElement("sb-virtual-scroll", p.ID, p.Class, p.Attrs)
 		e.numPtr("total", p.Total)
 		e.num("offset", p.Offset)
@@ -4246,6 +4297,7 @@ type VirtualScrollProps struct {
 // Docs: https://starbase.zweiundeins.gmbh/components/voxel
 func Voxel(p VoxelProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		used(ctx, TagVoxel)
 		e := newElement("sb-voxel", p.ID, p.Class, p.Attrs)
 		e.enum("model", string(p.Model), "rocket", "satellite", "planet")
 		e.numPtr("yaw", p.Yaw)

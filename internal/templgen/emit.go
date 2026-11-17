@@ -147,6 +147,7 @@ func (c *Component) emit(b *bytes.Buffer, siteURL string) {
 	comment(b, "", doc)
 	fmt.Fprintf(b, "func %s(p %s) templ.Component {\n", c.GoName, props)
 	b.WriteString("\treturn templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
+	fmt.Fprintf(b, "\t\tused(ctx, Tag%s)\n", c.GoName)
 	fmt.Fprintf(b, "\t\te := newElement(%q, p.ID, p.Class, p.Attrs)\n", c.Tag)
 	for _, f := range c.Fields {
 		a, v := strconv.Quote(f.Prop.Attribute), "p."+f.GoName
