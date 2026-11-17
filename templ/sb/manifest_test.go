@@ -59,6 +59,26 @@ var (
 	attrsType = reflect.TypeFor[templ.Attributes]()
 )
 
+// integers are the number props that hold whole numbers, by
+// "<tag>.<attribute>", as their docs and code read: counts, indexes,
+// digits, and times in ms or s. Every other number is a float64.
+var integers = map[string]bool{
+	"sb-autoloader.timeout": true, "sb-busy.lines": true, "sb-busy.delay": true, "sb-busy.min": true,
+	"sb-code-editor.tab-size": true, "sb-code-playground.delay": true, "sb-copy-button.reset-ms": true,
+	"sb-count-up.decimals": true, "sb-count-up.duration": true, "sb-data-table.offset": true, "sb-data-table.total": true,
+	"sb-date-picker.step": true, "sb-gauge.decimals": true, "sb-input.minlength": true,
+	"sb-meter.segments": true, "sb-meter.decimals": true, "sb-nebula.levels": true, "sb-nebula.seed": true,
+	"sb-odometer.decimals": true, "sb-pixel-board.size": true, "sb-pixel-board.color": true, "sb-qr-code.border": true,
+	"sb-rating.max": true, "sb-select.delay": true, "sb-select.min-chars": true, "sb-select.max-chips": true, "sb-select.total": true,
+	"sb-sparkline.length": true, "sb-sparkline.decimals": true, "sb-starfield.density": true, "sb-tabs.selected": true,
+	"sb-toast.max": true, "sb-toast.duration": true, "sb-typewriter.interval": true, "sb-typewriter.delay": true, "sb-typewriter.hold": true,
+	"sb-virtual-scroll.total": true, "sb-virtual-scroll.offset": true, "sb-virtual-scroll.columns": true, "sb-virtual-scroll.step": true,
+}
+
+// stringLists are the string props that hold a list: ids or heading levels
+// separated by spaces, and sb-select's value (one, or with multiple several).
+var stringLists = map[string]bool{"sb-select.value": true, "sb-toc.levels": true, "sb-tree.value": true, "sb-tree.expanded": true}
+
 // TestPropsMatchManifests: every wrapper has ID, Class and Attrs, then one
 // field per manifest prop, in order, of the Go type its manifest type maps
 // to; and every component has a wrapper.
@@ -72,7 +92,7 @@ func TestPropsMatchManifests(t *testing.T) {
 		typ := reflect.TypeOf(entry(t, m.Tag).New()).Elem()
 		want := []string{"ID string", "Class string", "Attrs " + attrsType.String()}
 		for _, p := range m.Props {
-			want = append(want, wantField(p.Name)+" "+wantKind(t, m.Tag, p.Type, p.Values, p.Default))
+			want = append(want, wantField(p.Name)+" "+wantKind(t, m.Tag+"."+p.Attribute, p.Type, p.Values, p.Default))
 			props++
 		}
 		var got []string
@@ -93,26 +113,33 @@ func TestPropsMatchManifests(t *testing.T) {
 }
 
 // wantKind is how a manifest type is typed in Go, as kindOf writes it.
-func wantKind(t *testing.T, tag, typ string, values []any, def json.RawMessage) string {
+func wantKind(t *testing.T, key, typ string, values []any, def json.RawMessage) string {
 	switch typ {
 	case "boolean":
 		return "bool"
 	case "string":
+		if stringLists[key] {
+			return "[]string"
+		}
 		return "string|*string"
 	case "number":
-		if string(def) != "0" {
-			return "*float64" // unset must not override a default that isn't 0
+		n := "float64"
+		if integers[key] {
+			n = "int"
 		}
-		return "float64|*float64"
+		if string(def) != "0" {
+			return "*" + n // unset must not override a default that isn't 0
+		}
+		return n + "|*" + n
 	case "oneOf":
 		if len(values) == 2 && values[0] == true && values[1] == false {
 			return "Flag"
 		}
 		return "enum"
 	case "json", "array", "custom":
-		return "nillable"
+		return "nillable|[]string"
 	}
-	t.Fatalf("%s: unknown manifest type %q", tag, typ)
+	t.Fatalf("%s: unknown manifest type %q", key, typ)
 	return ""
 }
 
@@ -130,8 +157,14 @@ func kindOf(t reflect.Type) string {
 		return "bool"
 	case t.Kind() == reflect.Float64:
 		return "float64"
+	case t.Kind() == reflect.Int:
+		return "int"
 	case t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Float64:
 		return "*float64"
+	case t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Int:
+		return "*int"
+	case t == reflect.TypeFor[[]string]():
+		return "[]string"
 	case t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.String:
 		return "*string"
 	case t.Kind() == reflect.Slice, t.Kind() == reflect.Map, t.Kind() == reflect.Pointer, t.Kind() == reflect.Interface:
@@ -153,7 +186,7 @@ func TestEveryFieldRendersItsAttribute(t *testing.T) {
 		var wantAll []func(token) error
 		for i, p := range m.Props {
 			fv := all.Field(3 + i)
-			for _, s := range samples(t, fv.Type(), p.Attribute, p.Values) {
+			for _, s := range samples(t, m.Tag, p.Type, fv.Type(), p.Attribute, p.Values) {
 				one := reflect.ValueOf(e.New())
 				one.Elem().Field(3 + i).Set(s.v)
 				out := render(t, e.Render(one.Interface()))
@@ -166,7 +199,7 @@ func TestEveryFieldRendersItsAttribute(t *testing.T) {
 				}
 				checked++
 			}
-			last := samples(t, fv.Type(), p.Attribute, p.Values)
+			last := samples(t, m.Tag, p.Type, fv.Type(), p.Attribute, p.Values)
 			s := last[len(last)-1]
 			fv.Set(s.v)
 			wantAll = append(wantAll, s.check)
@@ -220,8 +253,29 @@ func absent(name string) func(token) error {
 	}
 }
 
-func samples(t *testing.T, typ reflect.Type, attr string, values []any) []sample {
+func samples(t *testing.T, tag, ptype string, typ reflect.Type, attr string, values []any) []sample {
 	t.Helper()
+	if ptype == "string" && kindOf(typ) == "[]string" {
+		if tag == "sb-select" { // with multiple a JSON array, else the one value
+			return []sample{
+				{"nil", reflect.Zero(typ), absent(attr)},
+				{"empty", reflect.ValueOf([]string{}), present(attr, "")},
+				{"one", reflect.ValueOf([]string{nasty}), func(h token) error {
+					a, ok := h.attr(attr)
+					var list []string
+					if ok && json.Unmarshal([]byte(a.value), &list) == nil && len(list) == 1 && list[0] == nasty {
+						return nil
+					}
+					return present(attr, nasty)(h)
+				}},
+			}
+		}
+		return []sample{
+			{"nil", reflect.Zero(typ), absent(attr)},
+			{"empty", reflect.ValueOf([]string{}), present(attr, "")},
+			{"two", reflect.ValueOf([]string{"a<&>", "b\"é"}), present(attr, `a<&> b"é`)},
+		}
+	}
 	val := func(v any) reflect.Value { return reflect.ValueOf(v).Convert(typ) }
 	switch kindOf(typ) {
 	case "bool":
@@ -256,6 +310,15 @@ func samples(t *testing.T, typ reflect.Type, attr string, values []any) []sample
 			}
 		}
 		return []sample{{`""`, val(""), absent(attr)}, {"text", val(text), present(attr, text)}}
+	case "int", "*int":
+		if typ.Kind() == reflect.Pointer {
+			return []sample{
+				{"nil", reflect.Zero(typ), absent(attr)},
+				{"Int(0)", reflect.ValueOf(Int(0)), present(attr, "0")},
+				{"Int(-2)", reflect.ValueOf(Int(-2)), present(attr, "-2")},
+			}
+		}
+		return []sample{{"0", val(0), absent(attr)}, {"7", val(7), present(attr, "7")}, {"-3", val(-3), present(attr, "-3")}}
 	case "float64", "*float64":
 		if typ.Kind() == reflect.Pointer {
 			return []sample{
@@ -265,7 +328,7 @@ func samples(t *testing.T, typ reflect.Type, attr string, values []any) []sample
 			}
 		}
 		return []sample{{"0", val(0.0), absent(attr)}, {"0.25", val(0.25), present(attr, "0.25")}, {"-3", val(-3.0), present(attr, "-3")}}
-	case "nillable":
+	case "nillable", "[]string":
 		full := fill(typ, 0)
 		check := func(h token) error {
 			a, ok := h.attr(attr)
@@ -306,6 +369,8 @@ func fill(typ reflect.Type, depth int) reflect.Value {
 				v.SetString("danger")
 			} else if typ == reflect.TypeFor[SortDir]() {
 				v.SetString("desc")
+			} else if typ == reflect.TypeFor[DropdownItemType]() {
+				v.SetString("radio")
 			}
 		} else {
 			v.SetString(nasty)

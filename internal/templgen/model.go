@@ -28,7 +28,11 @@ const (
 	KindEnum                  // a named string type with a constant per value
 	KindNumber                // float64: 0 (the default) leaves it out
 	KindNumberPtr             // *float64: nil leaves it out, 0 is written
+	KindInt                   // int: 0 (the default) leaves it out
+	KindIntPtr                // *int: nil leaves it out, 0 is written
 	KindJSON                  // a Go value written as JSON: nil leaves it out
+	KindWords                 // []string separated by spaces: nil leaves it out, empty is written
+	KindChoice                // sb-select's value as []string: one value, or with multiple JSON
 )
 
 // Component is one component's wrapper.
@@ -122,12 +126,19 @@ func Build(cat *catalog.Catalog) (*Model, error) {
 			fieldNames[f.GoName] = true
 			c.Fields = append(c.Fields, f)
 		}
+		for _, f := range c.Fields {
+			if mf, ok := c.Field("multiple"); f.Kind == KindChoice && (!ok || mf.Kind != KindBool) {
+				errs = append(errs, fmt.Sprintf("%s: prop %s: a choice list needs a boolean multiple prop", cc.Slug, f.Prop.Name))
+			}
+		}
 		m.Components = append(m.Components, c)
 	}
-	for key := range jsonTypes {
-		tag, attr, _ := strings.Cut(key, ".")
-		if c, ok := m.Get(tag); !ok || func() bool { _, ok := c.Field(attr); return !ok }() {
-			errs = append(errs, "jsonTypes names "+key+", which no manifest has")
+	for name, keys := range map[string][]string{"jsonTypes": keysOf(jsonTypes), "intProps": keysOf(intProps), "lists": keysOf(lists), "serverWord": keysOf(serverWord), "presence": keysOf(presence)} {
+		for _, key := range keys {
+			tag, attr, _ := strings.Cut(key, ".")
+			if c, ok := m.Get(tag); !ok || func() bool { _, ok := c.Field(attr); return !ok }() {
+				errs = append(errs, name+" names "+key+", which no manifest has")
+			}
 		}
 	}
 	if len(errs) > 0 {
@@ -156,16 +167,41 @@ func buildField(c *Component, p catalog.ManifestProp) (*Field, error) {
 		if serverWord[key] || presence[key] {
 			f.Kind, f.GoType = KindStringPtr, "*string"
 		}
+		switch lists[key] {
+		case "words":
+			f.Kind, f.GoType = KindWords, "[]string"
+		case "choice":
+			f.Kind, f.GoType = KindChoice, "[]string"
+		case "":
+		default:
+			return nil, fmt.Errorf("lists: no list form %q", lists[key])
+		}
 	case "boolean":
 		if f.Default != false {
 			return nil, fmt.Errorf("a boolean is false by default, not %v", f.Default)
 		}
 		f.Kind, f.GoType = KindBool, "bool"
 	case "number":
-		f.Kind, f.GoType = KindNumber, "float64"
-		if f.Default != 0.0 || serverWord[key] || presence[key] {
+		ptr := f.Default != 0.0 || serverWord[key] || presence[key]
+		switch {
+		case intProps[key] && ptr:
+			f.Kind, f.GoType = KindIntPtr, "*int"
+		case intProps[key]:
+			f.Kind, f.GoType = KindInt, "int"
+		case ptr:
 			f.Kind, f.GoType = KindNumberPtr, "*float64"
+		default:
+			f.Kind, f.GoType = KindNumber, "float64"
 		}
+		if n, ok := f.Default.(float64); ok && intProps[key] && n != float64(int(n)) {
+			return nil, fmt.Errorf("an integer prop with the default %v", n)
+		}
+	}
+	if (intProps[key] && p.Type != "number") || (lists[key] != "" && p.Type != "string") {
+		return nil, fmt.Errorf("intProps or lists names a %s prop", p.Type)
+	}
+	switch p.Type {
+	case "string", "boolean", "number":
 	case "oneOf":
 		if isFlag(p) {
 			f.Kind, f.GoType = KindFlag, "Flag"
@@ -196,6 +232,14 @@ func buildField(c *Component, p catalog.ManifestProp) (*Field, error) {
 		return nil, fmt.Errorf("unknown type %q", p.Type)
 	}
 	return f, nil
+}
+
+func keysOf[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
 
 // isURLAttr reports whether a prop is a link the component renders as an

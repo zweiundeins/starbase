@@ -161,7 +161,7 @@ func Autoloader(p AutoloaderProps) templ.Component {
 		e.json("requires", p.Requires, p.Requires == nil)
 		e.str("base", p.Base)
 		e.str("cloak", p.Cloak)
-		e.numPtr("timeout", p.Timeout)
+		e.intPtr("timeout", p.Timeout)
 		return e.render(ctx, w)
 	})
 }
@@ -205,7 +205,7 @@ type AutoloaderProps struct {
 	// Remove the cloak class after this many ms, whatever happens (sb-ready
 	// still waits for the loads). Attribute timeout; nil leaves it out (the
 	// default is 3000).
-	Timeout *float64
+	Timeout *int
 }
 
 // BentoWorkspace renders <sb-bento-workspace>: Move and resize tiles on CSS
@@ -260,13 +260,13 @@ func Busy(p BusyProps) templ.Component {
 		e.bool("busy", p.Busy)
 		e.enum("variant", string(p.Variant), "spinner", "bar", "skeleton")
 		e.str("value", p.Value)
-		e.numPtr("lines", p.Lines)
+		e.intPtr("lines", p.Lines)
 		e.str("label", p.Label)
 		e.bool("show-label", p.ShowLabel)
 		e.enum("size", string(p.Size), "sm", "md", "lg")
 		e.str("for", p.For)
-		e.num("delay", p.Delay)
-		e.num("min", p.Min)
+		e.int("delay", p.Delay)
+		e.int("min", p.Min)
 		return e.render(ctx, w)
 	})
 }
@@ -298,7 +298,7 @@ type BusyProps struct {
 
 	// Skeleton only: how many placeholder lines. Attribute lines; nil leaves
 	// it out (the default is 3).
-	Lines *float64
+	Lines *int
 
 	// What is being waited for, e.g. "Loading flight plan". Read out by the
 	// status region; visible with show-label. Attribute label; empty leaves it
@@ -321,11 +321,11 @@ type BusyProps struct {
 
 	// Milliseconds to wait before showing, so a fast request never flashes.
 	// Try 200. Attribute delay; 0 (the default) leaves it out.
-	Delay float64
+	Delay int
 
 	// Milliseconds to stay up once shown, so it does not flicker. Try 400.
 	// Attribute min; 0 (the default) leaves it out.
-	Min float64
+	Min int
 }
 
 // BusyVariant is a value of BusyProps.Variant: Shape: a spinner, a progress
@@ -665,7 +665,7 @@ func CodeEditor(p CodeEditorProps) templ.Component {
 		e.enum("language", string(p.Language), "js", "ts", "html", "css")
 		e.strPtr("value", p.Value)
 		e.flag("line-numbers", p.LineNumbers)
-		e.numPtr("tab-size", p.TabSize)
+		e.intPtr("tab-size", p.TabSize)
 		e.bool("readonly", p.Readonly)
 		e.bool("disabled", p.Disabled)
 		e.str("label", p.Label)
@@ -704,7 +704,7 @@ type CodeEditorProps struct {
 
 	// Visual width of a tab. Attribute tab-size; nil leaves it out (the
 	// default is 2).
-	TabSize *float64
+	TabSize *int
 
 	// Make the code read-only (a form still submits it). Attribute readonly,
 	// by presence.
@@ -778,7 +778,7 @@ func CodePlayground(p CodePlaygroundProps) templ.Component {
 		e.flag("auto-run", p.AutoRun)
 		e.str("theme", p.Theme)
 		e.json("themes", p.Themes, p.Themes == nil)
-		e.numPtr("delay", p.Delay)
+		e.intPtr("delay", p.Delay)
 		e.str("base", p.Base)
 		e.json("initial", p.Initial, p.Initial == nil)
 		e.bool("typescript", p.Typescript)
@@ -829,12 +829,13 @@ type CodePlaygroundProps struct {
 	Theme string
 
 	// Themes offered in the picker. Attribute themes, as JSON; nil leaves it
-	// out (the default is ["deep-space","nebula","terminal","daylight"]).
+	// out for the default ["deep-space","nebula","terminal","daylight"], while
+	// an empty one writes [].
 	Themes []string
 
 	// Auto-run debounce, in ms. Attribute delay; nil leaves it out (the
 	// default is 600).
-	Delay *float64
+	Delay *int
 
 	// URL that relative imports in component.js resolve against (the folder
 	// its vendored files are served from). Attribute base.
@@ -965,7 +966,7 @@ func CopyButton(p CopyButtonProps) templ.Component {
 		e.str("copied-label", p.CopiedLabel)
 		e.str("failed-label", p.FailedLabel)
 		e.str("manual-label", p.ManualLabel)
-		e.numPtr("reset-ms", p.ResetMS)
+		e.intPtr("reset-ms", p.ResetMS)
 		return e.render(ctx, w)
 	})
 }
@@ -1006,7 +1007,7 @@ type CopyButtonProps struct {
 
 	// How long the copied or failed state lasts, in ms (at least 300).
 	// Attribute reset-ms; nil leaves it out (the default is 1600).
-	ResetMS *float64
+	ResetMS *int
 }
 
 // CountUp renders <sb-count-up>: Counts a number up to its value when it
@@ -1021,8 +1022,8 @@ func CountUp(p CountUpProps) templ.Component {
 		e := newElement("sb-count-up", p.ID, p.Class, p.Attrs)
 		e.num("value", p.Value)
 		e.num("from", p.From)
-		e.num("decimals", p.Decimals)
-		e.numPtr("duration", p.Duration)
+		e.int("decimals", p.Decimals)
+		e.intPtr("duration", p.Duration)
 		e.flag("grouping", p.Grouping)
 		e.str("lang", p.Lang)
 		return e.render(ctx, w)
@@ -1049,11 +1050,11 @@ type CountUpProps struct {
 
 	// Fixed digits after the decimal mark, kept for every frame so the width
 	// stays put. Attribute decimals; 0 (the default) leaves it out.
-	Decimals float64
+	Decimals int
 
 	// Length of the count in milliseconds. Attribute duration; nil leaves it
 	// out (the default is 1400).
-	Duration *float64
+	Duration *int
 
 	// Group thousands the way the locale does. On by default: grouping="false"
 	// turns it off. Attribute grouping; Default leaves it out (on), Off writes
@@ -1107,8 +1108,8 @@ func DataTable(p DataTableProps) templ.Component {
 		e := newElement("sb-data-table", p.ID, p.Class, p.Attrs)
 		e.json("columns", p.Columns, p.Columns == nil)
 		e.json("rows", p.Rows, p.Rows == nil)
-		e.num("offset", p.Offset)
-		e.num("total", p.Total)
+		e.int("offset", p.Offset)
+		e.int("total", p.Total)
 		e.str("row-key", p.RowKey)
 		e.numPtr("row-height", p.RowHeight)
 		e.numPtr("buffer", p.Buffer)
@@ -1162,11 +1163,11 @@ type DataTableProps struct {
 
 	// Index of the first row in rows. Attribute offset; 0 (the default) leaves
 	// it out.
-	Offset float64
+	Offset int
 
 	// How many rows there are (at least offset plus the rows given). Attribute
 	// total; 0 (the default) leaves it out.
-	Total float64
+	Total int
 
 	// The field that identifies a row, for the selection and sb-row-activate.
 	// Attribute row-key; empty leaves it out, for the default "id".
@@ -1283,7 +1284,7 @@ func DatePicker(p DatePickerProps) templ.Component {
 		e.strPtr("value", p.Value)
 		e.enum("mode", string(p.Mode), "single", "range")
 		e.bool("time", p.Time)
-		e.numPtr("step", p.Step)
+		e.intPtr("step", p.Step)
 		e.str("time-zone", p.TimeZone)
 		e.str("min", p.Min)
 		e.str("max", p.Max)
@@ -1343,7 +1344,7 @@ type DatePickerProps struct {
 	// step that isn't a positive number means 60. Up and Down move by it;
 	// typed values off the step are kept. Attribute step; nil leaves it out
 	// (the default is 60).
-	Step *float64
+	Step *int
 
 	// With time: an IANA time zone (Europe/Zurich), or local for the viewer's.
 	// The picker shows and reads the wall clock there, and the value is an RFC
@@ -1869,7 +1870,7 @@ func Gauge(p GaugeProps) templ.Component {
 		e.numPtr("danger", p.Danger)
 		e.str("label", p.Label)
 		e.str("unit", p.Unit)
-		e.num("decimals", p.Decimals)
+		e.int("decimals", p.Decimals)
 		return e.render(ctx, w)
 	})
 }
@@ -1912,7 +1913,7 @@ type GaugeProps struct {
 
 	// Decimals shown in the readout. Attribute decimals; 0 (the default)
 	// leaves it out.
-	Decimals float64
+	Decimals int
 }
 
 // ImageCompare renders <sb-image-compare>: Two images on top of each other,
@@ -2066,7 +2067,7 @@ func Input(p InputProps) templ.Component {
 		e.enum("type", string(p.Type), "text", "email", "search", "url", "tel", "password")
 		e.str("name", p.Name)
 		e.bool("required", p.Required)
-		e.num("minlength", p.Minlength)
+		e.int("minlength", p.Minlength)
 		e.str("pattern", p.Pattern)
 		e.str("hint", p.Hint)
 		e.str("error", p.Error)
@@ -2117,7 +2118,7 @@ type InputProps struct {
 	Required bool
 
 	// Minimum length. Attribute minlength; 0 (the default) leaves it out.
-	Minlength float64
+	Minlength int
 
 	// Regular expression the value must match. Attribute pattern.
 	Pattern string
@@ -2214,13 +2215,13 @@ func Meter(p MeterProps) templ.Component {
 		e.num("value", p.Value)
 		e.num("min", p.Min)
 		e.numPtr("max", p.Max)
-		e.numPtr("segments", p.Segments)
+		e.intPtr("segments", p.Segments)
 		e.numPtr("warn", p.Warn)
 		e.numPtr("danger", p.Danger)
 		e.str("label", p.Label)
 		e.str("unit", p.Unit)
 		e.flag("show-value", p.ShowValue)
-		e.num("decimals", p.Decimals)
+		e.int("decimals", p.Decimals)
 		return e.render(ctx, w)
 	})
 }
@@ -2247,7 +2248,7 @@ type MeterProps struct {
 
 	// Number of blocks. Attribute segments; nil leaves it out (the default is
 	// 12).
-	Segments *float64
+	Segments *int
 
 	// Warning threshold, in value units. Unset, it sits at 70% of the range
 	// (70 on 0–100). Below danger means low values are bad (like fuel).
@@ -2270,7 +2271,7 @@ type MeterProps struct {
 	ShowValue Flag
 
 	// Decimals shown. Attribute decimals; 0 (the default) leaves it out.
-	Decimals float64
+	Decimals int
 }
 
 // Modal renders <sb-modal>: Accessible modal dialogs for any use case.
@@ -2351,9 +2352,9 @@ func Nebula(p NebulaProps) templ.Component {
 		e.numPtr("density", p.Density)
 		e.enum("palette", string(p.Palette), "violet", "aurora", "ember", "mono")
 		e.numPtr("pixel", p.Pixel)
-		e.numPtr("levels", p.Levels)
+		e.intPtr("levels", p.Levels)
 		e.flag("stars", p.Stars)
-		e.num("seed", p.Seed)
+		e.int("seed", p.Seed)
 		e.flag("parallax", p.Parallax)
 		e.str("label", p.Label)
 		return e.render(ctx, w)
@@ -2388,7 +2389,7 @@ type NebulaProps struct {
 
 	// Colour levels per channel, dithered (0 for smooth). Attribute levels;
 	// nil leaves it out (the default is 6).
-	Levels *float64
+	Levels *int
 
 	// Draw twinkling stars. On by default: stars="false" turns it off.
 	// Attribute stars; Default leaves it out (on), Off writes "false", On
@@ -2396,7 +2397,7 @@ type NebulaProps struct {
 	Stars Flag
 
 	// Picks a different nebula. Attribute seed; 0 (the default) leaves it out.
-	Seed float64
+	Seed int
 
 	// Shift with the pointer. On by default: parallax="false" turns it off.
 	// Attribute parallax; Default leaves it out (on), Off writes "false", On
@@ -2431,7 +2432,7 @@ func Odometer(p OdometerProps) templ.Component {
 		used(ctx, TagOdometer)
 		e := newElement("sb-odometer", p.ID, p.Class, p.Attrs)
 		e.num("value", p.Value)
-		e.num("decimals", p.Decimals)
+		e.int("decimals", p.Decimals)
 		e.flag("grouping", p.Grouping)
 		e.str("lang", p.Lang)
 		e.bool("drum", p.Drum)
@@ -2457,7 +2458,7 @@ type OdometerProps struct {
 	// Fixed digits after the decimal mark, so a whole-number step still shows
 	// ".0" and the layout does not jump. Attribute decimals; 0 (the default)
 	// leaves it out.
-	Decimals float64
+	Decimals int
 
 	// Group thousands the way the locale does (221’180, 221,180, 221 180).
 	// On by default: grouping="false" turns it off. Attribute grouping;
@@ -2487,10 +2488,10 @@ func PixelBoard(p PixelBoardProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		used(ctx, TagPixelBoard)
 		e := newElement("sb-pixel-board", p.ID, p.Class, p.Attrs)
-		e.numPtr("size", p.Size)
+		e.intPtr("size", p.Size)
 		e.str("cells", p.Cells)
 		e.json("palette", p.Palette, p.Palette == nil)
-		e.numPtr("color", p.Color)
+		e.intPtr("color", p.Color)
 		e.bool("local", p.Local)
 		e.bool("readonly", p.Readonly)
 		e.bool("grid", p.Grid)
@@ -2514,20 +2515,21 @@ type PixelBoardProps struct {
 	Attrs templ.Attributes
 
 	// Cells per side. Attribute size; nil leaves it out (the default is 48).
-	Size *float64
+	Size *int
 
 	// Board state: one hex digit (palette index) per cell, row by row. Usually
 	// server-owned. Attribute cells.
 	Cells string
 
 	// 16 colours as a JSON array of #rrggbb. Attribute palette, as JSON; nil
-	// leaves it out (the default is
-	// ["#080D1D","#1B1F3B","#283552","#7785A8","#AEBBDD","#F3F4FA","#8C6BFF","#B09AFF","#5B4FD6","#65BFFF","#2F7BE0","#6EF59A","#4CC46A","#FFD84D","#FF9F43","#E5484D"]).
+	// leaves it out for the default
+	// ["#080D1D","#1B1F3B","#283552","#7785A8","#AEBBDD","#F3F4FA","#8C6BFF","#B09AFF","#5B4FD6","#65BFFF","#2F7BE0","#6EF59A","#4CC46A","#FFD84D","#FF9F43","#E5484D"],
+	// while an empty one writes [].
 	Palette []string
 
 	// Selected palette index (the attribute sets it; the user can change it).
 	// Attribute color; nil leaves it out (the default is 7).
-	Color *float64
+	Color *int
 
 	// Paint the local buffer directly (offline mode). Otherwise painted cells
 	// stay pending until cells answers them, or the page calls revert().
@@ -2682,7 +2684,7 @@ func QRCode(p QRCodeProps) templ.Component {
 		e := newElement("sb-qr-code", p.ID, p.Class, p.Attrs)
 		e.str("value", p.Value)
 		e.enum("ecc", string(p.ECC), "L", "M", "Q", "H")
-		e.numPtr("border", p.Border)
+		e.intPtr("border", p.Border)
 		e.bool("accent", p.Accent)
 		e.str("label", p.Label)
 		return e.render(ctx, w)
@@ -2710,7 +2712,7 @@ type QRCodeProps struct {
 	// Quiet zone around the code, in modules (the standard asks for 4; 2 scans
 	// fine on a plain background). Attribute border; nil leaves it out (the
 	// default is 2).
-	Border *float64
+	Border *int
 
 	// Colour the three corner squares with --sb-qr-accent (default: the brand
 	// colour, darkened where it is too light to scan). Attribute accent, by
@@ -2923,7 +2925,7 @@ func Rating(p RatingProps) templ.Component {
 		used(ctx, TagRating)
 		e := newElement("sb-rating", p.ID, p.Class, p.Attrs)
 		e.numPtr("value", p.Value)
-		e.numPtr("max", p.Max)
+		e.intPtr("max", p.Max)
 		e.enum("precision", string(p.Precision), "1", "0.5")
 		e.enum("icon", string(p.Icon), "heart", "star")
 		e.enum("size", string(p.Size), "sm", "md", "lg")
@@ -2956,7 +2958,7 @@ type RatingProps struct {
 
 	// Number of hearts (or stars). Attribute max; nil leaves it out (the
 	// default is 5).
-	Max *float64
+	Max *int
 
 	// Step: whole or half units. Attribute precision; default "1".
 	Precision RatingPrecision
@@ -3149,21 +3151,21 @@ func Select(p SelectProps) templ.Component {
 		e := newElement("sb-select", p.ID, p.Class, p.Attrs)
 		e.json("options", p.Options, p.Options == nil)
 		e.json("results", p.Results, p.Results == nil)
-		e.strPtr("value", p.Value)
+		e.choice("value", p.Value, p.Multiple)
 		e.str("label", p.Label)
 		e.str("placeholder", p.Placeholder)
 		e.bool("multiple", p.Multiple)
 		e.bool("searchable", p.Searchable)
 		e.bool("remote", p.Remote)
-		e.numPtr("delay", p.Delay)
-		e.numPtr("min-chars", p.MinChars)
+		e.intPtr("delay", p.Delay)
+		e.intPtr("min-chars", p.MinChars)
 		e.bool("loading", p.Loading)
 		e.bool("clearable", p.Clearable)
 		e.bool("disabled", p.Disabled)
 		e.str("name", p.Name)
 		e.str("summary", p.Summary)
-		e.numPtr("max-chips", p.MaxChips)
-		e.numPtr("total", p.Total)
+		e.intPtr("max-chips", p.MaxChips)
+		e.intPtr("total", p.Total)
 		e.bool("actions", p.Actions)
 		e.str("select-all-label", p.SelectAllLabel)
 		e.str("matches-label", p.MatchesLabel)
@@ -3199,9 +3201,11 @@ type SelectProps struct {
 
 	// The value; for multiple, a JSON array or values separated by commas. A
 	// new value from the server replaces it; the live value is the value
-	// property. Attribute value; nil leaves it out, Str("") sends an empty
+	// property. Attribute value: one value, []string{"mars"}, or with Multiple
+	// any number, written as a JSON array (more than one value without
+	// Multiple is a render error); nil leaves it out, an empty list sends no
 	// value, which wins over the user's.
-	Value *string
+	Value []string
 
 	// Visible label. Attribute label.
 	Label string
@@ -3222,11 +3226,11 @@ type SelectProps struct {
 
 	// Remote: debounce before sb-search, in ms. Attribute delay; nil leaves it
 	// out (the default is 250).
-	Delay *float64
+	Delay *int
 
 	// Remote: characters needed before searching. Attribute min-chars; nil
 	// leaves it out (the default is 1).
-	MinChars *float64
+	MinChars *int
 
 	// Show that results are on their way (bind it to data-indicator).
 	// Attribute loading, by presence.
@@ -3251,13 +3255,13 @@ type SelectProps struct {
 	// Multiple: show at most this many chips on one line, then a "+K" chip (or
 	// the summary). 0 shows only the count; -1 (the default) shows every chip
 	// and wraps. Attribute max-chips; nil leaves it out (the default is -1).
-	MaxChips *float64
+	MaxChips *int
 
 	// Summary: what {total} stands for, e.g. the number of results a remote
 	// search can reach. -1 (the default): the options it knows (remote: every
 	// option it has been offered). Attribute total; nil leaves it out (the
 	// default is -1).
-	Total *float64
+	Total *int
 
 	// Multiple: "Select all" (while a search filters: "Select the N matches")
 	// and "Clear" rows at the top of the list. Attribute actions, by presence.
@@ -3461,14 +3465,14 @@ func Sparkline(p SparklineProps) templ.Component {
 		e := newElement("sb-sparkline", p.ID, p.Class, p.Attrs)
 		e.json("values", p.Values, p.Values == nil)
 		e.numPtr("value", p.Value)
-		e.numPtr("length", p.Length)
+		e.intPtr("length", p.Length)
 		e.enum("scale", string(p.Scale), "auto", "fixed")
 		e.num("min", p.Min)
 		e.numPtr("max", p.Max)
 		e.enum("tone", string(p.Tone), "brand", "ok", "warn", "danger", "accent")
 		e.bool("show-value", p.ShowValue)
 		e.str("unit", p.Unit)
-		e.num("decimals", p.Decimals)
+		e.int("decimals", p.Decimals)
 		e.str("label", p.Label)
 		e.str("summary-label", p.SummaryLabel)
 		e.str("empty-label", p.EmptyLabel)
@@ -3497,7 +3501,7 @@ type SparklineProps struct {
 
 	// Points kept (older ones scroll off). Attribute length; nil leaves it out
 	// (the default is 40).
-	Length *float64
+	Length *int
 
 	// auto fits the data; fixed uses min and max. Attribute scale; default
 	// "auto".
@@ -3522,7 +3526,7 @@ type SparklineProps struct {
 
 	// Decimals of the shown value. Attribute decimals; 0 (the default) leaves
 	// it out.
-	Decimals float64
+	Decimals int
 
 	// What the chart shows, named first in its accessible label. Attribute
 	// label.
@@ -3572,7 +3576,7 @@ func Starfield(p StarfieldProps) templ.Component {
 		used(ctx, TagStarfield)
 		e := newElement("sb-starfield", p.ID, p.Class, p.Attrs)
 		e.numPtr("speed", p.Speed)
-		e.numPtr("density", p.Density)
+		e.intPtr("density", p.Density)
 		e.enum("tint", string(p.Tint), "white", "violet", "cyan", "green")
 		e.bool("warp", p.Warp)
 		e.strPtr("label", p.Label)
@@ -3597,7 +3601,7 @@ type StarfieldProps struct {
 
 	// Number of stars. Attribute density; nil leaves it out (the default is
 	// 300).
-	Density *float64
+	Density *int
 
 	// Star colour (from theme tokens). Attribute tint; default "white".
 	Tint StarfieldTint
@@ -3647,7 +3651,7 @@ func Tabs(p TabsProps) templ.Component {
 		used(ctx, TagTabs)
 		e := newElement("sb-tabs", p.ID, p.Class, p.Attrs)
 		e.json("labels", p.Labels, p.Labels == nil)
-		e.numPtr("selected", p.Selected)
+		e.intPtr("selected", p.Selected)
 		e.bool("confirm", p.Confirm)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
@@ -3666,14 +3670,14 @@ type TabsProps struct {
 	Attrs templ.Attributes
 
 	// Tab labels, as a JSON array. Attribute labels, as JSON; nil leaves it
-	// out (the default is ["Home","Docs","API"]).
+	// out for the default ["Home","Docs","API"], while an empty one writes [].
 	Labels []string
 
 	// Index of the selected tab (past the last tab means the last one). A new
 	// index from the server wins; a removed attribute is ignored. Attribute
-	// selected; nil leaves it out, Num(0) sends 0, which wins over the user's
+	// selected; nil leaves it out, Int(0) sends 0, which wins over the user's
 	// value.
-	Selected *float64
+	Selected *int
 
 	// Server-confirmed value: :state(pending) while the local selection
 	// differs from the server's selected attribute (see revert()). Attribute
@@ -3724,8 +3728,8 @@ type ThemeSwitchProps struct {
 	Attrs templ.Attributes
 
 	// Theme names, in order. "auto" follows the system (prefers-color-scheme).
-	// Attribute themes, as JSON; nil leaves it out (the default is
-	// ["auto","dark","light"]).
+	// Attribute themes, as JSON; nil leaves it out for the default
+	// ["auto","dark","light"], while an empty one writes [].
 	Themes []string
 
 	// Visible names, in the order of themes (default: from the names).
@@ -3786,8 +3790,8 @@ func Toast(p ToastProps) templ.Component {
 		e := newElement("sb-toast", p.ID, p.Class, p.Attrs)
 		e.json("toasts", p.Toasts, p.Toasts == nil)
 		e.enum("placement", string(p.Placement), "top-start", "top-center", "top-end", "bottom-start", "bottom-center", "bottom-end", "inline")
-		e.numPtr("max", p.Max)
-		e.numPtr("duration", p.Duration)
+		e.intPtr("max", p.Max)
+		e.intPtr("duration", p.Duration)
 		e.str("label", p.Label)
 		e.str("dismiss-label", p.DismissLabel)
 		return e.render(ctx, w)
@@ -3819,12 +3823,12 @@ type ToastProps struct {
 	// How many toasts are shown at once. Older ones wait and appear as newer
 	// ones go; only shown toasts count down. Attribute max; nil leaves it out
 	// (the default is 3).
-	Max *float64
+	Max *int
 
 	// Default time before a toast dismisses itself, in ms. 0 makes them
 	// sticky; a toast may carry its own duration. Attribute duration; nil
 	// leaves it out (the default is 5000).
-	Duration *float64
+	Duration *int
 
 	// Accessible name of the region. Attribute label; empty leaves it out, for
 	// the default "Notifications".
@@ -3867,7 +3871,7 @@ func TableOfContents(p TableOfContentsProps) templ.Component {
 		used(ctx, TagTableOfContents)
 		e := newElement("sb-toc", p.ID, p.Class, p.Attrs)
 		e.str("content", p.Content)
-		e.str("levels", p.Levels)
+		e.words("levels", p.Levels)
 		e.str("label", p.Label)
 		e.str("start-label", p.StartLabel)
 		e.str("compact", p.Compact)
@@ -3893,8 +3897,10 @@ type TableOfContentsProps struct {
 	Content string
 
 	// The headings to list, e.g. "h2 h3". Deeper levels are indented.
-	// Attribute levels; empty leaves it out, for the default "h2".
-	Levels string
+	// Attribute levels, the items separated by spaces (an item holding a space
+	// is a render error); nil leaves it out (the default is "h2"), an empty
+	// list writes it empty.
+	Levels []string
 
 	// Heading of the list, and the accessible name of the navigation.
 	// Attribute label; empty leaves it out, for the default "Contents".
@@ -4057,8 +4063,8 @@ func Tree(p TreeProps) templ.Component {
 		e.json("items", p.Items, p.Items == nil)
 		e.json("loaded", p.Loaded, p.Loaded == nil)
 		e.enum("selection", string(p.Selection), "single", "multiple", "none")
-		e.strPtr("value", p.Value)
-		e.strPtr("expanded", p.Expanded)
+		e.words("value", p.Value)
+		e.words("expanded", p.Expanded)
 		e.str("label", p.Label)
 		e.str("loading-label", p.LoadingLabel)
 		e.bool("confirm", p.Confirm)
@@ -4095,14 +4101,17 @@ type TreeProps struct {
 
 	// Selection: an id, or ids separated by spaces (multiple). A new value
 	// from the server replaces it; the live value is the value property.
-	// Attribute value; nil leaves it out, Str("") sends an empty value, which
-	// wins over the user's.
-	Value *string
+	// Attribute value, the items separated by spaces (an item holding a space
+	// is a render error); nil leaves it out, an empty list sends an empty
+	// value, which wins over the user's.
+	Value []string
 
 	// Open items: ids separated by spaces. A new list from the server replaces
-	// it; lazy items in it load their children. Attribute expanded; nil leaves
-	// it out, Str("") sends an empty value, which wins over the user's.
-	Expanded *string
+	// it; lazy items in it load their children. Attribute expanded, the items
+	// separated by spaces (an item holding a space is a render error); nil
+	// leaves it out, an empty list sends an empty value, which wins over the
+	// user's.
+	Expanded []string
 
 	// Accessible name. Attribute label; empty leaves it out, for the default
 	// "Tree".
@@ -4150,9 +4159,9 @@ func Typewriter(p TypewriterProps) templ.Component {
 		e.bool("loop", p.Loop)
 		e.str("prompt", p.Prompt)
 		e.enum("cursor", string(p.Cursor), "block", "bar", "underscore", "none")
-		e.numPtr("interval", p.Interval)
-		e.numPtr("delay", p.Delay)
-		e.numPtr("hold", p.Hold)
+		e.intPtr("interval", p.Interval)
+		e.intPtr("delay", p.Delay)
+		e.intPtr("hold", p.Hold)
 		return e.render(ctx, w)
 	})
 }
@@ -4188,16 +4197,16 @@ type TypewriterProps struct {
 	// Average milliseconds between two characters: lower types faster. Each
 	// varies a little, like a person typing; erasing takes half as long.
 	// Attribute interval; nil leaves it out (the default is 45).
-	Interval *float64
+	Interval *int
 
 	// Milliseconds before the first character, counted from when the element
 	// comes into view. Attribute delay; nil leaves it out (the default is
 	// 400).
-	Delay *float64
+	Delay *int
 
 	// With phrases: milliseconds a typed phrase stays before it is erased.
 	// Attribute hold; nil leaves it out (the default is 1800).
-	Hold *float64
+	Hold *int
 }
 
 // TypewriterCursor is a value of TypewriterProps.Cursor: The cursor's shape.
@@ -4232,12 +4241,12 @@ func VirtualScroll(p VirtualScrollProps) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		used(ctx, TagVirtualScroll)
 		e := newElement("sb-virtual-scroll", p.ID, p.Class, p.Attrs)
-		e.numPtr("total", p.Total)
-		e.num("offset", p.Offset)
+		e.intPtr("total", p.Total)
+		e.intPtr("offset", p.Offset)
 		e.str("item-size", p.ItemSize)
-		e.numPtr("columns", p.Columns)
+		e.intPtr("columns", p.Columns)
 		e.numPtr("buffer", p.Buffer)
-		e.numPtr("step", p.Step)
+		e.intPtr("step", p.Step)
 		e.str("label", p.Label)
 		return e.render(ctx, w)
 	})
@@ -4256,12 +4265,13 @@ type VirtualScrollProps struct {
 
 	// Server data: how many items the whole list has, or -1 while the server
 	// does not know (more may follow). Attribute total; nil leaves it out,
-	// Num(0) writes 0.
-	Total *float64
+	// Int(0) writes 0.
+	Total *int
 
 	// Server data: the index of the first child in the whole list (from 0, a
-	// multiple of columns). Attribute offset; 0 (the default) leaves it out.
-	Offset float64
+	// multiple of columns). Attribute offset; nil leaves it out, Int(0) writes
+	// 0.
+	Offset *int
 
 	// Row height: a number of px, or a CSS length (2.5rem, calc(1lh + 1rem),
 	// var(--row)) measured in whole px. Every item is exactly one row high.
@@ -4270,7 +4280,7 @@ type VirtualScrollProps struct {
 
 	// Items per row: more than 1 lays them out as a grid. Attribute columns;
 	// nil leaves it out (the default is 1).
-	Columns *float64
+	Columns *int
 
 	// How far a window reaches past the viewport, above and below, in px.
 	// Attribute buffer; nil leaves it out (the default is 4000).
@@ -4279,7 +4289,7 @@ type VirtualScrollProps struct {
 	// Windows start and end at a multiple of step items, so viewers ask for
 	// the same windows (1: no rounding). Attribute step; nil leaves it out
 	// (the default is 1).
-	Step *float64
+	Step *int
 
 	// Accessible name of the list. Attribute label.
 	Label string

@@ -36,11 +36,17 @@ func (c *Component) PropsLiteral(n *Node, qual string) (string, error) {
 			attrs = append(attrs, strconv.Quote(a.Name)+": "+v)
 			continue
 		}
-		v, err := f.literal(a, qual)
+		var v string
+		var err error
+		if f.Kind == KindChoice {
+			v = choiceLiteral(a.Value, n.has("multiple"))
+		} else {
+			v, err = f.literal(a, qual)
+		}
 		if err != nil {
 			return "", fmt.Errorf("<%s %s>: %w", c.Tag, a.Name, err)
 		}
-		if f.Kind == KindNumber && v == "0" || (f.Kind == KindString || f.Kind == KindURL) && v == `""` {
+		if (f.Kind == KindNumber || f.Kind == KindInt) && v == "0" || (f.Kind == KindString || f.Kind == KindURL) && v == `""` {
 			continue // the zero value: what an absent attribute means
 		}
 		fields = append(fields, f.GoName+": "+v)
@@ -96,6 +102,21 @@ func (f *Field) literal(a Attr, qual string) (string, error) {
 			return qual + "Num(" + s + ")", nil
 		}
 		return s, nil
+	case KindInt, KindIntPtr:
+		n, err := strconv.ParseFloat(strings.TrimSpace(a.Value), 64)
+		if err != nil {
+			return "", err
+		}
+		if n != float64(int(n)) {
+			return "", fmt.Errorf("%v is not a whole number", n)
+		}
+		s := strconv.Itoa(int(n))
+		if f.Kind == KindIntPtr {
+			return qual + "Int(" + s + ")", nil
+		}
+		return s, nil
+	case KindWords:
+		return stringsLiteral(strings.Fields(a.Value)), nil
 	case KindJSON:
 		v := reflect.New(f.JSON)
 		dec := json.NewDecoder(strings.NewReader(a.Value))
@@ -118,6 +139,36 @@ func (f *Field) literal(a Attr, qual string) (string, error) {
 		return GoValue(v.Elem(), qual)
 	}
 	return "", fmt.Errorf("unknown kind %d", f.Kind)
+}
+
+// choiceLiteral is sb-select's value as the component reads it: a JSON
+// array, with multiple a list separated by commas, else one value.
+func choiceLiteral(v string, multiple bool) string {
+	s := strings.TrimSpace(v)
+	var list []string
+	switch {
+	case s == "":
+		list = []string{}
+	case strings.HasPrefix(s, "[") && json.Unmarshal([]byte(s), &list) == nil:
+	case multiple:
+		list = []string{}
+		for _, x := range strings.Split(s, ",") {
+			if x = strings.TrimSpace(x); x != "" {
+				list = append(list, x)
+			}
+		}
+	default:
+		list = []string{s}
+	}
+	return stringsLiteral(list)
+}
+
+func stringsLiteral(list []string) string {
+	q := make([]string, len(list))
+	for i, s := range list {
+		q[i] = strconv.Quote(s)
+	}
+	return "[]string{" + strings.Join(q, ", ") + "}"
 }
 
 // lostKeys reports a key of orig that back lacks, unless its value is one
@@ -181,6 +232,9 @@ func goValue(v reflect.Value, qual string, typed bool) (string, error) {
 		}
 		if t.Elem().Kind() == reflect.Float64 {
 			return qual + "Num(" + strconv.FormatFloat(v.Elem().Float(), 'f', -1, 64) + ")", nil
+		}
+		if t.Elem().Kind() == reflect.Int {
+			return qual + "Int(" + strconv.FormatInt(v.Elem().Int(), 10) + ")", nil
 		}
 		s, err := goValue(v.Elem(), qual, true)
 		return "&" + s, err

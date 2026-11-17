@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/a-h/templ"
 
@@ -73,4 +74,33 @@ func ExampleImports() {
 		fmt.Println(err)
 	}
 	// Output:
+}
+
+// A whole number is an int: sb.Int(0) selects the first tab (the server's
+// word), while a nil Selected leaves the user's choice alone. An empty
+// Labels is no tabs; a nil one would be the default Home, Docs, API.
+func ExampleTabs() {
+	labels := []string{"Overview", "C++", "C#"}
+	panels := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for i := range labels {
+			fmt.Fprintf(w, `<div slot="%s">…</div>`, sb.TabSlot(labels, i))
+		}
+		return nil
+	})
+	sb.Tabs(sb.TabsProps{Labels: labels, Selected: sb.Int(0)}).Render(templ.WithChildren(context.Background(), panels), os.Stdout)
+	// Output: <sb-tabs labels="[&#34;Overview&#34;,&#34;C++&#34;,&#34;C#&#34;]" selected="0"><div slot="overview">…</div><div slot="c">…</div><div slot="c-2">…</div></sb-tabs>
+}
+
+// Collect tells a page with its own loader which components rendered, and
+// Pin where each one's files are.
+func ExampleCollect() {
+	ctx, rendered := sb.Collect(context.Background())
+	sb.DataTable(sb.DataTableProps{}).Render(ctx, io.Discard)
+	for _, t := range rendered() {
+		p, _ := sb.Pin(t)
+		fmt.Println(t, strings.HasPrefix(p.Bundle.Path, "/c/"), strings.HasPrefix(p.Bundle.Integrity, "sha384-"))
+	}
+	// Output:
+	// sb-data-table true true
+	// sb-virtual-scroll true true
 }

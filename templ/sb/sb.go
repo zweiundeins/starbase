@@ -8,6 +8,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
@@ -66,9 +67,14 @@ func (f *Flag) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Num returns a pointer to v, for the number fields whose zero value would
-// mean something: Max: sb.Num(10).
+// Num returns a pointer to v, for the *float64 fields, where nil leaves the
+// attribute out and 0 is a value: Max: sb.Num(10).
 func Num(v float64) *float64 { return &v }
+
+// Int returns a pointer to v, for the *int fields (counts, indexes,
+// milliseconds), where nil leaves the attribute out and 0 is a value:
+// Selected: sb.Int(0).
+func Int(v int) *int { return &v }
 
 // Str returns a pointer to s, for the string fields where an empty string is
 // a value of its own (the server's word): Value: sb.Str("").
@@ -148,6 +154,55 @@ func (e *element) num(name string, v float64) {
 func (e *element) numPtr(name string, v *float64) {
 	if v != nil {
 		e.attrs = append(e.attrs, attr{name: name, value: formatNum(*v)})
+	}
+}
+
+// int writes an integer whose zero value is the component's default.
+func (e *element) int(name string, v int) {
+	if v != 0 {
+		e.attrs = append(e.attrs, attr{name: name, value: strconv.Itoa(v)})
+	}
+}
+
+func (e *element) intPtr(name string, v *int) {
+	if v != nil {
+		e.attrs = append(e.attrs, attr{name: name, value: strconv.Itoa(*v)})
+	}
+}
+
+// words writes a list separated by spaces (sb-tree's ids, sb-toc's levels):
+// nil leaves it out, an empty list writes it empty. An item that is empty or
+// holds a space can't be told apart from its neighbours and is an error.
+func (e *element) words(name string, v []string) {
+	if v == nil {
+		return
+	}
+	for _, w := range v {
+		if w == "" || strings.ContainsFunc(w, unicode.IsSpace) {
+			e.fail(fmt.Errorf("sb: <%s> %s: %q can't be one of a list separated by spaces", e.tag, name, w))
+			return
+		}
+	}
+	e.attrs = append(e.attrs, attr{name: name, value: strings.Join(v, " ")})
+}
+
+// choice writes sb-select's value: with multiple, the values as a JSON array;
+// without, the one value (empty for none), as JSON only when it starts with
+// "[", which the component would otherwise read as an array.
+func (e *element) choice(name string, v []string, multiple bool) {
+	switch {
+	case v == nil:
+		return
+	case multiple:
+		e.json(name, v, false)
+	case len(v) > 1:
+		e.fail(fmt.Errorf("sb: <%s> %s: %d values without multiple", e.tag, name, len(v)))
+	case len(v) == 0:
+		e.attrs = append(e.attrs, attr{name: name})
+	case strings.HasPrefix(strings.TrimSpace(v[0]), "["):
+		e.json(name, v, false)
+	default:
+		e.attrs = append(e.attrs, attr{name: name, value: v[0]})
 	}
 }
 

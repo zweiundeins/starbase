@@ -306,7 +306,7 @@ var usages = []usage{
 	{
 		slug:   "pixel-board",
 		html:   `<sb-pixel-board local grid size="24"></sb-pixel-board>`,
-		render: PixelBoard(PixelBoardProps{Local: true, Grid: true, Size: Num(24)}),
+		render: PixelBoard(PixelBoardProps{Local: true, Grid: true, Size: Int(24)}),
 	},
 	{
 		slug: "popover",
@@ -438,14 +438,14 @@ var usages = []usage{
 	{
 		slug:   "toast",
 		html:   `<sb-toast toasts='[{"id":"saved","variant":"ok","title":"Saved","text":"Your changes are live."}]'></sb-toast>`,
-		render: Toast(ToastProps{Toasts: []ToastMessage{{ID: "saved", Title: "Saved", Text: "Your changes are live.", Variant: ToastOK}}}),
+		render: Toast(ToastProps{Toasts: []ToastMessage{{ID: "saved", Title: "Saved", Text: "Your changes are live.", Variant: ToastVariantOK}}}),
 	},
 	{
 		slug: "toc",
 		html: `<sb-toc content="article" levels="h2 h3" start-label="Intro" compact="(max-width: 64rem)"></sb-toc>`,
 		render: TableOfContents(TableOfContentsProps{
 			Content:    "article",
-			Levels:     "h2 h3",
+			Levels:     []string{"h2", "h3"},
 			StartLabel: "Intro",
 			Compact:    "(max-width: 64rem)",
 		}),

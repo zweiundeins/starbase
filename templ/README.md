@@ -85,30 +85,55 @@ Every file is pinned with its integrity hash, so the browser refuses one that ch
 	}
 	<script type="module" src="/app.js"></script>
 </body>
+
+// 4. Either of them on a page with its own import map and Datastar: only the
+//    components' module scripts, no map and no Datastar script.
+@sb.Tracked(sb.ImportsProps{ScriptsOnly: true}) { … }
 ```
 
-The first two go in `<head>`, once per page. `Tracked` knows only what the first render holds: on a live page that morphs in components it didn't render, use the autoloader, or name those in `Components`, which `Tracked` loads too. All three load Datastar with Rocket as well, so a page needs no other script for it. `Base` points any of them at another Starbase server, `Datastar` at your own Datastar build with Rocket, which the components then share.
+The first two go in `<head>`, once per page. `Tracked` knows only what the first render holds: on a live page that morphs in components it didn't render, use the autoloader, or name those in `Components`, which `Tracked` loads too. Without `ScriptsOnly`, all of them load Datastar with Rocket as well, so a page needs no other script for it. `Base` points any of them at another Starbase server, `Datastar` at your own Datastar build with Rocket, which the components then share.
+
+A page that serves the files itself, or has a loader of its own, gets the same information without the script tags:
+
+```go
+ctx, rendered := sb.Collect(ctx)   // every wrapper rendered with ctx notes its tag
+page.Render(ctx, &body)
+for _, t := range rendered() {     // in order, each once, with the components they render
+	p, _ := sb.Pin(t)               // p.Bundle.Path "/c/toggle@…/toggle.bundle.min.js", p.Bundle.Integrity,
+	…                               // p.Lazy (files it imports on demand, relative to it), p.Deps
+}
+sb.DatastarBuild()   // the Datastar build the components were made for: Path and Integrity
+sb.Snapshot          // the catalog snapshot the pins come from
+sb.Version()         // this module's version in your build ("v0.10.0"), "" when unknown
+```
+
+`Collect` composes with `Tracked`: a `Collect` around a `Tracked` sees what it rendered. A vendored copy can compare its lock with `Pin` and `DatastarBuild`.
 
 Every component page on [the site](https://starbase.zweiundeins.gmbh) has a templ tab under Installation with its usage as wrapper calls.
 
 ## Props
 
-Every props struct has `ID`, `Class` and `Attrs`, then one field per prop of the component, in the manifest's order, with the prop's docs as its doc comment. The field writes its attribute like this:
+Every props struct has `ID`, `Class` and `Attrs`, then one field per prop of the component, in the manifest's order, with the prop's docs as its doc comment. The attributes come in that order too, so a test compares the set of attributes, not the string. The zero value of every field means "not set" and leaves the attribute out: an empty `Label` writes no `label=""`. A field writes its attribute like this:
 
 | Manifest type | Go type | Attribute |
 | --- | --- | --- |
 | `string` | `string` | the text; `""` leaves it out, for the component's default (the doc comment carries it, e.g. the English label) |
+| `string` holding a list | `[]string` | `sb-tree`'s `Value` and `Expanded`, `sb-toc`'s `Levels`: the items separated by spaces; `sb-select`'s `Value`: one value, or with `Multiple` a JSON array. `nil` leaves it out, an empty list writes it empty |
 | `boolean` | `bool` | `true` is the bare attribute, `false` leaves it out; never `"false"` |
 | `oneOf(true, false)`, on by default | `sb.Flag` | `sb.Default` leaves it out, `sb.Off` writes `x="false"`, `sb.On` `x="true"` |
-| `oneOf("sm", "md", "lg")` | a named type, e.g. `sb.ToggleSize` | a constant per value (`sb.ToggleSizeLg`); `""` leaves it out; another value is a render error |
+| `oneOf("sm", "md", "lg")` | a named type, e.g. `sb.ToggleSize` | a constant per value, the type's name and the value's (`sb.ToggleSizeLg`); `""` leaves it out; another value is a render error |
+| `number`, a whole one, default 0 | `int` | counts, indexes, digits, ms: the number; 0 leaves it out |
+| `number`, a whole one, another default | `*int` | `nil` leaves it out, `sb.Int(n)` writes n, also 0 |
 | `number`, default 0 | `float64` | the number; 0 leaves it out |
 | `number`, another default | `*float64` | `nil` leaves it out, `sb.Num(x)` writes x, also 0 |
-| `json`, `array` | a Go type: `[]sb.DropdownItem`, `[]sb.Option`, `[]sb.Column`, `*sb.RangeValue`, `[]string`, … | JSON (`encoding/json`); `nil` leaves it out, an empty slice or map writes `[]` or `{}` |
-| the server's word (`value` and the like) | `*string`, `*float64` | `nil` leaves it out, `sb.Str("")` or `sb.Num(0)` sends an empty value or 0 |
+| `json`, `array` | a Go type: `[]sb.DropdownItem`, `[]sb.Option`, `[]sb.Column`, `*sb.RangeValue`, `[]string`, … | JSON (`encoding/json`); see below |
+| the server's word (`value` and the like) | `*string`, `*int`, `*float64`, `[]string` | `nil` leaves it out, `sb.Str("")`, `sb.Int(0)`, `sb.Num(0)` or an empty list sends an empty value or 0 |
 
-The server's word: a component's value (`sb-select`'s `Value`, `sb-slider`'s `Value`, `sb-tabs`' `Selected`, `sb-tree`'s `Value` and `Expanded`, …) wins over what the user did whenever the server sends a new one, while markup that sends the same value again keeps the user's edit. A morph that drops such an attribute is ignored, so these fields are pointers, and the server clears with `sb.Str("")` or `sb.Num(0)`. Booleans of this kind (`Checked`, `Open`) are written by presence, and dropping them is the server's word too. Each field's doc comment says which rule it follows.
+**A JSON field that is `nil` gets the component's default; an empty slice or map is written as `[]` or `{}`.** These are not the same where the default isn't empty: `sb.TabsProps{}` shows the tabs Home, Docs and API, `sb.TabsProps{Labels: []string{}}` shows none. The same goes for `sb-theme-switch`'s `Themes`, `sb-code-playground`'s `Themes` and `sb-pixel-board`'s `Palette`; each field's doc comment names its default.
 
-The JSON shapes are typed where the component's docs describe them: `sb.Option` (written as a plain string when it has only a value), `sb.DropdownItem`, `sb.Column` and `sb.Cell`, `sb.TableSort`, `sb.RangeValue`, `sb.Diagnostic`, `sb.TreeItem`, `sb.ToastMessage`. Three places take any value: `sb-echarts`' `Option` (an ECharts option), a `sb-data-table` row (`map[string]any`, keyed by your columns) and a cell's `Value`.
+The server's word: a component's value (`sb-select`'s `Value`, `sb-slider`'s `Value`, `sb-tabs`' `Selected`, `sb-tree`'s `Value` and `Expanded`, …) wins over what the user did whenever the server sends a new one, while markup that sends the same value again keeps the user's edit. A morph that drops such an attribute is ignored, so these fields are pointers or lists, and the server clears with `sb.Str("")`, `sb.Int(0)`, `sb.Num(0)` or an empty list. Booleans of this kind (`Checked`, `Open`) are written by presence, and dropping them is the server's word too. Server data that the component tells apart from no attribute is a pointer as well: `sb-virtual-scroll`'s `Offset` and `Total`, where `sb.Int(0)` is the first window or an empty list. Each field's doc comment says which rule it follows.
+
+The JSON shapes are typed where the component's docs describe them: `sb.Option` (written as a plain string when it has only a value), `sb.DropdownItem` (`Type: sb.DropdownItemTypeRadio` makes a submenu the radio group), `sb.Column` and `sb.Cell`, `sb.TableSort`, `sb.RangeValue`, `sb.Diagnostic`, `sb.TreeItem`, `sb.ToastMessage`. Three places take any value: `sb-echarts`' `Option` (an ECharts option), a `sb-data-table` row (`map[string]any`, keyed by your columns) and a cell's `Value`.
 
 An `href` (`sb-button`, `sb-card`, a dropdown item's or a cell's) is sanitized like templ's own: a `javascript:` URL becomes `about:invalid#TemplFailedSanitizationURL`. Other props are written as they are, escaped for HTML: templ's URL rules for attribute names like `icon` or `src` don't apply to them.
 
@@ -129,6 +154,20 @@ An `href` (`sb-button`, `sb-card`, a dropdown item's or a cell's) is sanitized l
 ```
 
 Each component's doc comment lists the events it sends, and its slots. Templ children render inside the element; a named slot is an element with `slot="…"`.
+
+Two helpers:
+
+```templ
+// Attributes from several places, the later winning (names compare without case):
+@sb.Toggle(sb.ToggleProps{Label: "Shields", Attrs: sb.Merge(common, templ.Attributes{"data-on:sb-change": "@post('/cmd/shields')"})})
+
+// sb-tabs' panels: the slot it gives each label ("übersicht" for "Übersicht", "c-1" for a second "C#").
+@sb.Tabs(sb.TabsProps{Labels: labels}) {
+	for i := range labels {
+		<div slot={ sb.TabSlot(labels, i) }>…</div>
+	}
+}
+```
 
 ## Contributing
 

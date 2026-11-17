@@ -34,7 +34,9 @@ func (o *Option) UnmarshalJSON(b []byte) error {
 // DropdownItem is one entry of sb-dropdown's items: an action (Value), a
 // link (Href), a divider, a group heading (Group: the items after it, up to
 // the next heading or divider, are its group) or a submenu (Label and
-// Children, nested up to 5 levels deep).
+// Children, nested up to 5 levels deep). A submenu with Type
+// DropdownItemTypeRadio is the dropdown's one radio group: its children are
+// the choices, and the dropdown's Value is the checked one.
 type DropdownItem struct {
 	Value       string `json:"value,omitempty"`
 	Label       string `json:"label,omitempty"`
@@ -49,7 +51,15 @@ type DropdownItem struct {
 	Divider  bool           `json:"divider,omitempty"`
 	Group    string         `json:"group,omitempty"`
 	Children []DropdownItem `json:"children,omitempty"`
+	// Type makes a submenu's children a radio group.
+	Type DropdownItemType `json:"type,omitempty"`
 }
+
+// DropdownItemType is a submenu's kind; the zero value is a menu of
+// actions.
+type DropdownItemType string
+
+const DropdownItemTypeRadio DropdownItemType = "radio"
 
 // MarshalJSON writes the item with its Href sanitized like templ's href: a
 // scheme other than http, https, mailto, tel, ftp and ftps becomes
@@ -152,8 +162,8 @@ func (c Cell) MarshalJSON() ([]byte, error) {
 type SortDir string
 
 const (
-	SortAsc  SortDir = "asc"
-	SortDesc SortDir = "desc"
+	SortDirAsc  SortDir = "asc"
+	SortDirDesc SortDir = "desc"
 )
 
 // TableSort is the order of sb-data-table's rows.
@@ -195,10 +205,10 @@ type TreeItem struct {
 type ToastVariant string
 
 const (
-	ToastInfo   ToastVariant = "info"
-	ToastOK     ToastVariant = "ok"
-	ToastWarn   ToastVariant = "warn"
-	ToastDanger ToastVariant = "danger"
+	ToastVariantInfo   ToastVariant = "info"
+	ToastVariantOK     ToastVariant = "ok"
+	ToastVariantWarn   ToastVariant = "warn"
+	ToastVariantDanger ToastVariant = "danger"
 )
 
 // ToastMessage is one notification of sb-toast.
@@ -208,6 +218,6 @@ type ToastMessage struct {
 	Text    string       `json:"text"`
 	Variant ToastVariant `json:"variant,omitempty"`
 	// Duration before it dismisses itself, in ms, over the element's
-	// duration; Num(0) makes it sticky.
-	Duration *float64 `json:"duration,omitempty"`
+	// duration; Int(0) makes it sticky.
+	Duration *int `json:"duration,omitempty"`
 }

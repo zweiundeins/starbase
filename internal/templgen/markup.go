@@ -22,6 +22,16 @@ type Attr struct {
 	Bare        bool
 }
 
+// has reports whether n has the attribute name.
+func (n *Node) has(name string) bool {
+	for _, a := range n.Attrs {
+		if a.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 var voidTags = map[string]bool{"area": true, "base": true, "br": true, "col": true, "embed": true, "hr": true, "img": true, "input": true, "link": true, "meta": true, "source": true, "track": true, "wbr": true}
 
 var rawTags = map[string]bool{"script": true, "style": true, "textarea": true, "title": true}

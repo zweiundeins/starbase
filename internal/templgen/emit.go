@@ -172,6 +172,14 @@ func (c *Component) emit(b *bytes.Buffer, siteURL string) {
 			fmt.Fprintf(b, "\t\te.num(%s, %s)\n", a, v)
 		case KindNumberPtr:
 			fmt.Fprintf(b, "\t\te.numPtr(%s, %s)\n", a, v)
+		case KindInt:
+			fmt.Fprintf(b, "\t\te.int(%s, %s)\n", a, v)
+		case KindIntPtr:
+			fmt.Fprintf(b, "\t\te.intPtr(%s, %s)\n", a, v)
+		case KindWords:
+			fmt.Fprintf(b, "\t\te.words(%s, %s)\n", a, v)
+		case KindChoice:
+			fmt.Fprintf(b, "\t\te.choice(%s, %s, p.%s)\n", a, v, c.multiple().GoName)
 		case KindJSON:
 			fmt.Fprintf(b, "\t\te.json(%s, %s, %s == nil)\n", a, v, v)
 		}
@@ -245,28 +253,58 @@ func (f *Field) doc() string {
 		a += `; Default leaves it out (on), Off writes "false", On "true"`
 	case KindEnum:
 		a += fmt.Sprintf("; default %q", f.Default)
-	case KindNumber:
+	case KindNumber, KindInt:
 		a += "; 0 (the default) leaves it out"
-	case KindNumberPtr:
+	case KindNumberPtr, KindIntPtr:
+		fn := "Num"
+		if f.Kind == KindIntPtr {
+			fn = "Int"
+		}
 		a += "; nil leaves it out"
 		if n, ok := f.Default.(float64); ok && n != 0 {
 			a += " (the default is " + strconv.FormatFloat(n, 'f', -1, 64) + ")"
 		}
 		if serverWord[f.key()] {
-			a += ", Num(0) sends 0, which wins over the user's value"
+			a += ", " + fn + "(0) sends 0, which wins over the user's value"
 		} else if presence[f.key()] {
-			a += ", Num(0) writes 0"
+			a += ", " + fn + "(0) writes 0"
 		}
+	case KindWords:
+		a += ", the items separated by spaces (an item holding a space is a render error); nil leaves it out"
+		if s, _ := f.Default.(string); s != "" {
+			a += fmt.Sprintf(" (the default is %q)", s)
+		}
+		if serverWord[f.key()] {
+			a += ", an empty list sends an empty value, which wins over the user's"
+		} else {
+			a += ", an empty list writes it empty"
+		}
+	case KindChoice:
+		a += `: one value, []string{"mars"}, or with Multiple any number, written as a JSON array (more than one value without Multiple is a render error); nil leaves it out, an empty list sends no value, which wins over the user's`
 	case KindJSON:
 		a += ", as JSON; nil leaves it out"
 		if f.Default != nil && !isEmpty(f.Default) {
-			a += " (the default is " + prettyJSON(f.Prop.Default) + ")"
+			empty := "[]"
+			if _, ok := f.Default.(map[string]any); ok {
+				empty = "{}"
+			}
+			a += " for the default " + prettyJSON(f.Prop.Default) + ", while an empty one writes " + empty
 		}
 	}
 	return strings.TrimSpace(d + " " + a + ".")
 }
 
 func (f *Field) key() string { return f.tag + "." + f.Prop.Attribute }
+
+// multiple is the field of the component's multiple prop, which KindChoice
+// depends on.
+func (c *Component) multiple() *Field {
+	f, ok := c.Field("multiple")
+	if !ok || f.Kind != KindBool {
+		panic(c.Tag + ": a choice list needs a boolean multiple prop")
+	}
+	return f
+}
 
 func isEmpty(v any) bool {
 	switch v := v.(type) {

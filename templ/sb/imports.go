@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime/debug"
+	"slices"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -35,6 +37,11 @@ type ImportsProps struct {
 	Datastar string
 	// DatastarIntegrity is Datastar's SRI hash ("sha384-…"), if known.
 	DatastarIntegrity string
+	// ScriptsOnly writes only the components' module scripts (or the
+	// autoloader's), for a page with an import map of its own that maps
+	// "datastar" and loads Datastar itself. Files a bundle loads on demand
+	// (Pin(t).Lazy) are then pinned only if that map pins them.
+	ScriptsOnly bool
 }
 
 // Imports renders the import map and module scripts that load the
@@ -77,7 +84,7 @@ func writeImports(ctx context.Context, w io.Writer, p ImportsProps, tags []Tag, 
 				integrity[base+"/c/"+f.path] = f.integrity
 			}
 		}
-		scripts = append(scripts, script(base+"/c/@"+snapshot+"/autoloader.js", snapshotIntegrity))
+		scripts = append(scripts, script(base+CatalogAutoloader().Path, snapshotIntegrity))
 	} else {
 		seen := map[Tag]bool{}
 		var load []Tag
@@ -113,8 +120,10 @@ func writeImports(ctx context.Context, w io.Writer, p ImportsProps, tags []Tag, 
 	if n := templ.GetNonce(ctx); n != "" {
 		nonce = ` nonce="` + templ.EscapeString(n) + `"`
 	}
-	// json.Marshal escapes <, > and &, so the map can't end the script.
-	if _, err := io.WriteString(w, `<script type="importmap"`+nonce+`>`+string(b)+"</script>"); err != nil {
+	if p.ScriptsOnly {
+		scripts = scripts[1:]
+	} else if _, err := io.WriteString(w, `<script type="importmap"`+nonce+`>`+string(b)+"</script>"); err != nil {
+		// json.Marshal escapes <, > and &, so the map can't end the script.
 		return err
 	}
 	for _, s := range scripts {
@@ -131,6 +140,81 @@ func script(src, integrity string) string {
 	}
 	return `<script type="module" src="` + templ.EscapeString(src) + `" integrity="` + templ.EscapeString(integrity) + `"></script>`
 }
+
+// Asset is a file on a Starbase server: its path (from the server's root)
+// and its Subresource Integrity hash.
+type Asset struct {
+	Path      string // "/c/toggle@0123456789ab/toggle.bundle.min.js"
+	Integrity string // "sha384-…"
+}
+
+// Pinned is what Imports loads for a component.
+type Pinned struct {
+	// Bundle is the component's module in one file.
+	Bundle Asset
+	// Lazy are the files the bundle imports on demand (sb-code-editor's
+	// Prism), by a URL relative to the bundle's.
+	Lazy []Asset
+	// Deps are the components it renders itself, which a page loads too.
+	Deps []Tag
+}
+
+// Pin returns what Imports loads for t, for a page that builds its own
+// script tags or serves the files from its own paths; false for a tag that
+// isn't one of the components.
+func Pin(t Tag) (Pinned, bool) {
+	p, ok := pins[t]
+	if !ok {
+		return Pinned{}, false
+	}
+	out := Pinned{Bundle: Asset{"/c/" + p.bundle, p.integrity}, Deps: slices.Clone(p.deps)}
+	for _, f := range p.lazy {
+		out.Lazy = append(out.Lazy, Asset{"/c/" + f.path, f.integrity})
+	}
+	return out, true
+}
+
+// Tags returns every component, in the order of their slugs.
+func Tags() []Tag { return slices.Clone(pinOrder) }
+
+// DatastarBuild is the Datastar build with Rocket the components were
+// generated against, which Imports loads unless ImportsProps.Datastar names
+// another.
+func DatastarBuild() Asset { return Asset{datastarPath, datastarIntegrity} }
+
+// CatalogAutoloader is the catalog snapshot's autoloader, which Imports loads
+// without Components.
+func CatalogAutoloader() Asset { return Asset{"/c/@" + snapshot + "/autoloader.js", snapshotIntegrity} }
+
+// Snapshot is the hash of the catalog snapshot the wrappers were generated
+// from: every component's version and the Datastar build. Starbase serves
+// its autoloader and import map under /c/@<Snapshot>/.
+const Snapshot = snapshot
+
+// Version is the version of this module in the program's build info: the
+// release tag ("v0.10.0"), a pseudo-version naming the commit, or "" when
+// the build doesn't know it (a replace with a directory, go test inside the
+// module). Snapshot names the components themselves.
+func Version() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	for _, m := range append([]*debug.Module{&info.Main}, info.Deps...) {
+		if m.Path == modulePath {
+			if m.Replace != nil {
+				return m.Replace.Version // "" for a directory
+			}
+			if m.Version == "(devel)" {
+				return ""
+			}
+			return m.Version
+		}
+	}
+	return ""
+}
+
+const modulePath = "github.com/zweiundeins/starbase/templ"
 
 // pin is a component's one-file bundle at the version the wrappers were
 // generated with.

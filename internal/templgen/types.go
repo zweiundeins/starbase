@@ -70,11 +70,70 @@ var serverWord = map[string]bool{
 }
 
 // presence are string and number props whose attribute means something
-// by being there, even empty or 0: their fields are pointers too.
+// by being there, even empty or 0, and server data the component watches
+// for: their fields are pointers too.
 var presence = map[string]bool{
 	"sb-checkbox-group.select-all": true, // present and empty: "All"
 	"sb-starfield.label":           true, // "" makes it decorative
 	"sb-virtual-scroll.total":      true, // absent: not known yet; 0: an empty list
+	"sb-virtual-scroll.offset":     true, // server data: each answer says where its items start, 0 too
+}
+
+// intProps are the number props that hold whole numbers: counts, indexes,
+// digits, and times in ms or s. Lengths in px, percentages, angles, speeds
+// and values in the page's own units stay float64.
+var intProps = map[string]bool{
+	"sb-autoloader.timeout":     true,
+	"sb-busy.lines":             true,
+	"sb-busy.delay":             true,
+	"sb-busy.min":               true,
+	"sb-code-editor.tab-size":   true,
+	"sb-code-playground.delay":  true,
+	"sb-copy-button.reset-ms":   true,
+	"sb-count-up.decimals":      true,
+	"sb-count-up.duration":      true,
+	"sb-data-table.offset":      true,
+	"sb-data-table.total":       true,
+	"sb-date-picker.step":       true,
+	"sb-gauge.decimals":         true,
+	"sb-input.minlength":        true,
+	"sb-meter.segments":         true,
+	"sb-meter.decimals":         true,
+	"sb-nebula.levels":          true,
+	"sb-nebula.seed":            true,
+	"sb-odometer.decimals":      true,
+	"sb-pixel-board.size":       true,
+	"sb-pixel-board.color":      true,
+	"sb-qr-code.border":         true,
+	"sb-rating.max":             true,
+	"sb-select.delay":           true,
+	"sb-select.min-chars":       true,
+	"sb-select.max-chips":       true,
+	"sb-select.total":           true,
+	"sb-sparkline.length":       true,
+	"sb-sparkline.decimals":     true,
+	"sb-starfield.density":      true,
+	"sb-tabs.selected":          true,
+	"sb-toast.max":              true,
+	"sb-toast.duration":         true,
+	"sb-typewriter.interval":    true,
+	"sb-typewriter.delay":       true,
+	"sb-typewriter.hold":        true,
+	"sb-virtual-scroll.total":   true,
+	"sb-virtual-scroll.offset":  true,
+	"sb-virtual-scroll.columns": true,
+	"sb-virtual-scroll.step":    true,
+}
+
+// lists are string props that hold a list, by how the component reads it:
+// "words" separated by spaces, or "choice" for sb-select's value (one value,
+// or with multiple a JSON array). Their fields are []string: nil leaves the
+// attribute out, an empty list writes it empty.
+var lists = map[string]string{
+	"sb-select.value":  "choice",
+	"sb-toc.levels":    "words",
+	"sb-tree.expanded": "words",
+	"sb-tree.value":    "words",
 }
 
 // enumNames name oneOf values that make no Go name of their own, by
@@ -87,8 +146,9 @@ var enumNames = map[string]string{
 // constNames are the constants of the named string types in package sb's
 // JSON shapes, for writing their values as Go.
 var constNames = map[reflect.Type]map[string]string{
-	reflect.TypeFor[sb.ColumnAlign]():  {"start": "ColumnAlignStart", "center": "ColumnAlignCenter", "end": "ColumnAlignEnd"},
-	reflect.TypeFor[sb.CellTone]():     {"info": "CellToneInfo", "success": "CellToneSuccess", "warning": "CellToneWarning", "danger": "CellToneDanger", "neutral": "CellToneNeutral"},
-	reflect.TypeFor[sb.SortDir]():      {"asc": "SortAsc", "desc": "SortDesc"},
-	reflect.TypeFor[sb.ToastVariant](): {"info": "ToastInfo", "ok": "ToastOK", "warn": "ToastWarn", "danger": "ToastDanger"},
+	reflect.TypeFor[sb.ColumnAlign]():      {"start": "ColumnAlignStart", "center": "ColumnAlignCenter", "end": "ColumnAlignEnd"},
+	reflect.TypeFor[sb.CellTone]():         {"info": "CellToneInfo", "success": "CellToneSuccess", "warning": "CellToneWarning", "danger": "CellToneDanger", "neutral": "CellToneNeutral"},
+	reflect.TypeFor[sb.SortDir]():          {"asc": "SortDirAsc", "desc": "SortDirDesc"},
+	reflect.TypeFor[sb.ToastVariant]():     {"info": "ToastVariantInfo", "ok": "ToastVariantOK", "warn": "ToastVariantWarn", "danger": "ToastVariantDanger"},
+	reflect.TypeFor[sb.DropdownItemType](): {"radio": "DropdownItemTypeRadio"},
 }

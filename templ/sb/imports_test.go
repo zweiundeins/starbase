@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -146,5 +147,74 @@ func TestPins(t *testing.T) {
 				t.Errorf("%s depends on %s, which has no pin", e.Tag, d)
 			}
 		}
+	}
+}
+
+func TestImportsScriptsOnly(t *testing.T) {
+	ctx := templ.WithNonce(context.Background(), "n")
+	var b strings.Builder
+	if err := Imports(ImportsProps{Components: []Tag{TagCodeEditor}, ScriptsOnly: true}).Render(ctx, &b); err != nil {
+		t.Fatal(err)
+	}
+	want := `<script nonce="n" type="module" src="` + DefaultBase + `/c/` + pins[TagCodeEditor].bundle + `" integrity="` + pins[TagCodeEditor].integrity + `"></script>`
+	if b.String() != want {
+		t.Errorf("got  %s\nwant %s", b.String(), want)
+	}
+	b.Reset()
+	if err := Imports(ImportsProps{Base: "/sb", ScriptsOnly: true}).Render(ctx, &b); err != nil {
+		t.Fatal(err)
+	}
+	if want := `<script nonce="n" type="module" src="/sb` + CatalogAutoloader().Path + `" integrity="` + snapshotIntegrity + `"></script>`; b.String() != want {
+		t.Errorf("autoloader: got %s\nwant %s", b.String(), want)
+	}
+	b.Reset()
+	err := Tracked(ImportsProps{ScriptsOnly: true}).Render(templ.WithChildren(ctx, Toggle(ToggleProps{})), &b)
+	if want := `<sb-toggle></sb-toggle><script nonce="n" type="module" src="` + DefaultBase + `/c/` + pins[TagToggle].bundle + `" integrity="` + pins[TagToggle].integrity + `"></script>`; err != nil || b.String() != want {
+		t.Errorf("Tracked: %v\n got %s\nwant %s", err, b.String(), want)
+	}
+}
+
+func TestPin(t *testing.T) {
+	if len(Tags()) != len(Entries) {
+		t.Errorf("%d tags, %d wrappers", len(Tags()), len(Entries))
+	}
+	for _, tag := range Tags() {
+		p, ok := Pin(tag)
+		internal := pins[tag]
+		if !ok || p.Bundle.Path != "/c/"+internal.bundle || p.Bundle.Integrity != internal.integrity || !slices.Equal(p.Deps, internal.deps) || len(p.Lazy) != len(internal.lazy) {
+			t.Errorf("%s: %+v", tag, p)
+		}
+		for i, f := range p.Lazy {
+			if f.Path != "/c/"+internal.lazy[i].path || f.Integrity != internal.lazy[i].integrity {
+				t.Errorf("%s: lazy %+v", tag, f)
+			}
+		}
+	}
+	// What Imports writes for a component is its pin, under Base.
+	im, scripts := imports(t, context.Background(), ImportsProps{Base: "https://x.example", Components: []Tag{TagCodeEditor}})
+	p, _ := Pin(TagCodeEditor)
+	if scripts[0][2] != "https://x.example"+p.Bundle.Path || scripts[0][3] != p.Bundle.Integrity || im.Integrity["https://x.example"+p.Lazy[0].Path] != p.Lazy[0].Integrity {
+		t.Errorf("%v %+v", scripts, im)
+	}
+	// The caller's copy is its own.
+	p.Deps = append(p.Deps[:0], "sb-nope")
+	if q, _ := Pin(TagDataTable); q.Deps[0] != TagVirtualScroll {
+		t.Errorf("deps shared: %v", q.Deps)
+	}
+	if _, ok := Pin("sb-nope"); ok {
+		t.Error("a pin for sb-nope")
+	}
+	if ds := DatastarBuild(); ds.Path != datastarPath || ds.Integrity != datastarIntegrity || !strings.HasPrefix(ds.Path, "/c/datastar@") {
+		t.Errorf("Datastar: %+v", ds)
+	}
+	if im.Imports["datastar"] != "https://x.example"+DatastarBuild().Path {
+		t.Errorf("map: %+v", im)
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{12}$`).MatchString(Snapshot) {
+		t.Errorf("Snapshot %q", Snapshot)
+	}
+	// Inside the module's own tests the build has no version of it.
+	if v := Version(); v != "" {
+		t.Errorf("Version() = %q", v)
 	}
 }

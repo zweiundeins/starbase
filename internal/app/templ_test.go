@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -50,12 +51,12 @@ var templValues = map[string]any{
 	"sb-theme-switch.cookie":         "sb-templ-theme",
 	"sb-theme-switch.domain":         "127.0.0.1",
 	"sb-toc.content":                 "main",
-	"sb-toc.levels":                  "h2 h3",
+	"sb-toc.levels":                  []string{"h2", "h3"},
 	"sb-toc.compact":                 "(max-width: 10px)",
-	"sb-tree.value":                  "b",
-	"sb-tree.expanded":               "a",
+	"sb-tree.value":                  []string{"b"},
+	"sb-tree.expanded":               []string{"a", "l"},
 	"sb-virtual-scroll.itemSize":     "24",
-	"sb-select.value":                "b",
+	"sb-select.value":                []string{"b"},
 	"sb-radio-group.value":           "b",
 	"sb-dropdown.value":              "b",
 	"sb-code-editor.value":           "const answer = 42",
@@ -71,7 +72,7 @@ var templValues = map[string]any{
 	"sb-data-table.selected":         []string{"b"},
 	"sb-data-table.hiddenColumns":    []string{"moons"},
 	"sb-data-table.widths":           map[string]float64{"name": 180},
-	"sb-data-table.sort":             &sb.TableSort{Key: "name", Dir: sb.SortDesc},
+	"sb-data-table.sort":             &sb.TableSort{Key: "name", Dir: sb.SortDirDesc},
 	"sb-data-table.columns":          []sb.Column{{Key: "name", Label: "Planet", Width: "12rem"}, {Key: "moons", Label: "Moons", Align: sb.ColumnAlignEnd, Sortable: true, Resizable: sb.Off, Min: 60}},
 	"sb-data-table.rows":             []map[string]any{{"id": "a", "name": "Ünï <&>", "moons": 1.0}, {"id": "b", "name": sb.Cell{Value: "Mars", Text: "Mars!", Href: "https://example.com/", Tone: sb.CellToneDanger}, "moons": 2.0}},
 	"sb-dropdown.items":              []sb.DropdownItem{{Value: "a", Label: "A <&>", Icon: "⛽"}, {Divider: true}, {Group: "More"}, {Value: "b", Label: "B", Danger: true}, {Label: "Sub", Children: []sb.DropdownItem{{Value: "c", Label: "C"}}}},
@@ -80,7 +81,7 @@ var templValues = map[string]any{
 	"sb-radio-group.options":         []sb.Option{{Value: "a"}, {Value: "b", Label: "B"}},
 	"sb-checkbox-group.options":      []sb.Option{{Value: "a"}, {Value: "b", Label: "B", Description: "Bee"}},
 	"sb-range.value":                 &sb.RangeValue{Start: 20, End: 60},
-	"sb-toast.toasts":                []sb.ToastMessage{{ID: "t", Title: "Saved", Text: "Live <&>", Variant: sb.ToastOK, Duration: sb.Num(0)}},
+	"sb-toast.toasts":                []sb.ToastMessage{{ID: "t", Title: "Saved", Text: "Live <&>", Variant: sb.ToastVariantOK, Duration: sb.Int(0)}},
 	"sb-tree.items":                  []sb.TreeItem{{ID: "a", Label: "A", Icon: "🪐", Children: []sb.TreeItem{{ID: "b", Label: "B"}}}, {ID: "l", Label: "Lazy", Lazy: true}},
 	"sb-tree.loaded":                 map[string][]sb.TreeItem{"l": {{ID: "l1", Label: "L1"}}},
 	"sb-tabs.labels":                 []string{"One", "Two <&>"},
@@ -139,6 +140,15 @@ var templValues = map[string]any{
 	"sb-select.minChars":        2.0,
 	"sb-toast.max":              2.0,
 	"sb-code-editor.tabSize":    4.0,
+	// Server data: 0 is the first window, written like any other offset.
+	"sb-virtual-scroll.offset": 0,
+	"sb-virtual-scroll.total":  40,
+	"sb-data-table.offset":     0,
+	"sb-data-table.total":      7,
+	"sb-select.total":          12,
+	"sb-select.delay":          275,
+	"sb-toast.duration":        4500,
+	"sb-typewriter.hold":       2500,
 }
 
 // templText is the text every other string prop gets: markup to escape,
@@ -168,7 +178,9 @@ func fixture(t *testing.T, tag string, m *catalog.Manifest, props any) map[strin
 		case f.Kind() == reflect.String, f.Type() == reflect.TypeFor[*string]():
 			val = templText
 		case f.Kind() == reflect.Float64, f.Type() == reflect.TypeFor[*float64]():
-			val = 3.0
+			val = 3.5 // a fraction, which an int prop would lose
+		case f.Kind() == reflect.Int, f.Type() == reflect.TypeFor[*int]():
+			val = 3
 		default:
 			t.Fatalf("%s: no fixture for %s", key, f.Type())
 		}
@@ -181,10 +193,13 @@ func fixture(t *testing.T, tag string, m *catalog.Manifest, props any) map[strin
 		default:
 			f.Set(rv.Convert(f.Type()))
 		}
-		// What the prop decodes to: the value itself, as JSON (a Flag is a bool).
+		// What the prop decodes to: the value itself, as JSON (a Flag is a
+		// bool, a list in a string prop the string the component reads).
 		var b []byte
 		if fl, ok := val.(sb.Flag); ok {
 			b, _ = json.Marshal(fl == sb.On)
+		} else if list, ok := val.([]string); ok && p.Type == "string" {
+			b, _ = json.Marshal(strings.Join(list, " ")) // sb-select's one value, without multiple
 		} else {
 			b, _ = json.Marshal(f.Interface())
 		}
@@ -219,6 +234,7 @@ func templRoundTrip(t *testing.T) {
 	}
 	want := map[string]map[string]json.RawMessage{}
 	flagsOn := map[string][]string{}
+	extras := map[string]map[string]any{} // element id → prop → what it decodes to
 	var body bytes.Buffer
 	var tags []string
 	for _, e := range registry.Entries {
@@ -245,6 +261,55 @@ func templRoundTrip(t *testing.T) {
 				t.Fatalf("%s: %v", e.Tag, err)
 			}
 		}
+		// A JSON prop whose default isn't empty, given an empty slice or
+		// map: [] or {}, not the default.
+		empty := e.New()
+		ev := reflect.ValueOf(empty).Elem()
+		for i, p := range c.Manifest.Props {
+			var def any
+			json.Unmarshal(p.Default, &def)
+			if dv := reflect.ValueOf(def); def == nil || (dv.Kind() != reflect.Slice && dv.Kind() != reflect.Map) || dv.Len() == 0 {
+				continue
+			}
+			f := ev.Field(3 + i)
+			if f.Kind() == reflect.Map {
+				f.Set(reflect.MakeMap(f.Type()))
+				extras["templ-empty-"+e.Tag] = map[string]any{p.Name: map[string]any{}}
+			} else {
+				f.Set(reflect.MakeSlice(f.Type(), 0, 0))
+				extras["templ-empty-"+e.Tag] = map[string]any{p.Name: []any{}}
+			}
+		}
+		if extras["templ-empty-"+e.Tag] != nil {
+			ev.Field(0).SetString("templ-empty-" + e.Tag)
+			if err := e.Render(empty).Render(context.Background(), &body); err != nil {
+				t.Fatalf("%s: %v", e.Tag, err)
+			}
+		}
+	}
+	if len(extras) < 4 {
+		t.Errorf("%d JSON props with a default that isn't empty", len(extras))
+	}
+	// Lists: several values, and a value that would read as JSON.
+	for id, c := range map[string]templ.Component{
+		"templ-multi":      sb.Select(sb.SelectProps{ID: "templ-multi", Multiple: true, Value: []string{"a,b", "c"}, Options: []sb.Option{{Value: "a,b"}, {Value: "c"}}}),
+		"templ-brackets":   sb.Select(sb.SelectProps{ID: "templ-brackets", Value: []string{"[x]"}}),
+		"templ-tree-multi": sb.Tree(sb.TreeProps{ID: "templ-tree-multi", Selection: sb.TreeSelectionMultiple, Value: []string{"a", "b"}, Expanded: []string{}, Items: []sb.TreeItem{{ID: "a", Label: "A"}, {ID: "b", Label: "B"}}}),
+	} {
+		if err := c.Render(context.Background(), &body); err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+	}
+	extras["templ-multi"] = map[string]any{"value": []any{"a,b", "c"}}
+	extras["templ-brackets"] = map[string]any{"value": "[x]"}
+	extras["templ-tree-multi"] = map[string]any{"value": []any{"a", "b"}, "expanded": ""}
+	// The panels' slots, which sb.TabSlot names.
+	slotLabels := []string{"Home", "C++", "C#", "c", "  Hello, World!  ", "", "--", "Übersicht", "İstanbul", "ΟΔΟΣ", "ΣΑ", "ΟΔΟΣ.", "Σ", "日本語 2", "x²", "a", "a", "a-1", "Ǆemal", "ﬀ"}
+	if err := sb.Tabs(sb.TabsProps{ID: "templ-slots", Labels: slotLabels}).Render(context.Background(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(body.String(), `<sb-virtual-scroll id="templ-sb-virtual-scroll" total="40" offset="0"`) {
+		t.Errorf("no offset=\"0\" on the virtual scroll")
 	}
 	official := os.Getenv("STARBASE_DATASTAR_BUNDLE") != ""
 	handlers := map[string]http.HandlerFunc{"/__templ": func(w http.ResponseWriter, r *http.Request) {
@@ -271,6 +336,7 @@ func templRoundTrip(t *testing.T) {
 	}
 	nj, _ := json.Marshal(names)
 	oj, _ := json.Marshal(flagsOn)
+	ej, _ := json.Marshal(extras)
 	script := `let out
 try {
 	const names = ` + string(nj) + `
@@ -288,14 +354,24 @@ try {
 		const el = document.getElementById('templ-on-' + t)
 		on[t] = Object.fromEntries(flags.map((n) => [n, el[n]]))
 	}
-	out = JSON.stringify({ got, on })
+	const extras = {}
+	for (const [id, props] of Object.entries(` + string(ej) + `)) {
+		const el = document.getElementById(id)
+		extras[id] = Object.fromEntries(Object.keys(props).map((n) => [n, el[n]]))
+	}
+	const slots = [...document.getElementById('templ-slots').shadowRoot.querySelectorAll('[role=tabpanel] > slot')].map((s) => s.name)
+	const vs = document.getElementById('templ-sb-virtual-scroll')
+	out = JSON.stringify({ got, on, extras, slots, offset: [vs.getAttribute('offset'), vs.offset] })
 } catch (e) { out = JSON.stringify({ error: String(e) }) }
 await fetch('/__probe/result', { method: 'POST', body: out })`
 	res := probeBundle(t, "/__templ", script, handlers)
 	var got struct {
-		Got   map[string]map[string]json.RawMessage
-		On    map[string]map[string]any
-		Error string
+		Got    map[string]map[string]json.RawMessage
+		On     map[string]map[string]any
+		Extras map[string]map[string]any
+		Slots  []string
+		Offset []any
+		Error  string
 	}
 	if err := json.Unmarshal(res, &got); err != nil || got.Error != "" {
 		t.Fatalf("%v: %s", err, res)
@@ -320,7 +396,25 @@ await fetch('/__probe/result', { method: 'POST', body: out })`
 			n++
 		}
 	}
-	t.Logf("%d props of %d components compared", n, len(want))
+	for id, props := range extras {
+		for name, w := range props {
+			if !reflect.DeepEqual(got.Extras[id][name], w) {
+				t.Errorf("%s %s: decoded %#v, want %#v", id, name, got.Extras[id][name], w)
+			}
+			n++
+		}
+	}
+	var slots []string
+	for i := range slotLabels {
+		slots = append(slots, sb.TabSlot(slotLabels, i))
+	}
+	if !slices.Equal(got.Slots, slots) {
+		t.Errorf("sb-tabs' slots %q, sb.TabSlot %q", got.Slots, slots)
+	}
+	if !reflect.DeepEqual(got.Offset, []any{"0", 0.0}) {
+		t.Errorf("sb-virtual-scroll offset: attribute and prop %v", got.Offset)
+	}
+	t.Logf("%d props of %d components compared, %d slots", n, len(want), len(slots))
 }
 
 func find(cat *catalog.Catalog, tag string) *catalog.Component {

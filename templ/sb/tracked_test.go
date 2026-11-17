@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -169,5 +170,47 @@ func TestTrackedUnknownComponent(t *testing.T) {
 	err := Tracked(ImportsProps{Components: []Tag{"sb-nope"}}).Render(templ.WithChildren(context.Background(), children()), io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "sb-nope") {
 		t.Errorf("%v", err)
+	}
+}
+
+func TestCollect(t *testing.T) {
+	ctx, outer := Collect(context.Background())
+	if got := outer(); len(got) != 0 {
+		t.Errorf("before rendering: %v", got)
+	}
+	Toggle(ToggleProps{}).Render(ctx, io.Discard)
+	// A Collect inside sees only its own; the outer one sees both.
+	inner, rendered := Collect(ctx)
+	DataTable(DataTableProps{}).Render(inner, io.Discard)
+	Toggle(ToggleProps{}).Render(inner, io.Discard)
+	if got, want := rendered(), []Tag{TagDataTable, TagVirtualScroll, TagToggle}; !slices.Equal(got, want) {
+		t.Errorf("inner %v, want %v", got, want)
+	}
+	// A Tracked inside a Collect writes its imports, and the Collect sees
+	// what it rendered.
+	var b strings.Builder
+	if err := Tracked(ImportsProps{}).Render(templ.WithChildren(ctx, Rating(RatingProps{})), &b); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), pins[TagRating].bundle) {
+		t.Errorf("Tracked inside Collect: %s", b.String())
+	}
+	if got, want := outer(), []Tag{TagToggle, TagDataTable, TagVirtualScroll, TagRating}; !slices.Equal(got, want) {
+		t.Errorf("outer %v, want %v", got, want)
+	}
+	// What a Collect returned is a copy.
+	got := outer()
+	got[0] = "sb-nope"
+	if outer()[0] != TagToggle {
+		t.Error("the list is shared")
+	}
+	// A Collect inside a Tracked doesn't stop it from loading what it saw.
+	page := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		ctx, _ = Collect(ctx)
+		return Slider(SliderProps{}).Render(ctx, w)
+	})
+	_, _, scripts := tracked(t, context.Background(), ImportsProps{}, page)
+	if got, want := srcs(t, scripts), bundles(TagSlider); !slices.Equal(got, want) {
+		t.Errorf("scripts %v, want %v", got, want)
 	}
 }
