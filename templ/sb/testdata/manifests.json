@@ -1,0 +1,5007 @@
+[
+  {
+    "slug": "alert",
+    "tag": "sb-alert",
+    "props": [
+      {
+        "name": "variant",
+        "attribute": "variant",
+        "type": "oneOf",
+        "default": "info",
+        "values": [
+          "info",
+          "success",
+          "warning",
+          "danger"
+        ],
+        "docs": {
+          "description": "Tone of the message."
+        }
+      },
+      {
+        "name": "heading",
+        "attribute": "heading",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Bold first line."
+        }
+      },
+      {
+        "name": "closable",
+        "attribute": "closable",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show a dismiss button."
+        }
+      },
+      {
+        "name": "dismissLabel",
+        "attribute": "dismiss-label",
+        "type": "string",
+        "default": "Dismiss",
+        "docs": {
+          "description": "Accessible name of the dismiss button."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Shown. Any change the server makes to the attribute wins, over a dismissal too: open=\"false\" hides it, open or no attribute shows it. Unchanged markup keeps a dismissal. From script: host.open, show(), hide()."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "The message."
+      },
+      {
+        "name": "icon",
+        "description": "Replaces the status light, e.g. with an icon per variant. Mark it aria-hidden=\"true\" when the text names the severity."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-close",
+        "kind": "event",
+        "description": "The user pressed the close button (not sent for hide(), host.open or the server). No detail."
+      }
+    ]
+  },
+  {
+    "slug": "autoloader",
+    "tag": "sb-autoloader",
+    "props": [
+      {
+        "name": "modules",
+        "attribute": "modules",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "Explicit map of tag to module URL: {\"x-chart\": \"/js/x-chart.js\"}. Wins over pattern."
+        }
+      },
+      {
+        "name": "pattern",
+        "attribute": "pattern",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "URL template for tags not in modules, with {tag}, e.g. \"/components/{tag}/{tag}.js\"."
+        }
+      },
+      {
+        "name": "match",
+        "attribute": "match",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Regular expression the tag must match before pattern applies, e.g. \"^x-\". Empty: every unknown custom element."
+        }
+      },
+      {
+        "name": "requires",
+        "attribute": "requires",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "Tags a component renders itself, loaded with it: {\"x-table\": [\"x-cell\"]}."
+        }
+      },
+      {
+        "name": "base",
+        "attribute": "base",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Base for relative URLs. Default: the document's base URL."
+        }
+      },
+      {
+        "name": "cloak",
+        "attribute": "cloak",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Class removed from \u003chtml\u003e once the components present at startup have loaded or failed, or after timeout (against the flash of undefined elements)."
+        }
+      },
+      {
+        "name": "timeout",
+        "attribute": "timeout",
+        "type": "number",
+        "default": 3000,
+        "docs": {
+          "description": "Remove the cloak class after this many ms, whatever happens (sb-ready still waits for the loads)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "Optional markup to wrap; it renders exactly as written."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-load",
+        "kind": "custom-event",
+        "description": "After a component is defined. detail: { tag, url }."
+      },
+      {
+        "name": "sb-load-error",
+        "kind": "custom-event",
+        "description": "When a module fails to load, or loads without defining its tag. detail: { tag, url, error }."
+      },
+      {
+        "name": "sb-ready",
+        "kind": "custom-event",
+        "description": "Once, when every component present at startup has loaded or failed (right away when there were none). detail: { loaded }."
+      }
+    ]
+  },
+  {
+    "slug": "bento-workspace",
+    "tag": "sb-bento-workspace",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-bento-move",
+        "kind": "custom-event",
+        "description": "A tile was dropped on another cell or grid, or a keyboard move was released. detail: { itemId, fromGrid, toGrid, updates }, where updates holds the new place { itemId, grid, col, row, width, height } of every tile that changes in the grid the tile lands in, the tile included."
+      },
+      {
+        "name": "sb-bento-resize",
+        "kind": "custom-event",
+        "description": "A tile was resized by its handle or the keyboard. detail: { itemId, grid, updates }, with updates as for the move."
+      }
+    ]
+  },
+  {
+    "slug": "busy",
+    "tag": "sb-busy",
+    "props": [
+      {
+        "name": "busy",
+        "attribute": "busy",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The server forces the indicator on. It wins: while the attribute is present the indicator stays up whatever the watched requests do; leave it out to clear it."
+        }
+      },
+      {
+        "name": "variant",
+        "attribute": "variant",
+        "type": "oneOf",
+        "default": "spinner",
+        "values": [
+          "spinner",
+          "bar",
+          "skeleton"
+        ],
+        "docs": {
+          "description": "Shape: a spinner, a progress bar or skeleton lines. Set it as an attribute (it also picks the host display)."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Bar only: 0-100 for a determinate bar. Empty means indeterminate."
+        }
+      },
+      {
+        "name": "lines",
+        "attribute": "lines",
+        "type": "number",
+        "default": 3,
+        "docs": {
+          "description": "Skeleton only: how many placeholder lines."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Loading",
+        "docs": {
+          "description": "What is being waited for, e.g. \"Loading flight plan\". Read out by the status region; visible with show-label."
+        }
+      },
+      {
+        "name": "showLabel",
+        "attribute": "show-label",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show the label next to the indicator instead of only reading it out."
+        }
+      },
+      {
+        "name": "size",
+        "attribute": "size",
+        "type": "oneOf",
+        "default": "md",
+        "values": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "docs": {
+          "description": "Spinner box, bar height and skeleton line height."
+        }
+      },
+      {
+        "name": "for",
+        "attribute": "for",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Which requests to watch: a CSS selector matching the element that triggers them (or one of its ancestors), \"*\" for every request on the page, empty for any request from inside the host's parent element."
+        }
+      },
+      {
+        "name": "delay",
+        "attribute": "delay",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Milliseconds to wait before showing, so a fast request never flashes. Try 200."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Milliseconds to stay up once shown, so it does not flicker. Try 400."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-busy-change",
+        "kind": "custom-event",
+        "description": "When the visible state flips, after delay and min. detail: { busy }: e.g. to disable a form while it is up."
+      }
+    ]
+  },
+  {
+    "slug": "button",
+    "tag": "sb-button",
+    "props": [
+      {
+        "name": "variant",
+        "attribute": "variant",
+        "type": "oneOf",
+        "default": "primary",
+        "values": [
+          "primary",
+          "outline",
+          "ghost",
+          "pixel",
+          "danger"
+        ],
+        "docs": {
+          "description": "Visual style."
+        }
+      },
+      {
+        "name": "size",
+        "attribute": "size",
+        "type": "oneOf",
+        "default": "md",
+        "values": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "docs": {
+          "description": "Height and padding."
+        }
+      },
+      {
+        "name": "href",
+        "attribute": "href",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Render as a link to this URL."
+        }
+      },
+      {
+        "name": "caret",
+        "attribute": "caret",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show a trailing chevron."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable interaction."
+        }
+      },
+      {
+        "name": "loading",
+        "attribute": "loading",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The button's action is running: an inline spinner, clicks (mouse, Enter, Space) blocked, aria-busy. Bind it to data-indicator (and add data-preserve-attr=\"loading\")."
+        }
+      },
+      {
+        "name": "ariaLabel",
+        "attribute": "aria-label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Accessible name, passed on to the inner button or link: set it on icon-only buttons."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "The label."
+      },
+      {
+        "name": "prefix",
+        "description": "An icon before the label."
+      },
+      {
+        "name": "suffix",
+        "description": "An icon after the label."
+      }
+    ],
+    "events": []
+  },
+  {
+    "slug": "card",
+    "tag": "sb-card",
+    "props": [
+      {
+        "name": "heading",
+        "attribute": "heading",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Card title."
+        }
+      },
+      {
+        "name": "href",
+        "attribute": "href",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Makes the whole card a link: the heading is the link, so it needs `heading`."
+        }
+      },
+      {
+        "name": "variant",
+        "attribute": "variant",
+        "type": "oneOf",
+        "default": "default",
+        "values": [
+          "default",
+          "inset",
+          "glow"
+        ],
+        "docs": {
+          "description": "Surface style."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "media",
+        "description": "Image or illustration on top, edge to edge."
+      },
+      {
+        "name": "default",
+        "description": "Body content."
+      },
+      {
+        "name": "footer",
+        "description": "Actions or metadata at the bottom."
+      }
+    ],
+    "events": []
+  },
+  {
+    "slug": "checkbox",
+    "tag": "sb-checkbox",
+    "props": [
+      {
+        "name": "checked",
+        "attribute": "checked",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Checked when present. The server's word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property."
+        }
+      },
+      {
+        "name": "indeterminate",
+        "attribute": "indeterminate",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Shows the mixed state (the server says \"some\"). A click resolves it to checked; the live state is the indeterminate property."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label next to the box, and its accessible name."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable interaction."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command), and the field it submits in a form."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "on",
+        "docs": {
+          "description": "What a form submits under name while checked, like a native checkbox."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local state differs from the server's checked attribute (see revert())."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "After the user checks or clears the box."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value, checked } (value is the checked state): ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "checkbox-group",
+    "tag": "sb-checkbox-group",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The checked values, as a JSON array. A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "options",
+        "attribute": "options",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Choices from the server: [\"A\", \"B\"] or [{value, label, description?, disabled?}]. \u003csb-check\u003e children win over it."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label, and the accessible name of the group."
+        }
+      },
+      {
+        "name": "selectAll",
+        "attribute": "select-all",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Show a leading checkbox that checks or clears every enabled choice, labelled with this text (\"All\" when empty)."
+        }
+      },
+      {
+        "name": "orientation",
+        "attribute": "orientation",
+        "type": "oneOf",
+        "default": "vertical",
+        "values": [
+          "vertical",
+          "horizontal"
+        ],
+        "docs": {
+          "description": "Stack the choices or lay them out in a row."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable the whole group."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command), and the field each checked choice submits in a form."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "",
+        "description": "\u003csb-check value=\"…\" [description] [disabled]\u003eLabel\u003c/sb-check\u003e items: markup the group reads as its choices, like \u003coption\u003e in a native \u003cselect\u003e. Nothing is slotted; the group renders the items itself."
+      }
+    ],
+    "events": [
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the user checks or clears a choice (or all of them)."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value } (value is the array of checked values): ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "code-editor",
+    "tag": "sb-code-editor",
+    "props": [
+      {
+        "name": "language",
+        "attribute": "language",
+        "type": "oneOf",
+        "default": "js",
+        "values": [
+          "js",
+          "ts",
+          "html",
+          "css"
+        ],
+        "docs": {
+          "description": "Syntax to highlight."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The code (or a child \u003cscript type=\"text/plain\"\u003e). A new value from the server replaces it; the live code is the value property."
+        }
+      },
+      {
+        "name": "lineNumbers",
+        "attribute": "line-numbers",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Show a line-number gutter. On by default: line-numbers=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "tabSize",
+        "attribute": "tab-size",
+        "type": "number",
+        "default": 2,
+        "docs": {
+          "description": "Visual width of a tab."
+        }
+      },
+      {
+        "name": "readonly",
+        "attribute": "readonly",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Make the code read-only (a form still submits it)."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable editing; a form doesn't submit it, like a disabled \u003ctextarea\u003e."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label; also the accessible name (without it, the host's aria-label, else \"Code\")."
+        }
+      },
+      {
+        "name": "problemLabel",
+        "attribute": "problem-label",
+        "type": "string",
+        "default": "Line {line}: {message}",
+        "docs": {
+          "description": "The status line under the code for a problem from diagnostics: {line} becomes its line, {message} its message. With several, \"2/5 · \" goes before it."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command)."
+        }
+      },
+      {
+        "name": "diagnostics",
+        "attribute": "diagnostics",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Problems to underline, as JSON [{line, col, length, message, text}]: line and col 1-based, col and length in UTF-16 code units (a JS string index). With text, a problem shows only while the code there still reads text, so a list about an older version fades as the code changes."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "input",
+        "kind": "event",
+        "description": "On every edit (native, re-targeted to the host)."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the field loses focus after edits."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value }: ready for a command."
+      },
+      {
+        "name": "sb-run",
+        "kind": "custom-event",
+        "description": "Ctrl/Cmd+Enter. detail: { value }."
+      }
+    ]
+  },
+  {
+    "slug": "code-playground",
+    "tag": "sb-code-playground",
+    "props": [
+      {
+        "name": "runner",
+        "attribute": "runner",
+        "type": "string",
+        "default": "/playground/run",
+        "docs": {
+          "description": "URL of the sandbox runner page (see the protocol in the docs)."
+        }
+      },
+      {
+        "name": "deps",
+        "attribute": "deps",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "Other components to load in the preview, as JSON {\"sb-tag\": \"module URL\"}. Tags defined by the edited code are skipped."
+        }
+      },
+      {
+        "name": "autoRun",
+        "attribute": "auto-run",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Re-run shortly after every edit. On by default: auto-run=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "theme",
+        "attribute": "theme",
+        "type": "string",
+        "default": "deep-space",
+        "docs": {
+          "description": "Initial preview theme (data-sb-theme)."
+        }
+      },
+      {
+        "name": "themes",
+        "attribute": "themes",
+        "type": "array",
+        "default": [
+          "deep-space",
+          "nebula",
+          "terminal",
+          "daylight"
+        ],
+        "docs": {
+          "description": "Themes offered in the picker."
+        }
+      },
+      {
+        "name": "delay",
+        "attribute": "delay",
+        "type": "number",
+        "default": 600,
+        "docs": {
+          "description": "Auto-run debounce, in ms."
+        }
+      },
+      {
+        "name": "base",
+        "attribute": "base",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "URL that relative imports in component.js resolve against (the folder its vendored files are served from)."
+        }
+      },
+      {
+        "name": "initial",
+        "attribute": "initial",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "Initial files as JSON {\"component.js\": \"…\"}, merged over the child scripts (a file here wins); handy for server-rendered pages."
+        }
+      },
+      {
+        "name": "typescript",
+        "attribute": "typescript",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Offer a TypeScript switch, which renames component.js to component.ts (the runner must accept it). Initial files with component.ts switch it on."
+        }
+      },
+      {
+        "name": "diagnostics",
+        "attribute": "diagnostics",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "Problems per file, as JSON {\"component.js\": [{line, col, length, message, text}]}, for that file's editor (see sb-code-editor's diagnostics)."
+        }
+      },
+      {
+        "name": "filesLabel",
+        "attribute": "files-label",
+        "type": "string",
+        "default": "Files",
+        "docs": {
+          "description": "Accessible name of the file tabs."
+        }
+      },
+      {
+        "name": "autoLabel",
+        "attribute": "auto-label",
+        "type": "string",
+        "default": "Auto",
+        "docs": {
+          "description": "Text of the auto-run switch."
+        }
+      },
+      {
+        "name": "themeLabel",
+        "attribute": "theme-label",
+        "type": "string",
+        "default": "Preview theme",
+        "docs": {
+          "description": "Accessible name of the theme picker."
+        }
+      },
+      {
+        "name": "runLabel",
+        "attribute": "run-label",
+        "type": "string",
+        "default": "Run",
+        "docs": {
+          "description": "Text of the run button."
+        }
+      },
+      {
+        "name": "runHint",
+        "attribute": "run-hint",
+        "type": "string",
+        "default": "Run (Ctrl+Enter)",
+        "docs": {
+          "description": "The run button's tooltip."
+        }
+      },
+      {
+        "name": "previewLabel",
+        "attribute": "preview-label",
+        "type": "string",
+        "default": "Preview",
+        "docs": {
+          "description": "Title of the preview frame."
+        }
+      },
+      {
+        "name": "consoleLabel",
+        "attribute": "console-label",
+        "type": "string",
+        "default": "Console",
+        "docs": {
+          "description": "Accessible name of the console, and its text while empty."
+        }
+      },
+      {
+        "name": "runningLabel",
+        "attribute": "running-label",
+        "type": "string",
+        "default": "Running…",
+        "docs": {
+          "description": "The status while a run starts."
+        }
+      },
+      {
+        "name": "ranLabel",
+        "attribute": "ran-label",
+        "type": "string",
+        "default": "Ran in {ms} ms",
+        "docs": {
+          "description": "The status after a run: {ms} becomes how long it took, formatted for the page's language."
+        }
+      },
+      {
+        "name": "noAnswerLabel",
+        "attribute": "no-answer-label",
+        "type": "string",
+        "default": "No answer after 5 s: an endless loop?",
+        "docs": {
+          "description": "Logged when the code started but the run did not finish within 5 seconds."
+        }
+      },
+      {
+        "name": "noRunnerLabel",
+        "attribute": "no-runner-label",
+        "type": "string",
+        "default": "The runner did not answer",
+        "docs": {
+          "description": "Logged when the runner page did not start the code within 5 seconds."
+        }
+      },
+      {
+        "name": "errorLabel",
+        "attribute": "error-label",
+        "type": "string",
+        "default": "{message} (line {line})",
+        "docs": {
+          "description": "Logged for an error with a line: {message} becomes the error, {line} its line."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "(files)",
+        "description": "Child \u003cscript type=\"text/plain\" data-file=\"component.js|index.html|style.css\"\u003e elements with the initial files."
+      },
+      {
+        "name": "bar",
+        "description": "Extra content for the top bar, between the file tabs and the run status (Starbase puts its live size line there)."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "After an edit. detail: { files }."
+      },
+      {
+        "name": "sb-run",
+        "kind": "custom-event",
+        "description": "When the preview is (re)started. detail: { files }."
+      }
+    ]
+  },
+  {
+    "slug": "context-menu",
+    "tag": "sb-context-menu",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-menu-action",
+        "kind": "custom-event",
+        "description": "An item with data-action was chosen. detail: { action, contextId }."
+      },
+      {
+        "name": "sb-menu-scope",
+        "kind": "custom-event",
+        "description": "The menu opened (active: true) or closed. detail: { root, active }."
+      }
+    ]
+  },
+  {
+    "slug": "copy-button",
+    "tag": "sb-copy-button",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The text copied to the clipboard."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Copy to clipboard",
+        "docs": {
+          "description": "Accessible label of the button. A new label re-renders the button and closes an open panel."
+        }
+      },
+      {
+        "name": "copiedLabel",
+        "attribute": "copied-label",
+        "type": "string",
+        "default": "Copied!",
+        "docs": {
+          "description": "Shown and announced after copying."
+        }
+      },
+      {
+        "name": "failedLabel",
+        "attribute": "failed-label",
+        "type": "string",
+        "default": "Copy failed",
+        "docs": {
+          "description": "Shown and announced when copying failed and the page cancelled sb-copy-error (otherwise the panel opens)."
+        }
+      },
+      {
+        "name": "manualLabel",
+        "attribute": "manual-label",
+        "type": "string",
+        "default": "Press {key} to copy",
+        "docs": {
+          "description": "The panel's message, and the name of its text field, when the browser can't copy: {key} becomes ⌘C on Apple systems, else Ctrl+C."
+        }
+      },
+      {
+        "name": "resetMs",
+        "attribute": "reset-ms",
+        "type": "number",
+        "default": 1600,
+        "docs": {
+          "description": "How long the copied or failed state lasts, in ms (at least 300)."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-copy",
+        "kind": "custom-event",
+        "description": "After copying. detail: { value, method }: \"clipboard\" (the Clipboard API), \"execCommand\" (a hidden textarea, e.g. on plain http://) or \"manual\" (the user copied the whole text from the panel)."
+      },
+      {
+        "name": "sb-copy-error",
+        "kind": "custom-event",
+        "description": "Cancelable. Neither the Clipboard API nor the hidden textarea could copy. detail: { value, error } (the Clipboard API's error name: \"NotAllowedError\" when refused, \"TypeError\" where there is none, e.g. on plain http://). Not cancelled, a panel selects the text for the user to copy; preventDefault() shows the cross and failed-label instead."
+      }
+    ]
+  },
+  {
+    "slug": "count-up",
+    "tag": "sb-count-up",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "The number to arrive at."
+        }
+      },
+      {
+        "name": "from",
+        "attribute": "from",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Where the count starts the first time it is seen."
+        }
+      },
+      {
+        "name": "decimals",
+        "attribute": "decimals",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Fixed digits after the decimal mark, kept for every frame so the width stays put."
+        }
+      },
+      {
+        "name": "duration",
+        "attribute": "duration",
+        "type": "number",
+        "default": 1400,
+        "docs": {
+          "description": "Length of the count in milliseconds."
+        }
+      },
+      {
+        "name": "grouping",
+        "attribute": "grouping",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Group thousands the way the locale does. On by default: grouping=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "lang",
+        "attribute": "lang",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Locale for the separators (default: the page's lang, then the browser's)."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "data-table",
+    "tag": "sb-data-table",
+    "props": [
+      {
+        "name": "columns",
+        "attribute": "columns",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The columns: [{key, label?, width?, align?, sortable?, resizable?, min?, fit?}]. With resizable: resizable: false keeps a column's width, min is its narrowest (px, default 40), fit its width for the whole result (px). width is a CSS grid track (a number is px; default minmax(6rem, 1fr)); ch and em resolve in each row's own font, so style header text through ::part(column), never ::part(header); align is start, center or end. A row's value for a key is a scalar or a cell object {value, text?, suffix?, href?, tone?}."
+        }
+      },
+      {
+        "name": "rows",
+        "attribute": "rows",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The rows at hand, objects keyed by column: all of them, or the window the server sent, starting at row offset. A value is a scalar, or a cell object {value, text, suffix, href, tone}: text replaces the formatted value, suffix follows it muted, href (http, https or mailto) makes it a link, tone (info, success, warning, danger, neutral) a badge. value is the sort key. Nothing is rendered as HTML."
+        }
+      },
+      {
+        "name": "offset",
+        "attribute": "offset",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Index of the first row in rows."
+        }
+      },
+      {
+        "name": "total",
+        "attribute": "total",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "How many rows there are (at least offset plus the rows given)."
+        }
+      },
+      {
+        "name": "rowKey",
+        "attribute": "row-key",
+        "type": "string",
+        "default": "id",
+        "docs": {
+          "description": "The field that identifies a row, for the selection and sb-row-activate."
+        }
+      },
+      {
+        "name": "rowHeight",
+        "attribute": "row-height",
+        "type": "number",
+        "default": 36,
+        "docs": {
+          "description": "The height of every row, in px: fixed, so the scroll position tells which rows are in view."
+        }
+      },
+      {
+        "name": "buffer",
+        "attribute": "buffer",
+        "type": "number",
+        "default": 4000,
+        "docs": {
+          "description": "How much to keep ready above and below the view, in px of rows."
+        }
+      },
+      {
+        "name": "sort",
+        "attribute": "sort",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "The order the rows are in: {key, dir: \"asc\" | \"desc\"}. The server sends it with the rows. When the table holds every row (offset 0, no more than total), a header click sorts them here too; otherwise it asks for the order (sb-sort). A new sort from the server wins."
+        }
+      },
+      {
+        "name": "loading",
+        "attribute": "loading",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Rows are on their way (bind it to data-indicator): the table is aria-busy."
+        }
+      },
+      {
+        "name": "selection",
+        "attribute": "selection",
+        "type": "oneOf",
+        "default": "none",
+        "values": [
+          "none",
+          "single",
+          "multiple"
+        ],
+        "docs": {
+          "description": "How many rows can be selected."
+        }
+      },
+      {
+        "name": "selected",
+        "attribute": "selected",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The selection: a JSON array of row keys. A new list from the server replaces it; the live value is the selected property."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Table",
+        "docs": {
+          "description": "Accessible name."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed selection: :state(pending) while the local selection differs from the server's selected attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change, sb-columns and sb-export (e.g. the field of a command)."
+        }
+      },
+      {
+        "name": "hiddenColumns",
+        "attribute": "hidden-columns",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "View state: the keys of the columns not shown, as a JSON array. A changed list from the server wins; the same list again keeps the user's choice. The live list is the hiddenColumns property. At least one column always shows."
+        }
+      },
+      {
+        "name": "columnPicker",
+        "attribute": "column-picker",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show a Columns button in the toolbar, with a menu that shows and hides columns (sb-columns)."
+        }
+      },
+      {
+        "name": "columnsLabel",
+        "attribute": "columns-label",
+        "type": "string",
+        "default": "Columns",
+        "docs": {
+          "description": "The Columns button's text, and the accessible name of its menu."
+        }
+      },
+      {
+        "name": "resizable",
+        "attribute": "resizable",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The user can resize columns: a grip at each header's end (drag, double-click to fit), or Alt+Arrow to its separator."
+        }
+      },
+      {
+        "name": "widths",
+        "attribute": "widths",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "View state: widths in px by column key, {\"name\": 180}, over the columns' width. A new object from the server wins, the same one keeps the user's; the live map is the widths property."
+        }
+      },
+      {
+        "name": "resizeHint",
+        "attribute": "resize-hint",
+        "type": "string",
+        "default": "Drag to resize, double-click to fit",
+        "docs": {
+          "description": "The resize grip's tooltip."
+        }
+      },
+      {
+        "name": "resetWidthsLabel",
+        "attribute": "reset-widths-label",
+        "type": "string",
+        "default": "Reset column widths",
+        "docs": {
+          "description": "The column picker's reset item."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "toolbar",
+        "description": "Your own controls (e.g. export buttons), in a toolbar above the table, before the Columns button."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-window",
+        "kind": "custom-event",
+        "description": "The view needs rows the table doesn't have (also on connect and on resize): detail { offset, count }, plus key and dir of the order to send them in. Answer with rows from that offset, offset and total."
+      },
+      {
+        "name": "sb-sort",
+        "kind": "custom-event",
+        "description": "A sortable header was clicked. detail: { key, dir }, plus the window to answer with (offset 0, count). Answer with those rows in that order, and the new sort; a table that holds every row has sorted them already."
+      },
+      {
+        "name": "sb-row-activate",
+        "kind": "custom-event",
+        "description": "Enter or a double click on a row (not on a link in it). detail: { key }."
+      },
+      {
+        "name": "sb-cell-activate",
+        "kind": "custom-event",
+        "description": "A click or middle click on a link in a cell, or Enter on its cell. detail: { key, column, value, href }. Cancelable: preventDefault() stops the navigation, for an in-page action instead."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "The selection changed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "The selection changed. detail: { name, value } (an array of row keys): ready for a command."
+      },
+      {
+        "name": "sb-export",
+        "kind": "custom-event",
+        "description": "requestExport(format) was called. detail: { name, format, sort: { key, dir }, columns, selected }: the order on screen, the keys of the shown columns in order, and the local selection. The page asks the server for the file; the table never builds one."
+      },
+      {
+        "name": "sb-columns",
+        "kind": "custom-event",
+        "description": "The user showed or hid a column in the column picker. detail: { name, hidden } (the keys of every hidden column). View state: not emitted for a change the server made or a property write."
+      },
+      {
+        "name": "sb-column-widths",
+        "kind": "custom-event",
+        "description": "The user resized a column (at the end of a drag, never during it). detail: { name, widths }, the whole map. Not emitted for the server's changes or a property write."
+      }
+    ]
+  },
+  {
+    "slug": "date-picker",
+    "tag": "sb-date-picker",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The date, ISO: 2026-09-29. With time, a local date-time as datetime-local submits it: 2026-09-29T14:30 (seconds only when not zero), and with time-zone an instant with its offset: 2026-09-29T14:30+02:00 (any RFC 3339 instant is read). With mode=\"range\", JSON: {\"start\":\"2026-09-29\",\"end\":\"2026-10-03\"}. A new value from the server replaces it (value=\"\" clears); the live value is the value property."
+        }
+      },
+      {
+        "name": "mode",
+        "attribute": "mode",
+        "type": "oneOf",
+        "default": "single",
+        "values": [
+          "single",
+          "range"
+        ],
+        "docs": {
+          "description": "One date, or a start and an end, committed together as one value."
+        }
+      },
+      {
+        "name": "time",
+        "attribute": "time",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The value includes a time of day. The calendar and a time row below it edit a draft, and Apply (or Enter in the time row) commits the date and the time together."
+        }
+      },
+      {
+        "name": "step",
+        "attribute": "step",
+        "type": "number",
+        "default": 60,
+        "docs": {
+          "description": "With time: the time's granularity in whole seconds up to 3600, as on datetime-local (60: minutes, 900: quarter hours, 1: seconds shown); a step that isn't a positive number means 60. Up and Down move by it; typed values off the step are kept."
+        }
+      },
+      {
+        "name": "timeZone",
+        "attribute": "time-zone",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "With time: an IANA time zone (Europe/Zurich), or local for the viewer's. The picker shows and reads the wall clock there, and the value is an RFC 3339 instant with the zone's offset: 2026-09-29T14:30+02:00. A zone the browser can't read means the viewer's. Without it, the value is a local date-time."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Earliest date that can be picked (ISO). With time, a date (from the start of that day) or a date-time, with time-zone with or without an offset."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time, with time-zone with or without an offset."
+        }
+      },
+      {
+        "name": "disabledDates",
+        "attribute": "disabled-dates",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Server data: dates that can't be picked, as a JSON array of ISO dates (e.g. booked days). They can still be focused and read."
+        }
+      },
+      {
+        "name": "month",
+        "attribute": "month",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The month shown, YYYY-MM (view state). A changed attribute from the server moves the calendar there; the user paging months emits sb-month."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The calendar popover is open when present. View state: the server adding or removing the attribute opens or closes it, identical markup keeps the local state; local toggling never reflects it."
+        }
+      },
+      {
+        "name": "inline",
+        "attribute": "inline",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show the calendar on the page, always visible, without the text field."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label, and the accessible name of the calendar."
+        }
+      },
+      {
+        "name": "placeholder",
+        "attribute": "placeholder",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Placeholder text (default: the locale's date pattern, e.g. dd.mm.yyyy, or with time dd.mm.yyyy, hh:mm)."
+        }
+      },
+      {
+        "name": "applyLabel",
+        "attribute": "apply-label",
+        "type": "string",
+        "default": "Apply",
+        "docs": {
+          "description": "With time: the text of the button that commits the calendar's date and time."
+        }
+      },
+      {
+        "name": "chooseLabel",
+        "attribute": "choose-label",
+        "type": "string",
+        "default": "Choose date",
+        "docs": {
+          "description": "Accessible name of the button that opens the calendar, and of the calendar without a label."
+        }
+      },
+      {
+        "name": "previousYearLabel",
+        "attribute": "previous-year-label",
+        "type": "string",
+        "default": "Previous year",
+        "docs": {
+          "description": "Accessible name of the calendar's button that goes a year back."
+        }
+      },
+      {
+        "name": "previousMonthLabel",
+        "attribute": "previous-month-label",
+        "type": "string",
+        "default": "Previous month",
+        "docs": {
+          "description": "Accessible name of the calendar's button that goes a month back."
+        }
+      },
+      {
+        "name": "nextMonthLabel",
+        "attribute": "next-month-label",
+        "type": "string",
+        "default": "Next month",
+        "docs": {
+          "description": "Accessible name of the calendar's button that goes a month forward."
+        }
+      },
+      {
+        "name": "nextYearLabel",
+        "attribute": "next-year-label",
+        "type": "string",
+        "default": "Next year",
+        "docs": {
+          "description": "Accessible name of the calendar's button that goes a year forward."
+        }
+      },
+      {
+        "name": "error",
+        "attribute": "error",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Message shown when the typed text is not a date that can be picked."
+        }
+      },
+      {
+        "name": "lang",
+        "attribute": "lang",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Locale for month and weekday names, the first day of the week and the typed format (default: the page's lang, then the browser's)."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable the field and the calendar. A form leaves it out."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change, sb-month and sb-toggle (e.g. the field of a command), and submitted with its form."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "The value changed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "A date was picked or typed (with time: applied or typed). detail: { name, value }: an ISO date, with time a date-time (with time-zone, with its offset) (\"\" when cleared), or with mode=\"range\" { start, end } (null when cleared). Ready for a command."
+      },
+      {
+        "name": "sb-month",
+        "kind": "custom-event",
+        "description": "The user moved the calendar to another month. detail: { name, year, month } (month from 1): the moment to send that month's disabled-dates."
+      },
+      {
+        "name": "sb-toggle",
+        "kind": "custom-event",
+        "description": "The popover opened or closed. detail: { name, open }. View state: not emitted for a change the server made."
+      }
+    ]
+  },
+  {
+    "slug": "details",
+    "tag": "sb-details",
+    "props": [
+      {
+        "name": "summary",
+        "attribute": "summary",
+        "type": "string",
+        "default": "Details",
+        "docs": {
+          "description": "The heading on the summary row. The server can morph it; the summary slot overrides it."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Open when present. View state, not a value: the server adding or removing the attribute wins, identical markup keeps the local state. Local toggling never reflects it."
+        }
+      },
+      {
+        "name": "icon",
+        "attribute": "icon",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Short text or emoji before the summary (decorative)."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Block toggling. The server can still open or close it."
+        }
+      },
+      {
+        "name": "group",
+        "attribute": "group",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Accordion group: opening one sb-details with this group name closes the others, and each of them emits its own sb-toggle."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-toggle (e.g. the field of a command)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "The content the panel reveals."
+      },
+      {
+        "name": "summary",
+        "description": "Rich content for the summary row; replaces the summary prop."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-toggle",
+        "kind": "custom-event",
+        "description": "The panel opened or closed. detail: { name, open }. View state: never pending, and not emitted for a change the server itself made."
+      }
+    ]
+  },
+  {
+    "slug": "drag-group",
+    "tag": "sb-drag-group",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-drag-group-move",
+        "kind": "custom-event",
+        "description": "An item was dropped, or a keyboard move was committed. detail: { itemId, fromList, toList, before }: the item, the ids of the lists it leaves and joins (the same for a move within a list), and the item it now precedes in toList, or an empty string for the end."
+      }
+    ]
+  },
+  {
+    "slug": "drawer",
+    "tag": "sb-drawer",
+    "props": [
+      {
+        "name": "heading",
+        "attribute": "heading",
+        "type": "string",
+        "default": "Drawer",
+        "docs": {
+          "description": "Title of the drawer (the header slot replaces it)."
+        }
+      },
+      {
+        "name": "side",
+        "attribute": "side",
+        "type": "oneOf",
+        "default": "end",
+        "values": [
+          "end",
+          "start",
+          "top",
+          "bottom"
+        ],
+        "docs": {
+          "description": "The edge it slides in from. start and end follow the text direction."
+        }
+      },
+      {
+        "name": "modal",
+        "attribute": "modal",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Inert page, backdrop and trapped focus. modal=\"false\" leaves the page usable."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Open when present: the server's word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing."
+        }
+      },
+      {
+        "name": "inline",
+        "attribute": "inline",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Render in place, always visible, without an overlay or close button (previews, docs)."
+        }
+      },
+      {
+        "name": "closable",
+        "attribute": "closable",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Show the close button (not on inline panels). On by default: closable=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "closeLabel",
+        "attribute": "close-label",
+        "type": "string",
+        "default": "Close",
+        "docs": {
+          "description": "Accessible name of the close button."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "Drawer body. It scrolls when it is taller than the drawer."
+      },
+      {
+        "name": "header",
+        "description": "Replaces the heading, next to the close button. It labels the drawer."
+      },
+      {
+        "name": "footer",
+        "description": "Action buttons, fixed at the bottom. Elements with data-sb-close close the drawer; sb-close reports the attribute's value (or the element's text) as detail.value."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-open",
+        "kind": "custom-event",
+        "description": "After show() opened it (not when the server opens it)."
+      },
+      {
+        "name": "sb-close",
+        "kind": "custom-event",
+        "description": "After the user, hide() or close() closed it (not when the server closes it). detail: { reason: button | escape | backdrop | action | api, value }."
+      }
+    ]
+  },
+  {
+    "slug": "dropdown",
+    "tag": "sb-dropdown",
+    "props": [
+      {
+        "name": "items",
+        "attribute": "items",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The menu, as JSON: [\"Rename\", \"-\", {\"value\":\"delete\",\"label\":\"Delete\",\"danger\":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?} (icon is text, such as an emoji: rich icons and content are the markup form's), {\"divider\":true} (\"-\" works too), a group heading {\"group\":\"Move to\"} (the items after it, up to the next heading or divider, are its group), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Actions",
+        "docs": {
+          "description": "Text of the default trigger, and the accessible name of trigger and menu."
+        }
+      },
+      {
+        "name": "emptyLabel",
+        "attribute": "empty-label",
+        "type": "string",
+        "default": "Nothing here",
+        "docs": {
+          "description": "Shown in a menu or submenu that has no items."
+        }
+      },
+      {
+        "name": "placement",
+        "attribute": "placement",
+        "type": "oneOf",
+        "default": "bottom-start",
+        "values": [
+          "bottom-start",
+          "bottom",
+          "bottom-end",
+          "top-start",
+          "top",
+          "top-end"
+        ],
+        "docs": {
+          "description": "Preferred side and alignment of the menu; it flips and shifts when there is no room. Submenus always open to the inline end and flip to the start."
+        }
+      },
+      {
+        "name": "type",
+        "attribute": "type",
+        "type": "oneOf",
+        "default": "actions",
+        "values": [
+          "actions",
+          "radio"
+        ],
+        "docs": {
+          "description": "radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:\"radio\" on that item instead. The group reaches into its submenus, and a dropdown holds one group."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots (\"date.newest\"). A new value from the server wins (value=\"\" clears it); the live value is the value property."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable the trigger (and close the menu)."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-select and sb-change (e.g. the field of a command)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "trigger",
+        "description": "Content of the trigger button (text, an icon). The component provides the button itself, with all the ARIA on it."
+      },
+      {
+        "name": "item",
+        "description": "Menu items as markup instead of items: \u003cbutton slot=\"item\" value=\"x\" disabled data-icon=\"🛰\" data-description=\"…\" data-danger\u003eLabel\u003c/button\u003e, \u003ca slot=\"item\" href=\"/x\"\u003eLabel\u003c/a\u003e for a link, or \u003chr slot=\"item\"\u003e for a divider. \u003cdiv slot=\"item\" data-group\u003eMove to\u003c/div\u003e is a group heading: the items after it, up to the next heading or divider, are its group (text only). A submenu is data-children='[…]' (the same JSON as items). They are read as data; items wins when it is not empty. Rich items: an element marked data-icon inside the item (an inline \u003csvg\u003e, an \u003cimg\u003e) is copied into the row's icon place, and other elements in it (a lozenge) are copied into the row in place of the text, which stays the row's accessible name; a radio trigger shows the chosen item the same way. Copies keep their attributes, so part=\"…\" and an inline style reach them from the page."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-select",
+        "kind": "custom-event",
+        "description": "A plain item was chosen; the whole menu closes. detail: { name, value }: ready for a command. A submenu parent never reports a value, an item of a radio group reports sb-change instead, and a link reports nothing: the browser follows it."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "Radio group: the value changed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Radio group: an item of the group was chosen. detail: { name, value }, the value being the dotted path for a choice inside a submenu: ready for a command."
+      },
+      {
+        "name": "sb-open",
+        "kind": "custom-event",
+        "description": "The menu opened (the root; submenus are view state and stay quiet)."
+      },
+      {
+        "name": "sb-close",
+        "kind": "custom-event",
+        "description": "The menu closed. detail: { reason }: item, escape, outside, scroll, tab, trigger, server or api."
+      }
+    ]
+  },
+  {
+    "slug": "echarts",
+    "tag": "sb-echarts",
+    "props": [
+      {
+        "name": "option",
+        "attribute": "option",
+        "type": "custom",
+        "default": null,
+        "docs": {
+          "description": "The ECharts option, as JSON. Strings that are exactly var(--token) become that colour. { \"kind\": \"name\", ... } is expanded by a builder the page defined with defineChartKind()."
+        }
+      },
+      {
+        "name": "renderer",
+        "attribute": "renderer",
+        "type": "oneOf",
+        "default": "canvas",
+        "values": [
+          "canvas",
+          "svg"
+        ],
+        "docs": {
+          "description": "Draw on a canvas, or as SVG (sharper when printed, slower with many points)."
+        }
+      },
+      {
+        "name": "lang",
+        "attribute": "lang",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Locale for numbers, months and weekdays (default: the page's lang, then the browser's)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "",
+        "description": "A fallback for readers without the chart: shown until ECharts has drawn, kept for screen readers after that. A table of the same data is ideal."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-chart-click",
+        "kind": "custom-event",
+        "description": "A click on a data item. detail: { seriesName, seriesIndex, name, value, dataIndex }."
+      }
+    ]
+  },
+  {
+    "slug": "gauge",
+    "tag": "sb-gauge",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Current value; the needle eases toward it."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Minimum."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 100,
+        "docs": {
+          "description": "Maximum."
+        }
+      },
+      {
+        "name": "warn",
+        "attribute": "warn",
+        "type": "number",
+        "default": 70,
+        "docs": {
+          "description": "Warning threshold. Below danger means low values are bad (like fuel)."
+        }
+      },
+      {
+        "name": "danger",
+        "attribute": "danger",
+        "type": "number",
+        "default": 90,
+        "docs": {
+          "description": "Danger threshold."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Caption below the value, and the accessible name (without it, the host's aria-label, else \"Gauge\")."
+        }
+      },
+      {
+        "name": "unit",
+        "attribute": "unit",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Unit after the value, e.g. \"%\" or \" km/s\"."
+        }
+      },
+      {
+        "name": "decimals",
+        "attribute": "decimals",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Decimals shown in the readout."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "image-compare",
+    "tag": "sb-image-compare",
+    "props": [
+      {
+        "name": "position",
+        "attribute": "position",
+        "type": "number",
+        "default": 50,
+        "docs": {
+          "description": "Where the divider sits, in percent from the start edge. A new position from the page or the server replaces the reader's."
+        }
+      },
+      {
+        "name": "beforeLabel",
+        "attribute": "before-label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Tag over the before side (slot \"before\", on the start side of the divider)."
+        }
+      },
+      {
+        "name": "afterLabel",
+        "attribute": "after-label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Tag over the after side (slot \"after\", on the end side of the divider)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Accessible name of the divider, and of the full screen view. Without it, the element's aria-label, else \"Comparison\"."
+        }
+      },
+      {
+        "name": "expandable",
+        "attribute": "expandable",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show a button that opens the comparison full screen (Escape closes it)."
+        }
+      },
+      {
+        "name": "expanded",
+        "attribute": "expanded",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Full screen when present: the page's or the server's word. Adding the attribute opens it, removing it closes it; identical markup keeps the reader's state. The reader's own opening and closing never touch it; sb-expand reports them."
+        }
+      },
+      {
+        "name": "expandLabel",
+        "attribute": "expand-label",
+        "type": "string",
+        "default": "Full screen",
+        "docs": {
+          "description": "Accessible name of the full screen button."
+        }
+      },
+      {
+        "name": "closeLabel",
+        "attribute": "close-label",
+        "type": "string",
+        "default": "Exit full screen",
+        "docs": {
+          "description": "Accessible name of the button while full screen."
+        }
+      },
+      {
+        "name": "valueLabel",
+        "attribute": "value-label",
+        "type": "string",
+        "default": "{before} {start}, {after} {end}",
+        "docs": {
+          "description": "What screen readers say for the divider's position: {start} and {end} become the percentages on either side, formatted for the page's language, {before} and {after} the before-label and after-label (else \"Before\" and \"After\")."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "before",
+        "description": "The before side, on the start side of the divider: an \u003cimg\u003e, a \u003cpicture\u003e (the page sizes its \u003cimg\u003e), or any element."
+      },
+      {
+        "name": "after",
+        "description": "The after side, on the end side. It sets the size of the comparison."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-position",
+        "kind": "custom-event",
+        "description": "After a drag, a tap or a key moved the divider. detail: { position } (percent)."
+      },
+      {
+        "name": "sb-expand",
+        "kind": "custom-event",
+        "description": "When full screen opens or closes. detail: { expanded, reason }, reason being 'reader' (button, Escape), 'server' (the expanded attribute) or 'api' (the expanded property)."
+      }
+    ]
+  },
+  {
+    "slug": "inline-edit",
+    "tag": "sb-inline-edit",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-inline-edit-request",
+        "kind": "custom-event",
+        "description": "A double press on the trigger, or Enter or F2 while it has the focus. detail: { contextId }. Render the field."
+      },
+      {
+        "name": "sb-inline-edit-commit",
+        "kind": "custom-event",
+        "description": "Enter in the field, or the field lost the focus, with a text other than the saved one it started from. detail: { contextId, value }. Save it and render the title, or refuse it."
+      },
+      {
+        "name": "sb-inline-edit-cancel",
+        "kind": "custom-event",
+        "description": "Escape in the field, or the field lost the focus with the saved text in it. detail: { contextId }. Render the title again."
+      }
+    ]
+  },
+  {
+    "slug": "input",
+    "tag": "sb-input",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The server's value. A new one replaces local edits (to clear, send value=\"\"); the live value is the value property."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Revision of the server's value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label."
+        }
+      },
+      {
+        "name": "placeholder",
+        "attribute": "placeholder",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Placeholder text."
+        }
+      },
+      {
+        "name": "type",
+        "attribute": "type",
+        "type": "oneOf",
+        "default": "text",
+        "values": [
+          "text",
+          "email",
+          "search",
+          "url",
+          "tel",
+          "password"
+        ],
+        "docs": {
+          "description": "Input type."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change and sb-submit (e.g. the field of a command), and the name its value is submitted under in a form."
+        }
+      },
+      {
+        "name": "required",
+        "attribute": "required",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Value must not be empty."
+        }
+      },
+      {
+        "name": "minlength",
+        "attribute": "minlength",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Minimum length."
+        }
+      },
+      {
+        "name": "pattern",
+        "attribute": "pattern",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Regular expression the value must match."
+        }
+      },
+      {
+        "name": "hint",
+        "attribute": "hint",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Help text below the field."
+        }
+      },
+      {
+        "name": "error",
+        "attribute": "error",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Message shown when invalid (defaults to the browser message)."
+        }
+      },
+      {
+        "name": "action",
+        "attribute": "action",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show a submit arrow button."
+        }
+      },
+      {
+        "name": "submitLabel",
+        "attribute": "submit-label",
+        "type": "string",
+        "default": "Submit",
+        "docs": {
+          "description": "Accessible name of the submit arrow button."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable the field (and the arrow). A form leaves it out."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "input",
+        "kind": "event",
+        "description": "On every keystroke (native, re-targeted to the host)."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the value is committed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "When the value is committed (Enter, or leaving a changed field). detail: { name, value }: ready for a command."
+      },
+      {
+        "name": "sb-submit",
+        "kind": "custom-event",
+        "description": "Enter or arrow button with a valid value. detail: { name, value }."
+      }
+    ]
+  },
+  {
+    "slug": "kanban-board",
+    "tag": "sb-kanban-board",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-kanban-move",
+        "kind": "custom-event",
+        "description": "A card was dropped, or a keyboard move committed. detail: { cardId, col, before }: col is the lane's data-col as a number, before the id of the card it now precedes in that lane, or \"\" for the end."
+      },
+      {
+        "name": "sb-kanban-select",
+        "kind": "custom-event",
+        "description": "A card was selected: arrow focus moved to it, or the pointer pressed it. detail: { cardId }."
+      },
+      {
+        "name": "sb-kanban-lane-move",
+        "kind": "custom-event",
+        "description": "A lane was dropped by its grip, moved with Alt and the arrows, or stepped. detail: { col, before }: col is its data-col as a number, before the data-col of the lane it now precedes, or \"\" for the end."
+      },
+      {
+        "name": "sb-kanban-landing-end",
+        "kind": "custom-event",
+        "description": "With data-kanban-landing, a move's landing marker went away. detail: { cardId, col, reason } (no cardId for a lane): reason is \"arrived\", \"released\" (by the host's releaseLanding({ cardId } or { col })) or \"timeout\" (data-kanban-landing-timeout, 10000 ms by default)."
+      }
+    ]
+  },
+  {
+    "slug": "meter",
+    "tag": "sb-meter",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Current value."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Minimum."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 100,
+        "docs": {
+          "description": "Maximum."
+        }
+      },
+      {
+        "name": "segments",
+        "attribute": "segments",
+        "type": "number",
+        "default": 12,
+        "docs": {
+          "description": "Number of blocks."
+        }
+      },
+      {
+        "name": "warn",
+        "attribute": "warn",
+        "type": "number",
+        "default": 70,
+        "docs": {
+          "description": "Warning threshold, in value units. Unset, it sits at 70% of the range (70 on 0–100). Below danger means low values are bad (like fuel)."
+        }
+      },
+      {
+        "name": "danger",
+        "attribute": "danger",
+        "type": "number",
+        "default": 90,
+        "docs": {
+          "description": "Danger threshold, in value units. Unset, it sits at 90% of the range (90 on 0–100)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Caption, and the accessible name."
+        }
+      },
+      {
+        "name": "unit",
+        "attribute": "unit",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Unit after the value."
+        }
+      },
+      {
+        "name": "showValue",
+        "attribute": "show-value",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Show the value. On by default: show-value=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "decimals",
+        "attribute": "decimals",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Decimals shown."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "modal",
+    "tag": "sb-modal",
+    "props": [
+      {
+        "name": "heading",
+        "attribute": "heading",
+        "type": "string",
+        "default": "Dialog",
+        "docs": {
+          "description": "Title of the dialog."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Open when present: the server's word. Adding or removing the attribute wins, also after show() or a close; identical markup keeps the local state. Emits no sb-open or sb-close. isOpen tells whether it is showing."
+        }
+      },
+      {
+        "name": "inline",
+        "attribute": "inline",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Render in place, always visible, without an overlay or close button (previews, docs)."
+        }
+      },
+      {
+        "name": "closable",
+        "attribute": "closable",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Show the close button (not on inline panels). On by default: closable=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "closeLabel",
+        "attribute": "close-label",
+        "type": "string",
+        "default": "Close",
+        "docs": {
+          "description": "Accessible name of the close button."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "Dialog body."
+      },
+      {
+        "name": "footer",
+        "description": "Action buttons. Elements with data-sb-close close the dialog; sb-close reports the attribute's value (or the element's text) as detail.value."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-open",
+        "kind": "custom-event",
+        "description": "After show() opened it (not when the server opens it)."
+      },
+      {
+        "name": "sb-close",
+        "kind": "custom-event",
+        "description": "After the user or close() closed it (not when the server closes it). detail: { reason: button | escape | backdrop | action | api, value }."
+      }
+    ]
+  },
+  {
+    "slug": "nebula",
+    "tag": "sb-nebula",
+    "props": [
+      {
+        "name": "speed",
+        "attribute": "speed",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Drift speed (0 is still)."
+        }
+      },
+      {
+        "name": "density",
+        "attribute": "density",
+        "type": "number",
+        "default": 0.5,
+        "docs": {
+          "description": "How much of the sky the gas covers, 0 to 1."
+        }
+      },
+      {
+        "name": "palette",
+        "attribute": "palette",
+        "type": "oneOf",
+        "default": "violet",
+        "values": [
+          "violet",
+          "aurora",
+          "ember",
+          "mono"
+        ],
+        "docs": {
+          "description": "Colour scheme (from theme tokens)."
+        }
+      },
+      {
+        "name": "pixel",
+        "attribute": "pixel",
+        "type": "number",
+        "default": 4,
+        "docs": {
+          "description": "Size of one pixel, in CSS pixels."
+        }
+      },
+      {
+        "name": "levels",
+        "attribute": "levels",
+        "type": "number",
+        "default": 6,
+        "docs": {
+          "description": "Colour levels per channel, dithered (0 for smooth)."
+        }
+      },
+      {
+        "name": "stars",
+        "attribute": "stars",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Draw twinkling stars. On by default: stars=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "seed",
+        "attribute": "seed",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Picks a different nebula."
+        }
+      },
+      {
+        "name": "parallax",
+        "attribute": "parallax",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Shift with the pointer. On by default: parallax=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Animated nebula",
+        "docs": {
+          "description": "Accessible label."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "odometer",
+    "tag": "sb-odometer",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "The number to show. Change it and the digits roll to the new value."
+        }
+      },
+      {
+        "name": "decimals",
+        "attribute": "decimals",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Fixed digits after the decimal mark, so a whole-number step still shows \".0\" and the layout does not jump."
+        }
+      },
+      {
+        "name": "grouping",
+        "attribute": "grouping",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Group thousands the way the locale does (221’180, 221,180, 221 180). On by default: grouping=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "lang",
+        "attribute": "lang",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Locale for the separators (default: the page's lang, then the browser's)."
+        }
+      },
+      {
+        "name": "drum",
+        "attribute": "drum",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Draw each wheel as a 3D drum: digits curve away above and below, and foreshorten as they roll."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "pixel-board",
+    "tag": "sb-pixel-board",
+    "props": [
+      {
+        "name": "size",
+        "attribute": "size",
+        "type": "number",
+        "default": 48,
+        "docs": {
+          "description": "Cells per side."
+        }
+      },
+      {
+        "name": "cells",
+        "attribute": "cells",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Board state: one hex digit (palette index) per cell, row by row. Usually server-owned."
+        }
+      },
+      {
+        "name": "palette",
+        "attribute": "palette",
+        "type": "array",
+        "default": [
+          "#080D1D",
+          "#1B1F3B",
+          "#283552",
+          "#7785A8",
+          "#AEBBDD",
+          "#F3F4FA",
+          "#8C6BFF",
+          "#B09AFF",
+          "#5B4FD6",
+          "#65BFFF",
+          "#2F7BE0",
+          "#6EF59A",
+          "#4CC46A",
+          "#FFD84D",
+          "#FF9F43",
+          "#E5484D"
+        ],
+        "docs": {
+          "description": "16 colours as a JSON array of #rrggbb."
+        }
+      },
+      {
+        "name": "color",
+        "attribute": "color",
+        "type": "number",
+        "default": 7,
+        "docs": {
+          "description": "Selected palette index (the attribute sets it; the user can change it)."
+        }
+      },
+      {
+        "name": "local",
+        "attribute": "local",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Paint the local buffer directly (offline mode). Otherwise painted cells stay pending until cells answers them, or the page calls revert()."
+        }
+      },
+      {
+        "name": "readonly",
+        "attribute": "readonly",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Watch only: no painting, no palette."
+        }
+      },
+      {
+        "name": "grid",
+        "attribute": "grid",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show faint cell lines."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Pixel board",
+        "docs": {
+          "description": "Accessible name of the board."
+        }
+      },
+      {
+        "name": "cellLabel",
+        "attribute": "cell-label",
+        "type": "string",
+        "default": "{label}, cell {x},{y}, colour {color}; painting colour {painting}",
+        "docs": {
+          "description": "Accessible name of the board while a cell has the keyboard cursor: {label} becomes the label, {x} and {y} the cell's column and row, {color} its colour's number, {painting} the number of the colour that paints."
+        }
+      },
+      {
+        "name": "paletteLabel",
+        "attribute": "palette-label",
+        "type": "string",
+        "default": "Colour",
+        "docs": {
+          "description": "Accessible name of the palette."
+        }
+      },
+      {
+        "name": "swatchLabel",
+        "attribute": "swatch-label",
+        "type": "string",
+        "default": "Colour {n}",
+        "docs": {
+          "description": "Accessible name of a palette colour: {n} becomes its number."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-paint",
+        "kind": "custom-event",
+        "description": "Painted cells, batched every ~80 ms during a stroke. detail: { color, cells: [index…] }."
+      }
+    ]
+  },
+  {
+    "slug": "popover",
+    "tag": "sb-popover",
+    "props": [
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Details",
+        "docs": {
+          "description": "Text of the default trigger, and the accessible name of the panel (an aria-label on the element wins)."
+        }
+      },
+      {
+        "name": "mode",
+        "attribute": "mode",
+        "type": "oneOf",
+        "default": "click",
+        "values": [
+          "click",
+          "hover"
+        ],
+        "docs": {
+          "description": "click: a dialog that opens on click and closes on an outside click or Escape. hover: a hover card that opens after a short delay on hover or keyboard focus and describes the trigger."
+        }
+      },
+      {
+        "name": "placement",
+        "attribute": "placement",
+        "type": "oneOf",
+        "default": "bottom",
+        "values": [
+          "bottom",
+          "bottom-start",
+          "bottom-end",
+          "top",
+          "top-start",
+          "top-end",
+          "start",
+          "start-start",
+          "start-end",
+          "end",
+          "end-start",
+          "end-end"
+        ],
+        "docs": {
+          "description": "Side of the trigger, and the alignment along it. start and end are logical, so they mirror in right-to-left text. The panel flips and shifts to stay on screen."
+        }
+      },
+      {
+        "name": "arrow",
+        "attribute": "arrow",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Draw an arrow that points at the middle of the trigger."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Open when present. View state the server may own: adding or removing the attribute wins, identical markup keeps the local state. Never reflected: use the open property, show() and hide() from the client."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-open and sb-close (e.g. the field of a command)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "trigger",
+        "description": "Your own trigger: a native button (or a link, in hover mode). It gets aria-expanded and aria-haspopup (click mode) or an aria-describedby to the content (hover mode), put back after every morph. Without it, a button shows label."
+      },
+      {
+        "name": "default",
+        "description": "The panel content."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-open",
+        "kind": "custom-event",
+        "description": "The panel opened. detail: { name, reason }, reason being trigger, server or api."
+      },
+      {
+        "name": "sb-close",
+        "kind": "custom-event",
+        "description": "The panel closed. detail: { name, reason }: trigger, outside, escape, leave (hover mode), server or api."
+      }
+    ]
+  },
+  {
+    "slug": "qr-code",
+    "tag": "sb-qr-code",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Text or URL to encode."
+        }
+      },
+      {
+        "name": "ecc",
+        "attribute": "ecc",
+        "type": "oneOf",
+        "default": "M",
+        "values": [
+          "L",
+          "M",
+          "Q",
+          "H"
+        ],
+        "docs": {
+          "description": "Error correction: L 7%, M 15%, Q 25%, H 30% of the code can be damaged or covered."
+        }
+      },
+      {
+        "name": "border",
+        "attribute": "border",
+        "type": "number",
+        "default": 2,
+        "docs": {
+          "description": "Quiet zone around the code, in modules (the standard asks for 4; 2 scans fine on a plain background)."
+        }
+      },
+      {
+        "name": "accent",
+        "attribute": "accent",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Colour the three corner squares with --sb-qr-accent (default: the brand colour, darkened where it is too light to scan)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Accessible name (default: \"QR code: \" and the value)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "error",
+        "description": "Replaces the \"Too much data for a QR code\" message, e.g. to translate it."
+      }
+    ],
+    "events": []
+  },
+  {
+    "slug": "radio-group",
+    "tag": "sb-radio-group",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The selected value. A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "options",
+        "attribute": "options",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Choices from the server: [\"A\", \"B\"] or [{value, label, description?, disabled?}]. \u003csb-radio\u003e children win over it."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label, and the accessible name of the group."
+        }
+      },
+      {
+        "name": "orientation",
+        "attribute": "orientation",
+        "type": "oneOf",
+        "default": "vertical",
+        "values": [
+          "vertical",
+          "horizontal"
+        ],
+        "docs": {
+          "description": "Stack the choices or lay them out in a row."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable the whole group."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command), and the field it submits in a form."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "",
+        "description": "\u003csb-radio value=\"…\" [description] [disabled]\u003eLabel\u003c/sb-radio\u003e items: markup the group reads as its choices, like \u003coption\u003e in a native \u003cselect\u003e. Nothing is slotted; the group renders the items itself."
+      }
+    ],
+    "events": [
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the user picks a choice."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value }: ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "range",
+    "tag": "sb-range",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "The range, as JSON: {\"start\": 20, \"end\": 60}; a missing or null part is min or max. A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Minimum."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 100,
+        "docs": {
+          "description": "Maximum."
+        }
+      },
+      {
+        "name": "step",
+        "attribute": "step",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Step size (0 for continuous)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label, and {label} in start-label and end-label (without it, the host's aria-label, else \"Range\")."
+        }
+      },
+      {
+        "name": "startLabel",
+        "attribute": "start-label",
+        "type": "string",
+        "default": "{label} start",
+        "docs": {
+          "description": "Accessible name of the start thumb: {label} becomes the label."
+        }
+      },
+      {
+        "name": "endLabel",
+        "attribute": "end-label",
+        "type": "string",
+        "default": "{label} end",
+        "docs": {
+          "description": "Accessible name of the end thumb: {label} becomes the label."
+        }
+      },
+      {
+        "name": "unit",
+        "attribute": "unit",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Suffix after the shown values, e.g. \"°\" or \" kg\"."
+        }
+      },
+      {
+        "name": "showValue",
+        "attribute": "show-value",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Show the current range next to the label. On by default: show-value=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "ticks",
+        "attribute": "ticks",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show min and max below the track."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable interaction."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local range differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command) and submitted with a \u003cform\u003e."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "input",
+        "kind": "event",
+        "description": "While dragging either thumb (native, re-targeted to the host)."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the range is committed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "When the range is committed. detail: { name, value: { start, end } }: the whole range, one command."
+      }
+    ]
+  },
+  {
+    "slug": "rating",
+    "tag": "sb-rating",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "The value. A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 5,
+        "docs": {
+          "description": "Number of hearts (or stars)."
+        }
+      },
+      {
+        "name": "precision",
+        "attribute": "precision",
+        "type": "oneOf",
+        "default": "1",
+        "values": [
+          "1",
+          "0.5"
+        ],
+        "docs": {
+          "description": "Step: whole or half units."
+        }
+      },
+      {
+        "name": "icon",
+        "attribute": "icon",
+        "type": "oneOf",
+        "default": "heart",
+        "values": [
+          "heart",
+          "star"
+        ],
+        "docs": {
+          "description": "Pixel sprite."
+        }
+      },
+      {
+        "name": "size",
+        "attribute": "size",
+        "type": "oneOf",
+        "default": "md",
+        "values": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "docs": {
+          "description": "Size."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label (also the accessible name). Without it, the host's aria-label names the control (else \"Rating\")."
+        }
+      },
+      {
+        "name": "valueLabel",
+        "attribute": "value-label",
+        "type": "string",
+        "default": "{value} of {max}",
+        "docs": {
+          "description": "What screen readers say for the value: {value} and {max} become the numbers, formatted for the page's language."
+        }
+      },
+      {
+        "name": "readonly",
+        "attribute": "readonly",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show the value; no interaction."
+        }
+      },
+      {
+        "name": "clearable",
+        "attribute": "clearable",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Picking the current value again clears it to 0."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable interaction."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command) and submitted with a form."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the value is committed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value }: ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "relative-time",
+    "tag": "sb-relative-time",
+    "props": [
+      {
+        "name": "datetime",
+        "attribute": "datetime",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The moment: ISO 8601 (2026-09-22T08:00:00Z) or Unix time (seconds or ms)."
+        }
+      },
+      {
+        "name": "numeric",
+        "attribute": "numeric",
+        "type": "oneOf",
+        "default": "auto",
+        "values": [
+          "auto",
+          "always"
+        ],
+        "docs": {
+          "description": "\"auto\" allows words like \"yesterday\"; \"always\" says \"1 day ago\"."
+        }
+      },
+      {
+        "name": "format",
+        "attribute": "format",
+        "type": "oneOf",
+        "default": "long",
+        "values": [
+          "long",
+          "short",
+          "narrow"
+        ],
+        "docs": {
+          "description": "Length of the units (\"3 minutes\" / \"3 min.\" / \"3m\")."
+        }
+      },
+      {
+        "name": "lang",
+        "attribute": "lang",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Locale (default: the page's lang, then the browser's)."
+        }
+      },
+      {
+        "name": "threshold",
+        "attribute": "threshold",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "After this many days, show the date instead (0: always relative)."
+        }
+      },
+      {
+        "name": "sync",
+        "attribute": "sync",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Keep the text current while the page is open. On by default: sync=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "timeZone",
+        "attribute": "time-zone",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "IANA time zone (Europe/Zurich) of the date on hover, the threshold date and the day count (default, and for a zone the browser can't read: the browser's)."
+        }
+      },
+      {
+        "name": "titleLang",
+        "attribute": "title-lang",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Locale of the date on hover (default: the text's; \"auto\": the browser's)."
+        }
+      },
+      {
+        "name": "titleStyle",
+        "attribute": "title-style",
+        "type": "oneOf",
+        "default": "full",
+        "values": [
+          "full",
+          "numeric"
+        ],
+        "docs": {
+          "description": "\"full\" spells out the weekday and month; \"numeric\" shows what toLocaleString() does, seconds included."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "select",
+    "tag": "sb-select",
+    "props": [
+      {
+        "name": "options",
+        "attribute": "options",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Choices: [\"A\", \"B\"] or [{value, label, description?, disabled?}]."
+        }
+      },
+      {
+        "name": "results",
+        "attribute": "results",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Remote: the results of the current search, in the same shape. The server sets it (a signal patch through data-attr, or a morph)."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "The value; for multiple, a JSON array or values separated by commas. A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label."
+        }
+      },
+      {
+        "name": "placeholder",
+        "attribute": "placeholder",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Placeholder text."
+        }
+      },
+      {
+        "name": "multiple",
+        "attribute": "multiple",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Pick several; they show as chips."
+        }
+      },
+      {
+        "name": "searchable",
+        "attribute": "searchable",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Type to filter the options (in the browser)."
+        }
+      },
+      {
+        "name": "remote",
+        "attribute": "remote",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Type to search on the server: emits sb-search; the server answers with results."
+        }
+      },
+      {
+        "name": "delay",
+        "attribute": "delay",
+        "type": "number",
+        "default": 250,
+        "docs": {
+          "description": "Remote: debounce before sb-search, in ms."
+        }
+      },
+      {
+        "name": "minChars",
+        "attribute": "min-chars",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Remote: characters needed before searching."
+        }
+      },
+      {
+        "name": "loading",
+        "attribute": "loading",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show that results are on their way (bind it to data-indicator)."
+        }
+      },
+      {
+        "name": "clearable",
+        "attribute": "clearable",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show a button that clears the value."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable the control."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command) and submitted with its form."
+        }
+      },
+      {
+        "name": "summary",
+        "attribute": "summary",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Multiple: a text shown instead of chips, e.g. \"{count} of {total} sources\". {count} is the number picked, {more} those not shown as chips, {total} the options (or the total prop). With max-chips, it shows only beyond that many picks, after the chips."
+        }
+      },
+      {
+        "name": "maxChips",
+        "attribute": "max-chips",
+        "type": "number",
+        "default": -1,
+        "docs": {
+          "description": "Multiple: show at most this many chips on one line, then a \"+K\" chip (or the summary). 0 shows only the count; -1 (the default) shows every chip and wraps."
+        }
+      },
+      {
+        "name": "total",
+        "attribute": "total",
+        "type": "number",
+        "default": -1,
+        "docs": {
+          "description": "Summary: what {total} stands for, e.g. the number of results a remote search can reach. -1 (the default): the options it knows (remote: every option it has been offered)."
+        }
+      },
+      {
+        "name": "actions",
+        "attribute": "actions",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Multiple: \"Select all\" (while a search filters: \"Select the N matches\") and \"Clear\" rows at the top of the list."
+        }
+      },
+      {
+        "name": "selectAllLabel",
+        "attribute": "select-all-label",
+        "type": "string",
+        "default": "Select all",
+        "docs": {
+          "description": "Actions: the text of \"Select all\"."
+        }
+      },
+      {
+        "name": "matchesLabel",
+        "attribute": "matches-label",
+        "type": "string",
+        "default": "Select the match|Select the {count} matches",
+        "docs": {
+          "description": "Actions: the text of \"Select the N matches\" while a search filters the list. Text before a | is for one match."
+        }
+      },
+      {
+        "name": "clearLabel",
+        "attribute": "clear-label",
+        "type": "string",
+        "default": "Clear",
+        "docs": {
+          "description": "Actions: the text of \"Clear\", also the clear button's accessible name."
+        }
+      },
+      {
+        "name": "removeLabel",
+        "attribute": "remove-label",
+        "type": "string",
+        "default": "Remove {label}",
+        "docs": {
+          "description": "Multiple: accessible name of a chip's remove button: {label} becomes the choice's label."
+        }
+      },
+      {
+        "name": "hintLabel",
+        "attribute": "hint-label",
+        "type": "string",
+        "default": "Type to search",
+        "docs": {
+          "description": "Remote: shown in the open list while the query is shorter than min-chars."
+        }
+      },
+      {
+        "name": "searchingLabel",
+        "attribute": "searching-label",
+        "type": "string",
+        "default": "Searching…",
+        "docs": {
+          "description": "Shown in the open list while results are on their way and there are none yet."
+        }
+      },
+      {
+        "name": "emptyLabel",
+        "attribute": "empty-label",
+        "type": "string",
+        "default": "No results",
+        "docs": {
+          "description": "Shown in the open list when nothing matches."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-search",
+        "kind": "custom-event",
+        "description": "Remote: the query changed (debounced). detail: { query }. Answer by setting results."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "The value changed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "The value changed. detail: { name, value } (a string, or an array for multiple): ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "slider",
+    "tag": "sb-slider",
+    "props": [
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "The value. A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Minimum."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 100,
+        "docs": {
+          "description": "Maximum."
+        }
+      },
+      {
+        "name": "step",
+        "attribute": "step",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Step size (0 for continuous)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label."
+        }
+      },
+      {
+        "name": "unit",
+        "attribute": "unit",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Suffix after the shown value, e.g. \"°\" or \"%\"."
+        }
+      },
+      {
+        "name": "showValue",
+        "attribute": "show-value",
+        "type": "oneOf",
+        "default": true,
+        "values": [
+          true,
+          false
+        ],
+        "docs": {
+          "description": "Show the current value next to the label. On by default: show-value=\"false\" turns it off."
+        }
+      },
+      {
+        "name": "ticks",
+        "attribute": "ticks",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show min and max below the track."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable interaction."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command) and submitted with a form."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "input",
+        "kind": "event",
+        "description": "While dragging (native, re-targeted to the host)."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "When the value is committed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "When the value is committed. detail: { name, value }: ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "sortable-list",
+    "tag": "sb-sortable-list",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-sortable-move",
+        "kind": "custom-event",
+        "description": "An item was dropped, or a keyboard move committed. detail: { itemId, before }, where before is the id of the item it now precedes, or \"\" for the end."
+      }
+    ]
+  },
+  {
+    "slug": "sortable-tree",
+    "tag": "sb-sortable-tree",
+    "props": [],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-tree-move",
+        "kind": "custom-event",
+        "description": "A row was dropped, or a keyboard move committed. detail: { itemId, fromParent, toParent, before }: the parents are folder ids, \"\" for the top level; before is the id of the node it now precedes, \"\" for the end of the folder."
+      }
+    ]
+  },
+  {
+    "slug": "sparkline",
+    "tag": "sb-sparkline",
+    "props": [
+      {
+        "name": "values",
+        "attribute": "values",
+        "type": "array",
+        "default": [],
+        "docs": {
+          "description": "Initial data points, as a JSON array."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Push mode: every change appends a point."
+        }
+      },
+      {
+        "name": "length",
+        "attribute": "length",
+        "type": "number",
+        "default": 40,
+        "docs": {
+          "description": "Points kept (older ones scroll off)."
+        }
+      },
+      {
+        "name": "scale",
+        "attribute": "scale",
+        "type": "oneOf",
+        "default": "auto",
+        "values": [
+          "auto",
+          "fixed"
+        ],
+        "docs": {
+          "description": "auto fits the data; fixed uses min and max."
+        }
+      },
+      {
+        "name": "min",
+        "attribute": "min",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Bottom of the fixed scale."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 100,
+        "docs": {
+          "description": "Top of the fixed scale."
+        }
+      },
+      {
+        "name": "tone",
+        "attribute": "tone",
+        "type": "oneOf",
+        "default": "brand",
+        "values": [
+          "brand",
+          "ok",
+          "warn",
+          "danger",
+          "accent"
+        ],
+        "docs": {
+          "description": "Line colour (theme token)."
+        }
+      },
+      {
+        "name": "showValue",
+        "attribute": "show-value",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show the latest value next to the line."
+        }
+      },
+      {
+        "name": "unit",
+        "attribute": "unit",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Unit after the shown value."
+        }
+      },
+      {
+        "name": "decimals",
+        "attribute": "decimals",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Decimals of the shown value."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "What the chart shows, named first in its accessible label."
+        }
+      },
+      {
+        "name": "summaryLabel",
+        "attribute": "summary-label",
+        "type": "string",
+        "default": "Trend of {count} points: latest {latest}, low {low}, high {high}",
+        "docs": {
+          "description": "The rest of the accessible label: {count} becomes the number of points, {latest}, {low} and {high} the formatted values."
+        }
+      },
+      {
+        "name": "emptyLabel",
+        "attribute": "empty-label",
+        "type": "string",
+        "default": "No data yet",
+        "docs": {
+          "description": "The rest of the accessible label while there are no points."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "starfield",
+    "tag": "sb-starfield",
+    "props": [
+      {
+        "name": "speed",
+        "attribute": "speed",
+        "type": "number",
+        "default": 20,
+        "docs": {
+          "description": "Flight speed (0 pauses the field)."
+        }
+      },
+      {
+        "name": "density",
+        "attribute": "density",
+        "type": "number",
+        "default": 300,
+        "docs": {
+          "description": "Number of stars."
+        }
+      },
+      {
+        "name": "tint",
+        "attribute": "tint",
+        "type": "oneOf",
+        "default": "white",
+        "values": [
+          "white",
+          "violet",
+          "cyan",
+          "green"
+        ],
+        "docs": {
+          "description": "Star colour (from theme tokens)."
+        }
+      },
+      {
+        "name": "warp",
+        "attribute": "warp",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Draw streaks instead of dots."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Animated starfield",
+        "docs": {
+          "description": "Accessible label (empty for a decorative background)."
+        }
+      }
+    ],
+    "slots": [],
+    "events": []
+  },
+  {
+    "slug": "tabs",
+    "tag": "sb-tabs",
+    "props": [
+      {
+        "name": "labels",
+        "attribute": "labels",
+        "type": "array",
+        "default": [
+          "Home",
+          "Docs",
+          "API"
+        ],
+        "docs": {
+          "description": "Tab labels, as a JSON array."
+        }
+      },
+      {
+        "name": "selected",
+        "attribute": "selected",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Index of the selected tab (past the last tab means the last one). A new index from the server wins; a removed attribute is ignored."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local selection differs from the server's selected attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command)."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "\u003clabel-slug\u003e",
+        "description": "Panel content per tab: slot=\"docs\" for a tab labelled \"Docs\", slot=\"übersicht\" for \"Übersicht\". A slot name an earlier tab already has gets the tab's index appended (\"c-1\" for a second tab whose label gives \"c\")."
+      }
+    ],
+    "events": [
+      {
+        "name": "input",
+        "kind": "event",
+        "description": "The user moved the selection (a click or an arrow key); host.selected is the new index."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "The selection is committed: at once for a click, after a short pause for the keyboard."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value, label } (value is the index): ready for a command."
+      },
+      {
+        "name": "sb-tab-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { index, label }."
+      }
+    ]
+  },
+  {
+    "slug": "theme-switch",
+    "tag": "sb-theme-switch",
+    "props": [
+      {
+        "name": "themes",
+        "attribute": "themes",
+        "type": "array",
+        "default": [
+          "auto",
+          "dark",
+          "light"
+        ],
+        "docs": {
+          "description": "Theme names, in order. \"auto\" follows the system (prefers-color-scheme)."
+        }
+      },
+      {
+        "name": "labels",
+        "attribute": "labels",
+        "type": "array",
+        "default": [],
+        "docs": {
+          "description": "Visible names, in the order of themes (default: from the names)."
+        }
+      },
+      {
+        "name": "attribute",
+        "attribute": "attribute",
+        "type": "string",
+        "default": "data-theme",
+        "docs": {
+          "description": "Attribute set on \u003chtml\u003e to the chosen theme. \"auto\" removes it."
+        }
+      },
+      {
+        "name": "cookie",
+        "attribute": "cookie",
+        "type": "string",
+        "default": "sb-theme",
+        "docs": {
+          "description": "Cookie that remembers the choice (a year, whole site). Servers can read it to render the theme, with no flash."
+        }
+      },
+      {
+        "name": "domain",
+        "attribute": "domain",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Cookie domain, e.g. \".example.com\" to share the choice with every subdomain. Default: this host only."
+        }
+      },
+      {
+        "name": "variant",
+        "attribute": "variant",
+        "type": "oneOf",
+        "default": "segmented",
+        "values": [
+          "segmented",
+          "select",
+          "menu"
+        ],
+        "docs": {
+          "description": "Radio buttons, a select, or an icon button with a menu (for headers)."
+        }
+      },
+      {
+        "name": "compact",
+        "attribute": "compact",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Segmented only: icons without text for auto, dark and light."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Theme",
+        "docs": {
+          "description": "Accessible name of the control."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-theme-change",
+        "kind": "custom-event",
+        "description": "After the user picks a theme. detail: { theme, cookie, scheme }, where scheme is \"light\" or \"dark\": what the page now paints in."
+      }
+    ]
+  },
+  {
+    "slug": "toast",
+    "tag": "sb-toast",
+    "props": [
+      {
+        "name": "toasts",
+        "attribute": "toasts",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The toasts, oldest first: [{id, title?, text, variant?: info|ok|warn|danger, duration?}]. Server state: every morph brings the current list, and a toast the server drops is gone."
+        }
+      },
+      {
+        "name": "placement",
+        "attribute": "placement",
+        "type": "oneOf",
+        "default": "bottom-end",
+        "values": [
+          "top-start",
+          "top-center",
+          "top-end",
+          "bottom-start",
+          "bottom-center",
+          "bottom-end",
+          "inline"
+        ],
+        "docs": {
+          "description": "Corner of the viewport the stack is pinned to. \"inline\" puts it in the page flow instead (docs, demos, panels)."
+        }
+      },
+      {
+        "name": "max",
+        "attribute": "max",
+        "type": "number",
+        "default": 3,
+        "docs": {
+          "description": "How many toasts are shown at once. Older ones wait and appear as newer ones go; only shown toasts count down."
+        }
+      },
+      {
+        "name": "duration",
+        "attribute": "duration",
+        "type": "number",
+        "default": 5000,
+        "docs": {
+          "description": "Default time before a toast dismisses itself, in ms. 0 makes them sticky; a toast may carry its own duration."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Notifications",
+        "docs": {
+          "description": "Accessible name of the region."
+        }
+      },
+      {
+        "name": "dismissLabel",
+        "attribute": "dismiss-label",
+        "type": "string",
+        "default": "Dismiss: {message}",
+        "docs": {
+          "description": "Accessible name of a toast's close button: {message} becomes the toast's title and text."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-dismiss",
+        "kind": "custom-event",
+        "description": "A toast went away. detail: { id, reason: \"user\" | \"timeout\" }. It is already hidden locally; post a command if the server should drop it too."
+      }
+    ]
+  },
+  {
+    "slug": "toc",
+    "tag": "sb-toc",
+    "props": [
+      {
+        "name": "content",
+        "attribute": "content",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "CSS selector of the element whose headings it lists. Default: the closest \u003carticle\u003e, else \u003cmain\u003e, else the page. A list of links inside the element wins over it."
+        }
+      },
+      {
+        "name": "levels",
+        "attribute": "levels",
+        "type": "string",
+        "default": "h2",
+        "docs": {
+          "description": "The headings to list, e.g. \"h2 h3\". Deeper levels are indented."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Contents",
+        "docs": {
+          "description": "Heading of the list, and the accessible name of the navigation."
+        }
+      },
+      {
+        "name": "startLabel",
+        "attribute": "start-label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Adds a first entry that leads back to the start of the content, e.g. \"Intro\". It is the current one while the start of the content is in view."
+        }
+      },
+      {
+        "name": "compact",
+        "attribute": "compact",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "A media query. While it matches, the list folds into a bar with the current section and the reading progress, and opens from it, e.g. \"(max-width: 64rem)\"."
+        }
+      },
+      {
+        "name": "progress",
+        "attribute": "progress",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Show the reading progress under the heading as well (the compact bar always shows it)."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-section",
+        "kind": "custom-event",
+        "description": "When the reader scrolls into another section. detail: { id } (empty before the first heading)."
+      }
+    ]
+  },
+  {
+    "slug": "toggle",
+    "tag": "sb-toggle",
+    "props": [
+      {
+        "name": "checked",
+        "attribute": "checked",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "On when present. The server's word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property."
+        }
+      },
+      {
+        "name": "disabled",
+        "attribute": "disabled",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Disable interaction."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Visible label next to the switch."
+        }
+      },
+      {
+        "name": "size",
+        "attribute": "size",
+        "type": "oneOf",
+        "default": "md",
+        "values": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "docs": {
+          "description": "Size of the switch."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command)."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "After the user flips the switch."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "Same moment. detail: { name, value, checked } (value is the checked state): ready for a command."
+      }
+    ]
+  },
+  {
+    "slug": "tooltip",
+    "tag": "sb-tooltip",
+    "props": [
+      {
+        "name": "content",
+        "attribute": "content",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Tooltip text."
+        }
+      },
+      {
+        "name": "placement",
+        "attribute": "placement",
+        "type": "oneOf",
+        "default": "top",
+        "values": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "docs": {
+          "description": "Side of the trigger."
+        }
+      },
+      {
+        "name": "open",
+        "attribute": "open",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Keep the tooltip visible."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "The trigger element."
+      }
+    ],
+    "events": []
+  },
+  {
+    "slug": "tree",
+    "tag": "sb-tree",
+    "props": [
+      {
+        "name": "items",
+        "attribute": "items",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "The tree as JSON, for an element without a list inside: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened."
+        }
+      },
+      {
+        "name": "loaded",
+        "attribute": "loaded",
+        "type": "json",
+        "default": {},
+        "docs": {
+          "description": "With items: loaded children by parent id, {\"\u003cid\u003e\": [items]}. Bind it to a signal the server patches (see the docs)."
+        }
+      },
+      {
+        "name": "selection",
+        "attribute": "selection",
+        "type": "oneOf",
+        "default": "single",
+        "values": [
+          "single",
+          "multiple",
+          "none"
+        ],
+        "docs": {
+          "description": "How many items can be selected. Links are followed, not selected."
+        }
+      },
+      {
+        "name": "value",
+        "attribute": "value",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Selection: an id, or ids separated by spaces (multiple). A new value from the server replaces it; the live value is the value property."
+        }
+      },
+      {
+        "name": "expanded",
+        "attribute": "expanded",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Open items: ids separated by spaces. A new list from the server replaces it; lazy items in it load their children."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Tree",
+        "docs": {
+          "description": "Accessible name."
+        }
+      },
+      {
+        "name": "loadingLabel",
+        "attribute": "loading-label",
+        "type": "string",
+        "default": "Loading",
+        "docs": {
+          "description": "Shown after an item while its children load (dots follow it)."
+        }
+      },
+      {
+        "name": "confirm",
+        "attribute": "confirm",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "name",
+        "attribute": "name",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Name reported in sb-change (e.g. the field of a command)."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-load",
+        "kind": "custom-event",
+        "description": "A lazy item was opened and has no children yet. detail: { id }. Answer with a list in its \u003cli\u003e, or by adding its children to the loaded prop."
+      },
+      {
+        "name": "change",
+        "kind": "event",
+        "description": "The selection changed."
+      },
+      {
+        "name": "sb-change",
+        "kind": "custom-event",
+        "description": "The selection changed. detail: { name, value } (an id, or an array of ids for multiple): ready for a command."
+      },
+      {
+        "name": "sb-toggle",
+        "kind": "custom-event",
+        "description": "An item opened or closed. detail: { id, open }."
+      }
+    ]
+  },
+  {
+    "slug": "typewriter",
+    "tag": "sb-typewriter",
+    "props": [
+      {
+        "name": "phrases",
+        "attribute": "phrases",
+        "type": "json",
+        "default": [],
+        "docs": {
+          "description": "Phrases to type in turn, each erased before the next, as a JSON array of strings. Without it, the element's own text is typed once."
+        }
+      },
+      {
+        "name": "loop",
+        "attribute": "loop",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "With phrases: start over after the last one, for as long as the element is on screen."
+        }
+      },
+      {
+        "name": "prompt",
+        "attribute": "prompt",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Text in front of the typed text that is there from the start, e.g. \"$ \"."
+        }
+      },
+      {
+        "name": "cursor",
+        "attribute": "cursor",
+        "type": "oneOf",
+        "default": "block",
+        "values": [
+          "block",
+          "bar",
+          "underscore",
+          "none"
+        ],
+        "docs": {
+          "description": "The cursor's shape. It blinks while it waits."
+        }
+      },
+      {
+        "name": "interval",
+        "attribute": "interval",
+        "type": "number",
+        "default": 45,
+        "docs": {
+          "description": "Average milliseconds between two characters: lower types faster. Each varies a little, like a person typing; erasing takes half as long."
+        }
+      },
+      {
+        "name": "delay",
+        "attribute": "delay",
+        "type": "number",
+        "default": 400,
+        "docs": {
+          "description": "Milliseconds before the first character, counted from when the element comes into view."
+        }
+      },
+      {
+        "name": "hold",
+        "attribute": "hold",
+        "type": "number",
+        "default": 1800,
+        "docs": {
+          "description": "With phrases: milliseconds a typed phrase stays before it is erased."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-typed",
+        "kind": "custom-event",
+        "description": "When a phrase is fully typed. detail: { text, index }."
+      }
+    ]
+  },
+  {
+    "slug": "virtual-scroll",
+    "tag": "sb-virtual-scroll",
+    "props": [
+      {
+        "name": "total",
+        "attribute": "total",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Server data: how many items the whole list has, or -1 while the server does not know (more may follow)."
+        }
+      },
+      {
+        "name": "offset",
+        "attribute": "offset",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Server data: the index of the first child in the whole list (from 0, a multiple of columns)."
+        }
+      },
+      {
+        "name": "itemSize",
+        "attribute": "item-size",
+        "type": "string",
+        "default": "32",
+        "docs": {
+          "description": "Row height: a number of px, or a CSS length (2.5rem, calc(1lh + 1rem), var(--row)) measured in whole px. Every item is exactly one row high."
+        }
+      },
+      {
+        "name": "columns",
+        "attribute": "columns",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Items per row: more than 1 lays them out as a grid."
+        }
+      },
+      {
+        "name": "buffer",
+        "attribute": "buffer",
+        "type": "number",
+        "default": 4000,
+        "docs": {
+          "description": "How far a window reaches past the viewport, above and below, in px."
+        }
+      },
+      {
+        "name": "step",
+        "attribute": "step",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Windows start and end at a multiple of step items, so viewers ask for the same windows (1: no rounding)."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "",
+        "docs": {
+          "description": "Accessible name of the list."
+        }
+      }
+    ],
+    "slots": [
+      {
+        "name": "default",
+        "description": "The items of the current window, one element each, in order. The server renders them."
+      },
+      {
+        "name": "header",
+        "description": "Stays at the top while the items scroll under it, and scrolls sideways with them (column headings)."
+      }
+    ],
+    "events": [
+      {
+        "name": "sb-window",
+        "kind": "custom-event",
+        "description": "Asks for a window of items. detail: { offset, count }. Answer by re-rendering the host with those items as children and the new offset and total."
+      }
+    ]
+  },
+  {
+    "slug": "voxel",
+    "tag": "sb-voxel",
+    "props": [
+      {
+        "name": "model",
+        "attribute": "model",
+        "type": "oneOf",
+        "default": "rocket",
+        "values": [
+          "rocket",
+          "satellite",
+          "planet"
+        ],
+        "docs": {
+          "description": "Which voxel model to show."
+        }
+      },
+      {
+        "name": "yaw",
+        "attribute": "yaw",
+        "type": "number",
+        "default": 30,
+        "docs": {
+          "description": "Rotation around the vertical axis, in degrees."
+        }
+      },
+      {
+        "name": "pitch",
+        "attribute": "pitch",
+        "type": "number",
+        "default": 15,
+        "docs": {
+          "description": "Tilt toward the viewer, in degrees."
+        }
+      },
+      {
+        "name": "zoom",
+        "attribute": "zoom",
+        "type": "number",
+        "default": 1,
+        "docs": {
+          "description": "Scale factor."
+        }
+      },
+      {
+        "name": "spin",
+        "attribute": "spin",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Auto-rotation speed, in degrees per second."
+        }
+      },
+      {
+        "name": "light",
+        "attribute": "light",
+        "type": "number",
+        "default": 45,
+        "docs": {
+          "description": "Light direction around the model, in degrees."
+        }
+      },
+      {
+        "name": "label",
+        "attribute": "label",
+        "type": "string",
+        "default": "Voxel {model}, yaw {yaw}°, pitch {pitch}°",
+        "docs": {
+          "description": "Accessible name: {model} becomes the model, {yaw} and {pitch} the angles in whole degrees."
+        }
+      },
+      {
+        "name": "spinningLabel",
+        "attribute": "spinning-label",
+        "type": "string",
+        "default": "Voxel {model}, spinning",
+        "docs": {
+          "description": "Accessible name while it spins: {model} becomes the model."
+        }
+      }
+    ],
+    "slots": [],
+    "events": [
+      {
+        "name": "sb-orbit",
+        "kind": "custom-event",
+        "description": "After a drag or an arrow-key turn. detail: { yaw, pitch } (effective angles)."
+      }
+    ]
+  }
+]
