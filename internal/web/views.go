@@ -265,6 +265,7 @@ func (s *Server) buildInstall(rc *renderCtx, c *catalog.Component) (v ui.Install
 	}
 	v.SelfHost = snippet(importMap("/js/datastar-rocket.js") + own.String() + "\n" + usage)
 	v.SelfHostModules = snippet(importMap("/js/datastar-rocket.js") + ownModules.String() + "\n" + usage)
+	v.Templ = s.templInstall(c)
 	return v, complete, nil
 }
 

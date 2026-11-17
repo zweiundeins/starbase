@@ -39,6 +39,7 @@ var InstallTabs = []struct{ Key, Label string }{
 	{"component", "This component"},
 	{"pinned", "Pinned"},
 	{"self-host", "Self-host"},
+	{"templ", "templ"},
 }
 
 // ValidInstallTab reports whether key names an installation tab.

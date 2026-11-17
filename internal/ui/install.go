@@ -18,9 +18,13 @@ type Snippet struct {
 }
 
 // NewSnippet highlights raw (HTML) and renders its block.
-func NewSnippet(raw string) Snippet {
+func NewSnippet(raw string) Snippet { return NewSnippetIn(raw, "html") }
+
+// NewSnippetIn highlights raw as lang (a Chroma lexer: "html", "templ",
+// "sh") and renders its block.
+func NewSnippetIn(raw, lang string) Snippet {
 	var b strings.Builder
-	_ = snippetBlock(raw, catalog.Highlight(raw, "html")).Render(context.Background(), &b) // a strings.Builder doesn't fail
+	_ = snippetBlock(raw, catalog.Highlight(raw, lang)).Render(context.Background(), &b) // a strings.Builder doesn't fail
 	return Snippet{Raw: raw, Block: b.String()}
 }
 
@@ -40,6 +44,16 @@ type InstallView struct {
 	Files            []SelfHostGroup
 	Datastar         string // where to get datastar-rocket.js
 	Patches          string // the fixes in that build (patches/rocket on GitHub)
+	Templ            TemplInstall
+}
+
+// TemplInstall is the templ tab: the typed wrappers of
+// github.com/zweiundeins/starbase/templ, generated from the manifests.
+type TemplInstall struct {
+	Get     Snippet // go get
+	Imports Snippet // @sb.Imports(…) for <head>
+	Usage   Snippet // the usage markup as wrapper calls; Raw is empty when it can't be written as templ
+	Module  string  // the module's README on GitHub
 }
 
 // SelfHostGroup is one component's files to copy (the component, then each

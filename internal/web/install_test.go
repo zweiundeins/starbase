@@ -57,8 +57,8 @@ func TestInstallSnippets(t *testing.T) {
 	slider, _ := cat.Get("slider")
 	_, page := get(t, c, ts.URL+"/components/slider")
 	p := installPanels(t, page)
-	if len(p) != 4 {
-		t.Fatalf("want 4 panels with a copy button, got %v", len(p))
+	if len(p) != 5 {
+		t.Fatalf("want 5 panels with a copy button, got %v", len(p))
 	}
 	// The snippets end with the usage, not the gallery card's preview.
 	usage := strings.TrimSpace(slider.Usage)
@@ -66,6 +66,9 @@ func TestInstallSnippets(t *testing.T) {
 		t.Fatalf("the slider needs a usage: that differs from its preview for this test, got %q", usage)
 	}
 	for slot, snips := range p {
+		if slot == "templ" {
+			continue // Go, below
+		}
 		for _, snip := range snips {
 			if strings.Contains(snip, "<!--") {
 				t.Errorf("%s: snippets carry no comments:\n%s", slot, snip)
@@ -75,8 +78,18 @@ func TestInstallSnippets(t *testing.T) {
 			}
 		}
 	}
-	if n := []int{len(p["autoloader"]), len(p["this-component"]), len(p["pinned"]), len(p["self-host"])}; !slices.Equal(n, []int{1, 2, 1, 2}) {
+	if n := []int{len(p["autoloader"]), len(p["this-component"]), len(p["pinned"]), len(p["self-host"]), len(p["templ"])}; !slices.Equal(n, []int{1, 2, 1, 2, 3}) {
 		t.Fatalf("snippets per panel: %v", n)
+	}
+
+	// templ: go get, sb.Imports at this server, the usage as a wrapper call.
+	want := []string{
+		"go get github.com/zweiundeins/starbase/templ@latest",
+		`@sb.Imports(sb.ImportsProps{Base: "` + ts.URL + `", Components: []sb.Tag{sb.TagSlider}})`,
+		"@sb.Slider(sb.SliderProps{Label: \"Volume\", Value: sb.Num(60), Unit: \"%\"})",
+	}
+	if !slices.Equal(p["templ"], want) {
+		t.Errorf("templ panel:\n%q\nwant\n%q", p["templ"], want)
 	}
 
 	// Autoloader: the latest autoloader and the pinned Datastar build.
