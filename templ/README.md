@@ -87,7 +87,7 @@ Every file is pinned with its integrity hash, so the browser refuses one that ch
 </body>
 ```
 
-The first two go in `<head>`, once per page. `Tracked` knows only what the first render holds: on a live page that morphs in components it didn't render, use the autoloader, or name those in `Components`, which `Tracked` loads too. `Base` points any of them at another Starbase server, `Datastar` at your own Datastar build with Rocket.
+The first two go in `<head>`, once per page. `Tracked` knows only what the first render holds: on a live page that morphs in components it didn't render, use the autoloader, or name those in `Components`, which `Tracked` loads too. All three load Datastar with Rocket as well, so a page needs no other script for it. `Base` points any of them at another Starbase server, `Datastar` at your own Datastar build with Rocket, which the components then share.
 
 Every component page on [the site](https://starbase.zweiundeins.gmbh) has a templ tab under Installation with its usage as wrapper calls.
 

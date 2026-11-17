@@ -42,8 +42,8 @@ func TestTemplImportsPinServedFiles(t *testing.T) {
 		tags    []sb.Tag
 		scripts int
 	}{
-		{"every component", all, len(all)},
-		{"the autoloader", nil, 1},
+		{"every component", all, 1 + len(all)}, // Datastar's own script first
+		{"the autoloader", nil, 2},
 	} {
 		var b strings.Builder
 		ctx := templ.WithNonce(context.Background(), "n0nce")

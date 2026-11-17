@@ -20,6 +20,23 @@ var (
 	scriptRe = regexp.MustCompile(`<script(?: nonce="([^"]*)")? type="module" src="([^"]+)" integrity="(sha384-[A-Za-z0-9+/=]{64})"></script>`)
 )
 
+// datastarFirst checks that after the import map comes Datastar's own module
+// script (the map's "datastar", with its integrity) and returns what follows.
+func datastarFirst(t *testing.T, after string, im importMap, nonce string) string {
+	t.Helper()
+	ds := im.Imports["datastar"]
+	want := `<script` + nonce + ` type="module" src="` + ds + `"`
+	if sri := im.Integrity[ds]; sri != "" {
+		want += ` integrity="` + sri + `"`
+	}
+	want += `></script>`
+	if !strings.HasPrefix(after, want) {
+		t.Errorf("Datastar's module script doesn't follow the map: want %q, got %.160q", want, after)
+		return after
+	}
+	return after[len(want):]
+}
+
 func imports(t *testing.T, ctx context.Context, p ImportsProps) (importMap, [][]string) {
 	t.Helper()
 	var b strings.Builder
@@ -35,8 +52,13 @@ func imports(t *testing.T, ctx context.Context, p ImportsProps) (importMap, [][]
 	if err := json.Unmarshal([]byte(m[2]), &im); err != nil {
 		t.Fatal(err)
 	}
-	scripts := scriptRe.FindAllStringSubmatch(out, -1)
-	if rest := scriptRe.ReplaceAllString(mapRe.ReplaceAllString(out, ""), ""); rest != "" {
+	nonce := ""
+	if m[1] != "" {
+		nonce = ` nonce="` + m[1] + `"`
+	}
+	after := datastarFirst(t, out[strings.Index(out, m[0])+len(m[0]):], im, nonce)
+	scripts := scriptRe.FindAllStringSubmatch(after, -1)
+	if rest := scriptRe.ReplaceAllString(after, ""); rest != "" {
 		t.Errorf("more than the map and module scripts: %q", rest)
 	}
 	return im, scripts
@@ -90,6 +112,13 @@ func TestImportsOwnDatastar(t *testing.T) {
 	im, _ := imports(t, context.Background(), ImportsProps{Components: []Tag{TagToggle}, Datastar: "/js/datastar.js"})
 	if im.Imports["datastar"] != "/js/datastar.js" || len(im.Integrity) != 0 {
 		t.Errorf("%+v", im)
+	}
+	var b strings.Builder
+	if err := Imports(ImportsProps{Components: []Tag{TagToggle}, Datastar: "/js/datastar.js"}).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), `<script type="module" src="/js/datastar.js"></script>`) {
+		t.Errorf("own Datastar without integrity: %s", b.String())
 	}
 	im, _ = imports(t, context.Background(), ImportsProps{Components: []Tag{TagToggle}, Datastar: "/js/datastar.js", DatastarIntegrity: "sha384-x"})
 	if im.Integrity["/js/datastar.js"] != "sha384-x" {

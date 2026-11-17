@@ -43,8 +43,13 @@ func tracked(t *testing.T, ctx context.Context, p ImportsProps, body templ.Compo
 	if err := json.Unmarshal([]byte(m[2]), &im); err != nil {
 		t.Fatal(err)
 	}
-	scripts := scriptRe.FindAllStringSubmatch(out[i+len(m[0]):], -1)
-	if rest := scriptRe.ReplaceAllString(out[i+len(m[0]):], ""); rest != "" {
+	nonce := ""
+	if m[1] != "" {
+		nonce = ` nonce="` + m[1] + `"`
+	}
+	after := datastarFirst(t, out[i+len(m[0]):], im, nonce)
+	scripts := scriptRe.FindAllStringSubmatch(after, -1)
+	if rest := scriptRe.ReplaceAllString(after, ""); rest != "" {
 		t.Errorf("after the map, more than module scripts: %q", rest)
 	}
 	for _, s := range scripts {

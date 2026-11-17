@@ -39,8 +39,10 @@ type ImportsProps struct {
 
 // Imports renders the import map and module scripts that load the
 // components, each pinned with its Subresource Integrity hash, so the
-// browser refuses a file that changed. Put it in <head>, once per page. The
-// scripts get the CSP nonce of templ.WithNonce.
+// browser refuses a file that changed. Datastar gets a module script of its
+// own, so a page with Datastar attributes and no component still loads it.
+// Put it in <head>, once per page. The scripts get the CSP nonce of
+// templ.WithNonce.
 //
 //	@sb.Imports(sb.ImportsProps{Components: []sb.Tag{sb.TagToggle, sb.TagModal}})
 func Imports(p ImportsProps) templ.Component {
@@ -64,7 +66,9 @@ func writeImports(ctx context.Context, w io.Writer, p ImportsProps, tags []Tag, 
 	if dsSRI != "" {
 		integrity[ds] = dsSRI
 	}
-	var scripts []string
+	// Datastar itself, so a page without components still gets it; the
+	// components' own imports of it reuse this module.
+	scripts := []string{script(ds, dsSRI)}
 	if autoload {
 		for _, t := range pinOrder {
 			pin := pins[t]
@@ -122,7 +126,10 @@ func writeImports(ctx context.Context, w io.Writer, p ImportsProps, tags []Tag, 
 }
 
 func script(src, integrity string) string {
-	return `<script type="module" src="` + templ.EscapeString(src) + `" integrity="` + integrity + `"></script>`
+	if integrity == "" {
+		return `<script type="module" src="` + templ.EscapeString(src) + `"></script>`
+	}
+	return `<script type="module" src="` + templ.EscapeString(src) + `" integrity="` + templ.EscapeString(integrity) + `"></script>`
 }
 
 // pin is a component's one-file bundle at the version the wrappers were

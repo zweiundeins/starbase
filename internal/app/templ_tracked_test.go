@@ -100,12 +100,13 @@ await fetch('/__probe/result', { method: 'POST', body: out })`
 	if !slices.Equal(got.Defined, want) {
 		t.Errorf("defined %v, want %v", got.Defined, want)
 	}
-	// The probe's own script has no src; every component's has its pin.
-	if len(got.Scripts) != len(want) {
+	// The probe's own script has no src; Datastar's comes first, then every component's, each with its pin.
+	if len(got.Scripts) != 1+len(want) || !strings.Contains(got.Scripts[0].Src, "/c/datastar@") {
 		t.Errorf("module scripts: %+v", got.Scripts)
 	}
-	for _, s := range got.Scripts {
-		if !strings.HasPrefix(s.Integrity, "sha384-") || s.Nonce != "n0nce" {
+	for i, s := range got.Scripts {
+		// On the official build the test serves other bytes at Datastar's pinned path, so it drops that pin.
+		if (!strings.HasPrefix(s.Integrity, "sha384-") && !(official && i == 0)) || s.Nonce != "n0nce" {
 			t.Errorf("script %+v", s)
 		}
 	}
