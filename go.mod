@@ -15,6 +15,7 @@ require (
 	github.com/yuin/goldmark v1.8.7
 	github.com/zweiundeins/lith v0.5.8
 	github.com/zweiundeins/lith/prom v0.5.8
+	github.com/zweiundeins/starbase/templ v0.0.0-00010101000000-000000000000
 	go.abhg.dev/goldmark/frontmatter v0.3.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sys v0.50.0
@@ -182,3 +183,5 @@ tool (
 	github.com/air-verse/air
 	github.com/go-task/task/v3/cmd/task
 )
+
+replace github.com/zweiundeins/starbase/templ => ./templ

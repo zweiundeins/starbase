@@ -41,6 +41,7 @@ tasks:
     cmds:
       - go vet ./...
       - go test ./...
+      - cd templ && go vet ./... && go test ./...
 
   vulncheck:
     desc: Scan for known vulnerabilities (govulncheck)
@@ -51,6 +52,11 @@ tasks:
     desc: Regenerate every components/*/manifest.json (needs Chrome/Chromium)
     cmds:
       - go run -tags dev ./cmd/manifests
+
+  templ-wrappers:
+    desc: "Regenerate the typed templ wrappers (templ/sb) from the components' manifests; -- --check fails if stale"
+    cmds:
+      - go run -tags templgen ./cmd/templgen {{.CLI_ARGS}}
 
   listings:
     desc: Rewrite the Go listings in the docs (```go source=path#Name) from their source
