@@ -25,7 +25,7 @@ tasks:
     deps: [generate, typescript]
     vars:
       VERSION:
-        sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+        sh: git describe --tags --match 'v[0-9]*' --always --dirty 2>/dev/null || echo dev
     cmds:
       - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BIN}} ./cmd/starbase
 
