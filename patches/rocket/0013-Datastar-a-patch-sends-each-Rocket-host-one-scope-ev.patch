@@ -1,0 +1,114 @@
+From 81f13e1f32c0a6459bbb5ad467e24ddba9165df9 Mon Sep 17 00:00:00 2001
+From: Michael Bolli <michael@zweiundeins.gmbh>
+Date: Thu, 19 Nov 2026 14:28:59 +0000
+Subject: [PATCH] Datastar: a patch sends each Rocket host one scope event, not
+ one per morphed target
+
+An element patch dispatched datastar-scope-children to the nearest
+[data-scope-children] ancestor of every target it morphed. A Rocket host
+answers each event by rewriting and applying the Datastar attributes of
+all its children, so a frame that patches N elements by id inside one
+component re-scopes that component's whole subtree N times.
+
+onPatchElements now collects those hosts in a Set and dispatches once per
+host after every target of the patch is morphed, still synchronously, so
+the children are scoped before the engine's mutation observer applies
+them. A host reached by morphNode itself keeps its event in place.
+
+A frame patching 370 elements by id in five sb-details, headless
+Chromium: 370 re-scopes and a 716 ms long task at CPU 1x (2.8 s at 4x)
+before, 5 re-scopes and no task over 50 ms at 1x (89 ms at 4x) after.
+---
+ library/src/plugins/watchers/patchElements.ts | 41 +++++++++++++++----
+ 1 file changed, 33 insertions(+), 8 deletions(-)
+
+diff --git a/library/src/plugins/watchers/patchElements.ts b/library/src/plugins/watchers/patchElements.ts
+index a8bdc53..ebf94d0 100644
+--- a/library/src/plugins/watchers/patchElements.ts
++++ b/library/src/plugins/watchers/patchElements.ts
+@@ -94,7 +94,22 @@ watcher({
+   },
+ })
+ 
+-const onPatchElements = (
++// A Rocket host re-scopes and re-applies all of its children on every scope event,
++// so one patch sends each host a single event, after all its targets are morphed.
++const onPatchElements = (ctx: WatcherContext, args: PatchElementsArgs) => {
++  const scopeHosts = new Set<Element>()
++  try {
++    patchElements(ctx, args, scopeHosts)
++  } finally {
++    for (const host of scopeHosts) {
++      host.dispatchEvent(
++        new CustomEvent(DATASTAR_SCOPE_CHILDREN_EVENT, { bubbles: false }),
++      )
++    }
++  }
++}
++
++const patchElements = (
+   { error }: WatcherContext,
+   {
+     selector_: selector,
+@@ -102,6 +117,7 @@ const onPatchElements = (
+     namespace_: namespace,
+     elements_: elements,
+   }: PatchElementsArgs,
++  scopeHosts: Set<Element>,
+ ) => {
+   let newContent = DOCUMENT.createDocumentFragment()
+   let consume = typeof elements !== 'string' && !!elements
+@@ -178,7 +194,13 @@ const onPatchElements = (
+       }
+ 
+       // Consume the new content so we don’t deep clone.
+-      applyToTargets(mode as PatchElementsMode, child, [target], true)
++      applyToTargets(
++        mode as PatchElementsMode,
++        child,
++        [target],
++        true,
++        scopeHosts,
++      )
+     }
+   } else {
+     const targets = DOCUMENT.querySelectorAll(selector)
+@@ -194,7 +216,13 @@ const onPatchElements = (
+       consume = true
+     }
+ 
+-    applyToTargets(mode as PatchElementsMode, newContent, targetList, consume)
++    applyToTargets(
++      mode as PatchElementsMode,
++      newContent,
++      targetList,
++      consume,
++      scopeHosts,
++    )
+   }
+ }
+ 
+@@ -245,6 +273,7 @@ const applyToTargets = (
+   element: DocumentFragment | Element,
+   targets: Iterable<Element>,
+   consume: boolean,
++  scopeHosts: Set<Element>,
+ ) => {
+   switch (mode) {
+     case 'remove':
+@@ -267,11 +296,7 @@ const applyToTargets = (
+           execute(target)
+           const scopeHost = target.closest('[data-scope-children]')
+           if (scopeHost) {
+-            scopeHost.dispatchEvent(
+-              new CustomEvent(DATASTAR_SCOPE_CHILDREN_EVENT, {
+-                bubbles: false,
+-              }),
+-            )
++            scopeHosts.add(scopeHost)
+           }
+           used = true
+         }
+-- 
+2.47.3
+

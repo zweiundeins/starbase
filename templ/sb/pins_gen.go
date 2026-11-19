@@ -6,9 +6,9 @@ package sb
 
 const (
 	release           = "0.11.1"
-	datastarPath      = "/c/datastar@dad2261a81d8/datastar-rocket.js"
-	datastarIntegrity = "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK"
-	snapshot          = "aef6091d8dbc"
+	datastarPath      = "/c/datastar@5f98646d7d3d/datastar-rocket.js"
+	datastarIntegrity = "sha384-AfXVdZ/qxhMEHK4Nz/pJT6jl9xm3HGMBLBtC9yRuU5A7AQtXHYC0x6ap034vDqBV"
+	snapshot          = "81f24b268adb"
 	snapshotIntegrity = "sha384-bWIhsIq9SpNUiIZyG/lv190MgHA05m8BVYA3LyIoE/pgOF3NUt0437e++4Ht1NcS"
 )
 
