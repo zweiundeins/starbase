@@ -242,6 +242,13 @@ The Showcase uses Go with the [Datastar SDK](https://data-star.dev/reference/sdk
 
 **No optimistic updates.** Never show a result the server hasn't produced: counts, lists, derived values and success messages come only from its render. The user's own input stays as they left it, marked pending (`:state(pending)`, or a faded item for operations) until the server confirms it, and goes back with `revert()` when the server refuses it (the op's ack) or the command never reaches it. This is the [Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar#optimistic-updates) applied to components.
 
+### When `rev` is enough
+
+`rev` works where the server renders the outcome into the element's own frame: one tab's view, re-rendered for the tab that sent the command. Two cases need `revert()` instead, called from the op's outcome or from a page signal:
+
+- **A view rendered once for every tab.** A shared list of rows, each with its own control, is one frame for all its viewers. A refusal is recorded for the tab that sent it, so it reaches only that tab's own state, and the shared view's `rev` doesn't move. Bumping it would be worse: every viewer's control takes the server's value again, and the picks other tabs have pending go back.
+- **An outcome no command records.** A rate limit, a failed request or a page that is offline never reaches the state the frame is rendered from, so no frame carries a new `rev`. The request's `error` or `retries-failed` (or the page's own signal for it) calls `revert()`.
+
 ### Lists that hold the keyboard
 
 A component whose rows can be replaced by the server (a tree, a menu, a group of choices) has to defend the focus, or a morph throws the user out of it:
