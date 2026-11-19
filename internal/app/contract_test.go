@@ -266,6 +266,7 @@ const revs = [
 	{ tag: 'sb-date-picker', server: '2026-09-01', local: '2026-09-29', want: '2026-09-01' },
 	{ tag: 'sb-range', server: '{"start":0,"end":100}', local: { start: 10, end: 20 }, want: { start: 0, end: 100 } },
 	{ tag: 'sb-radio-group', attrs: { options: '["a","b"]' }, server: 'a', local: 'b', want: 'a' },
+	{ tag: 'sb-radio-group', name: 'sb-radio-group segmented', attrs: { variant: 'segmented', options: '["a","b"]' }, server: 'a', local: 'b', want: 'a' },
 	{ tag: 'sb-dropdown', attrs: { type: 'radio', items: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, server: 'a', local: 'b', want: 'a' },
 	{ tag: 'sb-data-table', attrs: { selection: 'multiple', columns: '[{"key":"name"}]', rows: '[{"id":"a","name":"A"},{"id":"b","name":"B"}]' }, attr: 'selected', prop: 'selected', server: '["a"]', local: ['b'], want: ['a'] },
 ]

@@ -2857,6 +2857,8 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 		e.json("options", p.Options, p.Options == nil)
 		e.str("label", p.Label)
 		e.enum("orientation", string(p.Orientation), "vertical", "horizontal")
+		e.enum("variant", string(p.Variant), "default", "segmented")
+		e.enum("size", string(p.Size), "sm", "md", "lg")
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
@@ -2894,6 +2896,15 @@ type RadioGroupProps struct {
 	// default "vertical".
 	Orientation RadioGroupOrientation
 
+	// default: radios, stacked or in a row (see orientation). segmented: a row
+	// of pills, sized like sb-button, that wraps when it runs out of room
+	// (descriptions are not shown). Attribute variant; default "default".
+	Variant RadioGroupVariant
+
+	// Segmented: the pills' height and padding, as sb-button's sizes.
+	// Attribute size; default "md".
+	Size RadioGroupSize
+
 	// Disable the whole group. Attribute disabled, by presence.
 	Disabled bool
 
@@ -2927,6 +2938,28 @@ type RadioGroupOrientation string
 const (
 	RadioGroupOrientationVertical   RadioGroupOrientation = "vertical"
 	RadioGroupOrientationHorizontal RadioGroupOrientation = "horizontal"
+)
+
+// RadioGroupVariant is a value of RadioGroupProps.Variant: default: radios,
+// stacked or in a row (see orientation). segmented: a row of pills, sized like
+// sb-button, that wraps when it runs out of room (descriptions are not shown).
+type RadioGroupVariant string
+
+// The values of RadioGroupVariant; the zero value leaves the attribute out ("default").
+const (
+	RadioGroupVariantDefault   RadioGroupVariant = "default"
+	RadioGroupVariantSegmented RadioGroupVariant = "segmented"
+)
+
+// RadioGroupSize is a value of RadioGroupProps.Size: Segmented: the pills'
+// height and padding, as sb-button's sizes.
+type RadioGroupSize string
+
+// The values of RadioGroupSize; the zero value leaves the attribute out ("md").
+const (
+	RadioGroupSizeSm RadioGroupSize = "sm"
+	RadioGroupSizeMd RadioGroupSize = "md"
+	RadioGroupSizeLg RadioGroupSize = "lg"
 )
 
 // Range renders <sb-range>: A two-thumb pixel slider for a start and an end,

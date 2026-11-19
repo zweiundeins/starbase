@@ -48,6 +48,7 @@ const styles = /* css */ `
 	--_brand-light: var(--sb-brand-light, #B09AFF);
 	--_brand-subtle: var(--sb-brand-subtle, rgb(140 107 255 / 0.14));
 	--_hover: var(--sb-surface-hover, #1A2540);
+	--_on-brand: var(--sb-text-on-brand, #F3F4FA);
 	--_radius: var(--sb-control-radius, 6px);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
@@ -103,8 +104,33 @@ const styles = /* css */ `
 }
 .text { display: grid; gap: 0.1rem; }
 .desc { color: var(--_muted); font-size: 0.75rem; }
+/* Segmented: pills in a row, sized like sb-button, that wrap when the row
+   runs out of room. Filled, not bordered: a border would break at the notch. */
+.seg { --_h: 2.5rem; --_px: 1.125rem; --_fs: 0.875rem; }
+.sm { --_h: 2rem; --_px: 0.75rem; --_fs: 0.8125rem; }
+.lg { --_h: 3rem; --_px: 1.5rem; --_fs: 1rem; }
+.seg .items { flex-direction: row; flex-wrap: wrap; gap: 0.25rem; }
+.seg .item {
+	align-items: center;
+	box-sizing: border-box;
+	block-size: var(--_h);
+	padding: 0 var(--_px);
+	background: var(--_hover);
+	font-size: var(--_fs);
+	font-weight: 600;
+	line-height: 1;
+	white-space: nowrap;
+	border-radius: calc(var(--_h) / 2 * (1 - var(--_notch)));
+}
+.seg .item.hot { background: var(--_border-hover); }
+.seg .item.checked { background: var(--_brand); color: var(--_on-brand); }
+.seg :is(.dot, .desc) { display: none; }
 @media (prefers-reduced-motion: reduce) { .item, .dot { transition: none; } }
-@media (forced-colors: active) { .item.checked .dot::after { forced-color-adjust: none; background: Highlight; } }
+@media (forced-colors: active) {
+	.item.checked .dot::after { forced-color-adjust: none; background: Highlight; }
+	.seg .item { clip-path: none; border: 1px solid ButtonText; }
+	.seg .item.checked { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+}
 `
 
 rocket('sb-radio-group', {
@@ -113,6 +139,8 @@ rocket('sb-radio-group', {
 		options: json.default(() => []).docs({ description: 'Choices from the server: ["A", "B"] or [{value, label, description?, disabled?}]. <sb-radio> children win over it.' }),
 		label: string.trim.docs({ description: 'Visible label, and the accessible name of the group.' }),
 		orientation: oneOf('vertical', 'horizontal').default('vertical').docs({ description: 'Stack the choices or lay them out in a row.' }),
+		variant: oneOf('default', 'segmented').default('default').docs({ description: 'default: radios, stacked or in a row (see orientation). segmented: a row of pills, sized like sb-button, that wraps when it runs out of room (descriptions are not shown).' }),
+		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Segmented: the pills\' height and padding, as sb-button\'s sizes.' }),
 		disabled: bool.docs({ description: 'Disable the whole group.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
@@ -161,10 +189,12 @@ rocket('sb-radio-group', {
 		int.role = 'radiogroup'
 		const take = (p) => {
 			$$.label = p.label
+			$$.seg = p.variant === 'segmented'
+			$$.size = p.size
 			$$.row = p.orientation === 'horizontal'
 			$$.disabled = p.disabled
 			int.ariaLabel = p.label || null
-			int.ariaOrientation = p.orientation
+			int.ariaOrientation = $$.seg ? 'horizontal' : p.orientation
 			int.ariaDisabled = p.disabled
 			states[p.disabled ? 'add' : 'delete']('disabled')
 		}
@@ -346,7 +376,7 @@ rocket('sb-radio-group', {
 		})
 	},
 	render: ({ html }) => html`
-		<div class="group" part="base">
+		<div class="group" part="base" data-class:seg="$$seg" data-class:sm="$$seg && $$size === 'sm'" data-class:lg="$$seg && $$size === 'lg'">
 			<span class="label" part="label" aria-hidden="true" data-show="$$label" data-text="$$label"></span>
 			<div class="items" part="items"
 				data-class:row="$$row"
@@ -355,6 +385,7 @@ rocket('sb-radio-group', {
 				     No ids on these repeated elements: the morph would park and move them. -->
 				<template data-for="o in $$items">
 					<div class="item" part="item" role="radio"
+						data-attr:part="o?.value === $$value ? 'item checked' : 'item'"
 						data-attr:data-value="o?.value"
 						data-attr:aria-checked="String(o?.value === $$value)"
 						data-attr:aria-disabled="o?.disabled || $$disabled ? 'true' : null"

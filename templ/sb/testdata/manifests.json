@@ -3274,6 +3274,33 @@
         }
       },
       {
+        "name": "variant",
+        "attribute": "variant",
+        "type": "oneOf",
+        "default": "default",
+        "values": [
+          "default",
+          "segmented"
+        ],
+        "docs": {
+          "description": "default: radios, stacked or in a row (see orientation). segmented: a row of pills, sized like sb-button, that wraps when it runs out of room (descriptions are not shown)."
+        }
+      },
+      {
+        "name": "size",
+        "attribute": "size",
+        "type": "oneOf",
+        "default": "md",
+        "values": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "docs": {
+          "description": "Segmented: the pills' height and padding, as sb-button's sizes."
+        }
+      },
+      {
         "name": "disabled",
         "attribute": "disabled",
         "type": "boolean",

@@ -8,8 +8,8 @@ const (
 	release           = "0.10.0"
 	datastarPath      = "/c/datastar@dad2261a81d8/datastar-rocket.js"
 	datastarIntegrity = "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK"
-	snapshot          = "30d20fccbad5"
-	snapshotIntegrity = "sha384-o0WFHE3BexVcwQeKyL/yJ91f13T8mKBu+MgHrC2Xi4CbEvn54bKtNtngLi/NBSDO"
+	snapshot          = "d463989ddd13"
+	snapshotIntegrity = "sha384-OyaXPNNGurZ3jB6YnMIzopesJjyt2i2CLsG+8Lhy2+EavZ0a4fBikBPivJev88zq"
 )
 
 var pinOrder = []Tag{TagAlert, TagAutoloader, TagBentoWorkspace, TagBusy, TagButton, TagCard, TagCheckbox, TagCheckboxGroup, TagCodeEditor, TagCodePlayground, TagContextMenu, TagCopyButton, TagCountUp, TagDataTable, TagDatePicker, TagDetails, TagDragGroup, TagDrawer, TagDropdown, TagECharts, TagGauge, TagImageCompare, TagInlineEdit, TagInput, TagKanbanBoard, TagMeter, TagModal, TagNebula, TagOdometer, TagPixelBoard, TagPopover, TagQRCode, TagRadioGroup, TagRange, TagRating, TagRelativeTime, TagSelect, TagSlider, TagSortableList, TagSortableTree, TagSparkline, TagStarfield, TagTabs, TagThemeSwitch, TagToast, TagTableOfContents, TagToggle, TagTooltip, TagTree, TagTypewriter, TagVirtualScroll, TagVoxel}
@@ -152,8 +152,8 @@ var pins = map[Tag]pin{
 		integrity: "sha384-qTB05A8ftO+IvBqlaPODGBFZa7OZQTQhv0kAy1ndxzeaVFLX6dRXYJT3ztCmfPXW",
 	},
 	TagRadioGroup: {
-		bundle:    "radio-group@5f02b9ee0fcb/radio-group.bundle.min.js",
-		integrity: "sha384-RJuGZPedeW0vXmE0GM+btTwXFUeuy5b/oGH5qqn273UVaKuBxnL3VxLUCAIKV4IB",
+		bundle:    "radio-group@131c8059ed2d/radio-group.bundle.min.js",
+		integrity: "sha384-U4Z8d1wLoThCfmgEXRajKkXB4UHlLmkxuCvp25Q/FV+GTS953jbquMKhYG4u/I3h",
 	},
 	TagRange: {
 		bundle:    "range@15f6fdaa9bbb/range.bundle.min.js",

@@ -52,6 +52,24 @@ One choice out of a handful, the form primitive a `<select>` is too small for. W
 </div>
 ```
 
+### Segmented
+
+`variant="segmented"` lays the choices out as a row of pills, sized like `sb-button` (`size`: `sm`, `md`, `lg`), with the chosen one filled. It is the same radio group: one value, the same keys, form data and command contract. When the row runs out of room, the pills wrap onto the next line, so every choice stays visible; descriptions are not shown.
+
+```html preview
+<div lang="de" style="display: grid; gap: 24px">
+  <sb-radio-group label="E-Mail bei neuen Beiträgen" variant="segmented" value="daily">
+    <sb-radio value="now">Sofort</sb-radio>
+    <sb-radio value="daily">Täglich</sb-radio>
+    <sb-radio value="never">Nie</sb-radio>
+  </sb-radio-group>
+  <sb-radio-group label="Anonym teilnehmen?" variant="segmented" size="sm" value="no">
+    <sb-radio value="yes">Ja</sb-radio>
+    <sb-radio value="no">Nein</sb-radio>
+  </sb-radio-group>
+</div>
+```
+
 ### Choices from the server
 
 `options` takes the same shape as `sb-select`: strings, or `{value, label, description?, disabled?}`. It is server data, so it only flows in. Children win over it when both are there.
@@ -106,7 +124,7 @@ Inside a `<form>`, `sb-radio-group` submits the checked choice under its `name` 
 
 ## Styling
 
-Parts: `base`, `label`, `items`, `item`, `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
+Parts: `base`, `label`, `items`, `item` (each choice, a pill when segmented), `checked` (the chosen item, as well: `::part(item checked)`), `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint; a segmented pill is `--sb-surface-hover`, `--sb-control-border-hover` under the pointer, and the chosen one `--sb-brand` with `--sb-text-on-brand` text), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead: pixel corners on the pills, fully round ends at `--sb-notch: 0`. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
 
 ```html preview
 <sb-radio-group label="Hull paint" value="rust" style="--sb-brand: #F5C451; --sb-brand-light: #FFE08A; --sb-brand-subtle: rgb(245 196 81 / 0.16)">
@@ -121,4 +139,6 @@ The element itself is the `radiogroup`, with `aria-orientation` (and `aria-disab
 
 Only one item is in the tab order: the checked one, or the first enabled one when nothing is checked. Disabled items don't take the focus, not even from a click. Arrow keys move **and** select, as native radios do, wrapping around and skipping disabled items. Left and Right follow the reading direction (in right-to-left text, Left moves on), and arrows with Alt, Ctrl or Meta are left to the browser (Alt+Left goes back). Home and End jump to the first and last enabled choice; Space (and Enter) selects the focused one. The focus survives a re-render: the items are driven by signals, and when the focused choice is dropped or disabled, its neighbour takes the focus. Once the focus has left the group, a click on the page's text included, the group doesn't take it back.
 
-In forced colours (Windows High Contrast), the checked dot is filled with the system's `Highlight` colour.
+The segmented variant is the same group, laid out in a row: `aria-orientation` is `horizontal` there, whatever `orientation` says.
+
+In forced colours (Windows High Contrast), the checked dot is filled with the system's `Highlight` colour; segmented pills get a `ButtonText` border, and the chosen one is filled with `Highlight`.
