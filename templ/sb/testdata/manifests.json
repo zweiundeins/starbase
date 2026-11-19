@@ -3950,6 +3950,15 @@
         }
       },
       {
+        "name": "closeOnPick",
+        "attribute": "close-on-pick",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "Multiple: close the list after each pick (a click or Enter). Without it the list stays open for the next pick; a single select always closes."
+        }
+      },
+      {
         "name": "actions",
         "attribute": "actions",
         "type": "boolean",

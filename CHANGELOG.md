@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+#### Components
+
+- **`sb-select`:** `close-on-pick` closes the list of a multiple select after each pick, by a click or Enter, so it no longer stays open over the controls around it (it can flip above the field). Without it the list stays open for the next pick, as before; a single select always closes. In the templ wrappers it is `CloseOnPick bool`.
+- **`sb-select`:** a chip's remove button is `::part(chip-remove)`.
+- **`sb-radio-group`:** `--sb-segment-hover` sets a segmented pill's fill under the pointer.
+- **`sb-radio-group`:** its README has a Text and language section (`label` is its only text), and says that `<sb-radio>` children are markup the group reads, never defined, so a check for undefined elements leaves them out (`:not(:defined):not(sb-radio)`).
+
+#### Site and server
+
+- **Docs: when `rev` is enough.** contribute.md, CLAUDE.md and every README with `rev` say that it only helps where the server renders the outcome into the element's own frame. A view rendered once for every tab (a refusal reaches only the refusing tab) and an outcome no command records (a rate limit, a failed request, being offline) need `revert()`.
+
+### Fixed
+
+#### Components
+
+- **`sb-select`:** a chip's remove button answers clicks over 24 × 24 px, WCAG 2.2's minimum target, instead of about 18 px; the glyph and the chip keep their size.
+- **`sb-radio-group`:** a hovered segmented pill no longer takes `--sb-control-border-hover`, which made its text unreadable in a theme that maps that token to its ink colour. The fill moves 12% toward the text colour instead, which looks as before in Starbase's themes.
+- **Pixel corners at `--sb-notch: 0`:** sb-alert, sb-busy, sb-checkbox, sb-checkbox-group, sb-data-table, sb-date-picker, sb-details, sb-dropdown, sb-image-compare, sb-popover, sb-radio-group, sb-range, sb-slider, sb-toast and sb-toggle no longer clip their frames at `--sb-notch: 0` (and so under `data-sb-style="smooth"`), so a page's `box-shadow` or outline on a part shows (sb-radio-group's chosen pill, sb-dropdown's trigger and menu). A container style query on `--sb-notch` does it, in CSS alone (Chrome 111, Safari 18, Firefox 151). Arrows and other glyphs keep their shapes. The track of sb-slider, sb-range and sb-busy loses an edge shadow the clip-path always hid.
+
 ## [0.11.0] - 2026-11-19
 
 A refused command reverts its control without a script on the page (`rev` on every value component), a page can mark any control as pending, and `sb-radio-group` gets a segmented look.

@@ -3341,6 +3341,7 @@ func Select(p SelectProps) templ.Component {
 		e.str("summary", p.Summary)
 		e.intPtr("max-chips", p.MaxChips)
 		e.intPtr("total", p.Total)
+		e.bool("close-on-pick", p.CloseOnPick)
 		e.bool("actions", p.Actions)
 		e.str("select-all-label", p.SelectAllLabel)
 		e.str("matches-label", p.MatchesLabel)
@@ -3440,6 +3441,11 @@ type SelectProps struct {
 	// option it has been offered). Attribute total; nil leaves it out (the
 	// default is -1).
 	Total *int
+
+	// Multiple: close the list after each pick (a click or Enter). Without it
+	// the list stays open for the next pick; a single select always closes.
+	// Attribute close-on-pick, by presence.
+	CloseOnPick bool
 
 	// Multiple: "Select all" (while a search filters: "Select the N matches")
 	// and "Clear" rows at the top of the list. Attribute actions, by presence.
