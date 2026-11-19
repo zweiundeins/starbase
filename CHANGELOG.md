@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+#### Components
+
+- **Rocket components around morphed content re-scope once per frame instead of once per patched element.** Datastar's element patch sent `datastar-scope-children` to the nearest component around every element it morphed, and the component rewrote and applied the Datastar attributes of all its children each time. A frame patching 370 elements by id inside five `sb-details` took a 716 ms long task in headless Chromium (2.8 s at CPU 4x); with `patches/rocket/0013` it re-scopes each component once, with no task over 50 ms (89 ms at 4x). Pages and pinned install snippets load the new build (`/c/datastar@5f98646d7d3d/`); on the official release the components work as before, only slower on such frames.
+
 ## [0.11.1] - 2026-11-19
 
 Fixes from the first apps on v0.11: a 24 px remove target on sb-select's chips, readable segmented hovers in any theme, and no clipped shadows at `--sb-notch: 0`. A multiple select can close after each pick, and the docs say when `rev` is enough.

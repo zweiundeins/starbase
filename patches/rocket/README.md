@@ -5,8 +5,11 @@ Applied to the Datastar v1.0.5 tag by `go tool task vendor` (`scripts/vendor-roc
 | Patch | Upstream issue |
 |---|---|
 | 0002 observers hear an attribute write whose value decodes the same | [#1223](https://github.com/starfederation/datastar/issues/1223) |
+| 0013 a patch sends each Rocket host one scope event | not filed yet (upstream candidate) |
 
 Upstream closed the issue with a different answer, so the fix will not be released: it keeps notifying only when the decoded value changes. 0002 makes an attribute write whose text changed reach `observeProps`, so `value=""` written onto an element rendered without `value` is heard. The components don't depend on it: each watches its value attribute itself, so they behave the same on the official release.
+
+0013 is an upstream candidate. An element patch dispatched `datastar-scope-children` to the nearest `[data-scope-children]` ancestor of every element it morphed (`patchElements.ts`, `applyToTargets`), and a Rocket host answers each one by rewriting and applying the Datastar attributes of all its children, so a frame that patches N elements by id inside one component re-scopes it N times: 370 elements in five `sb-details` took 716 ms at CPU 1x. 0013 collects the hosts of one patch in a Set and dispatches once per host after all its targets are morphed, still synchronously, so the children are scoped before the mutation observer applies them; the event that `morphNode` sends a host it morphs itself is unchanged. `TestRescopeOncePerFrame` (`internal/app`, Chrome) counts the events per host and checks that the patched children work; on the official build it checks one event per element. The numbering skips 0003 to 0012, which named the v1.0.4 patches in `docs/upstream/`.
 
 0001 (a bool prop reads `"false"` and `"0"` as false and may declare a default, [#1219](https://github.com/starfederation/datastar/issues/1219)) is gone. v1.0.5 reads a bool prop by presence alone, as HTML does, and refuses `bool.default(…)`; the components now read `checked`, `open` and `busy` the same way, and flags that are on by default are `oneOf(true, false)`. Install snippets pinned to an older catalog snapshot keep the build it recorded (`/c/datastar@<hash>/`), 0001 included.
 
