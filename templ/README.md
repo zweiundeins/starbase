@@ -105,7 +105,7 @@ for _, t := range rendered() {     // in order, each once, with the components t
 sb.DatastarBuild()   // the Datastar build the components were made for: Path and Integrity
 sb.Snapshot          // the catalog snapshot the pins come from
 sb.Version()         // this module's version in your build ("v0.10.0"), "" when unknown
-sb.Release           // the newest Starbase release when the wrappers were generated ("0.11.0", the tag without its "v")
+sb.Release           // the newest Starbase release when the wrappers were generated ("0.11.1", the tag without its "v")
 ```
 
 `Collect` composes with `Tracked`: a `Collect` around a `Tracked` sees what it rendered. A vendored copy can compare its lock with `Pin` and `DatastarBuild`, and the Starbase release its lock names with `sb.Release`, so the files and the wrappers come from the same release. `sb.Release` comes from Starbase's changelog and changes only with a release.
