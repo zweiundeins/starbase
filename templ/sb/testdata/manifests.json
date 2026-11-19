@@ -372,6 +372,15 @@
         }
       },
       {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that the command this button sent is on its way, until the server's answer (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy on the host. Unlike loading it blocks nothing."
+        }
+      },
+      {
         "name": "ariaLabel",
         "attribute": "aria-label",
         "type": "string",
@@ -525,6 +534,15 @@
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the checked attribute win (present or not) even when it is unchanged, so a refused edit reverts."
         }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
       }
     ],
     "slots": [],
@@ -619,6 +637,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {
@@ -752,6 +779,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {
@@ -1325,6 +1361,15 @@
         }
       },
       {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -1676,6 +1721,15 @@
         }
       },
       {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -1994,6 +2048,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {
@@ -2469,6 +2532,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       }
     ],
@@ -3229,6 +3301,15 @@
         }
       },
       {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -3383,6 +3464,15 @@
         }
       },
       {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -3534,6 +3624,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {
@@ -3912,6 +4011,15 @@
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
         }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
       }
     ],
     "slots": [],
@@ -4038,6 +4146,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {
@@ -4332,6 +4449,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the selected attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {
@@ -4682,6 +4808,15 @@
         }
       },
       {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -4839,6 +4974,15 @@
         "default": 0,
         "docs": {
           "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts. Not expanded: that is view state."
+        }
+      },
+      {
+        "name": "pending",
+        "attribute": "pending",
+        "type": "boolean",
+        "default": false,
+        "docs": {
+          "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
         }
       },
       {

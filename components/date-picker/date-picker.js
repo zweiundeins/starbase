@@ -294,6 +294,7 @@ rocket('sb-date-picker', {
         disabled: bool.docs({ description: 'Disable the field and the calendar. A form leaves it out.' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
         rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+        pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
         name: string.trim.docs({ description: 'Name reported in sb-change, sb-month and sb-toggle (e.g. the field of a command), and submitted with its form.' }),
     }),
     manifest: {
@@ -391,7 +392,7 @@ rocket('sb-date-picker', {
     onFirstRender: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props, refs }) => {
         const { control, button, cal, days } = refs;
         adoptStyles(host, styles);
-        const states = internalsOf(host).states;
+        const int = internalsOf(host), states = int.states;
         // :state(open) follows the popover: set before it shows, and checked again
         // after a toggle and a prop change (inline drops the popover without events).
         const opened = (o = cal.matches(':popover-open')) => states[o ? 'add' : 'delete']('open');
@@ -771,7 +772,10 @@ rocket('sb-date-picker', {
         focus = clamp(focus);
         [vy, vm] = parts(focus);
         set(v0);
-        const sync = () => peek(() => states[props.confirm && $$.v !== norm(props.value) ? 'add' : 'delete']('pending'));
+        const sync = () => peek(() => {
+            states[props.pending || (props.confirm && $$.v !== norm(props.value)) ? 'add' : 'delete']('pending');
+            int.ariaBusy = props.pending ? 'true' : null;
+        });
         effect(() => $$.v != null && sync());
         // Only what a prop changes is rebuilt, and the grid is painted once.
         observeProps((p, changes) => peek(() => {

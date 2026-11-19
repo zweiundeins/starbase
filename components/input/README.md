@@ -71,6 +71,8 @@ A server that answers with the value it already had (it upper-cased `starbase-1`
 
 [Commands and components](/contribute#commands-and-components) lists the handler and the command behind this call sign, and the [Showcase](/showcase) runs it.
 
+**Pending from the page:** `pending` is the page's word that a command is on its way. While the attribute is there, the component has `:state(pending)` and `aria-busy` (on its ElementInternals, so morphs keep them), whatever `confirm` says: `data-attr:pending="$_saving"`, with a signal the page sets when it sends and the server's answer clears. The two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. In a region the server morphs, a signal-driven `pending` needs `data-preserve-attr="pending"`.
+
 ## Forms
 
 Inside a `<form>`, `sb-input` submits its value under its `name` (`name=…`, also when it is empty), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value and clears the error, without firing `input`, `change` or `sb-change`. A `disabled` field is left out, like a native one.

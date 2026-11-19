@@ -79,6 +79,7 @@ rocket('sb-toggle', {
 		size: oneOf('sm', 'md', 'lg').default('md').docs({ description: 'Size of the switch.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the checked attribute win (present or not) even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
@@ -87,8 +88,8 @@ rocket('sb-toggle', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value, checked } (value is the checked state): ready for a command.' },
 		],
 	},
-	// rev changes no markup.
-	renderOnPropChange: ({ changes }) => !('rev' in changes),
+	// pending and rev change no markup.
+	renderOnPropChange: ({ changes }) => !('pending' in changes || 'rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Kept across moves (Rocket drops $$ on disconnect, setup runs again on
@@ -101,7 +102,11 @@ rocket('sb-toggle', {
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
 		const states = keep.states
-		const sync = () => peek(() => (props.confirm && $$.on !== host.hasAttribute('checked') ? states.add('pending') : states.delete('pending')))
+		const sync = () =>
+			peek(() => {
+				states[props.pending || (props.confirm && $$.on !== host.hasAttribute('checked')) ? 'add' : 'delete']('pending')
+				keep.ariaBusy = props.pending ? 'true' : null
+			})
 		// A change of the checked attribute wins over a local edit: added says on,
 		// removed says off. Re-sending the same markup changes nothing, so edits
 		// survive re-renders, unless rev is new. The same observer hands the

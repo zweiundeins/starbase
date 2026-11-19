@@ -82,6 +82,21 @@ A button with nothing but an icon needs a name for screen readers: `aria-label` 
 
 `data-indicator` sets the signal while that element's request is in flight, and `data-preserve-attr` keeps the attribute through a server morph. For a wait that is not a button (a panel, a table, a whole region), use [`sb-busy`](/components/busy), which also knows `delay`, `min` and progress shapes.
 
+### Until the server answers
+
+`pending` marks a command this button sent that the server hasn't answered yet: `:state(pending)` and `aria-busy` on the host, through its ElementInternals, so a morph doesn't strip them. Unlike `loading` it blocks no clicks and draws nothing: the page styles it, as it styles a value component's pending edit. Drive it from a signal the page sets when it sends and the server's answer clears; in a region the server morphs, keep the attribute with `data-preserve-attr="pending"`.
+
+```html
+<sb-button data-attr:pending="$_saving" data-preserve-attr="pending"
+  data-on:click="$_saving = true; @post('/cmd/save')">Save</sb-button>
+```
+
+```css
+sb-button:state(pending) { opacity: 0.7; }
+```
+
+The server ends it in the frame that answers the command (a signal patch `{_saving: false}`), never on a timer.
+
 ## Forms
 
 `sb-button` is not a submit button: in a `<form>` it neither submits nor resets it, and Enter in a field doesn't press it. Post the form from its click instead: `data-on:click="@post('/save', {contentType: 'form'})"` sends the fields of the form around it, once they pass the browser's validation.

@@ -270,6 +270,16 @@
       "docs": {
         "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
       }
+    },
+    {
+      "name": "pending",
+      "attribute": "pending",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+      }
     }
   ],
   "slots": [],

@@ -116,6 +116,7 @@ rocket('sb-radio-group', {
 		disabled: bool.docs({ description: 'Disable the whole group.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command), and the field it submits in a form.' }),
 	}),
 	manifest: {
@@ -239,7 +240,11 @@ rocket('sb-radio-group', {
 		// Commands: the attribute is the server's value, $$.value the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
-		const sync = () => peek(() => states[props.confirm && $$.value !== str(props.value) ? 'add' : 'delete']('pending'))
+		const sync = () =>
+			peek(() => {
+				states[props.pending || (props.confirm && $$.value !== str(props.value)) ? 'add' : 'delete']('pending')
+				int.ariaBusy = props.pending ? 'true' : null
+			})
 		effect(() => ($$.value, sync()))
 		// peek: attribute changes arrive inside the effect of whoever set them
 		// (e.g. data-attr:options); reading signals here must not subscribe it.

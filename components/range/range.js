@@ -124,6 +124,7 @@ rocket('sb-range', {
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local range differs from the server\'s value attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a <form>.' }),
 	}),
 	manifest: {
@@ -133,8 +134,8 @@ rocket('sb-range', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the range is committed. detail: { name, value: { start, end } }: the whole range, one command.' },
 		],
 	},
-	// rev changes no markup.
-	renderOnPropChange: ({ changes }) => !('rev' in changes),
+	// pending and rev change no markup.
+	renderOnPropChange: ({ changes }) => !('pending' in changes || 'rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Decimals of the step grid (step and min); continuous shows two.
@@ -166,7 +167,7 @@ rocket('sb-range', {
 		overrideProp('value', cur, set)
 		// Commands: the attribute is the server's range, $$ the local one. Both
 		// ends are one value: pending while either differs, revert() restores both.
-		const states = internalsOf(host).states
+		const int = internalsOf(host), states = int.states
 		// Also keeps the shown texts current: props (unit, step) aren't signals.
 		const sync = () =>
 			peek(() => {
@@ -174,7 +175,8 @@ rocket('sb-range', {
 				const nf = numbers(host, places())
 				const fmt = (n) => nf.format(n) + props.unit
 				mine = s.start !== $$.start || s.end !== $$.end
-				states[props.confirm && mine ? 'add' : 'delete']('pending')
+				states[(props.confirm && mine) || props.pending ? 'add' : 'delete']('pending')
+				int.ariaBusy = props.pending ? 'true' : null
 				const a = ($$.startText = fmt($$.start))
 				const b = ($$.endText = fmt($$.end))
 				$$.shown = a === b ? a : `${a} – ${b}`

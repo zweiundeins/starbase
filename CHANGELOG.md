@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows
 #### Components
 
 - **`rev` on every value component:** sb-select, sb-slider, sb-toggle, sb-code-editor, sb-tabs, sb-rating, sb-tree, sb-checkbox, sb-checkbox-group, sb-date-picker, sb-range, sb-radio-group, sb-dropdown's radio group and sb-data-table's `selected` take `rev`, as sb-input did: a number the server bumps with every command it answers for the field, applied or refused. A new `rev` makes the server's value win even when it is unchanged, so a refused edit reverts and leaves `:state(pending)` with no script on the page; the same `rev` again changes nothing. In the templ wrappers it is `Rev *int`. A change of `rev` no longer re-renders sb-input.
+- **`pending` on buttons and value components:** sb-button and every value component (sb-input and the ones above) take `pending`, a boolean by presence: the page's word that a command is on its way, e.g. `data-attr:pending="$_saving"` with a signal the server's answer clears. While present, the host has `:state(pending)` and `aria-busy` (through ElementInternals), styled like `confirm`'s pending, and the two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. It re-renders nothing, so a focused control keeps its focus, and on sb-button it blocks nothing, unlike `loading`.
 
 ## [0.10.0] - 2026-11-17
 

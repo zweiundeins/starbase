@@ -1,5 +1,10 @@
 import { rocket } from 'datastar'
 
+// One ElementInternals per element: attachInternals() works once, and setup
+// runs again when the element is re-attached.
+const internals = new WeakMap()
+const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host)
+
 // :focus-visible, not .btn:focus-visible, which would outrank .pixel's frame.
 // Its transparent outline is what forced colors show, where box-shadows are
 // dropped.
@@ -122,6 +127,7 @@ rocket('sb-button', {
 		caret: bool.docs({ description: 'Show a trailing chevron.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		loading: bool.docs({ description: 'The button\'s action is running: an inline spinner, clicks (mouse, Enter, Space) blocked, aria-busy. Bind it to data-indicator (and add data-preserve-attr="loading").' }),
+		pending: bool.docs({ description: 'The page\'s word that the command this button sent is on its way, until the server\'s answer (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy on the host. Unlike loading it blocks nothing.' }),
 		ariaLabel: string.trim.docs({ description: 'Accessible name, passed on to the inner button or link: set it on icon-only buttons.' }),
 	}),
 	manifest: {
@@ -131,8 +137,14 @@ rocket('sb-button', {
 			{ name: 'suffix', description: 'An icon after the label.' },
 		],
 	},
-	setup: ({ adoptStyles, cleanup, host, props }) => {
+	// pending changes no markup.
+	renderOnPropChange: ({ changes }) => !('pending' in changes),
+	setup: ({ adoptStyles, cleanup, host, observeProps, props }) => {
 		adoptStyles(host, styles)
+		const int = internalsOf(host)
+		const mark = () => (int.states[props.pending ? 'add' : 'delete']('pending'), (int.ariaBusy = props.pending ? 'true' : null))
+		mark()
+		observeProps(mark, 'pending')
 		// While loading the button stays focusable (a disabled button would drop
 		// the focus mid-action) but does nothing: the capture phase runs before
 		// the page's own data-on:click on this same element. Enter and Space

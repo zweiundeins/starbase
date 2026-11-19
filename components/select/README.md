@@ -231,6 +231,8 @@ A new `value` from the server always wins. A removed `value` attribute changes n
 
 The server refuses Lin: it answers 204 and renders `value='["Ada"]'` again with `rev="8"`, and the chip goes.
 
+**Pending from the page:** `pending` is the page's word that a command is on its way. While the attribute is there, the component has `:state(pending)` and `aria-busy` (on its ElementInternals, so morphs keep them), whatever `confirm` says: `data-attr:pending="$_saving"`, with a signal the page sets when it sends and the server's answer clears. The two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. In a region the server morphs, a signal-driven `pending` needs `data-preserve-attr="pending"`.
+
 ## Options
 
 `options` (and `results`, for remote searches) is a JSON array of strings, or of `{value, label?, description?, disabled?}`. The server can change either at any time. A selected value keeps its label even after the options it came from are gone.

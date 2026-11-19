@@ -110,6 +110,7 @@ rocket('sb-input', {
 		submitLabel: string.default('Submit').docs({ description: 'Accessible name of the submit arrow button.' }),
 		disabled: bool.docs({ description: 'Disable the field (and the arrow). A form leaves it out.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 	}),
 	manifest: {
 		events: [
@@ -119,8 +120,8 @@ rocket('sb-input', {
 			{ name: 'sb-submit', kind: 'custom-event', bubbles: true, composed: true, description: 'Enter or arrow button with a valid value. detail: { name, value }.' },
 		],
 	},
-	// rev changes no markup.
-	renderOnPropChange: ({ changes }) => !('rev' in changes),
+	// pending and rev change no markup.
+	renderOnPropChange: ({ changes }) => !('pending' in changes || 'rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		let served = host.getAttribute('value')
@@ -172,8 +173,12 @@ rocket('sb-input', {
 		// Commands: with confirm, :state(pending) marks an edit the server hasn't
 		// confirmed yet; revert() returns to the server's value (e.g. a rejected
 		// command).
-		const states = internalsOf(host).states
-		const sync = () => peek(() => (props.confirm && $$.value !== props.value ? states.add('pending') : states.delete('pending')))
+		const int = internalsOf(host), states = int.states
+		const sync = () =>
+			peek(() => {
+				states[props.pending || (props.confirm && $$.value !== props.value) ? 'add' : 'delete']('pending')
+				int.ariaBusy = props.pending ? 'true' : null
+			})
 		// (Rocket clears the signals on disconnect, which runs this once more
 		// with no value: that is not a state to keep.)
 		effect(() => ($$.value != null && kept.set(host, [$$.value, $$.touched, $$.invalid, $$.message]), sync()))

@@ -158,6 +158,16 @@
       "docs": {
         "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
       }
+    },
+    {
+      "name": "pending",
+      "attribute": "pending",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+      }
     }
   ],
   "slots": [],

@@ -371,6 +371,7 @@ func Button(p ButtonProps) templ.Component {
 		e.bool("caret", p.Caret)
 		e.bool("disabled", p.Disabled)
 		e.bool("loading", p.Loading)
+		e.bool("pending", p.Pending)
 		e.str("aria-label", p.AriaLabel)
 		return e.render(ctx, w)
 	})
@@ -409,6 +410,12 @@ type ButtonProps struct {
 	// Space) blocked, aria-busy. Bind it to data-indicator (and add
 	// data-preserve-attr="loading"). Attribute loading, by presence.
 	Loading bool
+
+	// The page's word that the command this button sent is on its way, until
+	// the server's answer (e.g. data-attr:pending="$_saving"): :state(pending)
+	// and aria-busy on the host. Unlike loading it blocks nothing. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Accessible name, passed on to the inner button or link: set it on
 	// icon-only buttons. Attribute aria-label.
@@ -515,6 +522,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 		e.str("value", p.Value)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		return e.render(ctx, w)
 	})
 }
@@ -565,6 +573,12 @@ type CheckboxProps struct {
 	// unchanged, so a refused edit reverts. Attribute rev; nil leaves it out,
 	// Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 }
 
 // CheckboxGroup renders <sb-checkbox-group>: Several choices with pixel
@@ -594,6 +608,7 @@ func CheckboxGroup(p CheckboxGroupProps) templ.Component {
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -646,6 +661,12 @@ type CheckboxGroupProps struct {
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
 
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
+
 	// Name reported in sb-change (e.g. the field of a command), and the field
 	// each checked choice submits in a form. Attribute name.
 	Name string
@@ -687,6 +708,7 @@ func CodeEditor(p CodeEditorProps) templ.Component {
 		e.str("problem-label", p.ProblemLabel)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		e.json("diagnostics", p.Diagnostics, p.Diagnostics == nil)
 		return e.render(ctx, w)
@@ -750,6 +772,12 @@ type CodeEditorProps struct {
 	// makes the value attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change and submitted with the form it sits in (e.g.
 	// the field of a command). Attribute name.
@@ -1142,6 +1170,7 @@ func DataTable(p DataTableProps) templ.Component {
 		e.str("label", p.Label)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		e.json("hidden-columns", p.HiddenColumns, p.HiddenColumns == nil)
 		e.bool("column-picker", p.ColumnPicker)
@@ -1239,6 +1268,12 @@ type DataTableProps struct {
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
 
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
+
 	// Name reported in sb-change, sb-columns and sb-export (e.g. the field of
 	// a command). Attribute name.
 	Name string
@@ -1334,6 +1369,7 @@ func DatePicker(p DatePickerProps) templ.Component {
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -1474,6 +1510,12 @@ type DatePickerProps struct {
 	// makes the value attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change, sb-month and sb-toggle (e.g. the field of a
 	// command), and submitted with its form. Attribute name.
@@ -1726,6 +1768,7 @@ func Dropdown(p DropdownProps) templ.Component {
 		e.strPtr("value", p.Value)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.bool("open", p.Open)
 		e.bool("disabled", p.Disabled)
 		e.str("name", p.Name)
@@ -1792,6 +1835,12 @@ type DropdownProps struct {
 	// makes the value attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Open when present. The server adding or removing the attribute opens or
 	// closes the menu; re-sent identical markup leaves the local state alone.
@@ -2118,6 +2167,7 @@ func Input(p InputProps) templ.Component {
 		e.str("submit-label", p.SubmitLabel)
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.bool("pending", p.Pending)
 		return e.render(ctx, w)
 	})
 }
@@ -2189,6 +2239,12 @@ type InputProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 }
 
 // InputType is a value of InputProps.Type: Input type.
@@ -2804,6 +2860,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -2851,6 +2908,12 @@ type RadioGroupProps struct {
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
 
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
+
 	// Name reported in sb-change (e.g. the field of a command), and the field
 	// it submits in a form. Attribute name.
 	Name string
@@ -2895,6 +2958,7 @@ func Range(p RangeProps) templ.Component {
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -2963,6 +3027,12 @@ type RangeProps struct {
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
 
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
+
 	// Name reported in sb-change (e.g. the field of a command) and submitted
 	// with a <form>. Attribute name.
 	Name string
@@ -2994,6 +3064,7 @@ func Rating(p RatingProps) templ.Component {
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -3057,6 +3128,12 @@ type RatingProps struct {
 	// makes the value attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change (e.g. the field of a command) and submitted
 	// with a form. Attribute name.
@@ -3241,6 +3318,7 @@ func Select(p SelectProps) templ.Component {
 		e.str("empty-label", p.EmptyLabel)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		return e.render(ctx, w)
 	})
 }
@@ -3377,6 +3455,12 @@ type SelectProps struct {
 	// makes the value attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 }
 
 // Slider renders <sb-slider>: A pixel range control that steers anything
@@ -3406,6 +3490,7 @@ func Slider(p SliderProps) templ.Component {
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -3464,6 +3549,12 @@ type SliderProps struct {
 	// makes the value attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change (e.g. the field of a command) and submitted
 	// with a form. Attribute name.
@@ -3734,6 +3825,7 @@ func Tabs(p TabsProps) templ.Component {
 		e.intPtr("selected", p.Selected)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -3770,6 +3862,12 @@ type TabsProps struct {
 	// makes the selected attribute win even when it is unchanged, so a refused
 	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change (e.g. the field of a command). Attribute
 	// name.
@@ -4034,6 +4132,7 @@ func Toggle(p ToggleProps) templ.Component {
 		e.enum("size", string(p.Size), "sm", "md", "lg")
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -4075,6 +4174,12 @@ type ToggleProps struct {
 	// unchanged, so a refused edit reverts. Attribute rev; nil leaves it out,
 	// Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change (e.g. the field of a command). Attribute
 	// name.
@@ -4169,6 +4274,7 @@ func Tree(p TreeProps) templ.Component {
 		e.str("loading-label", p.LoadingLabel)
 		e.bool("confirm", p.Confirm)
 		e.intPtr("rev", p.Rev)
+		e.bool("pending", p.Pending)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -4233,6 +4339,12 @@ type TreeProps struct {
 	// edit reverts. Not expanded: that is view state. Attribute rev; nil
 	// leaves it out, Int(0) writes 0.
 	Rev *int
+
+	// The page's word that a command is on its way (e.g.
+	// data-attr:pending="$_saving"): :state(pending) and aria-busy while
+	// present. It adds to confirm's pending, never clears it. Attribute
+	// pending, by presence.
+	Pending bool
 
 	// Name reported in sb-change (e.g. the field of a command). Attribute
 	// name.

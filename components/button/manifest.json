@@ -74,6 +74,16 @@
       }
     },
     {
+      "name": "pending",
+      "attribute": "pending",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The page's word that the command this button sent is on its way, until the server's answer (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy on the host. Unlike loading it blocks nothing."
+      }
+    },
+    {
       "name": "ariaLabel",
       "attribute": "aria-label",
       "type": "string",

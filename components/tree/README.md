@@ -280,6 +280,8 @@ Links are followed, not selected: a tree of links marks the page with `aria-curr
 
 **Refusals without page code:** give it `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused selection goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new selection applies once. `expanded` is view state: `rev` leaves it. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
 
+**Pending from the page:** `pending` is the page's word that a command is on its way. While the attribute is there, the component has `:state(pending)` and `aria-busy` (on its ElementInternals, so morphs keep them), whatever `confirm` says: `data-attr:pending="$_saving"`, with a signal the page sets when it sends and the server's answer clears. The two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. In a region the server morphs, a signal-driven `pending` needs `data-preserve-attr="pending"`.
+
 ## Forms
 
 `sb-tree` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).

@@ -67,6 +67,16 @@
       }
     },
     {
+      "name": "pending",
+      "attribute": "pending",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "docs": {
+        "description": "The page's word that a command is on its way (e.g. data-attr:pending=\"$_saving\"): :state(pending) and aria-busy while present. It adds to confirm's pending, never clears it."
+      }
+    },
+    {
       "name": "name",
       "attribute": "name",
       "type": "string",

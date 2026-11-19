@@ -41,6 +41,110 @@ func TestServerWinsContract(t *testing.T) {
 	}
 }
 
+// TestPendingAttribute: the page's pending attribute sets :state(pending)
+// and aria-busy (on the ElementInternals) while present, on sb-button and on
+// every value component, and ORs with confirm's own pending: removing it
+// leaves an unconfirmed edit pending, and revert() leaves the page's word.
+// With STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
+func TestPendingAttribute(t *testing.T) {
+	copyRows(t, probeBundle(t, "/", pendingJS, nil))
+}
+
+const pendingJS = `
+const settle = () => new Promise((r) => setTimeout(r, 60))
+const rows = []
+const check = (step, got, want) => rows.push({ step, got: JSON.stringify(got), want: JSON.stringify(want) })
+const ints = new WeakMap()
+const attach = HTMLElement.prototype.attachInternals
+HTMLElement.prototype.attachInternals = function () {
+	const i = attach.call(this)
+	ints.set(this, i)
+	return i
+}
+const box = document.createElement('div')
+document.body.append(box)
+const said = (el) => [el.matches(':state(pending)'), ints.get(el)?.ariaBusy ?? null]
+const cases = [
+	{ tag: 'sb-button' },
+	{ tag: 'sb-input', server: 'a', local: 'b' },
+	{ tag: 'sb-select', attrs: { options: '["a","b"]' }, server: 'a', local: 'b' },
+	{ tag: 'sb-slider', server: '40', local: 70 },
+	{ tag: 'sb-toggle', attr: 'checked', prop: 'checked', server: '', local: false },
+	{ tag: 'sb-checkbox', attr: 'checked', prop: 'checked', server: '', local: false },
+	{ tag: 'sb-code-editor', server: 'a', local: 'b' },
+	{ tag: 'sb-tabs', attrs: { labels: '["A","B","C"]' }, attr: 'selected', prop: 'selected', server: '0', local: 2 },
+	{ tag: 'sb-rating', server: '2', local: 4 },
+	{ tag: 'sb-tree', attrs: { items: '[{"id":"a","label":"A"},{"id":"b","label":"B"}]' }, server: 'a', local: 'b' },
+	{ tag: 'sb-checkbox-group', attrs: { options: '["a","b"]' }, server: '["a"]', local: ['b'] },
+	{ tag: 'sb-date-picker', server: '2026-09-01', local: '2026-09-29' },
+	{ tag: 'sb-range', server: '{"start":0,"end":100}', local: { start: 10, end: 20 } },
+	{ tag: 'sb-radio-group', attrs: { options: '["a","b"]' }, server: 'a', local: 'b' },
+	{ tag: 'sb-dropdown', attrs: { type: 'radio', items: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, server: 'a', local: 'b' },
+	{ tag: 'sb-data-table', attrs: { selection: 'multiple', columns: '[{"key":"name"}]', rows: '[{"id":"a","name":"A"},{"id":"b","name":"B"}]' }, attr: 'selected', prop: 'selected', server: '["a"]', local: ['b'] },
+]
+for (const c of cases) {
+	let el
+	const step = (s) => c.tag + ': ' + s
+	try {
+		await customElements.whenDefined(c.tag)
+		el = document.createElement(c.tag)
+		for (const [k, v] of Object.entries(c.attrs || {})) el.setAttribute(k, v)
+		if ('server' in c) el.setAttribute(c.attr || 'value', c.server)
+		box.append(el)
+		await settle()
+		check(step('idle'), said(el), [false, null])
+		el.setAttribute('pending', '')
+		await settle()
+		check(step('pending: the state and aria-busy'), said(el), [true, 'true'])
+		el.removeAttribute('pending')
+		await settle()
+		check(step('pending removed: both gone'), said(el), [false, null])
+		if (!('server' in c)) continue
+		el.setAttribute('confirm', '')
+		el[c.prop || 'value'] = c.local
+		await settle()
+		check(step('confirm: an edit is pending, not busy'), said(el), [true, null])
+		el.setAttribute('pending', '')
+		await settle()
+		check(step('confirm and pending'), said(el), [true, 'true'])
+		el.removeAttribute('pending')
+		await settle()
+		check(step('pending removed: the edit is still pending'), said(el), [true, null])
+		el.setAttribute('pending', '')
+		await settle()
+		el.revert()
+		await settle()
+		check(step('revert() ends the edit, not the page\'s pending'), said(el), [true, 'true'])
+		el.removeAttribute('pending')
+		await settle()
+		check(step('then pending removed: idle'), said(el), [false, null])
+	} catch (e) {
+		rows.push({ step: c.tag, error: String(e?.stack || e) })
+	}
+	el?.remove()
+}
+// Driven by a signal, as a page does: data-attr:pending="$_saving".
+try {
+	box.innerHTML = '<div data-signals:_saving="false"><sb-button id="p-btn" data-attr:pending="$_saving">Save</sb-button><sb-toggle id="p-tog" checked data-attr:pending="$_saving"></sb-toggle><button id="p-flip" data-on:click="$_saving = !$_saving"></button></div>'
+	await settle()
+	const btn = document.getElementById('p-btn'), tog = document.getElementById('p-tog'), flip = document.getElementById('p-flip')
+	tog.shadowRoot.querySelector('button').focus()
+	flip.click()
+	await settle()
+	check('data-attr:pending: on', [said(btn), said(tog)], [[true, 'true'], [true, 'true']])
+	flip.click()
+	await settle()
+	check('data-attr:pending: off', [said(btn), said(tog)], [[false, null], [false, null]])
+	tog.shadowRoot.querySelector('button').focus()
+	flip.click()
+	await settle()
+	check('pending re-renders nothing: the switch keeps the focus', tog.shadowRoot.activeElement === tog.shadowRoot.querySelector('button'), true)
+} catch (e) {
+	rows.push({ step: 'data-attr:pending', error: String(e?.stack || e) })
+}
+await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
+`
+
 // TestServerClosesDialogs: a server frame that drops open from an open sb-modal
 // or sb-drawer (modal and not) closes its <dialog> for real: not open, no
 // backdrop over the page, and the focus back on the element that had it

@@ -117,6 +117,7 @@ rocket('sb-slider', {
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a form.' }),
 	}),
 	manifest: {
@@ -126,12 +127,13 @@ rocket('sb-slider', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed. detail: { name, value }: ready for a command.' },
 		],
 	},
-	// rev changes no markup.
-	renderOnPropChange: ({ changes }) => !('rev' in changes),
+	// pending and rev change no markup.
+	renderOnPropChange: ({ changes }) => !('pending' in changes || 'rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const clamp = (v) => (Object.assign(probe, { min: props.min, max: props.max, step: props.step || 'any', value: Number.isFinite(v) ? v : props.min }), +probe.value)
-		const states = internalsOf(host).states
+		const int = internalsOf(host), states = int.states
+		let own = false // confirm's pending, apart from the page's pending attribute
 		// With confirm: the values committed while pending. The server echoes
 		// each one; an echo of an older one, with newer ones still on their
 		// way, must not pull the thumb back. Emptied whenever the local value
@@ -148,7 +150,9 @@ rocket('sb-slider', {
 				const v = ($$.value = clamp($$.value))
 				$$.pct = ((v - props.min) / (props.max - props.min || 1)) * 100 + '%'
 				$$.shown = numbers(host, Math.max(decimals(props.step || 0.01), decimals(props.min))).format(v) + props.unit
-				props.confirm && v !== clamp(props.value) ? states.add('pending') : (states.delete('pending'), (sent = []))
+				;(own = props.confirm && v !== clamp(props.value)) || (sent = [])
+				states[own || props.pending ? 'add' : 'delete']('pending')
+				int.ariaBusy = props.pending ? 'true' : null
 			})
 		// (No value: the element is being disconnected, its signals are gone.)
 		effect(() => $$.value != null && sync())
@@ -198,7 +202,7 @@ rocket('sb-slider', {
 		root.addEventListener('reset', onReset)
 		cleanup(() => (root.removeEventListener('formdata', onData), root.removeEventListener('reset', onReset)))
 		action('commit', () => {
-			states.has('pending') && sent.push($$.value)
+			own && sent.push($$.value)
 			emit('change')
 			emit('sb-change', { name: props.name, value: $$.value })
 		})

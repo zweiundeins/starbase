@@ -155,6 +155,7 @@ rocket('sb-tree', {
         loadingLabel: string.default('Loading').docs({ description: 'Shown after an item while its children load (dots follow it).' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
         rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts. Not expanded: that is view state.' }),
+        pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
         name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
     }),
     manifest: {
@@ -338,9 +339,12 @@ rocket('sb-tree', {
         // (compared as sets: in multiple mode the click order doesn't matter).
         // With confirm, :state(pending) marks an edit the server hasn't confirmed
         // yet; revert() returns to the server's value (e.g. a rejected command).
-        const states = internalsOf(host).states;
+        const int = internalsOf(host), states = int.states;
         const key = (a) => a?.toSorted().join(' ');
-        const sync = () => peek(() => (props.confirm && key($$.selected) !== key(ids(props.value)) ? states.add('pending') : states.delete('pending')));
+        const sync = () => peek(() => {
+            states[props.pending || (props.confirm && key($$.selected) !== key(ids(props.value))) ? 'add' : 'delete']('pending');
+            int.ariaBusy = props.pending ? 'true' : null;
+        });
         effect(() => (JSON.stringify($$.selected), sync()));
         observeProps(sync);
         defineHostProp('revert', { value: () => peek(() => (($$.selected = ids(props.value)), sync())) });

@@ -352,6 +352,7 @@ rocket('sb-data-table', {
 		label: string.trim.default('Table').docs({ description: 'Accessible name.' }),
 		confirm: bool.docs({ description: 'Server-confirmed selection: :state(pending) while the local selection differs from the server\'s selected attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the selected attribute win even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change, sb-columns and sb-export (e.g. the field of a command).' }),
 		hiddenColumns: json.default(() => []).docs({ description: 'View state: the keys of the columns not shown, as a JSON array. A changed list from the server wins; the same list again keeps the user\'s choice. The live list is the hiddenColumns property. At least one column always shows.' }),
 		columnPicker: bool.docs({ description: 'Show a Columns button in the toolbar, with a menu that shows and hides columns (sb-columns).' }),
@@ -620,10 +621,14 @@ rocket('sb-data-table', {
 		cleanup(() => (sized.disconnect(), cancelAnimationFrame(painting), cancelAnimationFrame(measuring)))
 		// With confirm, :state(pending) marks a selection the server hasn't
 		// confirmed yet (compared as sets); revert() returns to the server's.
-		const states = internalsOf(host).states
+		const int = internalsOf(host), states = int.states
 		const same = (a: string[], b: string[]) => a.toSorted().join('\n') === b.toSorted().join('\n')
 		// keys(): the teardown deletes $$.sel, then runs the effect below once more.
-		const sync = () => peek(() => states[props.confirm && !same(keys($$.sel), keys(props.selected)) ? 'add' : 'delete']('pending'))
+		const sync = () =>
+			peek(() => {
+				states[props.pending || (props.confirm && !same(keys($$.sel), keys(props.selected))) ? 'add' : 'delete']('pending')
+				int.ariaBusy = props.pending ? 'true' : null
+			})
 		effect(() => (JSON.stringify($$.sel), sync()))
 		observeProps(sync)
 		defineHostProp('revert', { value: () => peek(() => (($$.sel = keys(props.selected)), sync())) })

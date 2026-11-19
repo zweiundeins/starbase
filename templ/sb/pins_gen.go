@@ -8,8 +8,8 @@ const (
 	release           = "0.10.0"
 	datastarPath      = "/c/datastar@dad2261a81d8/datastar-rocket.js"
 	datastarIntegrity = "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK"
-	snapshot          = "77d0b91ece7b"
-	snapshotIntegrity = "sha384-g5KhQAX3F4uheuSSbPBvY0xOaBEQ67nWr0+C+ErZAzeRWL7bgPCV93pFriC7OGh7"
+	snapshot          = "30d20fccbad5"
+	snapshotIntegrity = "sha384-o0WFHE3BexVcwQeKyL/yJ91f13T8mKBu+MgHrC2Xi4CbEvn54bKtNtngLi/NBSDO"
 )
 
 var pinOrder = []Tag{TagAlert, TagAutoloader, TagBentoWorkspace, TagBusy, TagButton, TagCard, TagCheckbox, TagCheckboxGroup, TagCodeEditor, TagCodePlayground, TagContextMenu, TagCopyButton, TagCountUp, TagDataTable, TagDatePicker, TagDetails, TagDragGroup, TagDrawer, TagDropdown, TagECharts, TagGauge, TagImageCompare, TagInlineEdit, TagInput, TagKanbanBoard, TagMeter, TagModal, TagNebula, TagOdometer, TagPixelBoard, TagPopover, TagQRCode, TagRadioGroup, TagRange, TagRating, TagRelativeTime, TagSelect, TagSlider, TagSortableList, TagSortableTree, TagSparkline, TagStarfield, TagTabs, TagThemeSwitch, TagToast, TagTableOfContents, TagToggle, TagTooltip, TagTree, TagTypewriter, TagVirtualScroll, TagVoxel}
@@ -32,26 +32,26 @@ var pins = map[Tag]pin{
 		integrity: "sha384-G+slUaSBDuw0yUd1IUAn7zyM8MdE4antqWPJfpkSKwvnstZV/w3scfATr1krpWnn",
 	},
 	TagButton: {
-		bundle:    "button@5fb2bb9e1f58/button.bundle.min.js",
-		integrity: "sha384-6BOqboUiWS9ljlcRKAToKfOGzI1He7grpLyM2cNXsuLzLYLb/HlfOTOdUKq0KO6a",
+		bundle:    "button@df46dd09c687/button.bundle.min.js",
+		integrity: "sha384-F1M44qi1zlROssN+kCrKvxuIx/1P/Ss1pK6GWqnosnEINgGiO5hq3hCmOyCr1JU6",
 	},
 	TagCard: {
 		bundle:    "card@4001b1990f82/card.bundle.min.js",
 		integrity: "sha384-1BVH10wXoWTr3cq+59JBwIdRIsxod4OODiE7oBBEdHGu6cWammNdAbI3rKqSQBGK",
 	},
 	TagCheckbox: {
-		bundle:    "checkbox@d1a0919caef9/checkbox.bundle.min.js",
-		integrity: "sha384-PgRZnx7eO1ZhJjF8F+pwWWWEfGBarvPx7Ri7RD/9gHkRLwwb8/3SHMtwXtaNyXzL",
+		bundle:    "checkbox@ce1277c16f81/checkbox.bundle.min.js",
+		integrity: "sha384-j7Zk7GC4ul9DBaXXXn91/DnJDZLmRZVEjJS4fXayGtgo9362hgFdgdeAUeZucfWV",
 	},
 	TagCheckboxGroup: {
-		bundle:    "checkbox-group@4addff592d27/checkbox-group.bundle.min.js",
-		integrity: "sha384-77zn8E7JwaJx/UZCrwwiKYhY4KZuEYnTtMJ1QOiKv1tHQRco/dds3g7kAN67Qfg0",
+		bundle:    "checkbox-group@c78cdbbcb95e/checkbox-group.bundle.min.js",
+		integrity: "sha384-GT30npjwJQyDTYMwbqEiDRK27qrXemvjK3PV0lTSgL6TYl5nglw0TjTCOEovnch0",
 	},
 	TagCodeEditor: {
-		bundle:    "code-editor@e5a6812636f3/code-editor.bundle.min.js",
-		integrity: "sha384-RGLT+CP6/E2J06Se7oOSt7FuRy5t+zud42kjE8Nm3TOzmr65qSQdVrlQoUVWK7JZ",
+		bundle:    "code-editor@1f8a3ccba670/code-editor.bundle.min.js",
+		integrity: "sha384-Mpq9WuvAh2lEGD4Mw0wn9qM4c0+oQo5UyeAB66cVTI3jJlknG3QRh4nMBEMJaEOX",
 		lazy: []pinnedFile{
-			{"code-editor@e5a6812636f3/vendor/prism.min.js", "sha384-xSqMaXnpSKCgsLpqkdEy4no955Jdr0kQs3Q7UtwUFH/kJ81i1oLvGZlH16XmNtFf"},
+			{"code-editor@1f8a3ccba670/vendor/prism.min.js", "sha384-xSqMaXnpSKCgsLpqkdEy4no955Jdr0kQs3Q7UtwUFH/kJ81i1oLvGZlH16XmNtFf"},
 		},
 	},
 	TagCodePlayground: {
@@ -72,13 +72,13 @@ var pins = map[Tag]pin{
 		integrity: "sha384-agtGFGEoFd2B/gZY8j1OGVM4DzjKv3goak49nCEgEdXBCobGtELaUGGiluNhK1VL",
 	},
 	TagDataTable: {
-		bundle:    "data-table@0da25655d12b/data-table.bundle.min.js",
-		integrity: "sha384-ihpBjxKxJKPB6+MYPqCC09Q854WSWtwZ+7l3XKfDkFUIACKQgv/B3P9x9ip/8Dsi",
+		bundle:    "data-table@2a20772078b4/data-table.bundle.min.js",
+		integrity: "sha384-amM/m3je4HsrWl01xjjt0WGFfAIGwgC/U4m2S1gQ7f2B1EB2qLX5eJqWH6kE7R3s",
 		deps:      []Tag{TagVirtualScroll},
 	},
 	TagDatePicker: {
-		bundle:    "date-picker@e575693a0f60/date-picker.bundle.min.js",
-		integrity: "sha384-gPTYsgvqRPK92l6Z5JnOu2IUAl190waA3o7//V+vXz0bvYegmlC7VFHyX8gV3k+S",
+		bundle:    "date-picker@f3aeb6d2d6b8/date-picker.bundle.min.js",
+		integrity: "sha384-cOQqV17nQkcoqLrwSrvBlbnhSX9mfnmwJot4WTWmShuEK6v1EqLinIACZ9PTiOK6",
 	},
 	TagDetails: {
 		bundle:    "details@9965b5d1c198/details.bundle.min.js",
@@ -93,8 +93,8 @@ var pins = map[Tag]pin{
 		integrity: "sha384-YSsUQGaUl5Otf+PhA9Gvkv3/jyRfWKIPleOtQQJxtgtIg3zEui7ag5K8osxGbrw+",
 	},
 	TagDropdown: {
-		bundle:    "dropdown@cbcfa42eaca1/dropdown.bundle.min.js",
-		integrity: "sha384-sqAn825AoZEzkDIZBmTTOf+KLIretT2M+rfAoABJwkfKPUaTBf9GNa7Kmk0PIrVC",
+		bundle:    "dropdown@919545690ab3/dropdown.bundle.min.js",
+		integrity: "sha384-PuDnxa11kPwWDkLQD0x32KoXzipfs7V7lf9mGV/SK2sEc0AOqbs/kiGHc1gONG4x",
 	},
 	TagECharts: {
 		bundle:    "echarts@e03ec27ba062/echarts.bundle.min.js",
@@ -116,8 +116,8 @@ var pins = map[Tag]pin{
 		integrity: "sha384-p1W6k4aGEDPDvMTkMrH13mpudKhcCUc/qRUMmKfT81UPBnMqOvCKIdGB5zfB0ML7",
 	},
 	TagInput: {
-		bundle:    "input@aaf0f5b6107d/input.bundle.min.js",
-		integrity: "sha384-wlo/pwaIZoA4GZ6xwqHvQ9dFeAOrm4XnUfdf6jfnbh//mpVyvyln3YPPaoM0sxJu",
+		bundle:    "input@1d8773e1449e/input.bundle.min.js",
+		integrity: "sha384-H9RJYQyrTf6OSWimY9YPWUiX2ra/0wHiIgRBthUAmhKAwPv9VoAZgrUz+2xt3QfG",
 	},
 	TagKanbanBoard: {
 		bundle:    "kanban-board@1d267a313119/kanban-board.bundle.min.js",
@@ -152,28 +152,28 @@ var pins = map[Tag]pin{
 		integrity: "sha384-qTB05A8ftO+IvBqlaPODGBFZa7OZQTQhv0kAy1ndxzeaVFLX6dRXYJT3ztCmfPXW",
 	},
 	TagRadioGroup: {
-		bundle:    "radio-group@20e3dfd8e515/radio-group.bundle.min.js",
-		integrity: "sha384-2cGP7Ann8EshwS+pVd/8iDxwJaQ91m4sOWf1RwjMA/HI36FCCBI3POSo6bhMFAbr",
+		bundle:    "radio-group@5f02b9ee0fcb/radio-group.bundle.min.js",
+		integrity: "sha384-RJuGZPedeW0vXmE0GM+btTwXFUeuy5b/oGH5qqn273UVaKuBxnL3VxLUCAIKV4IB",
 	},
 	TagRange: {
-		bundle:    "range@ed824f6e1930/range.bundle.min.js",
-		integrity: "sha384-hPVVr1xfDZpjig9XiDWSIDVhoFA1D+GLKdH6g2Gx/Ko0LtsG45a+SJdECeT0kKb8",
+		bundle:    "range@15f6fdaa9bbb/range.bundle.min.js",
+		integrity: "sha384-gHhnUI5p0S6Hoj2jiX+yfh1X1SPL0ReFTXlln6Bfrckij2qwl9TROFtlJ5e1ItTi",
 	},
 	TagRating: {
-		bundle:    "rating@f423c82a3e22/rating.bundle.min.js",
-		integrity: "sha384-xntlpoPI+6lQeykO4JwL81qfYicUTofxfoR97fglcFhJXqi1ocaiRcjjsx+3PgXb",
+		bundle:    "rating@b30b23fe9b16/rating.bundle.min.js",
+		integrity: "sha384-mRwiabEgD4o1iDhiKB/UDdHd7+08+KWPB4lmgUQ/WsC3uzCzAQBh9jshyd9ZrLQY",
 	},
 	TagRelativeTime: {
 		bundle:    "relative-time@e0c98f018de1/relative-time.bundle.min.js",
 		integrity: "sha384-o6FlKcrq8BF2KQHcibsFy5E54PBdAh3rGyz68hZCgcb1zsUT7J1LU/niRrSdlvO7",
 	},
 	TagSelect: {
-		bundle:    "select@f3b2a8e70c89/select.bundle.min.js",
-		integrity: "sha384-IvPDjAzHrOQ1mKtNSoYXz66eCo98SyeVlVSIFkhfcIktBLtELsbtNUTZk72IxiYo",
+		bundle:    "select@c2ce06f9050a/select.bundle.min.js",
+		integrity: "sha384-+MLOhm7hFTmzYsCN9WRcd5kjNAhOIScHiIrz5PFUQaSASOfmz0lhQqtbhN60YKUj",
 	},
 	TagSlider: {
-		bundle:    "slider@9bf88021cd1a/slider.bundle.min.js",
-		integrity: "sha384-RFG81kovQZdUv8fUdSVVfdyVwyd8hKdxkcUr3EhIwwSEH49D3rPo9ygzCV8o3Vks",
+		bundle:    "slider@698fb7d628eb/slider.bundle.min.js",
+		integrity: "sha384-2QksTGKX4sJ5E75R2fKLR+FKsPP878LyRdNMxJmBBBue8AQzYeAAvUT2Aw0aYSOb",
 	},
 	TagSortableList: {
 		bundle:    "sortable-list@fde92381ec7e/sortable-list.bundle.min.js",
@@ -192,8 +192,8 @@ var pins = map[Tag]pin{
 		integrity: "sha384-pyGaRJLT4hjZH/XvqSm/W6sYZZUOtOURf8XTMSYSTWVnobzW5xr8hptaH9OvbK8Y",
 	},
 	TagTabs: {
-		bundle:    "tabs@f0452700ce60/tabs.bundle.min.js",
-		integrity: "sha384-C3Cs2vAZMRSy4FoUM/DJcgAAIrT15iJRfU6l0LuiAfN5F4xReeY2zclL5FSexnrD",
+		bundle:    "tabs@8d96fd7d9fc9/tabs.bundle.min.js",
+		integrity: "sha384-QJkHBtwRQM/pE9HvjRStFMNcpbXOteGj2Dqvrnz9sNOgJAon2wEVgKvdZkSVdQ9Q",
 	},
 	TagThemeSwitch: {
 		bundle:    "theme-switch@99344cf6e6d5/theme-switch.bundle.min.js",
@@ -208,16 +208,16 @@ var pins = map[Tag]pin{
 		integrity: "sha384-tB7OpdyRGhpaCO5gYO+8Xi83V+4EDHP+iBcZu3BUN8b/fWbqalqzMsCJNyZPCsSC",
 	},
 	TagToggle: {
-		bundle:    "toggle@9175ffe8728e/toggle.bundle.min.js",
-		integrity: "sha384-Qcw8rYQ51jJQ3NFAuAndvI7gEfcgP0q9LkJd/vrJZ16QBi+8MwnAgbY8Cxqhn57j",
+		bundle:    "toggle@1b91a001d15e/toggle.bundle.min.js",
+		integrity: "sha384-D+XFY/uHMOwnPDHzawFsg7bS55/6ywZ6Y7rNRsGFnhcilYKs100xfeELWnzIBiLX",
 	},
 	TagTooltip: {
 		bundle:    "tooltip@b39594c3521c/tooltip.bundle.min.js",
 		integrity: "sha384-NQi/Jf+45JpxrNbszQgYM++Cw6KtHIwYVS/4JUhJe4GrWfm4Oyx/4SckNMDcxyk6",
 	},
 	TagTree: {
-		bundle:    "tree@ee7026899fb0/tree.bundle.min.js",
-		integrity: "sha384-68x/49ayhaIsB2EJp2UwjpXom8FyUuv10J98/e1CrGQCZcPjgNEW9CfFf8RRoOAa",
+		bundle:    "tree@07ee1443d1a9/tree.bundle.min.js",
+		integrity: "sha384-mxUwnPN9x4bb5CnE8CNzRHib6EFm/heAOaZmWQyQXQziOM/0yKIvd2wVhXub8fKj",
 	},
 	TagTypewriter: {
 		bundle:    "typewriter@21e1db3fbbad/typewriter.bundle.min.js",

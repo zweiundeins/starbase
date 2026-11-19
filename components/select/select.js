@@ -189,6 +189,7 @@ rocket('sb-select', {
         emptyLabel: string.default('No results').docs({ description: 'Shown in the open list when nothing matches.' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
         rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+        pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
     }),
     manifest: {
         events: [
@@ -307,8 +308,11 @@ rocket('sb-select', {
         // Commands: the attribute is the server's value, JSON.stringify($$.selected) the local one.
         // With confirm, :state(pending) marks an edit the server hasn't confirmed
         // yet; revert() returns to the server's value (e.g. a rejected command).
-        const states = internalsOf(host).states;
-        const sync = () => peek(() => (props.confirm && JSON.stringify($$.selected) !== JSON.stringify(parseValue(props.value)) ? states.add('pending') : states.delete('pending')));
+        const int = internalsOf(host), states = int.states;
+        const sync = () => peek(() => {
+            int.ariaBusy = props.pending ? 'true' : null;
+            states[props.pending || (props.confirm && JSON.stringify($$.selected) !== JSON.stringify(parseValue(props.value))) ? 'add' : 'delete']('pending');
+        });
         effect(() => (JSON.stringify($$.selected), sync()));
         observeProps(sync);
         // :state(open) follows the list, whichever way it opens or closes.

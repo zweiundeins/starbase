@@ -149,6 +149,7 @@ rocket('sb-code-editor', {
         problemLabel: string.default('Line {line}: {message}').docs({ description: 'The status line under the code for a problem from diagnostics: {line} becomes its line, {message} its message. With several, "2/5 · " goes before it.' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
         rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+        pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
         name: string.trim.docs({ description: 'Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command).' }),
         diagnostics: json.default(() => []).docs({ description: 'Problems to underline, as JSON [{line, col, length, message, text}]: line and col 1-based, col and length in UTF-16 code units (a JS string index). With text, a problem shows only while the code there still reads text, so a list about an older version fades as the code changes.' }),
     }),
@@ -261,8 +262,11 @@ rocket('sb-code-editor', {
         // Commands: server() is the server's value, $$.code the local one.
         // With confirm, :state(pending) marks an edit the server hasn't confirmed
         // yet; revert() returns to the server's value (e.g. a rejected command).
-        const states = internalsOf(host).states;
-        const sync = () => peek(() => states[props.confirm && $$.code !== server() ? 'add' : 'delete']('pending'));
+        const int = internalsOf(host), states = int.states;
+        const sync = () => peek(() => {
+            states[props.pending || (props.confirm && $$.code !== server()) ? 'add' : 'delete']('pending');
+            int.ariaBusy = props.pending ? 'true' : null;
+        });
         // Every change of the code: keep it for a re-attach, and sync.
         effect(() => ($$.code != null && live.set(host, $$.code), sync()));
         observeProps(sync);

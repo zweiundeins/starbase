@@ -94,6 +94,7 @@ rocket('sb-checkbox', {
 		value: string.default('on').docs({ description: 'What a form submits under name while checked, like a native checkbox.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local state differs from the server\'s checked attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the checked attribute win (present or not) even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 	}),
 	manifest: {
 		events: [
@@ -122,7 +123,11 @@ rocket('sb-checkbox', {
 		// Commands: the attribute is the server's value, $$.on the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's word (e.g. a rejected command).
-		const sync = () => peek(() => states[props.confirm && $$.on !== host.hasAttribute('checked') ? 'add' : 'delete']('pending'))
+		const sync = () =>
+			peek(() => {
+				states[props.pending || (props.confirm && $$.on !== host.hasAttribute('checked')) ? 'add' : 'delete']('pending')
+				keep.ariaBusy = props.pending ? 'true' : null
+			})
 		// A change of the checked attribute wins over a local edit: added says
 		// checked, removed says not. Re-sending the same markup changes nothing, so
 		// edits survive re-renders.

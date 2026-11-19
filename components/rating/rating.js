@@ -78,6 +78,7 @@ rocket('sb-rating', {
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
 		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+		pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a form.' }),
 	}),
 	manifest: {
@@ -86,8 +87,8 @@ rocket('sb-rating', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value }: ready for a command.' },
 		],
 	},
-	// rev changes no markup.
-	renderOnPropChange: ({ changes }) => !('rev' in changes),
+	// pending and rev change no markup.
+	renderOnPropChange: ({ changes }) => !('pending' in changes || 'rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Number(), not +: property writes aren't decoded, and +1n throws.
@@ -128,10 +129,12 @@ rocket('sb-rating', {
 		// Commands: the attribute is the server's value, $$.value the local one.
 		// With confirm, :state(pending) marks an edit the server hasn't confirmed
 		// yet; revert() returns to the server's value (e.g. a rejected command).
-		const states = internalsOf(host).states
+		const int = internalsOf(host), states = int.states
 		// $$.value is read first, so the effect always tracks it (props are not
 		// signals). Outside the effect, sync() is called inside peek().
-		const sync = () => ($$.value !== clamp(props.value) && props.confirm ? states.add('pending') : states.delete('pending'))
+		const sync = () => (
+			states[($$.value !== clamp(props.value) && props.confirm) || props.pending ? 'add' : 'delete']('pending'), (int.ariaBusy = props.pending ? 'true' : null)
+		)
 		effect(sync)
 		observeProps(() => peek(sync))
 		const revert = () => peek(() => (($$.value = clamp(props.value)), sync()))

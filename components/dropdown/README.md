@@ -354,6 +354,8 @@ A plain item is an intent, not a value: nothing is pending and there is nothing 
 
 **Refusals without page code:** a radio group (`type="radio"`) takes `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused choice goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new value applies once. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
 
+**Pending from the page:** `pending` is the page's word that a command is on its way. While the attribute is there, the radio group has `:state(pending)`, its chosen item fades like an unconfirmed one, and `aria-busy` (on its ElementInternals, so morphs keep them), whatever `confirm` says: `data-attr:pending="$_saving"`, with a signal the page sets when it sends and the server's answer clears. The two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. In a region the server morphs, a signal-driven `pending` needs `data-preserve-attr="pending"`.
+
 ## Open and closed
 
 Opening and closing is local state. Clicks, the keyboard, an outside click and Escape only ever change a `$$` signal, so a server morph can never re-open a menu the user just closed.
