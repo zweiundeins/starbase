@@ -639,3 +639,65 @@ await group('tab then type', async () => {
 
 await fetch('/__probe/result', { method: 'POST', body: JSON.stringify(rows) })
 `
+
+// TestSelectChipsAndCloseOnPick checks, in Chrome, that a chip's remove button answers clicks over
+// at least 24×24 px (WCAG 2.2's minimum target) and is ::part(chip-remove), and that close-on-pick
+// closes the list of a multiple select after each pick, by Enter or a click, where without it the
+// list stays open. With STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
+func TestSelectChipsAndCloseOnPick(t *testing.T) {
+	copyRows(t, probeBundle(t, "/", pdPrelude+selectChipsJS, nil))
+}
+
+const selectChipsJS = `
+try {
+	const style = document.createElement('style')
+	style.textContent = '.tinted::part(chip-remove) { color: rgb(255, 0, 0); }'
+	document.head.append(style)
+	const box = document.createElement('div')
+	box.style.cssText = 'inline-size: 24rem; padding: 2rem'
+	box.innerHTML = '<sb-select class="tinted" multiple options=\'["Ada","Buzz","Chris"]\' value=\'["Ada","Buzz"]\'></sb-select>' +
+		'<sb-select multiple close-on-pick options=\'["Ada","Buzz","Chris"]\'></sb-select>'
+	document.body.prepend(box)
+	scrollTo(0, 0)
+	await customElements.whenDefined('sb-select')
+	const [plain, closing] = box.querySelectorAll('sb-select')
+	await until(() => plain.shadowRoot?.querySelector('[part=chip-remove]'))
+	await settle()
+	const x = plain.shadowRoot.querySelector('[part=chip-remove]')
+	const r = x.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2
+	// The corners of a 24px square around the glyph's centre.
+	const hits = [[-11.5, -11.5], [11.5, -11.5], [-11.5, 11.5], [11.5, 11.5]].map(([dx, dy]) => plain.shadowRoot.elementFromPoint(cx + dx, cy + dy) === x)
+	check('the remove button takes clicks over 24×24 px', hits, [true, true, true, true])
+	check('the glyph itself is smaller', r.width < 24, true)
+	check('the chip is no taller than the text field', x.closest('.chip').getBoundingClientRect().height <= 32, true)
+	check('::part(chip-remove) is styleable from the page', getComputedStyle(x).color, 'rgb(255, 0, 0)')
+	plain.shadowRoot.elementFromPoint(cx + 11.5, cy + 11.5).click()
+	await settle()
+	check('a click at the target\'s edge removes the chip', plain.value, ['Buzz'])
+
+	const $ = (el, s) => el.shadowRoot.querySelector(s)
+	const open = (el) => [el.matches(':state(open)'), $(el, '[popover]').matches(':popover-open')]
+	const key = async (el, k) => (press($(el, 'input'), k), await settle())
+	const down = (el) => ($(el, '[role=option]:not(.act)').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 })), settle())
+	$(plain, 'input').focus()
+	await key(plain, 'ArrowDown')
+	await key(plain, 'ArrowDown')
+	await key(plain, 'Enter')
+	check('without close-on-pick, Enter picks and the list stays open', [open(plain), plain.value], [[true, true], ['Buzz', 'Chris']])
+	await down(plain)
+	check('and a click picks and it stays open', [open(plain), plain.value], [[true, true], ['Buzz', 'Chris', 'Ada']])
+	await key(plain, 'Escape')
+	$(closing, 'input').focus()
+	await key(closing, 'ArrowDown')
+	await key(closing, 'Enter')
+	check('close-on-pick: Enter picks and closes', [open(closing), closing.value], [[false, false], ['Ada']])
+	await key(closing, 'ArrowDown')
+	check('ArrowDown opens it again', open(closing), [true, true])
+	await down(closing)
+	check('close-on-pick: a click picks and closes', [open(closing), closing.value], [[false, false], []])
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
+`

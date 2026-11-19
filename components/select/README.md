@@ -138,6 +138,13 @@ With `multiple`, the value is an array. Keep it in a signal with `sb-change`: `d
 </div>
 ```
 
+After a pick, by a click or Enter, the list stays open for the next one, and it can flip above the field when there is no room below. `close-on-pick` closes it after each pick instead; Enter or Down opens it again. A single select always closes after a pick.
+
+```html preview
+<sb-select multiple searchable close-on-pick label="Crew" placeholder="Add crew"
+  options='["Ada","Buzz","Chris","Mae","Sally","Valentina","Yuri"]'></sb-select>
+```
+
 ### A compact picker for a toolbar
 
 With many options, chips don't fit a toolbar. `summary` shows a text in their place, and `actions` puts "Select all" and "Clear" at the top of the list ("Select the N matches" while a search filters it). Nothing picked shows the placeholder, which here means all. The 84 sources are the first stars of the example dataset's catalog (`GET /demo/data/rows?count=84`):
@@ -260,7 +267,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Fonts:** the label, the text you type, the chips and the options use your page's font.
 - **Colours:** the control is `--sb-control-bg` with a `--sb-control-border` edge (`--sb-control-border-hover` on hover) and `--sb-control-text`; the placeholder and the arrow are `--sb-control-placeholder`, the label `--sb-text-2`. Focus draws a `--sb-brand-light` edge with a `--sb-brand-subtle` glow, and chips are `--sb-brand-subtle`. The list is `--sb-surface-raised`; the active option is `--sb-surface-hover` with a `--sb-brand` edge, a selected one `--sb-brand-light`, descriptions `--sb-text-muted`. Corners are `--sb-control-radius`.
 - **Shadow:** `--sb-shadow-overlay` sets the list's drop shadow: one shadow without spread, such as `0 8px 16px rgb(0 0 0 / 0.3)`, or `none`.
-- **Parts:** `label`, `control` (the box), `input`, `chip` (each chip, with `multiple`), `more` (the "+K" chip), `summary`, `clear`, `arrow` and `listbox` (the list). Your page's `::part()` rules win over the component's own, without `!important`.
+- **Parts:** `label`, `control` (the box), `input`, `chip` (each chip, with `multiple`), `chip-remove` (a chip's × button), `more` (the "+K" chip), `summary`, `clear`, `arrow` and `listbox` (the list). Your page's `::part()` rules win over the component's own, without `!important`.
 - **Arrow:** a block filled with its `color` (`--sb-control-placeholder`) and cut by a `clip-path`: a pixel staircase, or a plain triangle at `--sb-notch: 0`. It turns 180° while the list is open. Replace the look with `background`, `clip-path`, `mask` or `border` on `::part(arrow)`, as in [A chevron to match a toolbar button](#a-chevron-to-match-a-toolbar-button).
 - **States:** `:state(open)` while the list is open, and `:state(pending)` with `confirm` (see [With commands](#with-commands)). Both work from the page: `sb-select:state(open)::part(control)`.
 
@@ -287,6 +294,7 @@ It follows the ARIA combobox pattern:
 - **Selection:** with `multiple`, the combobox's description (`aria-describedby`) lists every pick, also those behind "+K" or a summary. The "+K" chip and the summary are text, not buttons.
 - **Loading:** the input is `aria-busy` while results are on their way, and "Searching…", "No results" and "Type to search" are announced (a status region).
 - **Disabled:** `disabled` takes it out of the tab order, and neither keys nor the pointer can change it.
+- **Targets:** a chip's × answers clicks over at least 24 × 24 px (WCAG 2.2's minimum), more than the glyph it draws.
 - **Forced colours:** the focus ring, the highlighted option and the arrow use system colours.
 
 The list is a native popover, so it is never clipped by a scrolling container.

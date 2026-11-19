@@ -114,6 +114,9 @@ const styles = /* css */ `
 .compact .chip:not(.more) { flex: 0 1 auto; max-inline-size: 10rem; }
 .compact input { min-inline-size: 2ch; }
 .chip button, .clear { all: unset; display: grid; place-items: center; inline-size: 1.1rem; block-size: 1.1rem; border-radius: 3px; color: var(--_muted); cursor: pointer; }
+/* A 24px target (WCAG 2.2) around the smaller glyph. */
+.chip button { position: relative; }
+.chip button::after { content: ""; position: absolute; inset: calc(.55rem - 12px); }
 .chip button:hover, .clear:hover { color: var(--_text); background: var(--_hover); }
 input {
 	all: unset;
@@ -186,6 +189,7 @@ rocket('sb-select', {
 		summary: string.docs({ description: 'Multiple: a text shown instead of chips, e.g. "{count} of {total} sources". {count} is the number picked, {more} those not shown as chips, {total} the options (or the total prop). With max-chips, it shows only beyond that many picks, after the chips.' }),
 		maxChips: number.clamp(-1, 1000).default(-1).docs({ description: 'Multiple: show at most this many chips on one line, then a "+K" chip (or the summary). 0 shows only the count; -1 (the default) shows every chip and wraps.' }),
 		total: number.clamp(-1, 1e9).default(-1).docs({ description: 'Summary: what {total} stands for, e.g. the number of results a remote search can reach. -1 (the default): the options it knows (remote: every option it has been offered).' }),
+		closeOnPick: bool.docs({ description: 'Multiple: close the list after each pick (a click or Enter). Without it the list stays open for the next pick; a single select always closes.' }),
 		actions: bool.docs({ description: 'Multiple: "Select all" (while a search filters: "Select the N matches") and "Clear" rows at the top of the list.' }),
 		selectAllLabel: string.default('Select all').docs({ description: 'Actions: the text of "Select all".' }),
 		matchesLabel: string.default('Select the match|Select the {count} matches').docs({ description: 'Actions: the text of "Select the N matches" while a search filters the list. Text before a | is for one match.' }),
@@ -399,7 +403,7 @@ rocket('sb-select', {
 				$$.selected = $$.selected.includes(v) ? $$.selected.filter((x: string) => x !== v) : [...$$.selected, v]
 				$$.query = ''
 				change()
-				search()
+				props.closeOnPick ? setOpen(false) : search()
 			} else {
 				$$.selected = [v]
 				change()
@@ -547,7 +551,7 @@ rocket('sb-select', {
 				<template data-for="c in $$shown">
 					<span class="chip" part="chip" data-show="$$multiple">
 						<span data-text="c?.label"></span>
-						<button type="button" tabindex="-1" data-attr:aria-label="c?.aria" data-on:mousedown="evt.preventDefault()" data-on:click="@remove(c?.value)">×</button>
+						<button type="button" part="chip-remove" tabindex="-1" data-attr:aria-label="c?.aria" data-on:mousedown="evt.preventDefault()" data-on:click="@remove(c?.value)">×</button>
 					</span>
 				</template>
 				<span class="chip more" part="more" data-show="$$more" data-text="$$more" data-attr:title="$$hidden"></span>
