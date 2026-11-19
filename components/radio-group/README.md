@@ -124,7 +124,7 @@ Inside a `<form>`, `sb-radio-group` submits the checked choice under its `name` 
 
 ## Styling
 
-Parts: `base`, `label`, `items`, `item` (each choice, a pill when segmented), `checked` (the chosen item, as well: `::part(item checked)`), `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint; a segmented pill is `--sb-surface-hover`, `--sb-control-border-hover` under the pointer, and the chosen one `--sb-brand` with `--sb-text-on-brand` text), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead: pixel corners on the pills, fully round ends at `--sb-notch: 0`. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
+Parts: `base`, `label`, `items`, `item` (each choice, a pill when segmented), `checked` (the chosen item, as well: `::part(item checked)`), `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint; a segmented pill is filled with `--sb-control-border`, `--sb-control-border-hover` under the pointer, and the chosen one `--sb-brand` with `--sb-text-on-brand` text), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead: pixel corners on the pills, fully round ends at `--sb-notch: 0`. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
 
 ```html preview
 <sb-radio-group label="Hull paint" value="rust" style="--sb-brand: #F5C451; --sb-brand-light: #FFE08A; --sb-brand-subtle: rgb(245 196 81 / 0.16)">

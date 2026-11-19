@@ -105,7 +105,8 @@ const styles = /* css */ `
 .text { display: grid; gap: 0.1rem; }
 .desc { color: var(--_muted); font-size: 0.75rem; }
 /* Segmented: pills in a row, sized like sb-button, that wrap when the row
-   runs out of room. Filled, not bordered: a border would break at the notch. */
+   runs out of room. Filled with the control border colour, not bordered: a
+   border would break at the notch. */
 .seg { --_h: 2.5rem; --_px: 1.125rem; --_fs: 0.875rem; }
 .sm { --_h: 2rem; --_px: 0.75rem; --_fs: 0.8125rem; }
 .lg { --_h: 3rem; --_px: 1.5rem; --_fs: 1rem; }
@@ -115,7 +116,7 @@ const styles = /* css */ `
 	box-sizing: border-box;
 	block-size: var(--_h);
 	padding: 0 var(--_px);
-	background: var(--_hover);
+	background: var(--_border);
 	font-size: var(--_fs);
 	font-weight: 600;
 	line-height: 1;
