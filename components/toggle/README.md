@@ -59,6 +59,13 @@ The server's word is the `checked` attribute, by presence, as on a native checkb
 
 Inside a `<form>`, `sb-toggle` submits like a checkbox: `name=on` when it is on, nothing when it is off or `disabled`, and nothing without a `name`. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's `checked` without firing `change` or `sb-change`. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+The switch shows and reads out only its name, so a page in another language names it in its own words.
+
+- `label`: no default, the visible name next to the switch.
+- Without `label`, the host's `aria-label` names the switch, without showing. Without either it is announced as "Toggle", in English: give every toggle one of the two.
+
 ## Styling
 
 Style it from your page's CSS, without changing the component or importing anything into it. Custom properties, inherited properties and `::part()` all reach into its shadow root.
