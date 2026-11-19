@@ -118,13 +118,25 @@ The `value` attribute is the server's value, and it wins whenever it changes: a 
 
 **Pending from the page:** `pending` is the page's word that a command is on its way. While the attribute is there, the component has `:state(pending)` and `aria-busy` (on its ElementInternals, so morphs keep them), whatever `confirm` says: `data-attr:pending="$_saving"`, with a signal the page sets when it sends and the server's answer clears. The two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. In a region the server morphs, a signal-driven `pending` needs `data-preserve-attr="pending"`.
 
+## `sb-radio` children are not components
+
+`sb-radio` is never defined as a custom element: the group reads its attributes and text and renders the choices itself, so every `sb-radio` stays `:not(:defined)` for good. A generic check that every custom element on a page got defined (a test, or a script that waits for them) has to leave them out:
+
+```js
+document.querySelectorAll(':not(:defined):not(sb-radio)')
+```
+
 ## Forms
 
 Inside a `<form>`, `sb-radio-group` submits the checked choice under its `name` (`name=value`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value without `change` events. As with radios, nothing is submitted when no choice is checked or the checked one is disabled, and nothing without a `name` or while the group is `disabled`. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).
 
+## Text and language
+
+The only text the group shows is its own `label` (no default). The choices' words are yours: the `sb-radio` children's text, `label` and `description`, or the `options` from the server. Without a `label`, the host's `aria-label` or `aria-labelledby` names the group. It formats no numbers or dates.
+
 ## Styling
 
-Parts: `base`, `label`, `items`, `item` (each choice, a pill when segmented), `checked` (the chosen item, as well: `::part(item checked)`), `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint; a segmented pill is filled with `--sb-control-border`, `--sb-control-border-hover` under the pointer, and the chosen one `--sb-brand` with `--sb-text-on-brand` text), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead: pixel corners on the pills, fully round ends at `--sb-notch: 0`. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
+Parts: `base`, `label`, `items`, `item` (each choice, a pill when segmented), `checked` (the chosen item, as well: `::part(item checked)`), `dot` and `description`. Colours come from the control and brand tokens (a checked choice is a `--sb-brand` dot in a `--sb-brand-light` ring, on a `--sb-brand-subtle` tint; a segmented pill is filled with `--sb-control-border`, and the chosen one `--sb-brand` with `--sb-text-on-brand` text; under the pointer a pill takes `--sb-segment-hover`, by default its fill moved 12% toward `--sb-control-text`, so the text stays readable in a theme whose `--sb-control-border-hover` is close to its text colour), the corners from `--sb-notch`, so `[data-sb-style="smooth"]` rounds them instead: pixel corners on the pills, fully round ends at `--sb-notch: 0`, where nothing is clipped, so a page's `box-shadow` on a part shows. A disabled group has `:state(disabled)`, from the decoded prop, never from `:host([disabled])`.
 
 ```html preview
 <sb-radio-group label="Hull paint" value="rust" style="--sb-brand: #F5C451; --sb-brand-light: #FFE08A; --sb-brand-subtle: rgb(245 196 81 / 0.16)">

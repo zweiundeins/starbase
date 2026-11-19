@@ -126,7 +126,9 @@ const styles = /* css */ `
 	white-space: nowrap;
 	border-radius: calc(var(--_h) / 2 * (1 - var(--_notch)));
 }
-.seg .item.hot { background: var(--_border-hover); }
+/* Hover moves the fill a little toward the text colour, so the text stays
+   readable whatever colour a theme gives the hover border. */
+.seg .item.hot { background: var(--sb-segment-hover, color-mix(in oklab, var(--_border), var(--_text) 12%)); }
 .seg .item.checked { background: var(--_brand); color: var(--_on-brand); }
 .seg :is(.dot, .desc) { display: none; }
 @media (prefers-reduced-motion: reduce) { .item, .dot { transition: none; } }

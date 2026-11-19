@@ -124,7 +124,39 @@ await group('notch', async () => {
 	mail.style.setProperty('--sb-notch', '0')
 	await settle()
 	check('--sb-notch: 0 rounds the ends', getComputedStyle(pill(mail, 'now')).borderTopLeftRadius, '20px')
+	check('--sb-notch: 0 clips nothing, so a page\'s shadow on the chosen pill shows', getComputedStyle(pill(mail, 'daily')).clipPath, 'none')
 	mail.style.removeProperty('--sb-notch')
+})
+
+// Hover keeps the text readable: in both themes, and in a theme whose hover border is its ink.
+await group('hover', async () => {
+	const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true })
+	const rgb = (c) => (ctx.clearRect(0, 0, 1, 1), (ctx.fillStyle = c), ctx.fillRect(0, 0, 1, 1), [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3))
+	const lum = (c) => rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0)
+	const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+	const now = pill(mail, 'now')
+	const hover = async () => { const r = rect(now); await cdp({ method: 'Input.dispatchMouseEvent', params: { type: 'mouseMoved', x: r.left + r.width / 2, y: r.top + r.height / 2 } }); await settle(250) }
+	const away = () => cdp({ method: 'Input.dispatchMouseEvent', params: { type: 'mouseMoved', x: 1400, y: 900 } })
+	for (const theme of ['deep-space', 'daylight', 'ink']) {
+		document.documentElement.dataset.sbTheme = theme === 'ink' ? 'daylight' : theme
+		if (theme === 'ink') mail.style.setProperty('--sb-control-border-hover', 'var(--sb-control-text)')
+		await away()
+		await settle(200)
+		const rest = bg(now)
+		await hover()
+		const fill = bg(now), ink = getComputedStyle(now).color
+		check(theme + ': hover changes the fill', fill !== rest, true)
+		check(theme + ': the text on the hovered pill stays readable (4.5:1)', contrast(fill, ink) >= 4.5 ? 'ok' : contrast(fill, ink).toFixed(2), 'ok')
+		await shot('segmented-hover-' + theme, stage)
+	}
+	mail.style.setProperty('--sb-segment-hover', 'rgb(1, 2, 3)')
+	await settle(250)
+	check('--sb-segment-hover sets the hover fill', bg(now), 'rgb(1, 2, 3)')
+	mail.style.removeProperty('--sb-segment-hover')
+	mail.style.removeProperty('--sb-control-border-hover')
+	delete document.documentElement.dataset.sbTheme
+	await away()
+	await settle(200)
 })
 
 await group('screenshots', async () => {
