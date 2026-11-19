@@ -351,6 +351,7 @@ rocket('sb-data-table', {
 		selected: json.default(() => []).docs({ description: 'The selection: a JSON array of row keys. A new list from the server replaces it; the live value is the selected property.' }),
 		label: string.trim.default('Table').docs({ description: 'Accessible name.' }),
 		confirm: bool.docs({ description: 'Server-confirmed selection: :state(pending) while the local selection differs from the server\'s selected attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the selected attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change, sb-columns and sb-export (e.g. the field of a command).' }),
 		hiddenColumns: json.default(() => []).docs({ description: 'View state: the keys of the columns not shown, as a JSON array. A changed list from the server wins; the same list again keeps the user\'s choice. The live list is the hiddenColumns property. At least one column always shows.' }),
 		columnPicker: bool.docs({ description: 'Show a Columns button in the toolbar, with a menu that shows and hides columns (sb-columns).' }),
@@ -601,15 +602,17 @@ rocket('sb-data-table', {
 			words[k] = a
 			return news
 		}
-		heard('selected'), heard('hidden-columns'), heard('widths')
+		// A new rev makes the server's selection win even when it is the same.
+		heard('selected'), heard('hidden-columns'), heard('widths'), heard('rev')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				if (heard('selected')) $$.sel = keys(props.selected)
+				const s = heard('selected'), r = heard('rev')
+				if (s || r) $$.sel = keys(props.selected)
 				if (heard('hidden-columns')) (hidden = keys(props.hiddenColumns)), later()
 				if (heard('widths')) (widths = sizes(props.widths)), later()
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['selected', 'hidden-columns', 'widths'] })
+		watch.observe(host, { attributeFilter: ['selected', 'hidden-columns', 'widths', 'rev'] })
 		cleanup(() => watch.disconnect())
 		// The header resizes with the table: the separators' values follow.
 		const sized = new ResizeObserver(() => measure())

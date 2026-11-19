@@ -292,6 +292,7 @@ rocket('sb-date-picker', {
 		lang: string.trim.docs({ description: 'Locale for month and weekday names, the first day of the week and the typed format (default: the page\'s lang, then the browser\'s).' }),
 		disabled: bool.docs({ description: 'Disable the field and the calendar. A form leaves it out.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change, sb-month and sb-toggle (e.g. the field of a command), and submitted with its form.' }),
 	}),
 	manifest: {
@@ -830,11 +831,13 @@ rocket('sb-date-picker', {
 			said[k] = a
 			return news
 		}
-		for (const k of ['value', 'month']) heard(k)
+		// A new rev makes the server's value win even when it is the same.
+		for (const k of ['value', 'month', 'rev']) heard(k)
 		let openWord = host.hasAttribute('open')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				if (heard('value')) set(norm(props.value))
+				const v = heard('value'), r = heard('rev')
+				if (v || r) set(norm(props.value))
 				const o = host.hasAttribute('open')
 				if (o !== openWord) $$.open = (openWord = o) && !props.inline && !props.disabled
 				if (!heard('month') || mon(props.month) == null) return
@@ -843,7 +846,7 @@ rocket('sb-date-picker', {
 				had && cell()?.focus()
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['value', 'open', 'month'] })
+		watch.observe(host, { attributeFilter: ['value', 'open', 'month', 'rev'] })
 
 		overrideProp('value', () => peek(() => out($$.v)), (v) => peek(() => set(norm(v))))
 		overrideProp('open', () => peek(() => !!$$.open), (v) => peek(() => cal.popover && !props.disabled && cal.togglePopover(!!v)))

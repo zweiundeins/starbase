@@ -87,6 +87,16 @@
       }
     },
     {
+      "name": "rev",
+      "attribute": "rev",
+      "type": "number",
+      "default": 0,
+      "required": false,
+      "docs": {
+        "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts. Not expanded: that is view state."
+      }
+    },
+    {
       "name": "name",
       "attribute": "name",
       "type": "string",

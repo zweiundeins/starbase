@@ -89,6 +89,8 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value i
 
 A new `value` from the server replaces the code; the same markup sent again leaves the user's edits alone. To clear it, the server sends `value=""` (a removed attribute changes nothing). Moving the editor elsewhere in the page keeps its edits, like a `<textarea>`.
 
+**Refusals without page code:** give it `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused edit goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new code applies once. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
+
 ## Forms
 
 Inside a `<form>`, `sb-code-editor` submits its code under its `name` (`name=…`, like a `<textarea>`), `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's value. `readonly` code is submitted, `disabled` code is not. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).

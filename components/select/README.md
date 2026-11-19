@@ -222,6 +222,15 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when the value
 
 A new `value` from the server always wins. A removed `value` attribute changes nothing, by design: morphs also strip attributes that were only reflected, so the select can't take a missing one for "cleared". To clear, the server sends `value=""`. Markup re-sent with the same `value` leaves the user's pick alone. Typing a search fires no `input` event on the element: `change` and `sb-change` come when the value changes.
 
+**Refusals without page code:** give it `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused pick goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new value applies once. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
+
+```html
+<sb-select name="crew" multiple confirm rev="7" options='["Ada","Lin","Mo"]' value='["Ada"]'
+  data-on:sb-change="@post('/cmd/crew', {payload: {tabid: $tabid, ...evt.detail}})"></sb-select>
+```
+
+The server refuses Lin: it answers 204 and renders `value='["Ada"]'` again with `rev="8"`, and the chip goes.
+
 ## Options
 
 `options` (and `results`, for remote searches) is a JSON array of strings, or of `{value, label?, description?, disabled?}`. The server can change either at any time. A selected value keeps its label even after the options it came from are gone.

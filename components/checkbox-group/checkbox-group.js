@@ -117,7 +117,7 @@ const styles = /* css */ `
 `
 
 rocket('sb-checkbox-group', {
-	props: ({ bool, json, oneOf, string }) => ({
+	props: ({ bool, json, number, oneOf, string }) => ({
 		value: json.default(() => []).docs({ description: 'The checked values, as a JSON array. A new value from the server replaces it; the live value is the value property.' }),
 		options: json.default(() => []).docs({ description: 'Choices from the server: ["A", "B"] or [{value, label, description?, disabled?}]. <sb-check> children win over it.' }),
 		label: string.trim.docs({ description: 'Visible label, and the accessible name of the group.' }),
@@ -125,6 +125,7 @@ rocket('sb-checkbox-group', {
 		orientation: oneOf('vertical', 'horizontal').default('vertical').docs({ description: 'Stack the choices or lay them out in a row.' }),
 		disabled: bool.docs({ description: 'Disable the whole group.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command), and the field each checked choice submits in a form.' }),
 	}),
 	manifest: {
@@ -208,11 +209,13 @@ rocket('sb-checkbox-group', {
 		// when it changes (a morph with a new value); re-sending the same markup
 		// changes nothing, so edits survive re-renders. A *removed* attribute
 		// changes nothing either (morphs also remove attributes that were only
-		// reflected); to clear, the server sends value="[]".
+		// reflected); to clear, the server sends value="[]". A new rev makes the
+		// server's value win even when it is the same.
+		let rev = host.getAttribute('rev')
 		const attrs = () =>
 			peek(() => {
-				const a = host.getAttribute('value')
-				if (a !== null && a !== keep.served) $$.value = list(a)
+				const a = host.getAttribute('value'), fresh = rev !== (rev = host.getAttribute('rev'))
+				if ((a !== null && a !== keep.served) || fresh) $$.value = list(a ?? props.value)
 				keep.served = a
 				$$.aria = host.getAttribute('aria-label') ?? '' // a null would delete the signal
 				$$.all = host.hasAttribute('select-all') ? props.selectAll || 'All' : ''

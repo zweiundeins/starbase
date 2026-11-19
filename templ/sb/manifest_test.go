@@ -73,6 +73,10 @@ var integers = map[string]bool{
 	"sb-sparkline.length": true, "sb-sparkline.decimals": true, "sb-starfield.density": true, "sb-tabs.selected": true,
 	"sb-toast.max": true, "sb-toast.duration": true, "sb-typewriter.interval": true, "sb-typewriter.delay": true, "sb-typewriter.hold": true,
 	"sb-virtual-scroll.total": true, "sb-virtual-scroll.offset": true, "sb-virtual-scroll.columns": true, "sb-virtual-scroll.step": true,
+	// rev: the revision the server bumps per command.
+	"sb-checkbox.rev": true, "sb-checkbox-group.rev": true, "sb-code-editor.rev": true, "sb-data-table.rev": true, "sb-date-picker.rev": true,
+	"sb-dropdown.rev": true, "sb-radio-group.rev": true, "sb-range.rev": true, "sb-rating.rev": true, "sb-select.rev": true,
+	"sb-slider.rev": true, "sb-tabs.rev": true, "sb-toggle.rev": true, "sb-tree.rev": true,
 }
 
 // stringLists are the string props that hold a list: ids or heading levels

@@ -108,13 +108,14 @@ const styles = /* css */ `
 `
 
 rocket('sb-radio-group', {
-	props: ({ bool, json, oneOf, string }) => ({
+	props: ({ bool, json, number, oneOf, string }) => ({
 		value: string.docs({ description: 'The selected value. A new value from the server replaces it; the live value is the value property.' }),
 		options: json.default(() => []).docs({ description: 'Choices from the server: ["A", "B"] or [{value, label, description?, disabled?}]. <sb-radio> children win over it.' }),
 		label: string.trim.docs({ description: 'Visible label, and the accessible name of the group.' }),
 		orientation: oneOf('vertical', 'horizontal').default('vertical').docs({ description: 'Stack the choices or lay them out in a row.' }),
 		disabled: bool.docs({ description: 'Disable the whole group.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command), and the field it submits in a form.' }),
 	}),
 	manifest: {
@@ -219,12 +220,14 @@ rocket('sb-radio-group', {
 		// changes nothing either: morphs also remove attributes that were only
 		// reflected (e.g. from a data-bind write before the upgrade). To clear
 		// it, the server sends value="", which observeProps misses when there was
-		// no attribute before (both decode to "").
+		// no attribute before (both decode to ""). A new rev makes the server's
+		// value win even when it is the same.
 		let served = host.getAttribute('value')
+		let rev = host.getAttribute('rev')
 		const mo = new MutationObserver(() =>
 			peek(() => {
-				const a = host.getAttribute('value')
-				if (a !== null && a !== served) $$.value = a
+				const a = host.getAttribute('value'), fresh = rev !== (rev = host.getAttribute('rev'))
+				if ((a !== null && a !== served) || fresh) $$.value = str(a ?? props.value)
 				served = a
 				rebuild()
 			}),

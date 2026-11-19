@@ -145,7 +145,7 @@ const styles = /* css */ `
 }
 `;
 rocket('sb-tree', {
-    props: ({ bool, json, oneOf, string }) => ({
+    props: ({ bool, json, number, oneOf, string }) => ({
         items: json.default(() => []).docs({ description: 'The tree as JSON, for an element without a list inside: [{id, label, icon?, children?: [...], lazy?: true}]. A lazy item without children asks for them with sb-load when opened.' }),
         loaded: json.default(() => ({})).docs({ description: 'With items: loaded children by parent id, {"<id>": [items]}. Bind it to a signal the server patches (see the docs).' }),
         selection: oneOf('single', 'multiple', 'none').default('single').docs({ description: 'How many items can be selected. Links are followed, not selected.' }),
@@ -154,6 +154,7 @@ rocket('sb-tree', {
         label: string.trim.default('Tree').docs({ description: 'Accessible name.' }),
         loadingLabel: string.default('Loading').docs({ description: 'Shown after an item while its children load (dots follow it).' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+        rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts. Not expanded: that is view state.' }),
         name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
     }),
     manifest: {
@@ -307,9 +308,12 @@ rocket('sb-tree', {
         // ones the props already decode to (value="" on an element that never
         // had one: observeProps stays silent). The same attribute again keeps
         // the user's edits, and a removed one is ignored (morphs also strip
-        // reflected attributes).
+        // reflected attributes). A new rev makes the server's value win even
+        // when it is the same (expanded is view state: rev leaves it).
         const served = { value: host.getAttribute('value'), expanded: host.getAttribute('expanded') };
+        let rev = host.getAttribute('rev');
         const watch = new MutationObserver(() => peek(() => {
+            let fresh = rev !== (rev = host.getAttribute('rev'));
             for (const a in served) {
                 const v = host.getAttribute(a);
                 if (v === served[a])
@@ -318,13 +322,15 @@ rocket('sb-tree', {
                 if (v === null)
                     continue;
                 if (a === 'value')
-                    $$.selected = ids(v);
+                    ($$.selected = ids(v)), (fresh = false);
                 else
                     (open.clear(), ids(v).forEach((id) => open.add(id)));
             }
+            if (fresh)
+                $$.selected = ids(props.value);
             rebuild();
         }));
-        watch.observe(host, { attributeFilter: ['value', 'expanded'] });
+        watch.observe(host, { attributeFilter: ['value', 'expanded', 'rev'] });
         cleanup(() => watch.disconnect());
         const value = () => (props.selection === 'multiple' ? [...$$.selected] : $$.selected[0] ?? '');
         overrideProp('value', () => peek(value), (v) => peek(() => ($$.selected = ids(v))));

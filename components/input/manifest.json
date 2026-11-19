@@ -18,7 +18,7 @@
       "default": "",
       "required": false,
       "docs": {
-        "description": "Revision of the server's value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it)."
+        "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged (e.g. an edit normalised back to it, or refused)."
       }
     },
     {

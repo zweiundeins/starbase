@@ -145,26 +145,79 @@ for (const c of cases) {
 	}
 	el?.remove()
 }
-// rev: a new one makes the server's value win even when it is unchanged.
-for (const c of [{ tag: 'sb-input', server: 'STARBASE-1', local: 'no spaces', want: 'STARBASE-1' }]) {
-	const row = (step, want) => rows.push({ tag: c.tag + ' rev', step, got: JSON.stringify(el.value), want: JSON.stringify(want) })
+// rev: a new one makes the server's value win even when it is unchanged (a
+// refusal), and ends pending; the same rev again changes nothing.
+const revs = [
+	{ tag: 'sb-input', server: 'STARBASE-1', local: 'no spaces', want: 'STARBASE-1' },
+	{ tag: 'sb-select', attrs: { options: '["A","B"]' }, server: 'A', local: 'B', want: 'A' },
+	{ tag: 'sb-select', name: 'sb-select multiple', attrs: { multiple: '', options: '["A","B"]' }, server: '["A"]', local: ['A', 'B'], want: ['A'] },
+	{ tag: 'sb-slider', server: '40', local: 70, want: 40 },
+	{ tag: 'sb-toggle', attr: 'checked', prop: 'checked', server: '', local: false, want: true },
+	{ tag: 'sb-checkbox', attr: 'checked', prop: 'checked', server: '', local: false, want: true },
+	{ tag: 'sb-code-editor', server: 'x = 1', local: 'x = 2', want: 'x = 1' },
+	{ tag: 'sb-tabs', attrs: { labels: '["A","B","C"]' }, attr: 'selected', prop: 'selected', server: '0', local: 2, want: 0 },
+	{ tag: 'sb-rating', server: '2', local: 4, want: 2 },
+	{ tag: 'sb-tree', attrs: { items: '[{"id":"a","label":"A"},{"id":"b","label":"B"}]' }, server: 'a', local: 'b', want: 'a' },
+	{ tag: 'sb-checkbox-group', attrs: { options: '["a","b"]' }, server: '["a"]', local: ['b'], want: ['a'] },
+	{ tag: 'sb-date-picker', server: '2026-09-01', local: '2026-09-29', want: '2026-09-01' },
+	{ tag: 'sb-range', server: '{"start":0,"end":100}', local: { start: 10, end: 20 }, want: { start: 0, end: 100 } },
+	{ tag: 'sb-radio-group', attrs: { options: '["a","b"]' }, server: 'a', local: 'b', want: 'a' },
+	{ tag: 'sb-dropdown', attrs: { type: 'radio', items: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]' }, server: 'a', local: 'b', want: 'a' },
+	{ tag: 'sb-data-table', attrs: { selection: 'multiple', columns: '[{"key":"name"}]', rows: '[{"id":"a","name":"A"},{"id":"b","name":"B"}]' }, attr: 'selected', prop: 'selected', server: '["a"]', local: ['b'], want: ['a'] },
+]
+for (const c of revs) {
+	const name = (c.name || c.tag) + ' rev'
+	const prop = c.prop || 'value'
+	const row = (step, want, pending) => rows.push({ tag: name, step, got: JSON.stringify([el[prop], el.matches(':state(pending)')]), want: JSON.stringify([want, pending]) })
 	let el
 	try {
 		await customElements.whenDefined(c.tag)
 		el = document.createElement(c.tag)
-		for (const [k, v] of Object.entries({ confirm: '', value: c.server, rev: '1' })) el.setAttribute(k, v)
+		for (const [k, v] of Object.entries({ ...c.attrs, confirm: '', [c.attr || 'value']: c.server, rev: '1' })) el.setAttribute(k, v)
 		box.append(el)
 		await settle()
-		el.value = c.local
+		el[prop] = c.local
 		await settle()
-		row('a local edit', c.local)
+		row('a local edit is pending', c.local, true)
 		el.setAttribute('rev', '2')
 		await settle()
-		row('a new rev with the value unchanged wins', c.want)
+		row('a new rev with the value unchanged wins and ends pending', c.want, false)
+		el[prop] = c.local
+		await settle()
+		el.setAttribute('rev', '2')
+		await settle()
+		row('the same rev again changes nothing', c.local, true)
+		el.setAttribute('rev', '3')
+		await settle()
+		row('the next rev wins again', c.want, false)
 	} catch (e) {
-		rows.push({ tag: c.tag + ' rev', error: String(e) })
+		rows.push({ tag: name, error: String(e?.stack || e) })
 	}
 	el?.remove()
+}
+// The case rev is for: the server refuses a pick (204, then a frame that
+// morphs the same value with the next rev), and the chip goes again.
+{
+	const c = { tag: 'sb-select' }
+	const html = (rev) => '<div id="rev-region"><sb-select id="rev-case" name="crew" multiple confirm options="[&quot;A&quot;,&quot;B&quot;]" value="[&quot;A&quot;]" rev="' + rev + '"></sb-select></div>'
+	let el
+	const row = (step, want, pending) => rows.push({ tag: 'sb-select rev, morphed', step, got: JSON.stringify([el.value, el.matches(':state(pending)')]), want: JSON.stringify([want, pending]) })
+	try {
+		await customElements.whenDefined(c.tag)
+		box.innerHTML = html(7)
+		el = document.getElementById('rev-case')
+		await settle()
+		el.value = ['A', 'B']
+		await settle()
+		row('a picked chip is pending', ['A', 'B'], true)
+		await morph(html(7))
+		row('identical markup keeps it', ['A', 'B'], true)
+		await morph(html(8))
+		row('the refusal: the same value with the next rev drops the chip', ['A'], false)
+	} catch (e) {
+		rows.push({ tag: 'sb-select rev, morphed', error: String(e?.stack || e) })
+	}
+	box.replaceChildren()
 }
 // Booleans: the attribute's presence is the server's word.
 const dialogOf = (el) => el.shadowRoot.querySelector('dialog')

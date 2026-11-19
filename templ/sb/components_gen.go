@@ -514,6 +514,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 		e.str("name", p.Name)
 		e.str("value", p.Value)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		return e.render(ctx, w)
 	})
 }
@@ -557,6 +558,13 @@ type CheckboxProps struct {
 	// from the server's checked attribute (see revert()). Attribute confirm,
 	// by presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the checked attribute win (present or not) even when it is
+	// unchanged, so a refused edit reverts. Attribute rev; nil leaves it out,
+	// Int(0) writes 0.
+	Rev *int
 }
 
 // CheckboxGroup renders <sb-checkbox-group>: Several choices with pixel
@@ -585,6 +593,7 @@ func CheckboxGroup(p CheckboxGroupProps) templ.Component {
 		e.enum("orientation", string(p.Orientation), "vertical", "horizontal")
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -631,6 +640,12 @@ type CheckboxGroupProps struct {
 	// presence.
 	Confirm bool
 
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
+
 	// Name reported in sb-change (e.g. the field of a command), and the field
 	// each checked choice submits in a form. Attribute name.
 	Name string
@@ -671,6 +686,7 @@ func CodeEditor(p CodeEditorProps) templ.Component {
 		e.str("label", p.Label)
 		e.str("problem-label", p.ProblemLabel)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		e.json("diagnostics", p.Diagnostics, p.Diagnostics == nil)
 		return e.render(ctx, w)
@@ -728,6 +744,12 @@ type CodeEditorProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change and submitted with the form it sits in (e.g.
 	// the field of a command). Attribute name.
@@ -1119,6 +1141,7 @@ func DataTable(p DataTableProps) templ.Component {
 		e.json("selected", p.Selected, p.Selected == nil)
 		e.str("label", p.Label)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		e.json("hidden-columns", p.HiddenColumns, p.HiddenColumns == nil)
 		e.bool("column-picker", p.ColumnPicker)
@@ -1209,6 +1232,12 @@ type DataTableProps struct {
 	// differs from the server's selected attribute (see revert()). Attribute
 	// confirm, by presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the selected attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change, sb-columns and sb-export (e.g. the field of
 	// a command). Attribute name.
@@ -1304,6 +1333,7 @@ func DatePicker(p DatePickerProps) templ.Component {
 		e.str("lang", p.Lang)
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -1438,6 +1468,12 @@ type DatePickerProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change, sb-month and sb-toggle (e.g. the field of a
 	// command), and submitted with its form. Attribute name.
@@ -1689,6 +1725,7 @@ func Dropdown(p DropdownProps) templ.Component {
 		e.enum("type", string(p.Type), "actions", "radio")
 		e.strPtr("value", p.Value)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.bool("open", p.Open)
 		e.bool("disabled", p.Disabled)
 		e.str("name", p.Name)
@@ -1749,6 +1786,12 @@ type DropdownProps struct {
 	// the local value differs from the server's value attribute (see
 	// revert()). Attribute confirm, by presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Open when present. The server adding or removing the attribute opens or
 	// closes the menu; re-sent identical markup leaves the local state alone.
@@ -2095,10 +2138,11 @@ type InputProps struct {
 	// leaves it out, Str("") sends an empty value, which wins over the user's.
 	Value *string
 
-	// Revision of the server's value, for commands: change it whenever the
-	// server applies a command for this field, and its value wins even when it
-	// is unchanged (e.g. an edit normalised back to it). Attribute rev; nil
-	// leaves it out, Str("") sends an empty value, which wins over the user's.
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged (e.g. an edit
+	// normalised back to it, or refused). Attribute rev; nil leaves it out,
+	// Str("") writes it empty.
 	Rev *string
 
 	// Visible label. Attribute label.
@@ -2759,6 +2803,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 		e.enum("orientation", string(p.Orientation), "vertical", "horizontal")
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -2799,6 +2844,12 @@ type RadioGroupProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change (e.g. the field of a command), and the field
 	// it submits in a form. Attribute name.
@@ -2843,6 +2894,7 @@ func Range(p RangeProps) templ.Component {
 		e.bool("ticks", p.Ticks)
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -2905,6 +2957,12 @@ type RangeProps struct {
 	// presence.
 	Confirm bool
 
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
+
 	// Name reported in sb-change (e.g. the field of a command) and submitted
 	// with a <form>. Attribute name.
 	Name string
@@ -2935,6 +2993,7 @@ func Rating(p RatingProps) templ.Component {
 		e.bool("clearable", p.Clearable)
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -2992,6 +3051,12 @@ type RatingProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change (e.g. the field of a command) and submitted
 	// with a form. Attribute name.
@@ -3175,6 +3240,7 @@ func Select(p SelectProps) templ.Component {
 		e.str("searching-label", p.SearchingLabel)
 		e.str("empty-label", p.EmptyLabel)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		return e.render(ctx, w)
 	})
 }
@@ -3305,6 +3371,12 @@ type SelectProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 }
 
 // Slider renders <sb-slider>: A pixel range control that steers anything
@@ -3333,6 +3405,7 @@ func Slider(p SliderProps) templ.Component {
 		e.bool("ticks", p.Ticks)
 		e.bool("disabled", p.Disabled)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -3385,6 +3458,12 @@ type SliderProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change (e.g. the field of a command) and submitted
 	// with a form. Attribute name.
@@ -3654,6 +3733,7 @@ func Tabs(p TabsProps) templ.Component {
 		e.json("labels", p.Labels, p.Labels == nil)
 		e.intPtr("selected", p.Selected)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -3684,6 +3764,12 @@ type TabsProps struct {
 	// differs from the server's selected attribute (see revert()). Attribute
 	// confirm, by presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the selected attribute win even when it is unchanged, so a refused
+	// edit reverts. Attribute rev; nil leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change (e.g. the field of a command). Attribute
 	// name.
@@ -3947,6 +4033,7 @@ func Toggle(p ToggleProps) templ.Component {
 		e.str("label", p.Label)
 		e.enum("size", string(p.Size), "sm", "md", "lg")
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -3981,6 +4068,13 @@ type ToggleProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the checked attribute win (present or not) even when it is
+	// unchanged, so a refused edit reverts. Attribute rev; nil leaves it out,
+	// Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change (e.g. the field of a command). Attribute
 	// name.
@@ -4074,6 +4168,7 @@ func Tree(p TreeProps) templ.Component {
 		e.str("label", p.Label)
 		e.str("loading-label", p.LoadingLabel)
 		e.bool("confirm", p.Confirm)
+		e.intPtr("rev", p.Rev)
 		e.str("name", p.Name)
 		return e.render(ctx, w)
 	})
@@ -4131,6 +4226,13 @@ type TreeProps struct {
 	// from the server's value attribute (see revert()). Attribute confirm, by
 	// presence.
 	Confirm bool
+
+	// Revision of the server's value, for commands: the server bumps it with
+	// every command it answers for this field, applied or refused. A new rev
+	// makes the value attribute win even when it is unchanged, so a refused
+	// edit reverts. Not expanded: that is view state. Attribute rev; nil
+	// leaves it out, Int(0) writes 0.
+	Rev *int
 
 	// Name reported in sb-change (e.g. the field of a command). Attribute
 	// name.

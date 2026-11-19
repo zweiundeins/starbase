@@ -195,6 +195,7 @@ rocket('sb-select', {
 		searchingLabel: string.default('Searching…').docs({ description: 'Shown in the open list while results are on their way and there are none yet.' }),
 		emptyLabel: string.default('No results').docs({ description: 'Shown in the open list when nothing matches.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 	}),
 	manifest: {
 		events: [
@@ -323,18 +324,20 @@ rocket('sb-select', {
 		// the attribute: observeProps stays silent when the decoded value did not
 		// change (value="" on an element that never had one). A removed attribute
 		// is ignored (morphs also strip reflected ones; see sb-slider), and the
-		// same value again leaves the user's edit alone.
+		// same value again leaves the user's edit alone, unless rev is new.
 		let served: string | null = host.hasAttribute('value') ? props.value : null
+		let rev = host.getAttribute('rev')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				if (!host.hasAttribute('value')) return void (served = null)
-				if (props.value === served) return
-				served = props.value
-				$$.selected = parseValue(served) // the effect above syncs pending
+				let apply = rev !== (rev = host.getAttribute('rev'))
+				if (!host.hasAttribute('value')) served = null
+				else if (props.value !== served) (served = props.value), (apply = true)
+				if (!apply) return
+				$$.selected = parseValue(props.value) // the effect above syncs pending
 				refresh()
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['value'] })
+		watch.observe(host, { attributeFilter: ['value', 'rev'] })
 		cleanup(() => watch.disconnect())
 		// sync() too: inside a Datastar expression the effect runs only at its end.
 		defineHostProp('revert', { value: () => peek(() => (($$.selected = parseValue(props.value), refresh()), sync())) })

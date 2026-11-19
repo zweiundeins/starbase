@@ -67,6 +67,8 @@ With `confirm`, the host has `:state(pending)` while either end differs from the
 sb-range:state(pending) { opacity: 0.7; }
 ```
 
+**Refusals without page code:** give it `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused range goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new range applies once. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
+
 ## Forms
 
 Inside a `<form>`, `sb-range` submits its range under its `name`, in the format of its `value` attribute (`window={"start":9,"end":17}`), and nothing while `disabled`. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's range. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).

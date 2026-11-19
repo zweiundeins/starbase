@@ -148,6 +148,7 @@ rocket('sb-code-editor', {
         label: string.trim.docs({ description: 'Visible label; also the accessible name (without it, the host\'s aria-label, else "Code").' }),
         problemLabel: string.default('Line {line}: {message}').docs({ description: 'The status line under the code for a problem from diagnostics: {line} becomes its line, {message} its message. With several, "2/5 · " goes before it.' }),
         confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+        rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
         name: string.trim.docs({ description: 'Name reported in sb-change and submitted with the form it sits in (e.g. the field of a command).' }),
         diagnostics: json.default(() => []).docs({ description: 'Problems to underline, as JSON [{line, col, length, message, text}]: line and col 1-based, col and length in UTF-16 code units (a JS string index). With text, a problem shows only while the code there still reads text, so a list about an older version fades as the code changes.' }),
     }),
@@ -240,17 +241,21 @@ rocket('sb-code-editor', {
         // changes, and value="" on an editor without the attribute is "" again.
         // The host's aria-label names the textarea (without a label), so a new
         // one renders again.
+        // A new rev makes the server's value win even when it is the same.
         let served = host.hasAttribute('value') ? props.value : null;
+        let rev = host.getAttribute('rev');
         const watch = new MutationObserver((records) => peek(() => {
-            if (records.some((r) => r.attributeName !== 'value'))
+            if (records.some((r) => r.attributeName === 'aria-label'))
                 render({});
-            if (!host.hasAttribute('value'))
-                return void (served = null);
-            if (props.value !== served)
+            const fresh = rev !== (rev = host.getAttribute('rev'));
+            if (host.hasAttribute('value') && props.value !== served)
                 $$.code = served = props.value;
+            else if (fresh)
+                $$.code = server();
+            host.hasAttribute('value') || (served = null);
             sync();
         }));
-        watch.observe(host, { attributeFilter: ['value', 'aria-label'] });
+        watch.observe(host, { attributeFilter: ['value', 'aria-label', 'rev'] });
         cleanup(() => watch.disconnect());
         overrideProp('value', () => peek(() => $$.code), (v) => peek(() => ($$.code = String(v ?? ''))));
         // Commands: server() is the server's value, $$.code the local one.

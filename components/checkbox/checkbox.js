@@ -85,7 +85,7 @@ const styles = /* css */ `
 `
 
 rocket('sb-checkbox', {
-	props: ({ bool, string }) => ({
+	props: ({ bool, number, string }) => ({
 		checked: bool.docs({ description: 'Checked when present. The server\'s word: adding or removing the attribute wins over a local edit, identical markup keeps it; the live state is the checked property.' }),
 		indeterminate: bool.docs({ description: 'Shows the mixed state (the server says "some"). A click resolves it to checked; the live state is the indeterminate property.' }),
 		label: string.trim.docs({ description: 'Visible label next to the box, and its accessible name.' }),
@@ -93,6 +93,7 @@ rocket('sb-checkbox', {
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command), and the field it submits in a form.' }),
 		value: string.default('on').docs({ description: 'What a form submits under name while checked, like a native checkbox.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local state differs from the server\'s checked attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the checked attribute win (present or not) even when it is unchanged, so a refused edit reverts.' }),
 	}),
 	manifest: {
 		events: [
@@ -126,18 +127,21 @@ rocket('sb-checkbox', {
 		// checked, removed says not. Re-sending the same markup changes nothing, so
 		// edits survive re-renders.
 		// indeterminate is the server's view state: any change of it wins. The
-		// same observer hands the host's aria-label to the box.
+		// same observer hands the host's aria-label to the box. A new rev is the
+		// server's word on both, even when they are the same.
+		let rev = host.getAttribute('rev')
 		const attrs = () =>
 			peek(() => {
 				$$.aria = host.getAttribute('aria-label') ?? '' // a null would delete the signal
-				if (props.indeterminate !== keep.said) $$.mixed = keep.said = props.indeterminate
+				const fresh = rev !== (rev = host.getAttribute('rev'))
+				if (props.indeterminate !== keep.said || fresh) $$.mixed = keep.said = props.indeterminate
 				const now = host.hasAttribute('checked')
-				if (now !== keep.served) $$.on = keep.served = now
+				if (now !== keep.served || fresh) $$.on = keep.served = now
 				sync()
 			})
 		attrs() // also catches what the server said while the element was detached
 		const watch = new MutationObserver(attrs)
-		watch.observe(host, { attributeFilter: ['checked', 'indeterminate', 'aria-label'] })
+		watch.observe(host, { attributeFilter: ['checked', 'indeterminate', 'aria-label', 'rev'] })
 		cleanup(() => watch.disconnect())
 		overrideProp('checked', () => peek(() => $$.on), (v) => peek(() => ($$.on = !!v)))
 		overrideProp('indeterminate', () => peek(() => $$.mixed), (v) => peek(() => ($$.mixed = !!v)))

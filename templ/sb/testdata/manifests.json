@@ -516,6 +516,15 @@
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local state differs from the server's checked attribute (see revert())."
         }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the checked attribute win (present or not) even when it is unchanged, so a refused edit reverts."
+        }
       }
     ],
     "slots": [],
@@ -601,6 +610,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
         }
       },
       {
@@ -725,6 +743,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
         }
       },
       {
@@ -1289,6 +1316,15 @@
         }
       },
       {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the selected attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -1631,6 +1667,15 @@
         }
       },
       {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -1940,6 +1985,15 @@
         "default": false,
         "docs": {
           "description": "Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
         }
       },
       {
@@ -2289,7 +2343,7 @@
         "type": "string",
         "default": "",
         "docs": {
-          "description": "Revision of the server's value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it)."
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged (e.g. an edit normalised back to it, or refused)."
         }
       },
       {
@@ -3166,6 +3220,15 @@
         }
       },
       {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -3311,6 +3374,15 @@
         }
       },
       {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -3453,6 +3525,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
         }
       },
       {
@@ -3822,6 +3903,15 @@
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
         }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
+        }
       }
     ],
     "slots": [],
@@ -3939,6 +4029,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts."
         }
       },
       {
@@ -4224,6 +4323,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local selection differs from the server's selected attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the selected attribute win even when it is unchanged, so a refused edit reverts."
         }
       },
       {
@@ -4565,6 +4673,15 @@
         }
       },
       {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the checked attribute win (present or not) even when it is unchanged, so a refused edit reverts."
+        }
+      },
+      {
         "name": "name",
         "attribute": "name",
         "type": "string",
@@ -4713,6 +4830,15 @@
         "default": false,
         "docs": {
           "description": "Server-confirmed value: :state(pending) while the local value differs from the server's value attribute (see revert())."
+        }
+      },
+      {
+        "name": "rev",
+        "attribute": "rev",
+        "type": "number",
+        "default": 0,
+        "docs": {
+          "description": "Revision of the server's value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts. Not expanded: that is view state."
         }
       },
       {

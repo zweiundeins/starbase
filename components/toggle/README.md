@@ -51,6 +51,8 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when a value i
 
 The server's word is the `checked` attribute, by presence, as on a native checkbox: adding it switches the toggle on and removing it switches it off, also after the user flipped it, while the same markup again leaves the user's switch alone. In templ that is `checked?={ on }`. Any value means on, `checked="false"` too, as in HTML: leave the attribute out for off.
 
+**Refusals without page code:** give it `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `checked` win even when it is unchanged, so a refused flip goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new state applies once. The `checked` attribute is read by presence here too: with a new `rev`, present means on and absent means off. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
+
 ## Forms
 
 Inside a `<form>`, `sb-toggle` submits like a checkbox: `name=on` when it is on, nothing when it is off or `disabled`, and nothing without a `name`. `new FormData(form)` and Datastar's `contentType: 'form'` include it, and a form reset brings back the server's `checked` without firing `change` or `sb-change`. It is not a form-associated element yet (Rocket can't declare one), so `required` and validity, `<fieldset disabled>`, `<label for>` and the `form` attribute don't reach it. With commands, `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).

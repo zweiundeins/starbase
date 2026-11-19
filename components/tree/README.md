@@ -278,6 +278,8 @@ Give it a `name`, and it emits `sb-change` with `{ name, value }` when the selec
 
 Links are followed, not selected: a tree of links marks the page with `aria-current`, and the server moves it when it renders the next page.
 
+**Refusals without page code:** give it `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused selection goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new selection applies once. `expanded` is view state: `rev` leaves it. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
+
 ## Forms
 
 `sb-tree` is not a form-associated element: a `<form>` doesn't submit it, `FormData` and Datastar's `contentType: 'form'` don't see it, and a form reset doesn't reset it. Send its value as a command instead: `sb-change` carries `{ name, value }` (see [With commands](#with-commands)).

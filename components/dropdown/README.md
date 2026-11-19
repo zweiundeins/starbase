@@ -352,6 +352,8 @@ Give it a `name` and post the detail as it is:
 
 A plain item is an intent, not a value: nothing is pending and there is nothing to revert, and the component shows no result of its own (a radio group is the exception, and has both). The server decides, and the page re-renders (see [Commands and components](/contribute#commands-and-components)). When an item starts something slow, let the server render the pending state (a disabled item, a spinner in the page), never the menu.
 
+**Refusals without page code:** a radio group (`type="radio"`) takes `rev`, a number the server bumps with every command it answers for this field, applied or refused (a counter in the tab's state will do; templ: `Rev: sb.Int(n)`). A new `rev` makes the server's `value` win even when it is unchanged, so a refused choice goes back and `:state(pending)` ends, without a `revert()` from the page; the same `rev` again changes nothing. When both change in one morph, the new value applies once. The page's op ids (see [Commands and components](/contribute#commands-and-components)) do the same for every component; `rev` needs nothing on the page.
+
 ## Open and closed
 
 Opening and closing is local state. Clicks, the keyboard, an outside click and Escape only ever change a `$$` signal, so a server morph can never re-open a menu the user just closed.

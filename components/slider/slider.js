@@ -116,6 +116,7 @@ rocket('sb-slider', {
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a form.' }),
 	}),
 	manifest: {
@@ -125,6 +126,8 @@ rocket('sb-slider', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the value is committed. detail: { name, value }: ready for a command.' },
 		],
 	},
+	// rev changes no markup.
+	renderOnPropChange: ({ changes }) => !('rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		const clamp = (v) => (Object.assign(probe, { min: props.min, max: props.max, step: props.step || 'any', value: Number.isFinite(v) ? v : props.min }), +probe.value)
@@ -157,18 +160,23 @@ rocket('sb-slider', {
 		// before the upgrade). The attribute is watched, not the prop: value="0"
 		// on a slider rendered without one decodes to the same 0. The callback
 		// runs after the whole morph, when a new range has arrived as well.
+		// A new rev is the server's word too, with the same value.
 		let served = host.hasAttribute('value') ? props.value : null
+		let rev = host.getAttribute('rev')
 		const watch = new MutationObserver(() =>
 			peek(() => {
-				if (!host.hasAttribute('value')) return void (served = null)
-				if (props.value === served) return
+				const fresh = rev !== (rev = host.getAttribute('rev'))
+				if (!host.hasAttribute('value') || props.value === served) {
+					host.hasAttribute('value') || (served = null)
+					return void (fresh && revert())
+				}
 				served = props.value
 				// Drop the commits up to this echo (all of them when it echoes none).
 				sent = sent.slice(sent.indexOf(served) + 1 || sent.length)
 				sent.length || ($$.value = clamp(served))
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['value'] })
+		watch.observe(host, { attributeFilter: ['value', 'rev'] })
 		cleanup(() => watch.disconnect())
 		overrideProp('value', () => peek(() => $$.value), (v) => peek(() => ($$.value = clamp(Number(v)))))
 		const revert = () => peek(() => ($$.value = clamp(props.value)))

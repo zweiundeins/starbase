@@ -77,6 +77,7 @@ rocket('sb-rating', {
 		clearable: bool.docs({ description: 'Picking the current value again clears it to 0.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local value differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a form.' }),
 	}),
 	manifest: {
@@ -85,6 +86,8 @@ rocket('sb-rating', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { name, value }: ready for a command.' },
 		],
 	},
+	// rev changes no markup.
+	renderOnPropChange: ({ changes }) => !('rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Number(), not +: property writes aren't decoded, and +1n throws.
@@ -103,15 +106,19 @@ rocket('sb-rating', {
 		// attribute is ignored (see sb-details). Watched as an attribute, not
 		// with observeProps: that only fires when the decoded value changes, so
 		// value="0" on an element rendered without one (a server clear) would
-		// go unnoticed.
+		// go unnoticed. A new rev makes the server's value win even when it is
+		// the same.
 		let served = host.hasAttribute('value') ? props.value : null
+		let rev = host.getAttribute('rev')
 		const watch = new MutationObserver(() =>
 			peek(() => {
+				let apply = rev !== (rev = host.getAttribute('rev'))
 				if (!host.hasAttribute('value')) served = null
-				else if (props.value !== served) $$.value = clamp((served = props.value))
+				else if (props.value !== served) (served = props.value), (apply = true)
+				if (apply) $$.value = clamp(props.value)
 			}),
 		)
-		watch.observe(host, { attributeFilter: ['value'] })
+		watch.observe(host, { attributeFilter: ['value', 'rev'] })
 		cleanup(() => watch.disconnect())
 		// A new max or precision re-clamps the current value. Only those: clamp()
 		// is not idempotent with a max between steps (max 3.2 clamps 9 to 3.2,

@@ -96,7 +96,7 @@ svg { inline-size: 1.15rem; block-size: 1.15rem; }
 rocket('sb-input', {
 	props: ({ bool, number, oneOf, string }) => ({
 		value: string.docs({ description: 'The server\'s value. A new one replaces local edits (to clear, send value=""); the live value is the value property.' }),
-		rev: string.docs({ description: 'Revision of the server\'s value, for commands: change it whenever the server applies a command for this field, and its value wins even when it is unchanged (e.g. an edit normalised back to it).' }),
+		rev: string.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged (e.g. an edit normalised back to it, or refused).' }),
 		label: string.trim.docs({ description: 'Visible label.' }),
 		placeholder: string.docs({ description: 'Placeholder text.' }),
 		type: oneOf('text', 'email', 'search', 'url', 'tel', 'password').docs({ description: 'Input type.' }),
@@ -119,6 +119,8 @@ rocket('sb-input', {
 			{ name: 'sb-submit', kind: 'custom-event', bubbles: true, composed: true, description: 'Enter or arrow button with a valid value. detail: { name, value }.' },
 		],
 	},
+	// rev changes no markup.
+	renderOnPropChange: ({ changes }) => !('rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		let served = host.getAttribute('value')

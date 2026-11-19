@@ -84,6 +84,7 @@ rocket('sb-tabs', {
 		labels: array(string.trim).default(() => ['Home', 'Docs', 'API']).docs({ description: 'Tab labels, as a JSON array.' }),
 		selected: number.min(0).docs({ description: 'Index of the selected tab (past the last tab means the last one). A new index from the server wins; a removed attribute is ignored.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local selection differs from the server\'s selected attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the selected attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command).' }),
 	}),
 	manifest: {
@@ -95,6 +96,8 @@ rocket('sb-tabs', {
 			{ name: 'sb-tab-change', kind: 'custom-event', bubbles: true, composed: true, description: 'Same moment. detail: { index, label }.' },
 		],
 	},
+	// rev changes no markup.
+	renderOnPropChange: ({ changes }) => !('rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// A selection always names a tab, so the tablist stays in the tab order.
@@ -110,17 +113,20 @@ rocket('sb-tabs', {
 		// A *removed* attribute is ignored: morphs also strip attributes that
 		// were only reflected. The same observer copies the host's aria-label
 		// onto the tablist: a label on the host can't name an element inside.
+		// A new rev makes the server's word win even when it is the same.
+		let rev = host.getAttribute('rev')
 		const serverSays = () =>
 			peek(() => {
 				// false, not null: a null would delete the signal.
 				$$.label = host.getAttribute('aria-label') || false
-				if (!host.hasAttribute('selected')) return void (served = null)
-				if (props.selected === served) return
-				last = $$.selected = clamp((want = served = props.selected))
+				let apply = rev !== (rev = host.getAttribute('rev'))
+				if (!host.hasAttribute('selected')) served = null
+				else if (props.selected !== served) (served = props.selected), (apply = true)
+				if (apply) last = $$.selected = clamp((want = props.selected))
 			})
 		serverSays()
 		const watch = new MutationObserver(serverSays)
-		watch.observe(host, { attributeFilter: ['selected', 'aria-label'] })
+		watch.observe(host, { attributeFilter: ['selected', 'aria-label', 'rev'] })
 		// A keyboard commit still waiting (see select) dies with the element.
 		cleanup(() => (watch.disconnect(), clearTimeout(timer)))
 		overrideProp('selected', () => peek(() => $$.selected), (v) => peek(() => ($$.selected = clamp((want = v)))))

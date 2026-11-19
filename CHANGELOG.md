@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+#### Components
+
+- **`rev` on every value component:** sb-select, sb-slider, sb-toggle, sb-code-editor, sb-tabs, sb-rating, sb-tree, sb-checkbox, sb-checkbox-group, sb-date-picker, sb-range, sb-radio-group, sb-dropdown's radio group and sb-data-table's `selected` take `rev`, as sb-input did: a number the server bumps with every command it answers for the field, applied or refused. A new `rev` makes the server's value win even when it is unchanged, so a refused edit reverts and leaves `:state(pending)` with no script on the page; the same `rev` again changes nothing. In the templ wrappers it is `Rev *int`. A change of `rev` no longer re-renders sb-input.
+
 ## [0.10.0] - 2026-11-17
 
 Every component gets a typed templ wrapper in the new module `github.com/zweiundeins/starbase/templ`, generated from its manifest, with script imports pinned to the release: a list, the autoloader, or exactly the components a page rendered. `sb-toast` takes a link or an action per toast and stops counting down while the page is hidden.

@@ -123,6 +123,7 @@ rocket('sb-range', {
 		ticks: bool.docs({ description: 'Show min and max below the track.' }),
 		disabled: bool.docs({ description: 'Disable interaction.' }),
 		confirm: bool.docs({ description: 'Server-confirmed value: :state(pending) while the local range differs from the server\'s value attribute (see revert()).' }),
+		rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
 		name: string.trim.docs({ description: 'Name reported in sb-change (e.g. the field of a command) and submitted with a <form>.' }),
 	}),
 	manifest: {
@@ -132,6 +133,8 @@ rocket('sb-range', {
 			{ name: 'sb-change', kind: 'custom-event', bubbles: true, composed: true, description: 'When the range is committed. detail: { name, value: { start, end } }: the whole range, one command.' },
 		],
 	},
+	// rev changes no markup.
+	renderOnPropChange: ({ changes }) => !('rev' in changes),
 	setup: ({ $$, action, adoptStyles, cleanup, defineHostProp, effect, emit, host, observeProps, overrideProp, props }) => {
 		adoptStyles(host, styles)
 		// Decimals of the step grid (step and min); continuous shows two.
@@ -182,6 +185,11 @@ rocket('sb-range', {
 		observeProps(sync)
 		const revert = () => set(props.value)
 		defineHostProp('revert', { value: revert })
+		// A new rev makes the server's range win even when it is the same.
+		let rev = host.getAttribute('rev')
+		const watch = new MutationObserver(() => rev !== (rev = host.getAttribute('rev')) && revert())
+		watch.observe(host, { attributeFilter: ['rev'] })
+		cleanup(() => watch.disconnect())
 		// Forms: until Rocket can make this element form-associated, join the
 		// submissions and resets of the form it sits in. `formdata` also fires for
 		// new FormData(form), so Datastar's contentType: 'form' posts include it.
