@@ -6,13 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-19
+
+A refused command reverts its control without a script on the page (`rev` on every value component), a page can mark any control as pending, and `sb-radio-group` gets a segmented look.
+
 ### Added
 
 #### Components
 
 - **`rev` on every value component:** sb-select, sb-slider, sb-toggle, sb-code-editor, sb-tabs, sb-rating, sb-tree, sb-checkbox, sb-checkbox-group, sb-date-picker, sb-range, sb-radio-group, sb-dropdown's radio group and sb-data-table's `selected` take `rev`, as sb-input did: a number the server bumps with every command it answers for the field, applied or refused. A new `rev` makes the server's value win even when it is unchanged, so a refused edit reverts and leaves `:state(pending)` with no script on the page; the same `rev` again changes nothing. In the templ wrappers it is `Rev *int`. A change of `rev` no longer re-renders sb-input.
-- **`pending` on buttons and value components:** sb-button and every value component (sb-input and the ones above) take `pending`, a boolean by presence: the page's word that a command is on its way, e.g. `data-attr:pending="$_saving"` with a signal the server's answer clears. While present, the host has `:state(pending)` and `aria-busy` (through ElementInternals), styled like `confirm`'s pending, and the two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. It re-renders nothing, so a focused control keeps its focus, and on sb-button it blocks nothing, unlike `loading`.
-- **`sb-radio-group`:** `variant="segmented"` lays the choices out as a row of pills sized like sb-button (`size`: `sm`, `md`, `lg`), the chosen one filled with `--sb-brand`, that wrap onto the next line when the row runs out of room. It is the same radio group: roving focus, arrow keys, Home and End, disabled choices, form data and the command contract. Pixel corners follow `--sb-notch` (round ends at 0), and in forced colours every pill has a border and the chosen one is filled with `Highlight`. New parts: `checked` on the chosen item, in both variants (`::part(item checked)`).
+- **`pending` on buttons and value components:** sb-button and every value component (sb-input and the ones above) take `pending`, a boolean by presence: the page's word that a command is on its way, e.g. `data-attr:pending="$_saving"` with a signal the server's answer clears. While present, the host has `:state(pending)` and `aria-busy` (through ElementInternals), styled like `confirm`'s pending, and the two add up: removing `pending` leaves an unconfirmed edit pending, and `revert()` leaves the page's `pending`. It re-renders nothing, so a focused control keeps its focus, and on sb-button it blocks nothing, unlike `loading`. In the templ wrappers it is `Pending bool`.
+- **`sb-radio-group`:** `variant="segmented"` lays the choices out as a row of pills sized like sb-button (`size`: `sm`, `md`, `lg`), the chosen one filled with `--sb-brand`, that wrap onto the next line when the row runs out of room. It is the same radio group: roving focus, arrow keys, Home and End, disabled choices, form data and the command contract. Pixel corners follow `--sb-notch` (round ends at 0), and in forced colours every pill has a border and the chosen one is filled with `Highlight`. New part: `checked` on the chosen item, in both variants (`::part(item checked)`).
+- **`sb-toggle`:** its README has a Text and language section: `label` or `aria-label` names the switch, and the English fallback "Toggle" shows only without either.
+
+#### Site and server
+
+- **templ wrappers:** `sb.Release` is the release without its "v" (`"0.11.0"` for the tag `v0.11.0`), and the README says a checkout of a release commit carries both `vX.Y.Z` and `templ/vX.Y.Z`, so the release is read with `git describe --tags --match 'v[0-9]*'`, as deploys and builds now do.
 
 ## [0.10.0] - 2026-11-17
 
@@ -479,7 +488,8 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/zweiundeins/starbase/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/zweiundeins/starbase/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/zweiundeins/starbase/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/zweiundeins/starbase/compare/v0.7.0...v0.8.0
