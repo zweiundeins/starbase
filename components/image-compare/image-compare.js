@@ -29,7 +29,7 @@ const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/
 
 // Pixel corners: notches every corner by --_n (2px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = `polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n))`
+const notch = `var(--_nc, polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n)))`
 
 const styles = /* css */ `
 :host {
@@ -73,6 +73,9 @@ const styles = /* css */ `
 	display: block;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 
 /* The frame is a popover, so that full screen puts the very same slotted
    images in the top layer. Closed, it is an ordinary block in the page. */

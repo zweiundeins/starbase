@@ -15,6 +15,9 @@ const styles = /* css */ `
 	display: block;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 /* No gap left in a stack; !important beats a page's display rule. */
 :host(:state(closed)) { display: none !important; }
 .alert {
@@ -45,7 +48,7 @@ const styles = /* css */ `
 	margin-block-start: 0.3em;
 	border-radius: calc(6px - 2 * var(--_n));
 	background: var(--_tone);
-	clip-path: polygon(var(--_n) 0, var(--_m) 0, var(--_m) var(--_n), 12px var(--_n), 12px var(--_m), var(--_m) var(--_m), var(--_m) 12px, var(--_n) 12px, var(--_n) var(--_m), 0 var(--_m), 0 var(--_n), var(--_n) var(--_n));
+	clip-path: var(--_nc, polygon(var(--_n) 0, var(--_m) 0, var(--_m) var(--_n), 12px var(--_n), 12px var(--_m), var(--_m) var(--_m), var(--_m) 12px, var(--_n) 12px, var(--_n) var(--_m), 0 var(--_m), 0 var(--_n), var(--_n) var(--_n)));
 }
 /* Tones are fills, too light for text on light schemes: mixed toward the text
    in oklab, which keeps the hue (oklch rotates it). */

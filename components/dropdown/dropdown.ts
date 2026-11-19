@@ -19,7 +19,7 @@ const internalsOf = (host: HTMLElement) => internals.get(host) ?? internals.set(
 
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p: string) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p: string) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`
 
 // Case- and accent-insensitive matching for the type-ahead.
 const fold = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -101,6 +101,9 @@ const styles = /* css */ `
 	vertical-align: middle;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 :host(:dir(rtl)) { --_dir: -1; }
 
 /* Trigger: a notched plate with a caret. */

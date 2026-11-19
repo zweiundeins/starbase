@@ -13,7 +13,7 @@ const peek = (fn) => {
 
 // Pixel corners: notches every corner by p (a toast: 2px times --sb-notch, and
 // at 0 the border-radius takes over; the status light: 3px, a dot at 0).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`
 
 const LEAVE = 160 // ms the fade-out runs before the toast is taken out
 const ANNOUNCE_MAX = 200 // characters handed to the live region
@@ -66,6 +66,9 @@ const styles = /* css */ `
 	display: contents;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 .region {
 	position: fixed;
 	z-index: var(--sb-z-toast, 60);

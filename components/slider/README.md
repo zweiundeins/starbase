@@ -77,7 +77,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 - **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
 - **Direction:** in right-to-left text the minimum is on the right, and the track fills from there.
 - **Fonts:** the label, the value and the tick labels use your page's font.
-- **Colours:** the filled part of the track is `--sb-brand`, the rest `--sb-surface-inset` with a `--sb-border` edge. The thumb is `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. The label is `--sb-text-2`, the value `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumb instead of notching them.
+- **Colours:** the filled part of the track is `--sb-brand`, the rest `--sb-surface-inset`. The thumb is `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. The label is `--sb-text-2`, the value `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumb instead of notching them.
 - **Parts:** `label`, `value` and `input` (the range input). The thumb is drawn inside the input and has no part: colour it with `--sb-slider-thumb` and `--sb-slider-thumb-edge`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

@@ -229,10 +229,79 @@ const toastNotchJS = `
 	await notch('1')
 	check('notch 1: the notched status light', look(), ['polygon(3px 0px, calc(100% - 3px) 0px, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0px calc(100% - 3px), 0px 3px, 3px 3px)', '0px'])
 	await notch('0')
-	check('notch 0: a dot', look(), ['polygon(0px 0px, 100% 0px, 100% 0px, 100% 0px, 100% 100%, 100% 100%, 100% 100%, 0px 100%, 0px 100%, 0px 100%, 0px 0px, 0px 0px)', '6px'])
+	check('notch 0: a dot, not clipped', look(), ['none', '6px'])
 `
 
 const tocNotchJS = `
 	const el = await make('<sb-toc label="Log"><ol><li><a href="#launch">Launch</a></li></ol></sb-toc>')
 	check('the label: capitals, as written when smooth', await caps(el, '.label'), ['uppercase', 'none'])
+`
+
+// TestNotchZeroClipsNothing checks every component that cuts pixel corners with a clip-path: each
+// element (and ::before, ::after) whose clip-path at --sb-notch: 1 is a notched frame has none at 0,
+// so a page's shadow or outline on a part shows, and the frame is back at 1. A page's box-shadow on
+// sb-radio-group's chosen segmented pill and on sb-dropdown's trigger and menu is the case that
+// asked for it. With STARBASE_DATASTAR_BUNDLE=<file>, on that Datastar build.
+func TestNotchZeroClipsNothing(t *testing.T) {
+	copyRows(t, probeBundle(t, "/", pdPrelude+notchPrelude+notchZeroJS, nil))
+}
+
+const notchZeroJS = `
+try {
+	const style = document.createElement('style')
+	style.textContent = '.shadowed::part(item checked), .shadowed::part(trigger), .shadowed::part(menu) { box-shadow: 0 4px 0 0 rgb(255 0 0); }'
+	document.head.append(style)
+	const fixtures = {
+		'sb-alert': '<sb-alert variant="success" heading="Docked">Bay 4.</sb-alert>',
+		'sb-busy': '<sb-busy busy variant="bar" value="40"></sb-busy>',
+		'sb-busy ': '<sb-busy busy variant="skeleton"></sb-busy>',
+		'sb-checkbox': '<sb-checkbox label="Shields" checked></sb-checkbox>',
+		'sb-checkbox-group': '<sb-checkbox-group options=\'["a","b"]\' value=\'["a"]\'></sb-checkbox-group>',
+		'sb-data-table': '<sb-data-table column-picker columns=\'[{"key":"a","label":"A"},{"key":"t","label":"T"}]\' rows=\'[{"id":"1","a":1,"t":{"text":"ok","tone":"success"}}]\'></sb-data-table>',
+		'sb-date-picker': '<sb-date-picker inline value="2026-09-01"></sb-date-picker>',
+		'sb-details': '<sb-details summary="Hull">Intact.</sb-details>',
+		'sb-dropdown': '<sb-dropdown class="shadowed" label="Menu" items=\'[{"value":"a","label":"A"}]\'></sb-dropdown>',
+		'sb-image-compare': '<sb-image-compare before-label="Raw" after-label="Processed" style="inline-size: 240px"><img slot="before" src="/art/hero.svg" alt=""><img slot="after" src="/art/hero.svg" alt=""></sb-image-compare>',
+		'sb-popover': '<sb-popover label="Info">Fuel: 82%</sb-popover>',
+		'sb-radio-group': '<sb-radio-group class="shadowed" variant="segmented" value="a"><sb-radio value="a">A</sb-radio><sb-radio value="b">B</sb-radio></sb-radio-group>',
+		'sb-range': '<sb-range min="0" max="100" value=\'{"start":10,"end":60}\'></sb-range>',
+		'sb-slider': '<sb-slider value="40"></sb-slider>',
+		'sb-toast': '<sb-toast placement="inline" duration="0" toasts=\'[{"id":"a","variant":"ok","title":"Docked"}]\'></sb-toast>',
+		'sb-toggle': '<sb-toggle label="Shields" checked></sb-toggle>',
+	}
+	// A notched frame starts at its first notch on the top edge; arrows and ticks start at a corner.
+	const frame = (v) => /^polygon\((?!0px )[\d.]+px 0px,/.test(v)
+	const pseudos = [null, '::before', '::after', '::-webkit-slider-thumb']
+	// Every element and pseudo-element with its computed clip-path, through nested shadow roots.
+	const clips = (host) => {
+		const out = []
+		const walk = (root) => {
+			for (const e of root.querySelectorAll('*')) {
+				for (const p of e.localName === 'input' ? pseudos : pseudos.slice(0, 3)) out.push([e.localName + '.' + e.className + (p || ''), getComputedStyle(e, p).clipPath])
+				if (e.shadowRoot) walk(e.shadowRoot)
+			}
+		}
+		walk(host.shadowRoot)
+		return out
+	}
+	for (const [name, html] of Object.entries(fixtures)) {
+		const tag = name.trim()
+		const el = await make(html)
+		await settle(150)
+		await notch('1')
+		const framed = clips(el).filter(([, v]) => frame(v)).map(([k]) => k)
+		check(tag + ': notch 1 cuts pixel corners', framed.length > 0, true)
+		await notch('0')
+		check(tag + ': notch 0 clips none of them', clips(el).filter(([k, v]) => framed.includes(k) && v !== 'none').map(([k, v]) => k + ' ' + v), [])
+		await notch('1')
+		check(tag + ': back at notch 1, the corners again', clips(el).filter(([, v]) => frame(v)).length, framed.length)
+	}
+	const rg = document.querySelector('sb-radio-group.shadowed'), dd = document.querySelector('sb-dropdown.shadowed')
+	check('the page\'s shadow on the chosen pill', cs(rg, '[part~=checked]').boxShadow, 'rgb(255, 0, 0) 0px 4px 0px 0px')
+	check('the page\'s shadow on the dropdown trigger', cs(dd, '[part~=trigger]').boxShadow, 'rgb(255, 0, 0) 0px 4px 0px 0px')
+	check('no errors', errors, [])
+} catch (e) {
+	rows.push({ step: 'script', error: String(e?.stack || e) })
+}
+await report()
 `

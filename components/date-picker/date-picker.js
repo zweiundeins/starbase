@@ -18,7 +18,7 @@ const internals = new WeakMap();
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host);
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`;
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`;
 // A malformed tag (en_US) would make Intl throw: repair it, or use the default.
 const locale = (tag) => { try {
     return Intl.getCanonicalLocales(tag?.replace(/_/g, '-') || [])[0];
@@ -125,6 +125,9 @@ const styles = /* css */ `
 	max-inline-size: 20rem;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 :host(:dir(rtl)) { --_dir: -1; }
 :host(:state(disabled)) { opacity: 0.5; pointer-events: none; }
 label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }

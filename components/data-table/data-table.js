@@ -17,7 +17,7 @@ const internals = new WeakMap();
 const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.attachInternals()).get(host);
 // Pixel corners: notches every corner by p (3px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`;
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`;
 // The page's language (closest() stops at a shadow root), for numbers and the
 // sort order: its formatter and collator, made once per language. An invalid
 // tag (en_US, a typo) would make Intl throw.
@@ -126,6 +126,9 @@ const styles = /* css */ `
 	font-size: 0.875rem;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 .toolbar {
 	flex: none;
 	display: flex;

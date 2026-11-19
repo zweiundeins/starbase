@@ -89,7 +89,7 @@ Style it from your page's CSS, without changing the component or importing anyth
 
 - **Size:** it fills the width it is given (at least `8rem`); set `max-inline-size` on the element to cap it.
 - **Fonts:** the label, the range and the tick labels use your page's font.
-- **Colours:** the part of the track between the thumbs is `--sb-brand`, the rest `--sb-surface-inset` with a `--sb-border` edge. The thumbs are `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. They are the same properties as [`sb-slider`](/components/slider)'s, so one rule styles both. The label is `--sb-text-2`, the range `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumbs instead of notching them.
+- **Colours:** the part of the track between the thumbs is `--sb-brand`, the rest `--sb-surface-inset`. The thumbs are `--sb-slider-thumb` (default `--sb-text-1`) with a `--sb-slider-thumb-edge` edge (default `--sb-brand-light`), which is also the focus ring. They are the same properties as [`sb-slider`](/components/slider)'s, so one rule styles both. The label is `--sb-text-2`, the range `--sb-text-1`, the ticks `--sb-text-muted`. `--sb-notch: 0` rounds the track and the thumbs instead of notching them.
 - **Parts:** `label`, `value` (the shown range), `rail` (the track) and `input` for both range inputs, plus `start` or `end` for one of them (`::part(input end)`). The thumbs are drawn inside the inputs and have no part: colour them with `--sb-slider-thumb` and `--sb-slider-thumb-edge`. Your page's `::part()` rules win over the component's own, without `!important`.
 
 ```html preview

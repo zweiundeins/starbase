@@ -14,7 +14,7 @@ const peek = (fn) => {
 
 // Pixel corners: notches every corner by p (3px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`
 
 // Accordion groups: group name -> the records in it. A plain Map of plain Sets
 // on purpose: assigning an object to a signal *merges* into it, so keys would
@@ -51,6 +51,9 @@ const styles = /* css */ `
 	interpolate-size: allow-keywords;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 details {
 	border: 1px solid var(--_border);
 	background: var(--_bg);

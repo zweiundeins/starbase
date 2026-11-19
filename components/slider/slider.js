@@ -32,7 +32,7 @@ probe.type = 'range'
 
 // Pixel corners: notches every corner by --_n (2px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = `polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n))`
+const notch = `var(--_nc, polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n)))`
 
 const styles = /* css */ `
 :host {
@@ -45,6 +45,9 @@ const styles = /* css */ `
 	min-inline-size: 8rem;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 .field { display: grid; gap: 0.5rem; }
 .field:has(:disabled) { opacity: 0.5; pointer-events: none; }
 .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.8125rem; }
@@ -72,7 +75,6 @@ input:focus-visible { outline: 2px solid var(--_thumb-edge); outline-offset: 4px
 		inset-inline: 0;
 		block-size: 8px;
 		background: linear-gradient(to right, var(--sb-brand, #8C6BFF) var(--_p), var(--sb-surface-inset, #0B1224) var(--_p));
-		box-shadow: 0 0 0 2px var(--sb-border, #283552);
 		clip-path: ${notch};
 		border-radius: calc(4px * (1 - var(--_notch)));
 	}

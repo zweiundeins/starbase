@@ -28,7 +28,7 @@ const locale = (tag) => { try { return Intl.getCanonicalLocales(tag?.replace(/_/
 
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`
 
 // Notes on the styles, kept here where the minifier drops them:
 // - size is styled from the host attribute (setup reflects a size that was set
@@ -45,7 +45,6 @@ const styles = /* css */ `
 	--_fill: var(--sb-brand, #8C6BFF);
 	--_edge: var(--sb-brand-light, #B09AFF);
 	--_track: var(--sb-surface-inset, #0B1224);
-	--_border: var(--sb-border, #283552);
 	--_text: var(--sb-text-2, #AEBBDD);
 	--_notch: var(--sb-notch, 1);
 	--_n: calc(2px * var(--_notch));
@@ -60,6 +59,9 @@ const styles = /* css */ `
    column. Only :host can carry this, so set variant as an attribute. */
 :host(:not([variant])), :host([variant="spinner"]) { display: inline-block; inline-size: auto; vertical-align: middle; }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 :host([size="sm"]) { --_s: 16px; --_d: 4px; --_h: 6px; --_l: 9px; }
 :host([size="lg"]) { --_s: 40px; --_d: 8px; --_h: 16px; --_l: 18px; }
 .wrap { display: grid; }
@@ -92,7 +94,6 @@ const styles = /* css */ `
 	overflow: hidden;
 	block-size: var(--_h);
 	background: var(--_track);
-	box-shadow: 0 0 0 2px var(--_border);
 	clip-path: ${notch('var(--_n)')};
 	border-radius: calc(3px * (1 - var(--_notch)));
 }
@@ -118,7 +119,6 @@ const styles = /* css */ `
 	background-image: linear-gradient(90deg, transparent 0%, color-mix(in oklch, var(--_fill) 40%, transparent) 50%, transparent 100%);
 	background-size: 180% 100%;
 	background-repeat: no-repeat;
-	box-shadow: 0 0 0 2px var(--_border);
 	clip-path: ${notch('var(--_n)')};
 	border-radius: calc(3px * (1 - var(--_notch)));
 	animation: sb-busy-shimmer 1.4s steps(calc(12 + 988 * (1 - var(--_notch))), end) infinite;

@@ -36,7 +36,7 @@ const thumb = /* css */ `
 	border: 0;
 	background: var(--_thumb);
 	box-shadow: inset 0 -3px 0 var(--_thumb-edge);
-	clip-path: var(--_clip);
+	clip-path: var(--_nc, var(--_clip));
 	border-radius: calc(7px * (1 - var(--_notch)));
 	cursor: grab;
 	outline: var(--_ring, 0);
@@ -46,7 +46,6 @@ const thumb = /* css */ `
 const styles = /* css */ `
 :host {
 	--_track: var(--sb-surface-inset, #0B1224);
-	--_border: var(--sb-border, #283552);
 	--_fill: var(--sb-brand, #8C6BFF);
 	--_thumb: var(--sb-slider-thumb, var(--sb-text-1, #F3F4FA));
 	--_thumb-edge: var(--sb-slider-thumb-edge, var(--sb-brand-light, #B09AFF));
@@ -63,6 +62,9 @@ const styles = /* css */ `
 	min-inline-size: 8rem;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 :host([disabled]) { opacity: 0.5; pointer-events: none; }
 .field { display: grid; gap: 0.5rem; }
 .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.8125rem; }
@@ -80,8 +82,7 @@ const styles = /* css */ `
 	inset-block-start: 6px;
 	block-size: 8px;
 	background: linear-gradient(to right, var(--_track) calc(7px + (100% - 14px) * var(--_a)), var(--_fill) 0 calc(7px + (100% - 14px) * var(--_b)), var(--_track) 0);
-	box-shadow: 0 0 0 2px var(--_border);
-	clip-path: var(--_clip);
+	clip-path: var(--_nc, var(--_clip));
 	border-radius: calc(4px * (1 - var(--_notch)));
 }
 .rail:dir(rtl)::before { scale: -1 1; }

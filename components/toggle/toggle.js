@@ -19,7 +19,7 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 
 // Pixel corners: a polygon that notches every corner by one "pixel"
 // (times --sb-notch; 0 leaves the rectangle, rounded by border-radius).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`
 
 const styles = /* css */ `
 :host {
@@ -33,6 +33,9 @@ const styles = /* css */ `
 	vertical-align: middle;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 label { display: inline-flex; align-items: center; gap: 0.75em; cursor: pointer; }
 label:has(:disabled) { opacity: 0.5; pointer-events: none; }
 button {

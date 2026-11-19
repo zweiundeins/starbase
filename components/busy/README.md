@@ -208,7 +208,7 @@ Parts: `base` (the indicator, shown while it is up), `spinner`, `bar`, `fill`, `
 | Token | Used for |
 | --- | --- |
 | `--sb-brand`, `--sb-brand-light` | the dots, the bar fill and the shimmer |
-| `--sb-surface-inset`, `--sb-border` | the bar track and the skeleton blocks |
+| `--sb-surface-inset` | the bar track and the skeleton blocks |
 | `--sb-text-2` | the label |
 | `--sb-notch` | pixel corners on the bar and the skeleton (`0` falls back to a border radius), and stepped motion: at `0` the bar fills, sweeps and shimmers smoothly, and the spinner's blocks are round dots, the lit one leaving a fading trail |
 

@@ -19,7 +19,7 @@ const internalsOf = (host) => internals.get(host) ?? internals.set(host, host.at
 
 // Pixel corners: notches every corner by p (2px times --sb-notch; at 0 the
 // border-radius takes over).
-const notch = (p) => `polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p})`
+const notch = (p) => `var(--_nc, polygon(${p} 0, calc(100% - ${p}) 0, calc(100% - ${p}) ${p}, 100% ${p}, 100% calc(100% - ${p}), calc(100% - ${p}) calc(100% - ${p}), calc(100% - ${p}) 100%, ${p} 100%, ${p} calc(100% - ${p}), 0 calc(100% - ${p}), 0 ${p}, ${p} ${p}))`
 
 // The check mark in 2px pixels, cut out of the box's 12px inside.
 const check = 'path("M10 1h2v2h-2zM8 3h4v2H8zM0 5h2v2H0zM6 5h4v2H6zM0 7h8v2H0zM2 9h4v2H2z")'
@@ -66,6 +66,9 @@ const styles = /* css */ `
 	display: block;
 }
 :host([hidden]) { display: none; }
+/* At --sb-notch: 0 nothing is clipped, so a page's shadow or outline on a part shows. */
+:host { --_nc: initial; }
+@container style(--sb-notch: 0) { * { --_nc: none; } }
 :host(:state(disabled)) { opacity: 0.5; pointer-events: none; }
 .group { display: grid; gap: 0.5rem; }
 .label { color: var(--_label); font-size: 0.8125rem; font-weight: 600; }
