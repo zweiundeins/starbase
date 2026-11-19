@@ -5,7 +5,7 @@
 package sb
 
 const (
-	release           = "0.11.1"
+	release           = "0.11.2"
 	datastarPath      = "/c/datastar@5f98646d7d3d/datastar-rocket.js"
 	datastarIntegrity = "sha384-AfXVdZ/qxhMEHK4Nz/pJT6jl9xm3HGMBLBtC9yRuU5A7AQtXHYC0x6ap034vDqBV"
 	snapshot          = "81f24b268adb"

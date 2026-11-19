@@ -6,11 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-11-19
+
+Rocket components around morphed content re-scope once per frame instead of once per patched element, so a frame patching hundreds of elements inside components no longer blocks the page for most of a second.
+
 ### Fixed
 
 #### Components
 
-- **Rocket components around morphed content re-scope once per frame instead of once per patched element.** Datastar's element patch sent `datastar-scope-children` to the nearest component around every element it morphed, and the component rewrote and applied the Datastar attributes of all its children each time. A frame patching 370 elements by id inside five `sb-details` took a 716 ms long task in headless Chromium (2.8 s at CPU 4x); with `patches/rocket/0013` it re-scopes each component once, with no task over 50 ms (89 ms at 4x). Pages and pinned install snippets load the new build (`/c/datastar@5f98646d7d3d/`); on the official release the components work as before, only slower on such frames.
+- **Rocket components around morphed content re-scope once per frame instead of once per patched element.** Datastar's element patch sent `datastar-scope-children` to the nearest component around every element it morphed, and the component rewrote and applied the Datastar attributes of all its children each time. A frame patching 370 elements by id inside five `sb-details` took a 716 ms long task in headless Chromium (2.8 s at CPU 4x); with `patches/rocket/0013` it re-scopes each component once, with no task over 50 ms (89 ms at 4x). Pages and pinned install snippets load the new build (`/c/datastar@5f98646d7d3d/`); on the official release the components work as before, only slower on such frames. Filed upstream as [starfederation/datastar#1248](https://github.com/starfederation/datastar/issues/1248).
 
 ## [0.11.1] - 2026-11-19
 
@@ -519,7 +523,8 @@ The first release: a community gallery of Rocket web components for Datastar.
 
 - Datastar's morph is not re-entrant with Rocket components that are reordered by id. See `docs/repro/rocket-morph-reentrancy/` for a minimal reproduction and a proposed upstream fix. Starbase avoids the pattern.
 
-[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/zweiundeins/starbase/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/zweiundeins/starbase/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/zweiundeins/starbase/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/zweiundeins/starbase/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/zweiundeins/starbase/compare/v0.9.0...v0.10.0
