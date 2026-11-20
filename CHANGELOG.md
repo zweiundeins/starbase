@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+#### Site and server
+
+- **lith v0.5.10.** No changes for Starbase; lith now embeds the same Datastar build as Starbase (`datastar@5f98646d7d3d`).
+
 ## [0.11.2] - 2026-11-19
 
 Rocket components around morphed content re-scope once per frame instead of once per patched element, so a frame patching hundreds of elements inside components no longer blocks the page for most of a second.
